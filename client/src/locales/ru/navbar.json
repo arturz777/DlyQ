@@ -1,0 +1,14 @@
+{
+	
+	  "catalog": "Каталог",
+	  "adminPanel": "Админ панель",
+	  "profile": "Профиль",
+	  "cart": "Корзина",
+	  "logOut": "Выйти",
+	
+	"language": {
+	  "english": "Английский",
+	  "russian": "Русский",
+	  "estonian": "Эстонский"
+	}
+  }

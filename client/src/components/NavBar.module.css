@@ -1,0 +1,301 @@
+/* Общие стили для навбара */
+.navbar {
+  background-color: #000000; /* Белый фон */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Тень для глубины */
+  font-family: Arial, sans-serif;
+  margin-top: 10px; /* Отступ сверху */
+}
+
+/* Контейнер для навбара */
+.navbarContainer {
+  width: 100%;
+  max-width: 1400px; /* Максимальная ширина для согласованности с каталогом */
+  margin: 0 auto; /* Центрируем по горизонтали */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px; /* Отступы слева и справа */
+}
+
+/* Логотип */
+.navbarLogo {
+  color: green;
+  font-size: 40px;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+@media (max-width: 769px) {
+  .navbarLogo {
+    font-size: 30px;
+  }
+}
+@media (max-width: 690px) {
+  .navbarLogo {
+    display: none;
+  }
+}
+
+.navbarLink {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: rgb(236, 236, 236);
+  text-decoration: none;
+  margin: 10px;
+  font-size: 11px;
+}
+
+@media (max-width: 630px) {
+  .navbarLink {
+    display: none;
+  }
+
+  .navbar {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.navbarLink span {
+  min-width: 80px; /* Фиксируем минимальную ширину для текста */
+  display: inline-block; /* Обеспечиваем, что текст занимает место */
+  text-align: center; /* Центрируем текст */
+  white-space: nowrap; /* Запрещаем перенос текста */
+  overflow: hidden; /* Скрываем текст, если он слишком длинный */
+  text-overflow: ellipsis;
+}
+
+.navbarLink:hover {
+  color: #008b07;
+}
+
+.navbarLink svg {
+  width: 25px;
+  height: 20px;
+}
+
+@media (max-width: 769px) {
+  .navbarLink svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .navbarLinkTitle {
+    display: none;
+  }
+}
+
+@media (max-width: 769px) {
+  .navbarLinkTitle {
+    display: none;
+  }
+}
+
+/* Блок авторизации */
+.navbarAuth {
+  display: flex;
+  align-items: center;
+}
+
+/* Кнопки */
+.navbarButton {
+  background-color: transparent;
+  border: 1px solid black;
+  color: black;
+  padding: 8px 15px;
+  margin-left: 15px;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 5px;
+}
+
+.navbarButton:hover {
+  background-color: #f8f8f8;
+}
+
+.navbarButton:focus {
+  outline: none;
+}
+
+/* В NavBar.module.css */
+.subcategoryNav {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  background: #f8f8f8;
+  border-top: 1px solid #ddd;
+}
+
+.subcategoryItem {
+  cursor: pointer;
+  padding: 5px 10px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  transition: background 0.2s;
+}
+
+.subcategoryItem:hover {
+  background: #eee;
+}
+
+.languageSelectorWrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.currentLanguageButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 35px; /* Фиксируем ширину кнопки, чтобы ничего не двигалось */
+  height: 25px; /* Фиксируем высоту кнопки */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.flag {
+  width: 25px;
+  height: 20px;
+}
+
+@media (max-width: 630px) {
+	.flag {
+	 display: none;
+	}
+  }
+
+.dropdownMenu {
+  position: absolute;
+  top: 100%; /* Прямо под кнопкой */
+  left: 0;
+  background: rgb(238, 238, 238);
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 1000;
+  margin-top: 0px; /* Убираем любые отступы между кнопкой и меню */
+  width: 35px;
+}
+
+.dropdownItem {
+  background: none;
+  border: none;
+  padding: 5px;
+  width: 100%; /* Совпадает с шириной меню */
+  height: 25px; /* Совпадает с высотой кнопки */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropdownItem:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.searchBarContainer {
+  display: flex;
+  justify-content: center;
+  width: 700px;
+  padding-left: 20px;
+}
+
+@media (max-width: 1200px) {
+	.searchBarContainer {
+	  width: 600px; /* Ширина для экрана до 1200px */
+	}
+  }
+
+
+@media (max-width: 992px) {
+	.searchBarContainer {
+	  width: 300px; /* Ширина для экрана до 992px */
+	}
+  }
+
+@media (max-width: 840px) {
+  .searchBarContainer {
+    width: 200px;
+  }
+}
+
+@media (max-width: 630px) {
+  .searchBarContainer {
+    width: 600px;
+  }
+}
+@media (max-width: 576px) {
+  .searchBarContainer {
+    width: 100%;
+	padding: 0 10px; 
+  }
+}
+.searchBarWrapper {
+  position: relative;
+  width: 450px;
+  margin: 0 auto;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #009543;
+  transition: width 0.3s ease;
+}
+
+.resultsDropdown {
+  position: absolute;
+  top: 100%;
+  width: 100%;
+  left: 0;
+  right: 0;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.resultLink {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.resultImage {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  margin-right: 8px;
+}
+
+.resultInfo {
+  font-weight: bold;
+}
+
+.resultPrice {
+  color: #888;
+}
+
+/* Добавьте в ваш файл стилей (например, SearchBar.module.css) */
+.selected {
+  background-color: #f0f0f0; /* Цвет фона для выбранного элемента */
+  outline: none; /* Убираем стандартное выделение */
+}

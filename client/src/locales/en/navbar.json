@@ -1,0 +1,16 @@
+{
+	
+	  "catalog": "Catalog",
+	  "adminPanel": "Admin panel",
+	  "profile": "Profile",
+	  "cart": "Cart",
+	  "logOut": "LogOut",
+
+
+	
+	"language": {
+	  "english": "English",
+	  "russian": "Russian",
+	  "estonian": "Estonian"
+	}
+  }

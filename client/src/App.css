@@ -1,0 +1,4 @@
+body.courier-page .NavBar,
+body.courier-page .MobileNavBar {
+  display: none !important;
+}

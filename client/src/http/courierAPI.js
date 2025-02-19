@@ -1,0 +1,66 @@
+import { $authHost } from "./index";
+
+// ✅ Получение активных заказов
+export const fetchActiveOrders = async () => {
+  try {
+    const { data } = await $authHost.get("/api/couriers/orders");
+    return data;
+  } catch (error) {
+    console.error("Ошибка загрузки активных заказов:", error);
+    return [];
+  }
+};
+
+// ✅ Принятие заказа курьером
+export const acceptOrder = async (orderId) => {
+  try {
+    const { data } = await $authHost.post(`/api/couriers/orders/${orderId}/accept`);
+    return data;
+  } catch (error) {
+    console.error("Ошибка при принятии заказа:", error);
+    throw error;
+  }
+};
+
+// ✅ Смена статуса курьера (онлайн/офлайн)
+export const toggleCourierStatus = async (status) => {
+  try {
+    const { data } = await $authHost.post("/api/couriers/status", { status });
+    return data;
+  } catch (error) {
+    console.error("Ошибка при изменении статуса курьера:", error);
+    throw error;
+  }
+};
+
+// 🔹 Обновление статуса доставки
+export const updateDeliveryStatus = async (orderId, newStatus) => {
+  try {
+    const { data } = await $authHost.post(`/api/couriers/orders/${orderId}/status`, { status: newStatus });
+    return data;
+  } catch (error) {
+    console.error("Ошибка при обновлении статуса доставки:", error);
+    throw error;
+  }
+};
+
+
+export const completeDelivery = async (orderId) => {
+  try {
+    const { data } = await $authHost.post(`/api/couriers/orders/${orderId}/complete`);
+    return data;
+  } catch (error) {
+    console.error("Ошибка при завершении доставки:", error);
+    throw error;
+  }
+};
+
+export const updateCourierLocation = async (lat, lng) => {
+  try {
+    const { data } = await $authHost.post("/api/couriers/update-location", { lat, lng });
+    return data;
+  } catch (error) {
+    console.error("Ошибка при обновлении местоположения курьера:", error);
+    throw error;
+  }
+};

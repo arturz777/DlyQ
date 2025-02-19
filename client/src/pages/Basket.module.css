@@ -1,0 +1,126 @@
+
+.basketEmpty {
+  margin-bottom: 50px;
+  text-align: center;
+}
+
+.container {
+  max-width: 600px;
+  margin-top: 150px;
+
+}
+
+.card {
+  width: 100%;
+  max-width: 600px; /* Ограничение ширины карточки */
+  margin: 10px auto; /* Общий отступ */
+  padding: 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.firstCard {
+  margin-top: 70px; /* Отступ сверху для первой карточки */
+}
+
+.otherCards {
+  margin-top: 10px; /* Отступ сверху для остальных карточек */
+}
+
+.cardContent {
+  display: flex;
+  align-items: center; /* Выравнивание по вертикали */
+  justify-content: space-between; /* Равномерное распределение */
+  gap: 16px; /* Промежутки между элементами */
+}
+
+.image {
+  flex-shrink: 0; /* Не сжимать изображение */
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.title {
+  flex-grow: 1; /* Растягивать, чтобы занимать свободное пространство */
+  font-size: 16px;
+  text-align: left;
+  white-space: nowrap; /* Обрезать текст, если он слишком длинный */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.counter {
+  width: 100px; /* Установи фиксированную ширину */
+    display: flex;
+    align-items: center; /* Выравнивание по вертикали */
+    justify-content: space-between;
+}
+
+.buttonPlus {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+.count {
+  margin: 0 10px;
+  font-size: 16px;
+  text-align: center;
+}
+
+.price {
+  width: 90px;
+  font-size: 16px;
+}
+
+.buttonDelete {
+  padding: 6px 12px;
+  font-size: 14px;
+  background-color: #f44336;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.totalPrice {
+  font-size: 15px;
+  text-align: right;
+}
+
+.totalDeliverPrice {
+  font-size: 12px;
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .cardContent 
+
+  .title,
+  .price,
+  .buttonDelete {
+    font-size: 11px;
+    text-align: center;
+    width: 100%; /* Растянуть элементы на всю ширину */
+    margin-top: 8px; /* Отступ между строками */
+  }
+
+  .counter {
+    display: flex;
+    justify-content: space-between;
+    width: 100%; /* Занимать всю ширину */
+  }
+
+  .buttonPlus {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+
+  .count {
+    font-size: 11px;
+    text-align: center;
+  }
+}

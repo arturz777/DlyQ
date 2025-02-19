@@ -1,0 +1,104 @@
+.typeGroup {
+	border-top: 2px solid #ccc; /* Линия сверху */
+  margin: 20px 0;
+}
+
+.adminDeviceImg {
+	margin-left: 10px;
+}
+
+.adminDeviceName {
+	max-width: 600px; /* Ограничим максимальную ширину */
+	white-space: nowrap; /* Запрещаем перенос на новую строку */
+	overflow: hidden; /* Скроем текст, который не помещается */
+	text-overflow: ellipsis; /* Покажем многоточие, если название слишком длинное */
+	margin-right: 800px;
+}
+
+.adminDevicePrice {
+	margin-right: 50px;
+  }
+
+.adminPanelContainer {
+	display: flex;
+	flex-direction: column;
+	padding: 20px;
+	margin-top: 100px;
+  }
+  
+  .actionButtons {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 20px;
+  }
+  
+  .actionButton {
+	padding: 10px 20px;
+	background-color: #007bff;
+	color: white;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+  }
+  
+  .actionButton:hover {
+	background-color: #0056b3;
+  }
+  
+  .sectionTitle {
+	font-size: 20px;
+	font-weight: bold;
+	margin-top: 20px;
+  }
+  
+  .typeTitle {
+	text-align: center;
+  }
+
+  .itemList {
+	margin-top: 10px;
+  }
+  
+  .item {
+	display: flex;
+  justify-content: space-between;
+  align-items: center; /* Центровка текста и кнопок */
+  margin-bottom: 10px;
+  border-top: 1px solid #ccc; /* Линия сверху */
+  margin: 10px 0;
+  }
+
+  .buttons {
+	display: flex;
+	gap: 10px; /* Расстояние между кнопками */
+  }
+  
+  .editButton {
+	background-color: #007523;
+	color: white;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+	padding: 5px 10px;
+  }
+  
+  .editButton:hover {
+	background-color: #018e2b;
+  }
+
+  .deleteButton {
+	background-color: #dc3545;
+	color: white;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+  }
+  
+  .deleteButton:hover {
+	background-color: #c82333;
+  }
+
+  .emptyCategoryMessage {
+	text-align: center;
+  }
+  

@@ -1,0 +1,52 @@
+.shopWrapper {
+	display: flex;
+	justify-content: center; /* Центрируем содержимое по горизонтали */
+	align-items: center; /* Центрируем содержимое по вертикали */
+	min-height: 100vh; /* Высота экрана */
+	padding: 20px; /* Отступы внутри страницы */
+	margin-top: 100px; /* Отступ сверху */
+  }
+  
+  .mainContent {
+	width: 100%;
+	max-width: 1400px; /* Ограничиваем ширину страницы */
+	background-color: #fff; /* Белый фон */
+	border-radius: 8px; /* Округлые края */
+	padding: 20px; /* Отступы внутри */
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Тень для глубины */
+	padding-bottom: 100px; /* отступ с низу */
+  }
+  
+  /* Сетка для устройств */
+  .deviceContainer {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Автоматически подстраивается */
+	gap: 20px; /* Расстояние между элементами */
+	max-width: 800px; /* Ограничиваем максимальную ширину */
+	width: 100%; /* Адаптивная ширина */
+	margin: 0 auto; /* Центрирование по горизонтали */
+  }
+  
+  /* Фильтры или любые другие элементы, если есть */
+  .filters {
+	display: flex;
+	justify-content: space-between; /* Разделяем фильтры равномерно */
+	gap: 20px; /* Расстояние между фильтрами */
+	margin-bottom: 30px; /* Отступ снизу */
+  }
+  
+  .typeFilter,
+  .brandFilter {
+	flex: 1; /* Равное распределение ширины между фильтрами */
+  }
+  
+  /* Заголовок */
+  .title {
+	text-align: center; /* Центрируем заголовок */
+	font-size: 36px; /* Размер шрифта */
+	margin-bottom: 20px; /* Отступ снизу */
+	color: #333; /* Цвет текста */
+  }
+  
+  
+  

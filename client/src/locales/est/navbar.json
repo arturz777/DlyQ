@@ -1,0 +1,15 @@
+{
+	
+	  "catalog": "Kataloog",
+	  "adminPanel": "Admin panel",
+	  "profile": "profiil",
+	  "cart": "Ostukorv",
+	  "logOut": "Logi välja",
+	
+	"language": {
+	  "english": "Inglise",
+	  "russian": "Vene",
+	  "estonian": "Eesti"
+	}
+  }
+  

@@ -1,0 +1,82 @@
+.catalogWrapper {
+  display: flex;
+  justify-content: center; /* Центрируем содержимое по горизонтали */
+  align-items: center; /* Центрируем содержимое по вертикали */
+  min-height: 100vh; /* Высота экрана */
+  padding: 20px; /* Отступы внутри страницы */
+  margin-top: 100px;
+}
+
+.catalogContent {
+  width: 100%;
+  max-width: 1400px; /* Ограничиваем ширину страницы */
+  background-color: #fff; /* Белый фон */
+  border-radius: 8px; /* Округлые края */
+  padding: 20px; /* Отступы внутри */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Тень для глубины */
+}
+
+.catalogTitle {
+  text-align: center;
+  font-size: 26px;
+  margin-bottom: 50px;
+  color: #333;
+}
+
+.filters {
+  display: flex;
+  flex-direction: column; /* Размещаем элементы вертикально */
+  align-items: center; /* Центрируем по горизонтали */
+  gap: 20px; /* Расстояние между фильтрами */
+  margin-bottom: 30px; /* Отступы снизу */
+}
+
+.brandFilter {
+  font-size: 13px;
+  width: 100%; /* Растягиваем по ширине родителя */
+  max-width: 800px; /* Ограничиваем ширину фильтра */
+}
+
+.typeFilter {
+  width: 100%; /* Растягиваем по ширине родителя */
+  max-width: 800px; /* Ограничиваем ширину фильтра */
+}
+
+
+.deviceContainer {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Автоматически подстраивается */
+	gap: 20px; /* Расстояние между элементами */
+	max-width: 800px; /* Ограничиваем максимальную ширину */
+	width: 100%; /* Адаптивная ширина */
+	margin: 0 auto; /* Центрирование по горизонтали */
+   min-height: 600px;
+   padding-bottom: 500px; /* отступ снизу */
+  
+}
+
+.scrollToTopButton {
+  position: fixed;
+  bottom: 80px; /* Отступ от нижнего края */
+  right: 20px; /* Отступ от правого края */
+  background-color: #007a08; /* Цвет кнопки */
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  opacity: 0.8;
+  transition: opacity 0.3s, transform 0.2s;
+}
+
+.scrollToTopButton:hover {
+  opacity: 1;
+}
+
+.scrollToTopButton:active {
+  transform: scale(0.95);
+}

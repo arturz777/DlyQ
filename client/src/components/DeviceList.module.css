@@ -1,0 +1,109 @@
+/* Основной контейнер для устройств */
+.deviceGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* 4 колонки */
+  gap: 20px;
+  margin-top: 20px; /* Отступ сверху */
+}
+
+/* Медиазапросы для адаптации количества колонок */
+@media (max-width: 1199px) {
+  .deviceGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 991px) {
+  .deviceGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 576px) {
+  .deviceGrid {
+    grid-template-columns: repeat(1, 1fr);
+    margin-left: 20px; /* Дополнительный отступ для мобильных */
+  }
+}
+
+/* Секция для каждого типа */
+.section {
+  margin-bottom: 50px;
+  scroll-margin-top: 100px; /* Отступ для якоря */
+  scroll-margin-bottom: 200px;
+}
+
+/* Заголовок типа */
+.sectionTitle {
+  font-size: 24px;
+  margin-bottom: 50px;
+  text-align: center;
+}
+
+/* Заголовок подтипа */
+.subtypeTitle {
+  font-size: 20px;
+  font-weight: 600;
+  margin-top: 50px;
+  margin-bottom: 50px;
+  text-align: center;
+}
+
+
+/* Адаптивная сетка устройств внутри секции */
+.deviceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Адаптивное поведение */
+  gap: 20px;
+}
+
+/* Адаптивная настройка для мобильных */
+@media (max-width: 769px) {
+  .deviceGrid {
+    display: flex; /* Используем flexbox для горизонтальной раскладки */
+    gap: 20px; /* Расстояние между элементами */
+    overflow-x: auto; /* Горизонтальная прокрутка */
+    scroll-behavior: smooth; /* Плавная прокрутка */
+    padding-bottom: 10px; /* Отступ, чтобы элементы не "прилегали" к низу */
+
+    -ms-overflow-style: none; /* Для IE и Edge */
+    scrollbar-width: none; /* Для Firefox */
+  }
+
+  /* Скрываем скроллбар для красоты */
+  .deviceGrid::-webkit-scrollbar {
+    display: none; /* Для Chrome, Safari */
+  }
+}
+
+/* Сообщение об отсутствии устройств */
+.noDevices {
+  font-size: 16px;
+  color: #888;
+  text-align: center;
+}
+
+/* Адаптация отступов для первых элементов на разных экранах */
+@media (min-width: 1200px) {
+  .container:nth-child(4n+1) {
+    margin-top: 150px;
+  }
+}
+
+@media (max-width: 1199px) and (min-width: 992px) {
+  .container:nth-child(3n+1) {
+    margin-top: 150px;
+  }
+}
+
+@media (max-width: 991px) {
+  .container:nth-child(2n+1) {
+    margin-top: 150px;
+  }
+}
+
+@media (max-width: 576px) {
+  .container:nth-child(2n+1) {
+    margin-top: 100px;
+  }
+}

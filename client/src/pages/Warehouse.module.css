@@ -1,0 +1,17 @@
+.WarehouseContainer {
+	margin-top: 100px;
+}
+
+.TimeOptions {
+	margin-top: 10px;
+  }
+  
+  .TimeOptions p {
+	margin: 5px 0;
+  }
+  
+  .TimeOptions button {
+	margin: 5px;
+	padding: 5px 10px;
+	cursor: pointer;
+  }

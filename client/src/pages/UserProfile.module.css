@@ -1,0 +1,192 @@
+.shopWrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  margin-top: 100px
+}
+
+.mainContent {
+  width: 100%;
+  max-width: 1400px;
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.ProfileTitle {
+  text-align: center;
+  font-size: 22px;
+  margin-bottom: 100px;
+  color: #333;
+}
+
+.ordersContainer {
+  display: flex;
+  flex-direction: column; /* Карточки располагаются по вертикали */
+  gap: 20px;
+}
+
+/* Группа заказа */
+.orderGroup {
+  margin-bottom: 30px; /* Отступ между группами заказов */
+}
+
+/* Заголовок заказа */
+.orderHeader {
+  font-size: 11px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 3px;
+}
+
+/* Карточка товара */
+.orderCard {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 10px;
+}
+
+/* Изображение товара */
+.deviceImage {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* Детали товара */
+.orderDetails {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.orderDetails span {
+  font-size: 14px;
+  color: #555;
+}
+
+/* Если нет заказов */
+.NoOrderTitle {
+  text-align: center;
+  margin-top: 50px;
+  font-size: 16px;
+  color: #777;
+}
+
+
+@media (max-width: 768px) {
+  .orderCard {
+    flex-direction: row; /* Содержимое остается в строке */
+    align-items: center; /* Выравнивание по центру */
+  }
+
+  .orderDetails {
+    flex-direction: column; /* Вертикальная структура для текста */
+    align-items: flex-start; /* Выравнивание текста по левому краю */
+  }
+
+  .orderDetails span:first-child {
+    font-size: 16px; /* Увеличенный размер для верхней строки (название и цена) */
+    font-weight: bold;
+  }
+
+  .orderDetails span:last-child {
+    font-size: 12px; /* Уменьшенный размер для остальных строк */
+    color: #777;
+  }
+}
+
+.languageSelectorWrapper {
+  position: relative;
+  display: inline-block;
+  margin-right: 10px;
+}
+
+.currentLanguageButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 35px; /* Фиксируем ширину кнопки, чтобы ничего не двигалось */
+  height: 25px; /* Фиксируем высоту кнопки */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.buttonsContainer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center; /* Выравнивание по вертикали */
+  gap: 10px; /* Расстояние между кнопками */
+}
+
+
+.backButton {
+	background-color: transparent;
+  margin-right: auto;
+	border: none;
+	color: #009945;
+	font-size: 16px;
+	cursor: pointer;
+  }
+
+@media (min-width: 630px) {
+  .profileButtonLogOut {
+    display: none;
+  }
+
+  .flag {
+    display: none;
+  }
+}
+
+
+.flag {
+  width: 25px;
+  height: 20px;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 100%; /* Прямо под кнопкой */
+  left: 0;
+  background: rgb(238, 238, 238);
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 1000;
+  margin-top: 0px; /* Убираем любые отступы между кнопкой и меню */
+  width: 35px;
+}
+
+.dropdownItem {
+  background: none;
+  border: none;
+  padding: 5px;
+  width: 100%; /* Совпадает с шириной меню */
+  height: 25px; /* Совпадает с высотой кнопки */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropdownItem:hover {
+  background: rgba(0, 0, 0, 0.05);
+}

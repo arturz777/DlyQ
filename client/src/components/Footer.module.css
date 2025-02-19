@@ -1,0 +1,82 @@
+.footer {
+	background-color: #f8f9fa;
+	color: #333;
+	padding: 20px 0;
+	border-top: 1px solid #ddd;
+	font-size: 0.95rem;
+	text-align: center;
+	margin-bottom: 70px;
+  }
+  
+  .container {
+	max-width: 1200px;
+	margin: 0 auto;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 15px;
+  }
+  
+  /* Логотип */
+  .logoSection h2 {
+	font-size: 1.6rem;
+	color: #000;
+	margin-bottom: 5px;
+  }
+  
+  .logoSection p {
+	font-size: 0.9rem;
+	color: #666;
+  }
+  
+  /* Полезные ссылки */
+  .linksSection {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 15px;
+	padding: 5px 0;
+  }
+  
+  .linksSection a {
+	color: #333;
+	text-decoration: none;
+	transition: color 0.3s ease;
+	font-weight: 500;
+  }
+  
+  .linksSection a:hover {
+	color: #007bff;
+  }
+  
+  /* Социальные сети */
+  .socialSection {
+	display: flex;
+	gap: 15px;
+	justify-content: center;
+  }
+  
+  .socialSection a {
+	color: #333;
+	text-decoration: none;
+	transition: color 0.3s ease;
+  }
+  
+  .socialSection a:hover {
+	color: #007bff;
+  }
+  
+  /* Адаптивность */
+  @media (max-width: 768px) {
+	.linksSection {
+	  flex-direction: column;
+	  gap: 10px;
+	}
+  
+	.socialSection {
+	  flex-direction: column;
+	}
+  }
+  
+  
+  
