@@ -37,6 +37,9 @@ app.use("/api/couriers", courierRouter);
 app.use("/api/warehouse", warehouseRouter);
 app.set("io", io);
 app.use("/api/order", orderRouter);
+app.get("/", (req, res) => {
+  res.send("Сервер работает! 🚀");
+});
 
 server.listen(PORT, () => console.log(`🚀 Сервер запущен на порту ${PORT}`));
 
