@@ -28,11 +28,12 @@
     "socket.io-client": "^4.8.1"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
+  "start": "REACT_APP_API_URL=https://zang-4.onrender.com/api react-scripts start",
+  "build": "REACT_APP_API_URL=https://zang-4.onrender.com/api react-scripts build",
+  "test": "react-scripts test",
+  "eject": "react-scripts eject"
+},
+
   "browserslist": {
     "production": [
       ">0.2%",
