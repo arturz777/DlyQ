@@ -2,18 +2,18 @@ import { $authHost } from './index';
 
 // Получение заказов пользователя
 export const fetchUserOrders = async () => {
-    const { data } = await $authHost.get('/api/order/user');
+    const { data } = await $authHost.get('order/user');
     return data;
 };
 
 export const createOrder = async (orderData) => {
-    const { data } = await $authHost.post('/api/order/create', orderData);
+    const { data } = await $authHost.post('order/create', orderData);
     return data;
 };
 
 export const fetchActiveOrder = async () => {
   try {
-      const { data } = await $authHost.get("/api/order/active");
+      const { data } = await $authHost.get("order/active");
       return data || null; // ✅ Если заказа нет, возвращаем null
   } catch (error) {
       if (error.response && error.response.status === 401) {
@@ -26,7 +26,7 @@ export const fetchActiveOrder = async () => {
 };
 
 export const updateOrderStatus = async (orderId, newStatus) => {
-    const { data } = await $authHost.put('/api/order/update-status', {
+    const { data } = await $authHost.put('order/update-status', {
         orderId,
         newStatus
     });
