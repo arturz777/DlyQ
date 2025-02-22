@@ -17,7 +17,7 @@ export const updateType = async (id, type) => {
 };
 
 export const deleteType = async (id) => {
-  await $authHost.delete(`/type/${id}`);
+  await $authHost.delete(`/api/type/${id}`);
 };
 
 export const createSubtype = async (subtype) => {
@@ -93,7 +93,7 @@ export const updateDevice = async (id, device) => {
 };
 
 export const deleteDevice = async (id) => {
-  await $authHost.delete(`/device/${id}`);
+  await $authHost.delete(`/api/device/${id}`);
 };
 
 export const searchDevices = async (query) => {
