@@ -23,7 +23,7 @@ const app = express();
 const server = http.createServer(app); // Создаем HTTP-сервер
 const io = new Server(server, {
   cors: {
-    origin: "*", // Разрешаем доступ с любого источника (можно указать точный URL клиента)
+    origin: 'https://phenomenal-sunburst-78533d.netlify.app',
     methods: ["GET", "POST"]
   }
 });
