@@ -70,12 +70,12 @@ const Order = sequelize.define(
     userId: { type: DataTypes.INTEGER, allowNull: true },
     totalPrice: { type: DataTypes.NUMERIC(10, 2), allowNull: false },
     status: { type: DataTypes.STRING, defaultValue: "Pending" },
-    warehouseStatus: { type: DataTypes.STRING, defaultValue: "pending" }, // Статус на складе
-    processingTime: { type: DataTypes.STRING, allowNull: true }, // Время обработки
+    warehouseStatus: { type: DataTypes.STRING, defaultValue: "pending" },
+    processingTime: { type: DataTypes.STRING, allowNull: true },
     formData: { type: DataTypes.JSON, allowNull: true },
     orderDetails: { type: DataTypes.JSON, allowNull: true },
     courierId: { type: DataTypes.INTEGER, allowNull: true },
-    deliveryLat: { type: DataTypes.FLOAT, allowNull: true }, // ✅ Добавляем широту
+    deliveryLat: { type: DataTypes.FLOAT, allowNull: true },
     deliveryLng: { type: DataTypes.FLOAT, allowNull: true },
     deliveryAddress: { type: DataTypes.STRING, allowNull: false },
     deviceImage: {
@@ -86,7 +86,9 @@ const Order = sequelize.define(
     productName: { type: DataTypes.STRING, allowNull: false },
   },
   {
-    timestamps: true, // Sequelize автоматически добавит createdAt и updatedAt
+    timestamps: true,
+    createdAt: "createdAt", 
+  updatedAt: "updatedAt",
   }
 );
 
