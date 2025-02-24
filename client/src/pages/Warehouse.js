@@ -3,7 +3,7 @@ import { fetchWarehouseOrders, acceptWarehouseOrder, completeWarehouseOrder } fr
 import { io } from "socket.io-client";
 import styles from "./Warehouse.module.css";
 
-const socket = io("http://localhost:5000");
+const socket = io("https://zang-4.onrender.com");
 
 const Warehouse = () => {
   const [orders, setOrders] = useState([]);
