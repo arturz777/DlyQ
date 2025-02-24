@@ -13,7 +13,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import styles from "./OrderSidebar.module.css";
 
-const socket = io("http://localhost:5000");
+const socket = io("https://zang-4.onrender.com");
 
 const OrderSidebar = () => {
   const [order, setOrder] = useState(null);
