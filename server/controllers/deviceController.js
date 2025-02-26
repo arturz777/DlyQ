@@ -4,38 +4,76 @@ const { Device, DeviceInfo, SubType, Type } = require("../models/models");
 const ApiError = require("../error/ApiError");
 const { Op } = require("sequelize");
 const fs = require("fs");
+const { supabase } = require("../config/supabaseClient");
 
 class DeviceController {
   // Создание устройства
   async create(req, res, next) {
     try {
-      let { name, price, brandId, typeId, subtypeId, info, quantity } = req.body;
+      let { name, price, brandId, typeId, subtypeId, info, quantity } =
+        req.body;
 
       // Проверяем, что обязательные поля заполнены
       if (!name || !price || !brandId || !typeId) {
         return res
           .status(400)
-          .json({ message: "Обязательные поля (name, price, brandId, typeId) должны быть заполнены." });
+          .json({
+            message:
+              "Обязательные поля (name, price, brandId, typeId) должны быть заполнены.",
+          });
       }
 
       // Проверка и обработка изображения
       if (!req.files || !req.files.img) {
-        return res.status(400).json({ message: "Необходимо загрузить изображение устройства." });
+        return res
+          .status(400)
+          .json({ message: "Необходимо загрузить изображение устройства." });
       }
 
       const { img } = req.files;
-      const fileName = uuid.v4() + path.extname(img.name);
-      img.mv(path.resolve(__dirname, "..", "static", fileName));
+      const fileName = `${uuid.v4()}${path.extname(img.name)}`;
+
+      // 📌 Загружаем изображение в Supabase Storage
+      const { data, error } = await supabase.storage
+        .from("images")
+        .upload(fileName, img.data, { contentType: img.mimetype });
+
+      if (error) {
+        throw new Error("Ошибка загрузки изображения в Supabase Storage");
+      }
+
+      // 📌 Получаем публичный URL
+      const publicURL = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
 
       let thumbnails = [];
-      if (req.files.thumbnails) {
-        const images = Array.isArray(req.files.thumbnails) ? req.files.thumbnails : [req.files.thumbnails];
+      if (req.files && req.files.thumbnails) {
+        const images = Array.isArray(req.files.thumbnails)
+          ? req.files.thumbnails
+          : [req.files.thumbnails];
 
-        thumbnails = images.map((image) => {
-          const thumbFileName = uuid.v4() + path.extname(image.name);
-          image.mv(path.resolve(__dirname, "..", "static", thumbFileName));
-          return thumbFileName;
-        });
+        thumbnails = await Promise.all(
+          images.map(async (image) => {
+            const thumbFileName = `${uuid.v4()}${path.extname(image.name)}`;
+
+            // Загружаем миниатюру в Supabase Storage
+            const { data, error } = await supabase.storage
+              .from("images")
+              .upload(thumbFileName, image.data, {
+                contentType: image.mimetype,
+              });
+
+            if (error) {
+              console.error("Ошибка загрузки миниатюры в Supabase:", error);
+              return null;
+            }
+
+            // Получаем публичный URL загруженного изображения
+            return `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${thumbFileName}`;
+          })
+        );
+
+        // Удаляем `null`, если какие-то изображения не загрузились
+        thumbnails = thumbnails.filter((url) => url !== null);
       }
 
       let { options } = req.body;
@@ -48,12 +86,11 @@ class DeviceController {
         brandId,
         typeId,
         subtypeId: subtypeId || null, // Устанавливаем null, если не передан подтип
-        img: fileName,
+        img: publicURL,
         thumbnails,
         options,
         quantity: quantity || 0,
       });
-      
 
       // Обработка дополнительной информации (характеристики)
       if (info) {
@@ -101,7 +138,9 @@ class DeviceController {
       return res.json(devices);
     } catch (error) {
       console.error("Ошибка при получении устройств:", error.message);
-      return res.status(500).json({ message: "Ошибка при получении устройств" });
+      return res
+        .status(500)
+        .json({ message: "Ошибка при получении устройств" });
     }
   }
 
@@ -126,93 +165,136 @@ class DeviceController {
       return res.json(device);
     } catch (error) {
       console.error("Ошибка при получении устройства:", error.message);
-      return res.status(500).json({ message: "Ошибка при получении устройства" });
+      return res
+        .status(500)
+        .json({ message: "Ошибка при получении устройства" });
     }
   }
 
   // Обновление устройства
-  async update(req, res, next) {
+ async update(req, res, next) {
     try {
-      const { id } = req.params;
-      const { name, price, brandId, typeId, subtypeId, info, options, quantity  } = req.body;
-      const { img } = req.files || {};
+        const { id } = req.params;
+        const {
+            name,
+            price,
+            brandId,
+            typeId,
+            subtypeId,
+            info,
+            options,
+            quantity,
+        } = req.body;
 
-      const device = await Device.findOne({ where: { id } });
-      if (!device) return res.status(404).json({ message: "Устройство не найдено" });
+        let existingImages = req.body.existingImages
+            ? JSON.parse(req.body.existingImages)
+            : [];
 
-      let fileName = device.img;
-      let thumbnails = Array.isArray(device.thumbnails) ? [...device.thumbnails] : [];
+        const device = await Device.findOne({ where: { id } });
+        if (!device)
+            return res.status(404).json({ message: "Устройство не найдено" });
 
-      let existing = req.body.existingImages || [];
-        if (!Array.isArray(existing)) {
-            try {
-                existing = JSON.parse(existing);
-            } catch (err) {
-                existing = [];
+        let fileName = device.img;
+        let thumbnails = Array.isArray(device.thumbnails)
+            ? [...device.thumbnails]
+            : [];
+
+        const files = req.files || {};
+        const img = files.img || null;
+
+        // ✅ Обновление главного изображения
+        if (img) {
+            if (device.img) {
+                const oldFileName = device.img.split("/").pop();
+                await supabase.storage.from("images").remove([oldFileName]);
             }
-        }
 
-        // Удаляем только файлы, которые отсутствуют в existing
-        thumbnails = thumbnails.filter((thumb) => {
-            if (!existing.includes(thumb)) {
-                const filePath = path.resolve(__dirname, "..", "static", thumb);
-                if (fs.existsSync(filePath)) {
-                    fs.unlink(filePath, (err) => {
-                        if (err) console.error("Ошибка удаления файла:", err);
-                    });
-                }
-                return false; // Удаляем из массива
-            }
-            return true;
-        });
+            const newFileName = `${uuid.v4()}${path.extname(img.name)}`;
+            const { error } = await supabase.storage
+                .from("images")
+                .upload(newFileName, img.data, { contentType: img.mimetype });
 
-      // Если загружено новое изображение
-      if (img) {
-        if (device.img) {
-            const oldFilePath = path.resolve(__dirname, "..", "static", device.img);
-            if (fs.existsSync(oldFilePath)) {
-                fs.unlink(oldFilePath, (err) => {
-                    if (err) console.error("Ошибка удаления старого главного фото:", err);
+            if (error) {
+                return res.status(500).json({
+                    message: "Ошибка загрузки нового изображения в Supabase",
+                    error,
                 });
             }
+
+            fileName = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${newFileName}`;
         }
 
-        fileName = uuid.v4() + path.extname(img.name);
-        img.mv(path.resolve(__dirname, "..", "static", fileName));
-    }
+        // ✅ Удаление старых миниатюр
+        if (existingImages.length === 0) {
+            const imagesToDelete = thumbnails.map((img) => img.split("/").pop());
+            if (imagesToDelete.length > 0) {
+                await supabase.storage.from("images").remove(imagesToDelete);
+            }
+            thumbnails = [];
+        } else {
+            const imagesToDelete = thumbnails
+                .filter((img) => !existingImages.includes(img))
+                .map((img) => img.split("/").pop());
+            if (imagesToDelete.length > 0) {
+                await supabase.storage.from("images").remove(imagesToDelete);
+            }
+            thumbnails = existingImages.filter(img => img !== fileName);
 
-    if (req.files && req.files.thumbnails) {
-      const images = Array.isArray(req.files.thumbnails) ? req.files.thumbnails : [req.files.thumbnails];
+        }
 
-      images.forEach((image) => {
-          if (thumbnails.length < 5) { // Ограничение в 5 миниатюр
-              const thumbFileName = uuid.v4() + path.extname(image.name);
-              image.mv(path.resolve(__dirname, "..", "static", thumbFileName));
-              thumbnails.push(thumbFileName);
-          } else {
-              console.warn("⚠ Миниатюр уже 5, новые не добавляются");
-          }
-      });
-  }
+        // ✅ Добавляем новые миниатюры
+        if (req.files && req.files.thumbnails) {
+            const images = Array.isArray(req.files.thumbnails)
+                ? req.files.thumbnails
+                : [req.files.thumbnails];
 
-      // Обновляем устройство
-      await Device.update(
-        { name, price, brandId, typeId, subtypeId: subtypeId || null, img: fileName, thumbnails, options: JSON.parse(options), quantity: quantity !== undefined ? quantity : device.quantity,  },
-        { where: { id } }
-      );
+            const newThumbnails = await Promise.all(
+                images.map(async (image) => {
+                    const thumbFileName = `${uuid.v4()}${path.extname(image.name)}`;
+                    const { error } = await supabase.storage
+                        .from("images")
+                        .upload(thumbFileName, image.data, {
+                            contentType: image.mimetype,
+                        });
 
-      // Обновляем характеристики устройства
-      if (info) {
-        const parsedInfo = JSON.parse(info);
-        await DeviceInfo.destroy({ where: { deviceId: id } });
-        await Promise.all(
-          parsedInfo.map((i) =>
-            DeviceInfo.create({ ...i, deviceId: id })
-          )
+                    if (error) {
+                        console.error("Ошибка загрузки миниатюры в Supabase:", error);
+                        return null;
+                    }
+
+                    return `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${thumbFileName}`;
+                })
+            );
+
+            thumbnails = [...thumbnails, ...newThumbnails.filter((url) => url !== null)];
+        }
+
+        // ✅ Обновляем устройство
+        await Device.update(
+            {
+                name,
+                price,
+                brandId,
+                typeId,
+                subtypeId: subtypeId || null,
+                img: fileName,
+                thumbnails,
+                options: options ? JSON.parse(options) : [],
+                quantity: quantity !== undefined ? quantity : device.quantity,
+            },
+            { where: { id } }
         );
-      }
 
-      const updatedDevice = await Device.findOne({ where: { id } });
+        // ✅ Обновляем характеристики устройства
+        if (info) {
+            const parsedInfo = JSON.parse(info);
+            await DeviceInfo.destroy({ where: { deviceId: id } });
+            await Promise.all(
+                parsedInfo.map((i) => DeviceInfo.create({ ...i, deviceId: id }))
+            );
+        }
+
+        const updatedDevice = await Device.findOne({ where: { id } });
         return res.json(updatedDevice);
 
     } catch (error) {
@@ -220,26 +302,49 @@ class DeviceController {
     }
 }
 
+
   // Удаление устройства
   async delete(req, res) {
     try {
       const { id } = req.params;
-
       const device = await Device.findOne({ where: { id } });
-      if (!device) return res.status(404).json({ message: "Устройство не найдено" });
+
+      if (!device)
+        return res.status(404).json({ message: "Устройство не найдено" });
 
       const imagePath = path.resolve(__dirname, "..", "static", device.img);
 
-      // Удаляем изображение
-      fs.unlink(imagePath, (err) => {
-        if (err) console.error("Ошибка при удалении изображения:", err);
-      });
+      if (device.img) {
+        const fileName = device.img.split("/").pop(); // Получаем имя файла
+        const { error } = await supabase.storage
+          .from("images")
+          .remove([fileName]);
+        if (error)
+          console.error(
+            "Ошибка при удалении главного изображения из Supabase:",
+            error
+          );
+      }
+
+      // Удаляем миниатюры (thumbnails) из Supabase Storage
+      if (device.thumbnails && device.thumbnails.length > 0) {
+        const filesToDelete = device.thumbnails.map((url) =>
+          url.split("/").pop()
+        );
+        const { error } = await supabase.storage
+          .from("images")
+          .remove(filesToDelete);
+        if (error)
+          console.error("Ошибка при удалении миниатюр из Supabase:", error);
+      }
 
       await Device.destroy({ where: { id } });
 
       return res.status(200).json({ message: "Устройство успешно удалено" });
     } catch (error) {
-      return res.status(500).json({ message: "Ошибка при удалении устройства" });
+      return res
+        .status(500)
+        .json({ message: "Ошибка при удалении устройства" });
     }
   }
 
@@ -247,7 +352,8 @@ class DeviceController {
   async search(req, res, next) {
     try {
       const { q } = req.query;
-      if (!q) return res.status(400).json({ message: "Параметр поиска не указан" });
+      if (!q)
+        return res.status(400).json({ message: "Параметр поиска не указан" });
 
       const devices = await Device.findAll({
         where: {
@@ -262,28 +368,32 @@ class DeviceController {
       next(ApiError.internal("Ошибка сервера при выполнении поиска"));
     }
   }
-  
+
   async checkStock(req, res) {
     try {
       const { deviceId, quantity } = req.body; // ✅ Исправлено: теперь получаем quantity
       const device = await Device.findByPk(deviceId);
-  
+
       if (!device) {
         return res.status(404).json({ message: "Товар не найден" });
       }
-  
-      if (device.quantity < quantity) { // ✅ Проверяем, хватает ли количества
-        return res.status(400).json({ message: "Недостаточно товара на складе" });
+
+      if (device.quantity < quantity) {
+        // ✅ Проверяем, хватает ли количества
+        return res
+          .status(400)
+          .json({ message: "Недостаточно товара на складе" });
       }
-  
-      return res.json({ message: "Товар в наличии", quantity: device.quantity });
+
+      return res.json({
+        message: "Товар в наличии",
+        quantity: device.quantity,
+      });
     } catch (error) {
       console.error("Ошибка при проверке наличия товара:", error);
       return res.status(500).json({ message: "Ошибка сервера" });
     }
   }
-  
-
 }
 
 module.exports = new DeviceController();
