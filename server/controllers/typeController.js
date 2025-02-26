@@ -1,7 +1,7 @@
-const {Type} = require('../models/models')
-const ApiError = require('../error/ApiError')
-const fs = require('fs');
-const path = require('path');
+const {Type} = require('../models/models');
+const ApiError = require('../error/ApiError');
+const { supabase } = require('../config/supabaseClient');
+const uuid = require('uuid');
 
 class TypeController {
 	
@@ -14,30 +14,30 @@ class TypeController {
 				return res.status(400).json({ message: "Поле 'name' обязательно" });
 			}
 	
-			// Если требуется обработка изображения (например, загрузка файла)
-			let imgFileName = null;
+			let imgUrl = null;
 			if (req.files && req.files.img) {
-				const { img } = req.files;
-				const uuid = require('uuid');
-				const path = require('path');
-	
-				imgFileName = uuid.v4() + path.extname(img.name); // Генерация уникального имени файла
-				const staticPath = path.resolve(__dirname, '..', 'static', imgFileName);
-	
-				// Сохранение файла
-				await img.mv(staticPath);
+			  const { img } = req.files;
+			  const fileName = `${uuid.v4()}${img.name.substring(img.name.lastIndexOf('.'))}`;
+	  
+			  const { error } = await supabase.storage
+				.from('images')
+				.upload(fileName, img.data, { contentType: img.mimetype });
+	  
+			  if (error) {
+				throw new Error("Ошибка загрузки изображения в Supabase");
+			  }
+	  
+			  imgUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
 			}
-	
-			// Создание записи в таблице Type
-			const type = await Type.create({ name, img: imgFileName });
-	
-			// Возвращение результата
+	  
+			const type = await Type.create({ name, img: imgUrl });
+	  
 			return res.status(201).json(type);
-		} catch (error) {
+		  } catch (error) {
 			console.error('Ошибка при создании типа:', error.message);
-			next(error); // Передача ошибки для обработки в middleware
+			next(ApiError.badRequest(error.message));
+		  }
 		}
-	}
 
  // Метод для редактирования типа
  async update(req, res) {
@@ -50,31 +50,34 @@ class TypeController {
         return res.status(404).json({ message: 'Тип не найден' });
       }
 
-      // Обработка нового изображения
-      let imgFileName = type.img; // Оставляем старое изображение, если новое не пришло
+	  let imgUrl = type.img;
+
       if (req.files && req.files.img) {
+        if (type.img) {
+          const oldFileName = type.img.split("/").pop();
+          await supabase.storage.from("images").remove([oldFileName]);
+        }
+
         const { img } = req.files;
-        const uuid = require('uuid');
-        const path = require('path');
+        const newFileName = `${uuid.v4()}${img.name.substring(img.name.lastIndexOf('.'))}`;
 
-        imgFileName = uuid.v4() + path.extname(img.name); // Генерация нового имени файла
-        const staticPath = path.resolve(__dirname, '..', 'static', imgFileName);
+        const { error } = await supabase.storage
+          .from('images')
+          .upload(newFileName, img.data, { contentType: img.mimetype });
 
-        // Сохранение нового изображения
-        await img.mv(staticPath);
+        if (error) {
+          throw new Error("Ошибка загрузки нового изображения в Supabase");
+        }
+
+        imgUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${newFileName}`;
       }
 
-      // Обновление записи в таблице Type
-      const updatedType = await type.update({
-        name: name || type.name, // Если имя не передано, оставляем старое
-        img: imgFileName,
-      });
+      await type.update({ name, img: imgUrl });
 
-      // Возвращаем обновленный тип
-      return res.status(200).json(updatedType);
+      return res.status(200).json(type);
     } catch (error) {
       console.error('Ошибка при редактировании типа:', error.message);
-      next(error); // Передача ошибки в middleware
+      next(ApiError.badRequest(error.message));
     }
   }
 
@@ -87,25 +90,17 @@ class TypeController {
 
 	async delete(req, res) {
 		try {
-		  const { id } = req.params; // Получаем ID из параметров
-
-		  const type = await Type.findOne({ where: { id } }); // Проверяем, существует ли тип
+		  const { id } = req.params; 
+		  const type = await Type.findOne({ where: { id } }); 
 
 		  if (!type) {
 			return res.status(404).json({ message: 'Тип не найден' });
 		  }
 
 		  if (type.img) {
-			const imagePath = path.resolve(__dirname, '..', 'static', type.img);
-
-			fs.unlink(imagePath, (err) => {
-				if (err) {
-				  console.error('Ошибка при удалении изображения типа:', err);
-				} else {
-				  console.log('Изображение типа удалено:', imagePath);
-				}
-			  });
-			}
+			const fileName = type.img.split("/").pop();
+			await supabase.storage.from('images').remove([fileName]);
+		  }
 	
 		  await Type.destroy({ where: { id } }); // Удаляем тип
 
