@@ -125,7 +125,7 @@ const DevicePage = () => {
         index === activeIndex && (
           <motion.img
           key={`${img}-${index}`}
-            src={process.env.REACT_APP_API_URL + img}
+          src={img}
             alt={device.name}
             className={styles.DevicePageMainImage}
             initial={{ opacity: 0 }}
@@ -152,7 +152,7 @@ const DevicePage = () => {
   {images.map((thumb, index) => (
     <img
       key={index}
-      src={process.env.REACT_APP_API_URL + thumb}
+      src={thumb} 
       className={`${styles.DevicePageThumbnail} ${index === activeIndex ? styles.ActiveThumbnail : ""}`}
       onClick={() => setActiveIndex(index)}
     />
