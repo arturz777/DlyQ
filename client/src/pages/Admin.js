@@ -346,7 +346,7 @@ const Admin = () => {
                 <img
                   width={50}
                   height={50}
-                  src={`${process.env.REACT_APP_API_URL}/${type.img}`}
+                  src={type.img}
                   alt={type.name}
                   className={styles.typeImage}
                 />
