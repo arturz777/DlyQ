@@ -22,7 +22,7 @@ const TypeBar = observer(() => {
 					  });
 				}}
 			>
-			<img src={`${process.env.REACT_APP_API_URL}/${type.img}`} alt={type.name} className={styles.typeImage} />
+			<img src={type.img} alt={type.name} className={styles.typeImage} />
 			<span className={styles.typeName}>{type.name}</span>
 			</div>
 		))}
