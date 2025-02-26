@@ -81,7 +81,7 @@ const DeviceItem = ({ device }) => {
     >
       <Image
         className={styles.image}
-        src={`${process.env.REACT_APP_API_URL}${device.img}`}
+        src={device.img}
       />
       <div className={styles.info}>
         <h5 className={styles.name}>{device.name}</h5>
