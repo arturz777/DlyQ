@@ -66,16 +66,14 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         });
     }
       
-      const updatedImages = [
-            editableDevice.img,
-            ...(editableDevice.thumbnails || [])
-        ].filter(Boolean);
+    const updatedImages = [...new Set([editableDevice.img, ...(editableDevice.thumbnails || [])])];
+    setExistingImages(updatedImages);
 
-        setImages([...updatedImages, ...Array(5 - updatedImages.length).fill(null)]);
-        setExistingImages(updatedImages);
-    } else {
-        resetFields();
-    }
+    const updatedDisplayedImages = [...updatedImages, ...Array(5 - updatedImages.length).fill(null)];
+    setImages(updatedDisplayedImages);
+} else {
+    resetFields();
+}
 }, [editableDevice, device.brands, device.types]);
 
   const resetFields = () => {
@@ -174,7 +172,7 @@ useEffect(() => {
       }
   });
 
-    existingImages.forEach((img) => formData.append("existingImages", img));
+    formData.append("existingImages", JSON.stringify(existingImages));
 
     formData.append(
       "brandId",
@@ -388,7 +386,7 @@ useEffect(() => {
               <div key={index} className={styles.ImageCell} onClick={() => document.getElementById(`file-input-${index}`).click()}>
                 {img ? (
                   <img 
-                    src={typeof img === "string" ? process.env.REACT_APP_API_URL + img : URL.createObjectURL(img)}
+                    src={typeof img === "string" ? img : URL.createObjectURL(img)}
                     alt={`img-${index}`} 
                     className={styles.UploadedImage} 
                   />
