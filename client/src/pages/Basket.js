@@ -192,7 +192,7 @@ const Basket = observer(() => {
               {/* Изображение */}
               <Image
                 className={styles.image}
-                src={device.img}
+                src={item.img}
               />
 
               {/* Название товара */}
