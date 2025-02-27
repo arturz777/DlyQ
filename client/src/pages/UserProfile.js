@@ -182,11 +182,7 @@ const UserProfile = () => {
                   order.orderDetails.map((product, index) => (
                     <div key={index} className={styles.orderCard}>
                       <img
-                        src={
-                          product.image
-                            ? `${process.env.REACT_APP_API_URL}${product.image}`
-                            : `${process.env.REACT_APP_API_URL}${order.deviceImage}`
-                        }
+                        src={product.image || order.deviceImage}
                         alt={product.name || "Товар"}
                         className={styles.deviceImage}
                       />
@@ -203,7 +199,7 @@ const UserProfile = () => {
                 ) : (
                   <div className={styles.orderCard}>
                     <img
-                      src={`${process.env.REACT_APP_API_URL}${order.deviceImage}`}
+                      src={order.deviceImage}
                       alt="Изображение заказа"
                       className={styles.deviceImage}
                     />
