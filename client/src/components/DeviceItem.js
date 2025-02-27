@@ -22,7 +22,7 @@ const DeviceItem = ({ device }) => {
 
   const checkStock = async (deviceId, quantity) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}api/device/check-stock`, { // ✅ Убрана лишняя `/`
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/device/check-stock`, { 
         method: "POST",
         headers: {
           "Content-Type": "application/json",
