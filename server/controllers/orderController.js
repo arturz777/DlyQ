@@ -2,20 +2,17 @@
 const sendEmail = require("../services/emailService");
 const { Order, Device } = require("../models/models");
 const getDistanceFromWarehouse = require("../utils/distance");
-const fs = require("fs");
-const path = require("path");
+const { supabase } = require("../config/supabaseClient"); // ✅ Импорт Supabase
+const uuid = require("uuid");
 
 const calculateDeliveryCost = (totalPrice, distance) => {
   let baseCost = 2; // Базовая цена 2€
   let distanceCost = distance * 0.5; // 0.5€ за км
-
   let deliveryCost = baseCost + distanceCost;
-
   let discount = Math.floor(totalPrice / 30) * 2; // Округляем вниз (каждые 30€ скидка -2€)
 
   // Ограничение: доставка не может быть меньше 0€
   deliveryCost = Math.max(0, deliveryCost - discount);
-
   return parseFloat(deliveryCost.toFixed(2)); // Округляем
 };
 
@@ -26,7 +23,7 @@ const createOrder = async (req, res) => {
     const { firstName, lastName, email, phone, address, apartment, comment, latitude, longitude } =
       formData;
 
-      const distance = getDistanceFromWarehouse(latitude, longitude); // ✅ Объявляем `distance` до использования
+      const distance = getDistanceFromWarehouse(latitude, longitude);
       const deliveryPrice = calculateDeliveryCost(totalPrice, distance); 
       
 
@@ -36,6 +33,32 @@ const createOrder = async (req, res) => {
 
     const userId = req.user ? req.user.id : null;
     let warehouseId = userId;
+
+    let deviceImageUrl = orderDetails[0]?.image || "https://example.com/placeholder.png";
+
+    if (deviceImageUrl.startsWith("http")) { // Проверяем, что это URL, а не локальный путь
+      try {
+        const response = await fetch(deviceImageUrl);
+        if (!response.ok) throw new Error("Ошибка загрузки изображения с URL");
+
+        const buffer = await response.arrayBuffer();
+        const fileName = `orders/${uuid.v4()}${deviceImageUrl.substring(deviceImageUrl.lastIndexOf("."))}`;
+
+        const { data, error } = await supabase.storage
+          .from("images")
+          .upload(fileName, Buffer.from(buffer), {
+            contentType: "image/jpeg",
+          });
+
+        if (error) {
+          console.error("❌ Ошибка загрузки изображения в Supabase:", error);
+        } else {
+          deviceImageUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
+        }
+      } catch (error) {
+        console.error("❌ Ошибка обработки изображения:", error);
+      }
+    }
 
     // Создаём заказ с фото устройства
     const order = await Order.create({
@@ -49,9 +72,7 @@ const createOrder = async (req, res) => {
       deliveryLat: latitude,   // ✅ Сохраняем широту
       deliveryLng: longitude, 
       deliveryAddress: address,
-      deviceImage: orderDetails.length > 0 
-          ? copyOrderImage(orderDetails[0].image) // ✅ Копируем изображение, а не просто сохраняем ссылку
-          : "https://example.com/placeholder.png", 
+      deviceImage: deviceImageUrl,
       productName: orderDetails.length > 0 ? orderDetails[0].name : "Неизвестный товар",
       orderDetails: JSON.stringify(orderDetails),
   });
@@ -59,48 +80,18 @@ const createOrder = async (req, res) => {
   const io = req.app.get("io"); // 🔥 Получаем WebSocket-сервер из `app`
   io.emit("newOrder", order);
   
-  // ✅ Функция для копирования изображения заказа
-  function copyOrderImage(originalImage) {
-      if (!originalImage) return "https://example.com/placeholder.png";
-      const sourcePath = path.resolve(__dirname, "..", "static", originalImage);
-      const destFolder = path.resolve(__dirname, "..", "static", "orders");
-
-      if (!fs.existsSync(sourcePath)) {
-        console.error(`❌ Файл не найден: ${sourcePath}`);
-        return "https://example.com/placeholder.png";
-    }
-  
-      if (!fs.existsSync(destFolder)) {
-          fs.mkdirSync(destFolder, { recursive: true }); // ✅ Создаём папку, если её нет
-      }
-  
-      const fileName = `order_${Date.now()}_${path.basename(originalImage)}`;
-      const destPath = path.join(destFolder, fileName);
-  
-      try {
-          fs.copyFileSync(sourcePath, destPath); // ✅ Копируем файл
-          return `orders/${fileName}`; // ✅ Возвращаем путь к скопированному файлу
-      } catch (error) {
-          console.error("❌ Ошибка копирования изображения:", error);
-          return "https://example.com/placeholder.png"; // ✅ В случае ошибки – возвращаем плейсхолдер
-      }
-  }
-
-    const productsList = orderDetails
-      .map((detail) => {
-        const options = Object.entries(detail.selectedOptions || {})
-          .map(([key, value]) => `${key}: ${value.value || value}`)
-          .join(", ");
-        return `- ${detail.name} (кол: ${detail.count}, опции: ${
-          options || "нет"
-        })`;
-      })
-      .join("\n");
+  const productsList = orderDetails
+  .map((detail) => {
+    const options = Object.entries(detail.selectedOptions || {})
+      .map(([key, value]) => `${key}: ${value.value || value}`)
+      .join(", ");
+    return `- ${detail.name} (кол: ${detail.count}, опции: ${options || "нет"})`;
+  })
+  .join("\n");
 
     // Формируем текст письма
     const subject = " Заказ !";
     const text = `
-      
       Информация о клиенте:
       - ${firstName}${lastName}
       - ${email}${phone}
@@ -114,10 +105,9 @@ const createOrder = async (req, res) => {
     `;
 
     // Отправляем письмо клиенту
-    await sendEmail(email, subject, text); // Отправить письмо на email клиента
-
-    // Ответ клиенту
+    await sendEmail(email, subject, text);
     res.status(201).json({ message: "Заказ успешно оформлен" });
+    
   } catch (error) {
     res.status(500).json({ message: "Ошибка при оформлении заказа" });
   }
