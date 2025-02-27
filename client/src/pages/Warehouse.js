@@ -148,7 +148,7 @@ const Warehouse = () => {
                 {order.orderDetails.map((item, index) => (
                   <li key={index}>
                     <img
-                      src={`http://localhost:5000/${item.image}`}
+                      src={item.image}
                       alt={item.name}
                       width="50"
                       height="50"
