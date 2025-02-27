@@ -3,8 +3,7 @@ import star from "../assets/bigStar.png";
 import { useParams } from "react-router-dom";
 import { fetchOneDevice } from "../http/deviceAPI";
 import { Context } from "../index";
-import { toast } from "react-toastify"; // Для уведомлений
-
+import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import styles from "./DevicePage.module.css";
 
@@ -20,12 +19,12 @@ const DevicePage = () => {
 
   const checkStock = async (deviceId, quantity) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}api/device/check-stock`, { // ✅ Убрана лишняя `/`
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/device/check-stock`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ deviceId, quantity }), // ✅ Передаем `quantity`
+        body: JSON.stringify({ deviceId, quantity }),
       });
   
       if (!response.ok) {
@@ -209,7 +208,7 @@ const DevicePage = () => {
             <button
   className={styles.DevicePageAddToCart}
   onClick={handleAddToBasket}
-  disabled={availableQuantity <= 0} // ✅ Если товара нет, кнопка блокируется
+  disabled={availableQuantity <= 0}
 >
   {availableQuantity <= 0 ? "Нет в наличии" : "Добавить в корзину"}
 </button>
