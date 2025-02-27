@@ -97,6 +97,6 @@ export const deleteDevice = async (id) => {
 };
 
 export const searchDevices = async (query) => {
-  const { data } = await $host.get(`/api/device/search?q=${query}`);
+  const { data } = await $host.get(`/device/search?q=${query}`);
   return data;
 };
