@@ -263,9 +263,7 @@ const Admin = () => {
                                   className={styles.adminDeviceImg}
                                   width={50}
                                   height={50}
-                                  src={
-                                    process.env.REACT_APP_API_URL + device.img
-                                  }
+                                  src={device.img}
                                 />
                               </div>
                               <span className={styles.adminDeviceName}>
