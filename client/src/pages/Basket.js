@@ -15,27 +15,29 @@ const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
 const Basket = observer(() => {
   const { basket } = useContext(Context);
   const navigate = useNavigate();
-  const [deliveryCost, setDeliveryCost] = useState(0); 
+  const [deliveryCost, setDeliveryCost] = useState(0);
   const [availableQuantities, setAvailableQuantities] = useState({});
-
 
   const checkStock = async (deviceId, quantity) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}api/device/check-stock`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ deviceId, quantity  }),
-      });
-  
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/device/check-stock`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ deviceId, quantity }),
+        }
+      );
+
       const data = await response.json();
-  
+
       if (!response.ok) {
         alert(data.message); // ❌ Показываем пользователю, что товара нет
         return false;
       }
-  
+
       return data.quantity >= quantity; // ✅ Проверяем, хватает ли товара
     } catch (error) {
       console.error("Ошибка при проверке наличия товара:", error);
@@ -46,19 +48,22 @@ const Basket = observer(() => {
   useEffect(() => {
     const fetchQuantities = async () => {
       const newQuantities = {};
-  
+
       for (const item of basket.items) {
         try {
-          const response = await fetch(`${process.env.REACT_APP_API_URL}api/device/check-stock`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ deviceId: item.id }),
-          });
-  
+          const response = await fetch(
+            `${process.env.REACT_APP_API_URL}/device/check-stock`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ deviceId: item.id }),
+            }
+          );
+
           const data = await response.json();
-  
+
           if (response.ok) {
             newQuantities[item.uniqueKey] = data.quantity;
           } else {
@@ -69,31 +74,29 @@ const Basket = observer(() => {
           newQuantities[item.uniqueKey] = 0;
         }
       }
-  
+
       setAvailableQuantities(newQuantities);
     };
-  
+
     fetchQuantities();
   }, [basket.items]); // ✅ Обновляем, когда изменяется корзина
-  
 
   const handleIncrement = async (uniqueKey) => {
     const item = basket.items.find((i) => i.uniqueKey === uniqueKey);
-    
+
     if (!item) return;
-  
+
     const newCount = item.count + 1;
 
     const isAvailable = await checkStock(item.id, newCount);
 
-    if (newCount > (availableQuantities[uniqueKey] || 0)) { // ✅ Проверяем, хватает ли товара
+    if (newCount > (availableQuantities[uniqueKey] || 0)) {
+      // ✅ Проверяем, хватает ли товара
       toast.error("❌ Недостаточно товара на складе!");
       return;
     }
-  
-   
-      basket.updateItemCount(uniqueKey, newCount);
-    
+
+    basket.updateItemCount(uniqueKey, newCount);
   };
 
   const handleDecrement = (uniqueKey) => {
@@ -124,14 +127,17 @@ const Basket = observer(() => {
 
     try {
       // Отправка данных на сервер
-      const response = await fetch("http://localhost:5000/api/order/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem('token') || ''}`,
-        },
-        body: JSON.stringify(dataToSend), // Отправляем все данные
-      });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/order/create`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+          body: JSON.stringify(dataToSend), // Отправляем все данные
+        }
+      );
 
       const data = await response.json();
 
@@ -154,7 +160,7 @@ const Basket = observer(() => {
       console.error("Ошибка при создании заказа:", error);
       toast.error("❌ Ошибка при оформлении заказа.");
     }
-};
+  };
 
   const handleOptionChange = (itemUniqueKey, optionName, selectedValue) => {
     const item = basket.items.find((i) => i.uniqueKey === itemUniqueKey);
@@ -163,12 +169,11 @@ const Basket = observer(() => {
       const updatedOption = item.options
         ?.find((opt) => opt.name === optionName)
         ?.values.find((val) => val.value === selectedValue);
-  
+
       if (updatedOption) {
         basket.updateSelectedOption(itemUniqueKey, optionName, updatedOption); // Обновляем опцию в store
       }
-    }    
-
+    }
   };
 
   return (
@@ -194,30 +199,32 @@ const Basket = observer(() => {
               <div className={styles.title}>{item.name}</div>
 
               {item.selectedOptions &&
-  Object.entries(item.selectedOptions).map(([key, option]) => (
-<div key={`${item.uniqueKey}-${key}`} className={styles.optionSelector}>      
-  <label>{key}:</label>
-      <select
-        value={option.value}
-        onChange={(e) =>
-          handleOptionChange(item.uniqueKey, key, e.target.value)
-        }
-        className="form-select"
-      >
-        {item.options.find((opt) => opt.name === key)?.values.map(
-          (valueObj, idx) => (
-            <option key={`${key}-${valueObj.value}`} value={valueObj.value}>
-              {valueObj.value} (+€{valueObj.price})
-            </option>
-          )
-        )}
-      </select>
-    </div>
-  ))}
-
-
-
-
+                Object.entries(item.selectedOptions).map(([key, option]) => (
+                  <div
+                    key={`${item.uniqueKey}-${key}`}
+                    className={styles.optionSelector}
+                  >
+                    <label>{key}:</label>
+                    <select
+                      value={option.value}
+                      onChange={(e) =>
+                        handleOptionChange(item.uniqueKey, key, e.target.value)
+                      }
+                      className="form-select"
+                    >
+                      {item.options
+                        .find((opt) => opt.name === key)
+                        ?.values.map((valueObj, idx) => (
+                          <option
+                            key={`${key}-${valueObj.value}`}
+                            value={valueObj.value}
+                          >
+                            {valueObj.value} (+€{valueObj.price})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                ))}
 
               {/* Управление количеством */}
               <div className={styles.counter}>
@@ -232,45 +239,52 @@ const Basket = observer(() => {
                   {basket.getItemCount(item.uniqueKey)}
                 </span>
                 <Button
-  className={styles.buttonPlus}
-  variant="outline-success"
-  onClick={() => handleIncrement(item.uniqueKey)}
-  disabled={basket.getItemCount(item.uniqueKey) >= (availableQuantities[item.uniqueKey] || 0)} // ✅ Блокируем кнопку, если товара нет
->
-  +
-</Button>
+                  className={styles.buttonPlus}
+                  variant="outline-success"
+                  onClick={() => handleIncrement(item.uniqueKey)}
+                  disabled={
+                    basket.getItemCount(item.uniqueKey) >=
+                    (availableQuantities[item.uniqueKey] || 0)
+                  } // ✅ Блокируем кнопку, если товара нет
+                >
+                  +
+                </Button>
               </div>
 
               {/* Цена */}
               <div className={styles.price}>
-  €{(item.price +
-    Object.values(item.selectedOptions || {}).reduce(
-      (sum, opt) => sum + (opt?.price || 0),
-      0
-    )) * item.count}
-</div>
+                €
+                {(item.price +
+                  Object.values(item.selectedOptions || {}).reduce(
+                    (sum, opt) => sum + (opt?.price || 0),
+                    0
+                  )) *
+                  item.count}
+              </div>
 
               {/* Удалить */}
               <Button
-  className={styles.buttonDelete}
-  variant="danger"
-  onClick={() => handleRemove(item.uniqueKey)}
->
-  Удалить
-</Button>
+                className={styles.buttonDelete}
+                variant="danger"
+                onClick={() => handleRemove(item.uniqueKey)}
+              >
+                Удалить
+              </Button>
             </div>
           </Card>
         ))
       )}
-       
-       {basket.items.length > 0 && (
-  <>
-    <h3 className={styles.totalDeliverPrice}>Доставка: {deliveryCost.toFixed(2)}€</h3>
-    <h3 className={styles.totalPrice}>
-      Всего: {(basket.getTotalPrice() + deliveryCost).toFixed(2)} €
-    </h3>
-  </>
-)}
+
+      {basket.items.length > 0 && (
+        <>
+          <h3 className={styles.totalDeliverPrice}>
+            Доставка: {deliveryCost.toFixed(2)}€
+          </h3>
+          <h3 className={styles.totalPrice}>
+            Всего: {(basket.getTotalPrice() + deliveryCost).toFixed(2)} €
+          </h3>
+        </>
+      )}
 
       <Elements stripe={stripePromise}>
         <PaymentForm
