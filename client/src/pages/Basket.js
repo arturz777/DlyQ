@@ -192,7 +192,7 @@ const Basket = observer(() => {
               {/* Изображение */}
               <Image
                 className={styles.image}
-                src={process.env.REACT_APP_API_URL + item.img}
+                src={device.img}
               />
 
               {/* Название товара */}
