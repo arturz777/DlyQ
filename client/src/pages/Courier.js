@@ -18,7 +18,8 @@ import { io } from "socket.io-client";
 import { completeDelivery, updateDeliveryStatus, updateCourierLocation  } from "../http/courierAPI";
 import styles from "./Courier.module.css";
 
-const socket = io("https://zang-4.onrender.com");
+const socket = io(process.env.REACT_APP_API_URL || "https://zang-4.onrender.com");
+
 
 const WAREHOUSE_LOCATION = { lat: 59.513720, lng: 24.828888 };
  
