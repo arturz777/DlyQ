@@ -1,5 +1,7 @@
 import { $authHost } from "./index";
 
+console.log("Запрос на сервер:", process.env.REACT_APP_API_URL + "/couriers/status");
+
 // ✅ Получение активных заказов
 export const fetchActiveOrders = async () => {
   try {
