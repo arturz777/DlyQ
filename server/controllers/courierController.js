@@ -119,21 +119,17 @@ class CourierController {
 
   // 🔹 Изменение статуса курьера (онлайн/оффлайн)
   async toggleCourierStatus(req, res) {
-    console.log("🚀 Получен запрос на смену статуса", req.body);
     try {
       const { status } = req.body;
       const courierId = req.user.id;
 
       if (!courierId) {
-        console.log("❌ Ошибка: нет courierId");
         return res.status(401).json({ message: "Вы не авторизованы." });
       }
 
-      console.log(`🔄 Курьер ${courierId} меняет статус на ${status}`);
       // Проверяем, существует ли курьер
       const courier = await Courier.findByPk(courierId);
       if (!courier) {
-        console.log("❌ Ошибка: курьер не найден");
         return res.status(404).json({ message: "Курьер не найден" });
       }
 
@@ -141,10 +137,8 @@ class CourierController {
       courier.status = status;
       await courier.save();
 
-       console.log("✅ Статус успешно изменен!");
       return res.json({ message: `Вы в статусе: ${status}` });
     } catch (error) {
-      console.error("❌ Ошибка смены статуса курьера:", error);
       return res.status(500).json({ message: "Ошибка сервера" });
     }
   }
