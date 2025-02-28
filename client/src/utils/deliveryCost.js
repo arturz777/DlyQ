@@ -1,7 +1,9 @@
+const API_URL = process.env.REACT_APP_API_URL || "https://zang-4.onrender.com";
+
 export const fetchDeliveryCost = async (totalPrice, latitude, longitude) => {
 	try {
 	  const response = await fetch(
-		`http://localhost:5000/api/order/delivery-cost?totalPrice=${totalPrice}&lat=${latitude}&lon=${longitude}`
+		`${API_URL}/api/order/delivery-cost?totalPrice=${totalPrice}&lat=${latitude}&lon=${longitude}`
 	  );
 	  const data = await response.json();
 	  return data.deliveryCost; // Возвращаем рассчитанную сервером стоимость
@@ -9,6 +11,7 @@ export const fetchDeliveryCost = async (totalPrice, latitude, longitude) => {
 	  console.error("Ошибка получения стоимости доставки:", error);
 	  return 5; // Значение по умолчанию, если сервер не ответил
 	}
-  };
+};
+
   
   
