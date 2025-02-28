@@ -15,8 +15,6 @@ const courierRouter = require("./routes/courierRouter");
 const warehouseRouter = require("./routes/warehouseRouter");
 const orderRouter = require("./routes/orderRouter");
 
-const expressListRoutes = require("express-list-routes");
-
 setupCleanupTask();
 
 const PORT = process.env.PORT || 10000;
@@ -42,9 +40,6 @@ app.use("/api/order", orderRouter);
 app.get("/", (req, res) => {
   res.send("Сервер работает! 🚀");
 });
-
-console.log("📢 Список маршрутов сервера:");
-expressListRoutes(app);
 
 server.listen(PORT, () => console.log(`🚀 Сервер запущен на порту ${PORT}`));
 
