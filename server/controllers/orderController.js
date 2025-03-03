@@ -58,6 +58,22 @@ const createOrder = async (req, res) => {
       } catch (error) {
         console.error("❌ Ошибка обработки изображения:", error);
       }
+
+      for (const item of orderDetails) {
+        const device = await Device.findByPk(item.deviceId);
+  
+        if (!device) {
+          return res.status(400).json({ message: `Товар "${item.name}" не найден.` });
+        }
+  
+        if (device.quantity < item.count) {
+          return res.status(400).json({ message: `Недостаточно товара: ${item.name}. Осталось ${device.quantity} шт.` });
+        }
+  
+        // 🔥 **Уменьшаем количество товара в базе**
+        await device.update({ quantity: device.quantity - item.count });
+      }
+
     }
 
     // Создаём заказ с фото устройства
