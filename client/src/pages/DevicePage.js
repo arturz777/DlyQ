@@ -3,44 +3,47 @@ import star from "../assets/bigStar.png";
 import { useParams } from "react-router-dom";
 import { fetchOneDevice } from "../http/deviceAPI";
 import { Context } from "../index";
-import { toast } from "react-toastify";
+import { toast } from "react-toastify"; // Для уведомлений
+
 import { motion, AnimatePresence } from "framer-motion";
 import styles from "./DevicePage.module.css";
 
 const DevicePage = () => {
   const { basket } = useContext(Context);
-  const [device, setDevice] = useState({ info: [], options: [], thumbnails: [] });
+  const [device, setDevice] = useState({
+    info: [],
+    options: [],
+    thumbnails: [],
+  });
   const [selectedOptions, setSelectedOptions] = useState({});
   const [finalPrice, setFinalPrice] = useState(0);
   const { id } = useParams();
-  const [activeImage, setActiveImage] = useState(""); 
   const [activeIndex, setActiveIndex] = useState(0);
   const [availableQuantity, setAvailableQuantity] = useState(0);
 
-  const checkStock = async (deviceId, quantity) => {
+  const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/device/check-stock`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ deviceId, quantity }),
-      });
-  
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Ошибка проверки наличия товара");
+        const response = await fetch(`${process.env.REACT_APP_API_URL}api/device/check-stock`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ deviceId, quantity, selectedOptions }),
+        });
+
+        const data = await response.json();
+        
+        if (data.status === "error") { // ✅ Теперь проверяем статус, а не response.ok
+          toast.error(`❌ ${data.message}`);
+          return false;
       }
-  
-      const data = await response.json();
-      return data.quantity >= quantity; // ✅ Проверяем, хватает ли товара
+
+        return data.quantity >= quantity;
     } catch (error) {
-      console.error("Ошибка при проверке наличия товара:", error.message);
-      return false;
+        console.error("Ошибка при проверке наличия товара:", error);
+        return false;
     }
-  };
-
-
+};
 
   useEffect(() => {
     fetchOneDevice(id).then((data) => {
@@ -49,17 +52,17 @@ const DevicePage = () => {
       setActiveIndex(0);
 
       const itemInBasket = basket.items.find((item) => item.id === data.id);
-    const quantityInBasket = itemInBasket ? itemInBasket.count : 0;
-    setAvailableQuantity(data.quantity - quantityInBasket);
+      const quantityInBasket = itemInBasket ? itemInBasket.count : 0;
+      setAvailableQuantity(data.quantity - quantityInBasket);
 
-      // Инициализируем выбранные опции с пустыми значениями
+   
       const initialOptions = {};
       data.options?.forEach((option) => {
         if (option.values.length > 0) {
           initialOptions[option.name] = option.values[0]; // Устанавливаем первое значение
         }
       });
-      setSelectedOptions(initialOptions);
+      setSelectedOptions({});
     });
   }, [id, basket.items]);
 
@@ -90,87 +93,93 @@ const DevicePage = () => {
     }));
   };
 
+  const availableOptions = device.options.map((option) => ({
+    ...option,
+    values: option.values.filter((v) => v.quantity > 0), // Показываем только доступные
+  }));
+
   const handleAddToBasket = async () => {
-    const existingItem = basket.items.find((item) => item.id === device.id);
-    const newCount = existingItem ? existingItem.count + 1 : 1;
-  
-    // ✅ Проверяем, есть ли товар на складе
-    const isAvailable = await checkStock(device.id, newCount);
-  
-    if (!isAvailable) {
-      toast.error("❌ Недостаточно товара на складе!");
-      return;
+    const existingItem = basket.items.find(
+        (item) => item.id === device.id && JSON.stringify(item.selectedOptions) === JSON.stringify(selectedOptions)
+    );
+    const newCount = (existingItem?.count || 0) + 1;
+
+    // ✅ Проверяем, выбраны ли все параметры товара
+    if (!selectedOptions || Object.keys(selectedOptions).length === 0) {
+        toast.error("Выберите параметры товара!");
+        return;
     }
-  
+
+    // ✅ Проверяем наличие товара на сервере
+    const isAvailable = await checkStock(device.id, newCount, selectedOptions);
+    if (!isAvailable) {
+        return;
+    }
+
+    // ✅ Добавляем товар в корзину
     basket.addItem({ ...device, selectedOptions });
     toast.success(`${device.name} добавлен в корзину!`);
-  
-    // ✅ Сразу уменьшаем доступное количество
+
+    // ✅ Обновляем доступное количество
     setAvailableQuantity((prev) => prev - 1);
-  };
-  
+};
+
+
 
   return (
     <div className={styles.DevicePageContainer}>
       <div className={styles.DevicePageContent}>
-        {/* Левая колонка - Изображение */}
-        
         <div className={styles.DevicePageColImg}>
-        <div className={styles.DevicePageImageWrapper}>
-  {/* Контейнер для анимируемого изображения */}
-  <div className={styles.ImageContainer}>
-    <AnimatePresence mode="wait">
-      {images.map((img, index) => (
-        index === activeIndex && (
-          <motion.img
-          key={`${img}-${index}`}
-          src={img}
-            alt={device.name}
-            className={styles.DevicePageMainImage}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          />
-        )
-      ))}
-    </AnimatePresence>
-  </div>
-
-  {/* Стрелки влево/вправо (расположены поверх изображения) */}
-  {images.length > 1 && (
-    <div className={styles.ArrowButtons}>
-      <button onClick={handlePrev} className={styles.PrevButton}>‹</button>
-      <button onClick={handleNext} className={styles.NextButton}>›</button>
-    </div>
-  )}
-</div>
-
-{/* Миниатюры */}
-<div className={styles.DevicePageThumbnailContainer}>
-  {images.map((thumb, index) => (
-    <img
-      key={index}
-      src={thumb} 
-      className={`${styles.DevicePageThumbnail} ${index === activeIndex ? styles.ActiveThumbnail : ""}`}
-      onClick={() => setActiveIndex(index)}
-    />
-  ))}
-</div>
-
-       
-
-          
+          <div className={styles.DevicePageImageWrapper}>
+            <div className={styles.ImageContainer}>
+              <AnimatePresence mode="wait">
+                {images.map(
+                  (img, index) =>
+                    index === activeIndex && (
+                      <motion.img
+                        key={`${img}-${index}`}
+                        src={img}
+                        alt={device.name}
+                        className={styles.DevicePageMainImage}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                      />
+                    )
+                )}
+              </AnimatePresence>
+            </div>
+            {images.length > 1 && (
+              <div className={styles.ArrowButtons}>
+                <button onClick={handlePrev} className={styles.PrevButton}>
+                  ‹
+                </button>
+                <button onClick={handleNext} className={styles.NextButton}>
+                  ›
+                </button>
+              </div>
+            )}
+          </div>
+          <div className={styles.DevicePageThumbnailContainer}>
+            {images.map((thumb, index) => (
+              <img
+                key={index}
+                src={thumb}
+                className={`${styles.DevicePageThumbnail} ${
+                  index === activeIndex ? styles.ActiveThumbnail : ""
+                }`}
+                onClick={() => setActiveIndex(index)}
+              />
+            ))}
+          </div>
         </div>
-
-        {/* Правая колонка - Детали */}
         <div className={styles.DevicePageDetails}>
           <div className={styles.DevicePageCard}>
             <h2 className={styles.DevicePageTitle}>{device.name}</h2>
-
-            {device.options?.map((option, index) => (
-              <div key={index} className={styles.DevicePageOption}>
-                <label>{option.name}:</label>
+            {device.options?.map((option, optionIndex) => (
+              <div key={optionIndex} className={styles.DevicePageOption}>
+                <label>{option.name}</label>
                 <select
                   value={selectedOptions[option.name]?.value || ""}
                   onChange={(e) => {
@@ -181,18 +190,22 @@ const DevicePage = () => {
                   }}
                   className={styles.DevicePageSelect}
                 >
-                  <option value="">Выберите {option.name}</option>
-                  {option.values.map((valueObj, idx) => (
-                    <option key={idx} value={valueObj.value}>
+                  <option value="" disabled hidden>
+        {`Выберите: ${option.name}`}
+      </option>
+                  {option.values.map((valueObj, valueIndex) => (
+                    <option 
+                    key={valueIndex} 
+                    value={valueObj.value}
+                    disabled={valueObj.quantity <= 0}
+                    >
                       {valueObj.value}
                     </option>
                   ))}
                 </select>
               </div>
             ))}
-
             <p className={styles.DevicePagePrice}>Всего: {finalPrice}€</p>
-
             <div className={styles.DevicePageRating}>
               <span className={styles.DevicePageRatingValue}>
                 {device.rating}
@@ -206,12 +219,12 @@ const DevicePage = () => {
             </div>
 
             <button
-  className={styles.DevicePageAddToCart}
-  onClick={handleAddToBasket}
-  disabled={availableQuantity <= 0}
->
-  {availableQuantity <= 0 ? "Нет в наличии" : "Добавить в корзину"}
-</button>
+              className={styles.DevicePageAddToCart}
+              onClick={handleAddToBasket}
+              disabled={availableQuantity <= 0}
+            >
+              {availableQuantity <= 0 ? "Нет в наличии" : "Добавить в корзину"}
+            </button>
           </div>
         </div>
       </div>
