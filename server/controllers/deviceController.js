@@ -10,17 +10,15 @@ class DeviceController {
   // Создание устройства
   async create(req, res, next) {
     try {
-      let { name, price, brandId, typeId, subtypeId, info, quantity } =
+      let { name, price, brandId, typeId, subtypeId, info, quantity, options  } =
         req.body;
 
       // Проверяем, что обязательные поля заполнены
       if (!name || !price || !brandId || !typeId) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "Обязательные поля (name, price, brandId, typeId) должны быть заполнены.",
-          });
+        return res.status(400).json({
+          message:
+            "Обязательные поля (name, price, brandId, typeId) должны быть заполнены.",
+        });
       }
 
       // Проверка и обработка изображения
@@ -76,8 +74,21 @@ class DeviceController {
         thumbnails = thumbnails.filter((url) => url !== null);
       }
 
-      let { options } = req.body;
       options = options ? JSON.parse(options) : [];
+
+        // ✅ Если есть опции, пересчитываем `quantity`
+        if (options.length > 0) {
+            quantity = options.reduce((sum, option) => {
+                return sum + option.values.reduce((optSum, v) => optSum + (Number(v.quantity) || 0), 0);
+            }, 0);
+        }
+
+// ✅ Если есть опции, суммируем их количество для установки `quantity`
+if (options.length > 0) {
+  quantity = options.reduce((sum, option) => {
+    return sum + option.values.reduce((optSum, v) => optSum + (Number(v.quantity) || 0), 0);
+  }, 0);
+}
 
       // Создаем устройство
       const device = await Device.create({
@@ -172,136 +183,146 @@ class DeviceController {
   }
 
   // Обновление устройства
- async update(req, res, next) {
+  async update(req, res, next) {
     try {
-        const { id } = req.params;
-        const {
-            name,
-            price,
-            brandId,
-            typeId,
-            subtypeId,
-            info,
-            options,
-            quantity,
-        } = req.body;
+      const { id } = req.params;
+      const {
+        name,
+        price,
+        brandId,
+        typeId,
+        subtypeId,
+        info,
+        options,
+        quantity,
+      } = req.body;
 
-        let existingImages = req.body.existingImages
-            ? JSON.parse(req.body.existingImages)
-            : [];
+      let existingImages = req.body.existingImages
+        ? JSON.parse(req.body.existingImages)
+        : [];
 
-        const device = await Device.findOne({ where: { id } });
-        if (!device)
-            return res.status(404).json({ message: "Устройство не найдено" });
+      const device = await Device.findOne({ where: { id } });
+      if (!device)
+        return res.status(404).json({ message: "Устройство не найдено" });
 
-        let fileName = device.img;
-        let thumbnails = Array.isArray(device.thumbnails)
-            ? [...device.thumbnails]
-            : [];
+      let fileName = device.img;
+      let thumbnails = Array.isArray(device.thumbnails)
+        ? [...device.thumbnails]
+        : [];
 
-        const files = req.files || {};
-        const img = files.img || null;
+      const files = req.files || {};
+      const img = files.img || null;
 
-        // ✅ Обновление главного изображения
-        if (img) {
-            if (device.img) {
-                const oldFileName = device.img.split("/").pop();
-                await supabase.storage.from("images").remove([oldFileName]);
-            }
+      // ✅ Обновление главного изображения
+      if (img) {
+        if (device.img) {
+          const oldFileName = device.img.split("/").pop();
+          await supabase.storage.from("images").remove([oldFileName]);
+        }
 
-            const newFileName = `${uuid.v4()}${path.extname(img.name)}`;
+        const newFileName = `${uuid.v4()}${path.extname(img.name)}`;
+        const { error } = await supabase.storage
+          .from("images")
+          .upload(newFileName, img.data, { contentType: img.mimetype });
+
+        if (error) {
+          return res.status(500).json({
+            message: "Ошибка загрузки нового изображения в Supabase",
+            error,
+          });
+        }
+
+        fileName = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${newFileName}`;
+      }
+
+      // ✅ Удаление старых миниатюр
+      if (existingImages.length === 0) {
+        const imagesToDelete = thumbnails.map((img) => img.split("/").pop());
+        if (imagesToDelete.length > 0) {
+          await supabase.storage.from("images").remove(imagesToDelete);
+        }
+        thumbnails = [];
+      } else {
+        const imagesToDelete = thumbnails
+          .filter((img) => !existingImages.includes(img))
+          .map((img) => img.split("/").pop());
+        if (imagesToDelete.length > 0) {
+          await supabase.storage.from("images").remove(imagesToDelete);
+        }
+        thumbnails = existingImages.filter((img) => img !== fileName);
+      }
+
+      // ✅ Добавляем новые миниатюры
+      if (req.files && req.files.thumbnails) {
+        const images = Array.isArray(req.files.thumbnails)
+          ? req.files.thumbnails
+          : [req.files.thumbnails];
+
+        const newThumbnails = await Promise.all(
+          images.map(async (image) => {
+            const thumbFileName = `${uuid.v4()}${path.extname(image.name)}`;
             const { error } = await supabase.storage
-                .from("images")
-                .upload(newFileName, img.data, { contentType: img.mimetype });
+              .from("images")
+              .upload(thumbFileName, image.data, {
+                contentType: image.mimetype,
+              });
 
             if (error) {
-                return res.status(500).json({
-                    message: "Ошибка загрузки нового изображения в Supabase",
-                    error,
-                });
+              console.error("Ошибка загрузки миниатюры в Supabase:", error);
+              return null;
             }
 
-            fileName = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${newFileName}`;
-        }
-
-        // ✅ Удаление старых миниатюр
-        if (existingImages.length === 0) {
-            const imagesToDelete = thumbnails.map((img) => img.split("/").pop());
-            if (imagesToDelete.length > 0) {
-                await supabase.storage.from("images").remove(imagesToDelete);
-            }
-            thumbnails = [];
-        } else {
-            const imagesToDelete = thumbnails
-                .filter((img) => !existingImages.includes(img))
-                .map((img) => img.split("/").pop());
-            if (imagesToDelete.length > 0) {
-                await supabase.storage.from("images").remove(imagesToDelete);
-            }
-            thumbnails = existingImages.filter(img => img !== fileName);
-
-        }
-
-        // ✅ Добавляем новые миниатюры
-        if (req.files && req.files.thumbnails) {
-            const images = Array.isArray(req.files.thumbnails)
-                ? req.files.thumbnails
-                : [req.files.thumbnails];
-
-            const newThumbnails = await Promise.all(
-                images.map(async (image) => {
-                    const thumbFileName = `${uuid.v4()}${path.extname(image.name)}`;
-                    const { error } = await supabase.storage
-                        .from("images")
-                        .upload(thumbFileName, image.data, {
-                            contentType: image.mimetype,
-                        });
-
-                    if (error) {
-                        console.error("Ошибка загрузки миниатюры в Supabase:", error);
-                        return null;
-                    }
-
-                    return `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${thumbFileName}`;
-                })
-            );
-
-            thumbnails = [...thumbnails, ...newThumbnails.filter((url) => url !== null)];
-        }
-
-        // ✅ Обновляем устройство
-        await Device.update(
-            {
-                name,
-                price,
-                brandId,
-                typeId,
-                subtypeId: subtypeId || null,
-                img: fileName,
-                thumbnails,
-                options: options ? JSON.parse(options) : [],
-                quantity: quantity !== undefined ? quantity : device.quantity,
-            },
-            { where: { id } }
+            return `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${thumbFileName}`;
+          })
         );
 
-        // ✅ Обновляем характеристики устройства
-        if (info) {
-            const parsedInfo = JSON.parse(info);
-            await DeviceInfo.destroy({ where: { deviceId: id } });
-            await Promise.all(
-                parsedInfo.map((i) => DeviceInfo.create({ ...i, deviceId: id }))
-            );
-        }
+        thumbnails = [
+          ...thumbnails,
+          ...newThumbnails.filter((url) => url !== null),
+        ];
 
-        const updatedDevice = await Device.findOne({ where: { id } });
-        return res.json(updatedDevice);
+        options = options ? JSON.parse(options) : [];
 
-    } catch (error) {
-        next(ApiError.badRequest(error.message));
+    // ✅ Если у товара есть `options`, пересчитываем `quantity`
+    if (options.length > 0) {
+      quantity = options.reduce((sum, option) => {
+        return sum + option.values.reduce((optSum, v) => optSum + (Number(v.quantity) || 0), 0);
+      }, 0);
     }
-}
 
+      }
+
+      // ✅ Обновляем устройство
+      await Device.update(
+        {
+          name,
+          price,
+          brandId,
+          typeId,
+          subtypeId: subtypeId || null,
+          img: fileName,
+          thumbnails,
+          options: options ? JSON.parse(options) : [],
+          quantity: quantity || 0,
+        },
+        { where: { id } }
+      );
+
+      // ✅ Обновляем характеристики устройства
+      if (info) {
+        const parsedInfo = JSON.parse(info);
+        await DeviceInfo.destroy({ where: { deviceId: id } });
+        await Promise.all(
+          parsedInfo.map((i) => DeviceInfo.create({ ...i, deviceId: id }))
+        );
+      }
+
+      const updatedDevice = await Device.findOne({ where: { id } });
+      return res.json(updatedDevice);
+    } catch (error) {
+      next(ApiError.badRequest(error.message));
+    }
+  }
 
   // Удаление устройства
   async delete(req, res) {
@@ -371,29 +392,51 @@ class DeviceController {
 
   async checkStock(req, res) {
     try {
-      const { deviceId, quantity } = req.body; // ✅ Исправлено: теперь получаем quantity
-      const device = await Device.findByPk(deviceId);
+        const { deviceId, quantity, selectedOptions } = req.body;
+        const device = await Device.findByPk(deviceId);
 
-      if (!device) {
-        return res.status(404).json({ message: "Товар не найден" });
+        if (!device) {
+          return res.json({ status: "error", message: "Товар не найден" });
+      }
+      
+
+        let availableQuantity = device.quantity;
+        let parsedOptions = [];
+
+        if (typeof device.options === "string") {
+            parsedOptions = JSON.parse(device.options);
+        } else if (Array.isArray(device.options)) {
+            parsedOptions = device.options;
+        }
+
+        
+        if (parsedOptions.length > 0 && selectedOptions) {
+            for (const [optionName, selectedValue] of Object.entries(selectedOptions)) {
+                const option = parsedOptions.find(opt => opt.name === optionName);
+                if (!option) continue;
+
+                const value = option.values.find(val => val.value === selectedValue.value);
+                if (!value) {
+                  return res.json({ status: "error", message: `Опция ${selectedValue.value} не найдена.` });
+              }
+                availableQuantity = value.quantity;
+            }
+        }
+
+        if (availableQuantity < quantity) {
+          return res.json({ status: "error", message: `Недостаточно товара! В наличии: ${availableQuantity}` });
       }
 
-      if (device.quantity < quantity) {
-        // ✅ Проверяем, хватает ли количества
-        return res
-          .status(400)
-          .json({ message: "Недостаточно товара на складе" });
-      }
+      return res.json({ status: "success", message: "Товар в наличии", quantity: availableQuantity });
 
-      return res.json({
-        message: "Товар в наличии",
-        quantity: device.quantity,
-      });
-    } catch (error) {
+  } catch (error) {
       console.error("Ошибка при проверке наличия товара:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
+      return res.json({ status: "error", message: "Ошибка сервера при проверке наличия товара." });
   }
+}
+
+
+
 }
 
 module.exports = new DeviceController();
