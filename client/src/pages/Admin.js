@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext  } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Context } from "../index";
 import CreateBrand from "../components/modals/CreateBrand";
 import CreateDevice from "../components/modals/CreateDevice";
@@ -213,19 +213,21 @@ const Admin = () => {
                           </span>
 
                           <div className={styles.buttons}>
-                          <div className={styles.adminDevicePrice}>
-          {device.price} € |  
-          <span className={styles.deviceQuantity}>
-            {device.quantity === 0 ? (
-              <span style={{ color: "red" }}>Нет в наличии</span>
-            ) : (
-              <span style={{ color: "green" }}>В наличии: {device.quantity}</span>
-            )}
-          </span>
-        </div>
+                            <div className={styles.adminDevicePrice}>
+                              {device.price} € |
+                              <span className={styles.deviceQuantity}>
+                                {device.quantity === 0 ? (
+                                  <span style={{ color: "red" }}>
+                                    Нет в наличии
+                                  </span>
+                                ) : (
+                                  <span style={{ color: "green" }}>
+                                    В наличии: {device.quantity}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
 
-
-                            
                             <button
                               className={styles.editButton}
                               onClick={() => handleEditDevice(device)}
@@ -272,18 +274,20 @@ const Admin = () => {
 
                               <div className={styles.buttons}>
                                 <div className={styles.adminDevicePrice}>
-                                {device.price} € |  
-          <span className={styles.deviceQuantity}>
-            {device.quantity === 0 ? (
-              <span style={{ color: "red" }}>Нет в наличии</span>
-            ) : (
-              <span style={{ color: "green" }}>В наличии: {device.quantity}</span>
-            )}
-          </span>
-        </div>
+                                  {device.price} € |
+                                  <span className={styles.deviceQuantity}>
+                                    {device.quantity === 0 ? (
+                                      <span style={{ color: "red" }}>
+                                        Нет в наличии
+                                      </span>
+                                    ) : (
+                                      <span style={{ color: "green" }}>
+                                        В наличии: {device.quantity}
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
 
-
-                                
                                 <button
                                   className={styles.editButton}
                                   onClick={() => handleEditDevice(device)}
@@ -420,8 +424,6 @@ const Admin = () => {
             {brands.map((brand) => (
               <div key={brand.id} className={styles.item}>
                 <span>{brand.name}</span>
-
-               
 
                 <div className={styles.buttons}>
                   <button
