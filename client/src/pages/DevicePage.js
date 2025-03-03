@@ -23,7 +23,7 @@ const DevicePage = () => {
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}api/device/check-stock`, {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/device/check-stock`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
