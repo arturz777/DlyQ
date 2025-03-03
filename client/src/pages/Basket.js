@@ -21,7 +21,7 @@ const Basket = observer(() => {
   const checkStock = async (deviceId, quantity) => {
     try {
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/device/check-stock`,
+        `${process.env.REACT_APP_API_URL}api/device/check-stock`,
         {
           method: "POST",
           headers: {
@@ -52,7 +52,7 @@ const Basket = observer(() => {
       for (const item of basket.items) {
         try {
           const response = await fetch(
-            `${process.env.REACT_APP_API_URL}/device/check-stock`,
+            `${process.env.REACT_APP_API_URL}api/device/check-stock`,
             {
               method: "POST",
               headers: {
@@ -111,6 +111,16 @@ const Basket = observer(() => {
   };
 
   const handlePaymentSuccess = async (paymentMethod, formData) => {
+
+    const hasUnselectedOptions = basket.items.some((item) => 
+      item.selectedOptions && Object.values(item.selectedOptions).some(opt => opt.value === "Выберите опцию")
+    );
+
+    if (hasUnselectedOptions) {
+      toast.error("❌ Выберите опцию перед оплатой!");
+      return;
+    }
+
     const dataToSend = {
       formData,
       paymentMethodId: paymentMethod.id,
@@ -127,35 +137,25 @@ const Basket = observer(() => {
 
     try {
       // Отправка данных на сервер
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/order/create`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-          },
-          body: JSON.stringify(dataToSend), // Отправляем все данные
-        }
-      );
+      const response = await fetch("http://localhost:5000/api/order/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+        body: JSON.stringify(dataToSend), // Отправляем все данные
+      });
 
       const data = await response.json();
 
       if (response.ok) {
         toast.success("✅ Ваш заказ успешно оформлен!");
-
-        // ✅ Принудительно обновляем `OrderSidebar`
         window.dispatchEvent(new Event("orderUpdated"));
+        basket.clearItems();
+        navigate("/");
       } else {
         toast.error(data.message || "❌ Ошибка при оформлении заказа.");
-        return;
       }
-
-      if (basket.clearItems) {
-        basket.clearItems();
-      }
-
-      navigate("/");
     } catch (error) {
       console.error("Ошибка при создании заказа:", error);
       toast.error("❌ Ошибка при оформлении заказа.");
@@ -171,10 +171,17 @@ const Basket = observer(() => {
         ?.values.find((val) => val.value === selectedValue);
 
       if (updatedOption) {
-        basket.updateSelectedOption(itemUniqueKey, optionName, updatedOption); // Обновляем опцию в store
+        basket.updateSelectedOption(itemUniqueKey, optionName, updatedOption);
+      } else {
+        // Если пользователь выбрал "Выберите опцию", ничего не делаем
+        basket.updateSelectedOption(itemUniqueKey, optionName, {
+          value: "Выберите опцию",
+          price: 0,
+        });
       }
     }
-  };
+};
+
 
   return (
     <Container className={styles.container}>
@@ -210,16 +217,17 @@ const Basket = observer(() => {
                       onChange={(e) =>
                         handleOptionChange(item.uniqueKey, key, e.target.value)
                       }
-                      className="form-select"
+                      className={`form-select ${option.value === "Выберите опцию" ? styles.unselectedOption : ""}`}
                     >
+                      <option value="Выберите опцию">Выберите опцию</option>
                       {item.options
                         .find((opt) => opt.name === key)
-                        ?.values.map((valueObj, idx) => (
+                        ?.values.map((valueObj) => (
                           <option
                             key={`${key}-${valueObj.value}`}
                             value={valueObj.value}
                           >
-                            {valueObj.value} (+€{valueObj.price})
+                            {valueObj.value}
                           </option>
                         ))}
                     </select>
