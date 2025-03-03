@@ -27,6 +27,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [quantity, setQuantity] = useState(0);
+  const [optionErrors, setOptionErrors] = useState({});
 
   useEffect(() => {
     // Инициализация значений для редактирования
@@ -145,17 +146,31 @@ useEffect(() => {
     } else if (quantity < 0) {
         errors.quantity = "Количество не может быть отрицательным"; // ✅ Проверка на отрицательное число
     }
+
+    options.forEach((option, index) => {
+      if (!option.name.trim()) {
+        errors[`option_${index}`] = `Введите название для опции ${index + 1}`;
+      }
+      if (option.values.length === 0) {
+        errors[`option_values_${index}`] = `Добавьте хотя бы одно значение для опции ${option.name || index + 1}`;
+      }
+    });
+
     return errors;
 };
 
   const handleSave = () => {
     setIsSubmitted(true);
-
     const validationErrors = validateDevice();
+
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      setOptionErrors(validationErrors);
       return;
     }
+
+    setErrors({});
+   setOptionErrors({});
 
     const formData = new FormData();
     formData.append("name", name);
@@ -245,25 +260,26 @@ useEffect(() => {
 
   const addOptionValue = (optionIndex) => {
     const updatedOptions = [...options];
-    updatedOptions[optionIndex].values.push({ value: "", price: 0 });
+    updatedOptions[optionIndex].values.push({ value: "", price: 0, quantity: 0 });
     setOptions(updatedOptions);
   };
 
   const updateOptionValue = (optionIndex, valueIndex, key, value) => {
     const updatedOptions = [...options];
-
-    if (key === "price") {
-      let sanitizedValue = value?.toString() || ""; // Преобразуем в строку, если value undefined/null
-      sanitizedValue = sanitizedValue.replace(/[^0-9.]/g, ""); // Разрешаем только цифры и точку
-
-      updatedOptions[optionIndex].values[valueIndex][key] = sanitizedValue;
-    } else {
-      updatedOptions[optionIndex].values[valueIndex][key] = value || "";
-    }
+    updatedOptions[optionIndex].values[valueIndex][key] = value;
 
     setOptions(updatedOptions);
-  };
 
+    // 🔥 Если обновляем `quantity` у опции, пересчитываем общее `quantity`
+    if (key === "quantity") {
+        const totalQuantity = updatedOptions.reduce((sum, option) => {
+            return sum + option.values.reduce((optSum, v) => optSum + (Number(v.quantity) || 0), 0);
+        }, 0);
+
+        setQuantity(totalQuantity);
+    }
+};
+  
   const removeOptionValue = (optionIndex, valueIndex) => {
     const updatedOptions = [...options];
     updatedOptions[optionIndex].values.splice(valueIndex, 1);
@@ -410,47 +426,47 @@ useEffect(() => {
           <Button variant="outline-dark" onClick={addOption}>
             Добавить опцию
           </Button>
-          {options.map((option, index) => (
-            <div key={index} className="mt-3">
+          {options.map((option, optionIndex) => (
+            <div key={optionIndex} className="mt-3">
               <Form.Control
                 value={option.name}
-                onChange={(e) =>
-                  setOptions((prev) =>
-                    prev.map((opt, i) =>
-                      i === index ? { ...opt, name: e.target.value } : opt
-                    )
-                  )
-                }
+                onChange={(e) => updateOptionName(optionIndex, e.target.value)}
                 placeholder="Название опции (например, Цвет)"
                 className="mb-2"
               />
-              {option.values.map((value, idx) => (
-                <div key={idx} className="d-flex align-items-center mb-2">
+              {optionErrors[`option_${optionIndex}`] && (
+  <span style={{ color: "red", fontSize: "12px" }}>
+    {optionErrors[`option_${optionIndex}`]}
+  </span>
+)}
+              {option.values.map((value, valueIndex) => (
+                <div key={valueIndex} className="d-flex align-items-center mb-2">
                   <Form.Control
                     value={value.value}
-                    onChange={(e) =>
-                      updateOptionValue(index, idx, "value", e.target.value)
-                    }
+                    onChange={(e) => updateOptionValue(optionIndex, valueIndex, "value", e.target.value)}
                     placeholder="Значение (например, Красный)"
                     className="me-2"
                   />
                   <Form.Control
                     type="number"
                     value={value.price}
-                    onChange={(e) =>
-                      updateOptionValue(
-                        index,
-                        idx,
-                        "price",
-                        parseFloat(e.target.value)
-                      )
-                    }
+                    onChange={(e) => updateOptionValue(optionIndex, valueIndex, "price", parseFloat(e.target.value))}
                     placeholder="Цена"
                     className="me-2"
                   />
+                  <Form.Control
+          type="number"
+          value={value.quantity}
+          onChange={(e) => {
+            const newValue = e.target.value === "" ? "" : parseInt(e.target.value, 10);
+            updateOptionValue(optionIndex, valueIndex, "quantity", newValue);
+        }}
+          placeholder="Количество"
+          className="me-2"
+        />
                   <Button
                     variant="outline-danger"
-                    onClick={() => removeOptionValue(index, idx)}
+                    onClick={() => removeOptionValue(optionIndex, valueIndex)}
                   >
                     Удалить
                   </Button>
@@ -458,14 +474,14 @@ useEffect(() => {
               ))}
               <Button
                 variant="outline-dark"
-                onClick={() => addOptionValue(index)}
+                onClick={() => addOptionValue(optionIndex)}
               >
                 Добавить значение
               </Button>
               <Button
                 variant="outline-danger"
                 className="ms-2"
-                onClick={() => removeOption(index)}
+                onClick={() => removeOption(optionIndex)}
               >
                 Удалить опцию
               </Button>
