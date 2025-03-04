@@ -18,32 +18,30 @@ const Basket = observer(() => {
   const [deliveryCost, setDeliveryCost] = useState(0);
   const [availableQuantities, setAvailableQuantities] = useState({});
 
-  const checkStock = async (deviceId, quantity) => {
+  const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/device/check-stock`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ deviceId, quantity }),
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/device/check-stock`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ deviceId, quantity, selectedOptions }),
+        });
+
+        const data = await response.json();
+
+        if (data.status === "error") {
+            toast.error(`❌ ${data.message}`);
+            return false;
         }
-      );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(data.message); // ❌ Показываем пользователю, что товара нет
-        return false;
-      }
-
-      return data.quantity >= quantity; // ✅ Проверяем, хватает ли товара
+        return data.quantity >= quantity;
     } catch (error) {
-      console.error("Ошибка при проверке наличия товара:", error);
-      return false;
+        console.error("Ошибка при проверке наличия товара:", error);
+        return false;
     }
-  };
+};
+
 
   useEffect(() => {
     const fetchQuantities = async () => {
@@ -83,21 +81,19 @@ const Basket = observer(() => {
 
   const handleIncrement = async (uniqueKey) => {
     const item = basket.items.find((i) => i.uniqueKey === uniqueKey);
-
     if (!item) return;
 
     const newCount = item.count + 1;
 
-    const isAvailable = await checkStock(item.id, newCount);
+    const isAvailable = await checkStock(item.id, newCount, item.selectedOptions);
 
-    if (newCount > (availableQuantities[uniqueKey] || 0)) {
-      // ✅ Проверяем, хватает ли товара
+    if (!isAvailable) {
       toast.error("❌ Недостаточно товара на складе!");
       return;
-    }
+  }
 
-    basket.updateItemCount(uniqueKey, newCount);
-  };
+  basket.updateItemCount(uniqueKey, newCount);
+};
 
   const handleDecrement = (uniqueKey) => {
     const currentCount = basket.getItemCount(uniqueKey);
@@ -162,26 +158,36 @@ const Basket = observer(() => {
     }
   };
 
-  const handleOptionChange = (itemUniqueKey, optionName, selectedValue) => {
+  const handleOptionChange = async (itemUniqueKey, optionName, selectedValue) => {
     const item = basket.items.find((i) => i.uniqueKey === itemUniqueKey);
-    if (item) {
-      // Находим выбранное значение опции
-      const updatedOption = item.options
+    if (!item) return;
+
+    const updatedOption = item.options
         ?.find((opt) => opt.name === optionName)
         ?.values.find((val) => val.value === selectedValue);
 
-      if (updatedOption) {
-        basket.updateSelectedOption(itemUniqueKey, optionName, updatedOption);
-      } else {
-        // Если пользователь выбрал "Выберите опцию", ничего не делаем
+    if (!updatedOption) {
         basket.updateSelectedOption(itemUniqueKey, optionName, {
-          value: "Выберите опцию",
-          price: 0,
+            value: "Выберите опцию",
+            price: 0,
         });
-      }
+        return;
     }
-};
 
+    // ✅ Проверяем наличие товара для выбранной опции
+    const isAvailable = await checkStock(item.id, item.count, {
+        ...item.selectedOptions,
+        [optionName]: updatedOption,
+    });
+
+    if (!isAvailable) {
+        toast.error(`❌ Недостаточно товара для ${updatedOption.value}`);
+        return;
+    }
+
+    // ✅ Обновляем опцию только если товар есть в наличии
+    basket.updateSelectedOption(itemUniqueKey, optionName, updatedOption);
+};
 
   return (
     <Container className={styles.container}>
