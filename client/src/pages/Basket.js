@@ -137,7 +137,7 @@ const Basket = observer(() => {
 
     try {
       // Отправка данных на сервер
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/order/create", {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/order/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
