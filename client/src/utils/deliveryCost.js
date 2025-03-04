@@ -3,7 +3,7 @@ const API_URL = process.env.REACT_APP_API_URL || "https://zang-4.onrender.com";
 export const fetchDeliveryCost = async (totalPrice, latitude, longitude) => {
 	try {
 	  const response = await fetch(
-		`${API_URL}/api/order/delivery-cost?totalPrice=${totalPrice}&lat=${latitude}&lon=${longitude}`
+		`${API_URL}/order/delivery-cost?totalPrice=${totalPrice}&lat=${latitude}&lon=${longitude}`
 	  );
 	  const data = await response.json();
 	  return data.deliveryCost; // Возвращаем рассчитанную сервером стоимость
