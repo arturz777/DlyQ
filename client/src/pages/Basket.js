@@ -88,7 +88,6 @@ const Basket = observer(() => {
     const isAvailable = await checkStock(item.id, newCount, item.selectedOptions);
 
     if (!isAvailable) {
-      toast.error("❌ Недостаточно товара на складе!");
       return;
   }
 
