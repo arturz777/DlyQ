@@ -20,30 +20,35 @@ const DevicePage = () => {
   const { id } = useParams();
   const [activeIndex, setActiveIndex] = useState(0);
   const [availableQuantity, setAvailableQuantity] = useState(0);
+  const [isPreorder, setIsPreorder] = useState(false);
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/device/check-stock`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ deviceId, quantity, selectedOptions }),
-        });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/device/check-stock`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ deviceId, quantity, selectedOptions }),
+        }
+      );
 
-        const data = await response.json();
-        
-        if (data.status === "error") { // ✅ Теперь проверяем статус, а не response.ok
-          toast.error(`❌ ${data.message}`);
-          return false;
+      const data = await response.json();
+
+      if (data.status === "error") {
+        // ✅ Теперь проверяем статус, а не response.ok
+        toast.error(`❌ ${data.message}`);
+        return false;
       }
 
-        return data.quantity >= quantity;
+      return data.quantity >= quantity;
     } catch (error) {
-        console.error("Ошибка при проверке наличия товара:", error);
-        return false;
+      console.error("Ошибка при проверке наличия товара:", error);
+      return false;
     }
-};
+  };
 
   useEffect(() => {
     fetchOneDevice(id).then((data) => {
@@ -55,7 +60,6 @@ const DevicePage = () => {
       const quantityInBasket = itemInBasket ? itemInBasket.count : 0;
       setAvailableQuantity(data.quantity - quantityInBasket);
 
-   
       const initialOptions = {};
       data.options?.forEach((option) => {
         if (option.values.length > 0) {
@@ -100,31 +104,40 @@ const DevicePage = () => {
 
   const handleAddToBasket = async () => {
     const existingItem = basket.items.find(
-        (item) => item.id === device.id && JSON.stringify(item.selectedOptions) === JSON.stringify(selectedOptions)
+      (item) =>
+        item.id === device.id &&
+        JSON.stringify(item.selectedOptions) === JSON.stringify(selectedOptions)
     );
     const newCount = (existingItem?.count || 0) + 1;
 
     // ✅ Проверяем, выбраны ли все параметры товара
     if (!selectedOptions || Object.keys(selectedOptions).length === 0) {
-        toast.error("Выберите параметры товара!");
-        return;
+      toast.error("Выберите параметры товара!");
+      return;
     }
 
-    // ✅ Проверяем наличие товара на сервере
     const isAvailable = await checkStock(device.id, newCount, selectedOptions);
-    if (!isAvailable) {
-        return;
+
+    if (!isAvailable && !isPreorder) {
+      // Если товара нет и предзаказ выключен
+      toast.error("❌ Товара нет в наличии!");
+      return;
     }
+
+    const newItem = {
+      ...device,
+      selectedOptions,
+      isPreorder, // ✅ Добавляем флаг предзаказа
+    };
+
 
     // ✅ Добавляем товар в корзину
-    basket.addItem({ ...device, selectedOptions });
+    basket.addItem(newItem);
     toast.success(`${device.name} добавлен в корзину!`);
 
     // ✅ Обновляем доступное количество
     setAvailableQuantity((prev) => prev - 1);
-};
-
-
+  };
 
   return (
     <div className={styles.DevicePageContainer}>
@@ -191,13 +204,13 @@ const DevicePage = () => {
                   className={styles.DevicePageSelect}
                 >
                   <option value="" disabled hidden>
-        {`Выберите: ${option.name}`}
-      </option>
+                    {`Выберите: ${option.name}`}
+                  </option>
                   {option.values.map((valueObj, valueIndex) => (
-                    <option 
-                    key={valueIndex} 
-                    value={valueObj.value}
-                    disabled={valueObj.quantity <= 0}
+                    <option
+                      key={valueIndex}
+                      value={valueObj.value}
+                      disabled={valueObj.quantity <= 0}
                     >
                       {valueObj.value}
                     </option>
@@ -221,10 +234,22 @@ const DevicePage = () => {
             <button
               className={styles.DevicePageAddToCart}
               onClick={handleAddToBasket}
-              disabled={availableQuantity <= 0}
+              disabled={!isPreorder && availableQuantity <= 0}
             >
               {availableQuantity <= 0 ? "Нет в наличии" : "Добавить в корзину"}
             </button>
+            {availableQuantity <= 0 && (
+            <div className={styles.preorderSection}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={isPreorder}
+                  onChange={() => setIsPreorder(!isPreorder)}
+                />
+                Оформить предзаказ
+              </label>
+            </div>
+            )}
           </div>
         </div>
       </div>
