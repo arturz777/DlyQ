@@ -19,13 +19,22 @@ const calculateDeliveryCost = (totalPrice, distance) => {
 // Пример создания заказа и отправки уведомлений
 const createOrder = async (req, res) => {
   try {
-    const { formData, totalPrice, orderDetails } = req.body;
-    const { firstName, lastName, email, phone, address, apartment, comment, latitude, longitude } =
-      formData;
+    const { formData, totalPrice, orderDetails, desiredDeliveryDate } =
+      req.body;
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      address,
+      apartment,
+      comment,
+      latitude,
+      longitude,
+    } = formData;
 
-      const distance = getDistanceFromWarehouse(latitude, longitude);
-      const deliveryPrice = calculateDeliveryCost(totalPrice, distance); 
-      
+    const distance = getDistanceFromWarehouse(latitude, longitude);
+    const deliveryPrice = calculateDeliveryCost(totalPrice, distance);
 
     if (!orderDetails || orderDetails.length === 0) {
       throw new Error("orderDetails не может быть пустым");
@@ -34,15 +43,19 @@ const createOrder = async (req, res) => {
     const userId = req.user ? req.user.id : null;
     let warehouseId = userId;
 
-    let deviceImageUrl = orderDetails[0]?.image || "https://example.com/placeholder.png";
+    let deviceImageUrl =
+      orderDetails[0]?.image || "https://example.com/placeholder.png";
 
-    if (deviceImageUrl.startsWith("http")) { // Проверяем, что это URL, а не локальный путь
+    if (deviceImageUrl.startsWith("http")) {
+      // Проверяем, что это URL, а не локальный путь
       try {
         const response = await fetch(deviceImageUrl);
         if (!response.ok) throw new Error("Ошибка загрузки изображения с URL");
 
         const buffer = await response.arrayBuffer();
-        const fileName = `orders/${uuid.v4()}${deviceImageUrl.substring(deviceImageUrl.lastIndexOf("."))}`;
+        const fileName = `orders/${uuid.v4()}${deviceImageUrl.substring(
+          deviceImageUrl.lastIndexOf(".")
+        )}`;
 
         const { data, error } = await supabase.storage
           .from("images")
@@ -61,19 +74,48 @@ const createOrder = async (req, res) => {
 
       for (const item of orderDetails) {
         const device = await Device.findByPk(item.deviceId);
-  
+
         if (!device) {
-          return res.status(400).json({ message: `Товар "${item.name}" не найден.` });
+          return res
+            .status(400)
+            .json({ message: `Товар "${item.name}" не найден.` });
         }
-  
-        if (device.quantity < item.count) {
-          return res.status(400).json({ message: `Недостаточно товара: ${item.name}. Осталось ${device.quantity} шт.` });
+
+        if (device.quantity < item.count && !item.isPreorder) {
+          return res
+            .status(400)
+            .json({
+              message: `Недостаточно товара: ${item.name}. Осталось ${device.quantity} шт.`,
+            });
         }
-  
+
         // 🔥 **Уменьшаем количество товара в базе**
         await device.update({ quantity: device.quantity - item.count });
       }
 
+      let isPreorder = false;
+
+      for (const item of orderDetails) {
+        const device = await Device.findByPk(item.deviceId);
+
+        if (!device) {
+          return res
+            .status(400)
+            .json({ message: `Товар "${item.name}" не найден.` });
+        }
+
+        if (device.quantity < item.count) {
+          isPreorder = true; // Если товара нет в наличии, это предзаказ
+        } else {
+          await device.update({ quantity: device.quantity - item.count });
+        }
+      }
+
+      // Определяем статус заказа
+      let status = "Pending";
+      if (isPreorder || desiredDeliveryDate) {
+        status = "preorder"; // Если предзаказ — статус "preorder"
+      }
     }
 
     // Создаём заказ с фото устройства
@@ -85,47 +127,123 @@ const createOrder = async (req, res) => {
       warehouseStatus: "pending",
       warehouseId,
       courierId: null,
-      deliveryLat: latitude,   // ✅ Сохраняем широту
-      deliveryLng: longitude, 
+      deliveryLat: latitude,
+      deliveryLng: longitude,
       deliveryAddress: address,
       deviceImage: deviceImageUrl,
-      productName: orderDetails.length > 0 ? orderDetails[0].name : "Неизвестный товар",
+      productName:
+        orderDetails.length > 0 ? orderDetails[0].name : "Неизвестный товар",
       orderDetails: JSON.stringify(orderDetails),
-  });
+      desiredDeliveryDate: desiredDeliveryDate || null,
+    });
 
-  const io = req.app.get("io"); // 🔥 Получаем WebSocket-сервер из `app`
-  io.emit("newOrder", order);
-  
-  const productsList = orderDetails
-  .map((detail) => {
-    const options = Object.entries(detail.selectedOptions || {})
-      .map(([key, value]) => `${key}: ${value.value || value}`)
-      .join(", ");
-    return `- ${detail.name} (кол: ${detail.count}, опции: ${options || "нет"})`;
-  })
-  .join("\n");
+    const io = req.app.get("io");
+    io.emit("newOrder", order);
 
-    // Формируем текст письма
-    const subject = " Заказ !";
-    const text = `
-      Информация о клиенте:
-      - ${firstName}${lastName}
-      - ${email}${phone}
-      ---------------------------------
-      - ${productsList}
-      - ${totalPrice} €
-      ----------------------------------
-      Адрес: ${address}, квартира ${apartment}
-      ----------------------------------
-      - Комментарий: ${comment}
-    `;
+    // **Разделяем товары правильно:**
+    const preorderAvailable = orderDetails.filter(
+  (item) => item.isPreorder && item.desiredDeliveryDate && item.count > 0
+);
+
+    const preorderOutOfStock = orderDetails.filter(
+      (item) => item.isPreorder && (!item.desiredDeliveryDate || item.count === 0)
+    );
+    
+    const regularItems = orderDetails.filter((item) => !item.isPreorder);
+
+    const generateTableRows = (items) => {
+      return items
+        .map(
+          (item) => `
+      <tr>
+        <td><img src="${
+          item.image
+        }" width="50" height="50" style="border-radius:5px;"></td>
+        <td>${item.name}</td>
+        <td>${item.count} шт.</td>
+        <td>${item.price} €</td>
+        <td>${
+          item.selectedOptions
+            ? Object.entries(item.selectedOptions)
+                .map(([key, value]) => `${key}: ${value.value}`)
+                .join(", ")
+            : "Нет опций"
+        }
+        </td>
+      </tr>
+    `
+        )
+        .join("");
+    };
+
+   const emailHTML = `
+  <div style="font-family:Arial, sans-serif; color:#333; max-width:600px; padding:20px; border:1px solid #ddd; border-radius:8px;">
+
+    ${regularItems.length > 0 ? `
+      <h3>📦 Обычные товары:</h3>
+      <table style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr style="background:#f8f8f8;">
+            <th>Фото</th><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Опции</th>
+          </tr>
+        </thead>
+        <tbody>${generateTableRows(regularItems)}</tbody>
+      </table>
+    ` : ""}
+
+    ${preorderAvailable.length > 0 ? `
+      <h3>⏳ Предзаказ (товар есть, доставка позже):</h3>
+      <table style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr style="background:#f8f8f8;">
+            <th>Фото</th><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Опции</th>
+          </tr>
+        </thead>
+        <tbody>${generateTableRows(preorderAvailable)}</tbody>
+      </table>
+      <p><strong>Дата доставки:</strong> ${
+        desiredDeliveryDate
+          ? new Date(desiredDeliveryDate).toLocaleDateString("ru-RU")
+          : "Ожидается подтверждение"
+      }</p>
+    ` : ""}
+
+    ${preorderOutOfStock.length > 0 ? `
+      <h3>🏭 Предзаказ (товар отсутствует, ждет поступления):</h3>
+      <table style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr style="background:#f8f8f8;">
+            <th>Фото</th><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Опции</th>
+          </tr>
+        </thead>
+        <tbody>${generateTableRows(preorderOutOfStock)}</tbody>
+      </table>
+    ` : ""}
+
+    <h3>🚚 Доставка:</h3>
+    <p><strong>Адрес:</strong> ${address}, квартира ${apartment || "-"}</p>
+    <p><strong>Стоимость доставки:</strong> ${deliveryPrice.toFixed(2)} €</p>
+
+    <h3>💳 Итоговая сумма:</h3>
+    <p><strong>${(totalPrice + deliveryPrice).toFixed(2)} €</strong></p>
+
+    <hr>
+    <p>📞 Контактные данные:</p>
+    <p><strong>Телефон:</strong> ${phone}</p>
+    <p><strong>Email:</strong> ${email}</p>
+
+    <p style="margin-top:20px;">Спасибо за ваш заказ! 🚀</p>
+  </div>
+`;
+
 
     // Отправляем письмо клиенту
-    await sendEmail(email, subject, text);
+    await sendEmail(email, "🛒 Заказ!", emailHTML, true);
     res.status(201).json({ message: "Заказ успешно оформлен" });
-    
   } catch (error) {
-    res.status(500).json({ message: "Ошибка при оформлении заказа" });
+    res
+      .status(500)
+      .json({ message: "Ошибка при оформлении заказа", error: error.message });
   }
 };
 
@@ -133,7 +251,9 @@ const getDeliveryCost = (req, res) => {
   const { totalPrice, lat, lon } = req.query;
 
   if (!totalPrice || !lat || !lon) {
-    return res.status(400).json({ message: "Нужно указать totalPrice, lat и lon" });
+    return res
+      .status(400)
+      .json({ message: "Нужно указать totalPrice, lat и lon" });
   }
 
   const distance = getDistanceFromWarehouse(parseFloat(lat), parseFloat(lon));
@@ -185,7 +305,6 @@ const getUserOrders = async (req, res) => {
 
 const getActiveOrder = async (req, res) => {
   try {
-    
     const userId = req.user ? req.user.id : null;
     const order = await Order.findOne({
       where: { userId, status: "Pending" },
@@ -213,33 +332,6 @@ const getActiveOrder = async (req, res) => {
     console.error("Ошибка получения активного заказа:", error);
     res.status(500).json({ message: "Ошибка сервера при получении заказа." });
   }
-
-  async function createOrder(req, res) {
-    try {
-      const { orderDetails } = req.body; // Получаем товары из заказа
-  
-      for (let item of orderDetails) {
-        const device = await Device.findByPk(item.deviceId);
-  
-        if (!device) {
-          return res.status(400).json({ message: `Товар ${item.name} не найден.` });
-        }
-  
-        if (device.quantity < item.count) {
-          return res.status(400).json({ message: `Товара ${item.name} недостаточно. Осталось ${device.quantity} шт.` });
-        }
-      }
-  
-      // Если все в порядке - создаем заказ
-      // ❗️ Здесь добавить код сохранения заказа в базу
-  
-      return res.json({ message: "Заказ успешно оформлен!" });
-    } catch (error) {
-      console.error("Ошибка при создании заказа:", error);
-      return res.status(500).json({ message: "Ошибка сервера при создании заказа." });
-    }
-  }
-
 };
 
 module.exports = {
