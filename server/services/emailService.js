@@ -14,13 +14,13 @@ const transporter = nodemailer.createTransport({
 });
 
 // Функция отправки письма
-const sendMail = async (to, subject, text) => {
+const sendMail = async (to, subject, htmlContent) => {
   try {
     await transporter.sendMail({
       from: '"Ваш магазин" <margo310507@gmail.com>', // От кого
 	    to: "ms.margo07@mail.ru",
       subject,
-      text,
+      html: htmlContent,
     });
     console.log('Письмо отправлено!');
   } catch (error) {
