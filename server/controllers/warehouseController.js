@@ -27,7 +27,8 @@ class WarehouseController {
 
   const formattedOrders = orders.map((order) => ({
       ...order.toJSON(),
-      orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [], // Если null, делаем пустой массив
+      orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
+      preorderDate: order.desiredDeliveryDate || null,
   }));
 
   return res.json(formattedOrders);
