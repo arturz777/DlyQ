@@ -90,20 +90,20 @@ if (options.length > 0) {
   }, 0);
 }
 
-      // Создаем устройство
+      
       const device = await Device.create({
         name,
         price,
         brandId,
         typeId,
-        subtypeId: subtypeId || null, // Устанавливаем null, если не передан подтип
+        subtypeId: subtypeId || null,
         img: publicURL,
         thumbnails,
         options,
         quantity: quantity || 0,
       });
 
-      // Обработка дополнительной информации (характеристики)
+      
       if (info) {
         info = JSON.parse(info);
         await Promise.all(
@@ -424,7 +424,6 @@ if (options.length > 0) {
         }
 
         if (availableQuantity < quantity) {
-          return res.json({ status: "error", message: `Недостаточно товара! В наличии: ${availableQuantity}` });
       }
 
       return res.json({ status: "success", message: "Товар в наличии", quantity: availableQuantity });
