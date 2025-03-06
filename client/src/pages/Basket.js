@@ -2,7 +2,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import { Context } from "../index";
 import { observer } from "mobx-react-lite";
-import { Container, Row, Col, Button, Image, Card } from "react-bootstrap";
+import { Container, Row, Col, Button, Image, Card, Form } from "react-bootstrap";
 import { toast } from "react-toastify";
 import PaymentForm from "../components/PaymentForm"; // Импортируем форму оплаты
 import { loadStripe } from "@stripe/stripe-js";
@@ -17,6 +17,8 @@ const Basket = observer(() => {
   const navigate = useNavigate();
   const [deliveryCost, setDeliveryCost] = useState(0);
   const [availableQuantities, setAvailableQuantities] = useState({});
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [isPreorder, setIsPreorder] = useState(false);
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
@@ -88,6 +90,7 @@ const Basket = observer(() => {
     const isAvailable = await checkStock(item.id, newCount, item.selectedOptions);
 
     if (!isAvailable) {
+      toast.error("❌ Недостаточно товара на складе!");
       return;
   }
 
@@ -127,11 +130,12 @@ const Basket = observer(() => {
         deviceId: item.id,
         image: item.img,
         selectedOptions: item.selectedOptions,
+        isPreorder: item.isPreorder || false,
       })),
+      desiredDeliveryDate: isPreorder ? deliveryDate : null,
     };
 
     try {
-      // Отправка данных на сервер
       const response = await fetch(`${process.env.REACT_APP_API_URL}/order/create`, {
         method: "POST",
         headers: {
@@ -187,6 +191,8 @@ const Basket = observer(() => {
     // ✅ Обновляем опцию только если товар есть в наличии
     basket.updateSelectedOption(itemUniqueKey, optionName, updatedOption);
 };
+
+
 
   return (
     <Container className={styles.container}>
@@ -287,9 +293,27 @@ const Basket = observer(() => {
           </Card>
         ))
       )}
-
+      
       {basket.items.length > 0 && (
-        <>
+    <>
+    {basket.items.some(item => !item.isPreorder) && (
+      <Form.Group className={styles.preorderSection}>
+        <Form.Check
+          type="checkbox"
+          label="Хочу оформить предзаказ (указать дату и время доставки)"
+          checked={isPreorder}
+          onChange={() => setIsPreorder(!isPreorder)}
+        />
+        {isPreorder && (
+          <Form.Control
+            type="datetime-local"
+            value={deliveryDate || ""}
+            onChange={(e) => setDeliveryDate(e.target.value)}
+          />
+        )}
+      </Form.Group>
+      )}
+
           <h3 className={styles.totalDeliverPrice}>
             Доставка: {deliveryCost.toFixed(2)}€
           </h3>
