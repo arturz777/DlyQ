@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
-import { Card, Col, Button, Row } from "react-bootstrap";
+import { Card, Col, Button, Row, Form } from "react-bootstrap";
 import Image from "react-bootstrap/Image";
 import star from "../assets/star.png";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +12,8 @@ const DeviceItem = ({ device }) => {
   const { basket } = useContext(Context);
   const navigate = useNavigate();
   const [availableQuantity, setAvailableQuantity] = useState(device.quantity);
+  const [isPreorder, setIsPreorder] = useState(false);
+
 
   useEffect(() => {
     const itemsInBasket = basket.items.filter((item) => item.id === device.id);
@@ -50,11 +52,10 @@ const DeviceItem = ({ device }) => {
     const totalInBasket = itemsInBasket.reduce((sum, item) => sum + (item.count || 0), 0);
     const newCount = totalInBasket + 1;
 
-    // Проверяем, хватает ли товара на складе
     const isAvailable = await checkStock(device.id, newCount);
 
-    if (!isAvailable) {
-      toast.error("❌ Недостаточно товара на складе!");
+    if (!isAvailable && !isPreorder) { // Если товара нет и предзаказ выключен
+      toast.error("❌ Товара нет в наличии!");
       return;
     }
 
@@ -91,13 +92,19 @@ const DeviceItem = ({ device }) => {
           </div>
         </div>
         <Button
-          variant="success"
-          className={styles.button}
-          disabled={availableQuantity <= 0}
-          onClick={handleAddToBasket}
-        >
-          {availableQuantity <= 0 ? "Нет в наличии" : "В корзину"}
-        </Button>
+  variant="success"
+  className={styles.button}
+  disabled={availableQuantity <= 0}
+  onClick={handleAddToBasket}
+>
+  {availableQuantity <= 0 ? "Нет в наличии" : "В корзину"}
+</Button>
+
+{/* 🔥 Добавляем текст "Доступен предзаказ", если товара нет */}
+{availableQuantity <= 0 && (
+  <p className={styles.preorderText}>📅 Доступен предзаказ</p>
+)}
+
       </Card>
     </div>
   );
