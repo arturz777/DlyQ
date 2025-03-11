@@ -10,6 +10,7 @@ const subtypeRouter = require('./subtypeRouter');
 const orderRouter = require('./orderRouter');
 const courierRouter = require("./courierRouter");
 const warehouseRouter = require("./warehouseRouter");
+const translationRoutes = require("./translationRoutes");
 
 router.use('/user', userRouter)
 router.use('/type', typeRouter)
@@ -20,5 +21,6 @@ router.use('/subtype', subtypeRouter);
 router.use('/order', orderRouter);
 router.use("/couriers", courierRouter);
 router.use("/warehouse", warehouseRouter);
+router.use("/translations", translationRoutes);
 
 module.exports = router
