@@ -28,6 +28,11 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [quantity, setQuantity] = useState(0);
   const [optionErrors, setOptionErrors] = useState({});
+  const [translations, setTranslations] = useState({
+    name: { en: "", ru: "", est: "" },
+    options: [], // ✅ Добавляем переводы для опций
+    info: [], // ✅ Добавляем переводы для информации
+  });
 
   useEffect(() => {
     // Инициализация значений для редактирования
@@ -38,44 +43,66 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       setOptions(editableDevice.options || []);
       setIsEditMode(true);
       setExistingImages([editableDevice.img, ...editableDevice.thumbnails]);
-      setQuantity(editableDevice.quantity !== undefined ? editableDevice.quantity : 0);
+      setQuantity(
+        editableDevice.quantity !== undefined ? editableDevice.quantity : 0
+      );
+      setTranslations({
+        name: editableDevice.translations?.name || { en: "", ru: "", est: "" },
+        options: Array.isArray(editableDevice.translations?.options)
+          ? editableDevice.translations.options
+          : [],
+        info: Array.isArray(editableDevice.translations?.info)
+          ? editableDevice.translations.info
+          : [],
+      });
 
       if (editableDevice.brandId) {
-        const selectedBrand = device.brands.find((b) => b.id === editableDevice.brandId);
+        const selectedBrand = device.brands.find(
+          (b) => b.id === editableDevice.brandId
+        );
         if (selectedBrand) {
           device.setSelectedBrand(selectedBrand);
         }
       }
-  
+
       if (editableDevice.typeId) {
-        const selectedType = device.types.find((t) => t.id === editableDevice.typeId);
+        const selectedType = device.types.find(
+          (t) => t.id === editableDevice.typeId
+        );
         if (selectedType) {
-            device.setSelectedType(selectedType);
+          device.setSelectedType(selectedType);
         }
-    }
+      }
 
-    // ✅ Загружаем подтипы, только если они не загружены
-    if (editableDevice.typeId) {
+      // ✅ Загружаем подтипы, только если они не загружены
+      if (editableDevice.typeId) {
         fetchSubtypesByType(editableDevice.typeId).then((data) => {
-            device.setSubtypes(data);
-            if (editableDevice.subtypeId) {
-                const selectedSubType = data.find((st) => st.id === editableDevice.subtypeId);
-                if (selectedSubType) {
-                    device.setSelectedSubType(selectedSubType);
-                }
+          device.setSubtypes(data);
+          if (editableDevice.subtypeId) {
+            const selectedSubType = data.find(
+              (st) => st.id === editableDevice.subtypeId
+            );
+            if (selectedSubType) {
+              device.setSelectedSubType(selectedSubType);
             }
+          }
         });
-    }
-      
-    const updatedImages = [...new Set([editableDevice.img, ...(editableDevice.thumbnails || [])])];
-    setExistingImages(updatedImages);
+      }
 
-    const updatedDisplayedImages = [...updatedImages, ...Array(5 - updatedImages.length).fill(null)];
-    setImages(updatedDisplayedImages);
-} else {
-    resetFields();
-}
-}, [editableDevice, device.brands, device.types]);
+      const updatedImages = [
+        ...new Set([editableDevice.img, ...(editableDevice.thumbnails || [])]),
+      ];
+      setExistingImages(updatedImages);
+
+      const updatedDisplayedImages = [
+        ...updatedImages,
+        ...Array(5 - updatedImages.length).fill(null),
+      ];
+      setImages(updatedDisplayedImages);
+    } else {
+      resetFields();
+    }
+  }, [editableDevice, device.brands, device.types]);
 
   const resetFields = () => {
     setName("");
@@ -104,7 +131,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
     // Если удаляем существующее изображение, удаляем его из existingImages
     setExistingImages((prev) => prev.filter((_, i) => i !== index));
-};
+  };
 
   const selectMainImage = (e) => {
     setMainImage(e.target.files[0]);
@@ -122,15 +149,15 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     // Загружаем бренды и типы при первой загрузке
     fetchTypes().then((data) => device.setTypes(data));
     fetchBrands().then((data) => device.setBrands(data));
-}, []); // <-- Загружаем 1 раз при монтировании
+  }, []); // <-- Загружаем 1 раз при монтировании
 
-useEffect(() => {
+  useEffect(() => {
     if (device.selectedType?.id) {
-        fetchSubtypesByType(device.selectedType.id).then((data) => {
-            device.setSubtypes(data);
-        });
+      fetchSubtypesByType(device.selectedType.id).then((data) => {
+        device.setSubtypes(data);
+      });
     }
-}, [device.selectedType]);
+  }, [device.selectedType]);
 
   const validateDevice = () => {
     const errors = {};
@@ -138,13 +165,13 @@ useEffect(() => {
     if (!device.selectedType?.id) errors.type = "Выберите тип";
     if (!price || isNaN(price)) errors.price = "Введите цену";
     if (!name) errors.name = "Введите название устройства";
-    if (!images.some(img => img) && !isEditMode) {
+    if (!images.some((img) => img) && !isEditMode) {
       errors.img = "Загрузите хотя бы одно изображение";
     }
     if (quantity === "" || quantity === null || quantity === undefined) {
-        errors.quantity = "Введите количество товара"; // ✅ Проверяем, введено ли значение
+      errors.quantity = "Введите количество товара"; // ✅ Проверяем, введено ли значение
     } else if (quantity < 0) {
-        errors.quantity = "Количество не может быть отрицательным"; // ✅ Проверка на отрицательное число
+      errors.quantity = "Количество не может быть отрицательным"; // ✅ Проверка на отрицательное число
     }
 
     options.forEach((option, index) => {
@@ -152,12 +179,16 @@ useEffect(() => {
         errors[`option_${index}`] = `Введите название для опции ${index + 1}`;
       }
       if (option.values.length === 0) {
-        errors[`option_values_${index}`] = `Добавьте хотя бы одно значение для опции ${option.name || index + 1}`;
+        errors[
+          `option_values_${index}`
+        ] = `Добавьте хотя бы одно значение для опции ${
+          option.name || index + 1
+        }`;
       }
     });
 
     return errors;
-};
+  };
 
   const handleSave = () => {
     setIsSubmitted(true);
@@ -170,7 +201,7 @@ useEffect(() => {
     }
 
     setErrors({});
-   setOptionErrors({});
+    setOptionErrors({});
 
     const formData = new FormData();
     formData.append("name", name);
@@ -179,13 +210,13 @@ useEffect(() => {
 
     if (images[0] && typeof images[0] !== "string") {
       formData.append("img", images[0]); // Главное фото
-  }
+    }
 
-  images.slice(1).forEach((image) => {
+    images.slice(1).forEach((image) => {
       if (image && typeof image !== "string") {
-          formData.append("thumbnails", image); // Миниатюры
+        formData.append("thumbnails", image); // Миниатюры
       }
-  });
+    });
 
     formData.append("existingImages", JSON.stringify(existingImages));
 
@@ -201,6 +232,8 @@ useEffect(() => {
 
     formData.append("info", JSON.stringify(info));
     formData.append("options", JSON.stringify(options));
+    formData.append("translations", JSON.stringify(translations));
+    
 
     const saveAction = isEditMode
       ? updateDevice(editableDevice.id, formData) // PUT для редактирования
@@ -219,12 +252,61 @@ useEffect(() => {
       });
   };
 
+  const updateOptionTranslation = (optionIndex, lang, value) => {
+    setTranslations((prev) => {
+      const updatedTranslations = { ...prev };
+  
+      if (!Array.isArray(updatedTranslations.options)) {
+        updatedTranslations.options = [];
+      }
+  
+      if (!updatedTranslations.options[optionIndex]) {
+        updatedTranslations.options[optionIndex] = { name: {}, values: [] };
+      }
+  
+      if (!updatedTranslations.options[optionIndex].name) {
+        updatedTranslations.options[optionIndex].name = {};
+      }
+  
+      updatedTranslations.options[optionIndex].name[lang] = value;
+  
+      return updatedTranslations;
+    });
+  };
+  
+  const updateOptionValueTranslation = (optionIndex, valueIndex, lang, value) => {
+    setTranslations((prev) => {
+      const updatedTranslations = { ...prev };
+  
+      if (!Array.isArray(updatedTranslations.options)) {
+        updatedTranslations.options = [];
+      }
+  
+      if (!updatedTranslations.options[optionIndex]) {
+        updatedTranslations.options[optionIndex] = { name: {}, values: [] };
+      }
+  
+      if (!Array.isArray(updatedTranslations.options[optionIndex].values)) {
+        updatedTranslations.options[optionIndex].values = [];
+      }
+  
+      if (!updatedTranslations.options[optionIndex].values[valueIndex]) {
+        updatedTranslations.options[optionIndex].values[valueIndex] = {};
+      }
+  
+      updatedTranslations.options[optionIndex].values[valueIndex][lang] = value;
+  
+      return updatedTranslations;
+    });
+  };
+  
+
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-  
+
     const previews = files.map((file) => URL.createObjectURL(file));
-  
+
     setImages((prevImages) => [...prevImages, ...files]); // Добавляем файлы
     setImagePreviews((prevPreviews) => [...prevPreviews, ...previews]); // Добавляем превью
   };
@@ -232,10 +314,12 @@ useEffect(() => {
   const removeExistingImage = (index) => {
     setExistingImages((prev) => prev.filter((_, i) => i !== index)); // Удаляем старое фото
   };
-  
 
   const addInfo = () => {
-    setInfo([...info, { title: "", description: "", number: Date.now() }]);
+    setInfo([
+      ...info,
+      { title: "", description: "", number: Date.now(), translations: { title: {}, description: {} } },
+    ]);
   };
 
   const removeInfo = (number) => {
@@ -260,7 +344,11 @@ useEffect(() => {
 
   const addOptionValue = (optionIndex) => {
     const updatedOptions = [...options];
-    updatedOptions[optionIndex].values.push({ value: "", price: 0, quantity: 0 });
+    updatedOptions[optionIndex].values.push({
+      value: "",
+      price: 0,
+      quantity: 0,
+    });
     setOptions(updatedOptions);
   };
 
@@ -272,14 +360,20 @@ useEffect(() => {
 
     // 🔥 Если обновляем `quantity` у опции, пересчитываем общее `quantity`
     if (key === "quantity") {
-        const totalQuantity = updatedOptions.reduce((sum, option) => {
-            return sum + option.values.reduce((optSum, v) => optSum + (Number(v.quantity) || 0), 0);
-        }, 0);
+      const totalQuantity = updatedOptions.reduce((sum, option) => {
+        return (
+          sum +
+          option.values.reduce(
+            (optSum, v) => optSum + (Number(v.quantity) || 0),
+            0
+          )
+        );
+      }, 0);
 
-        setQuantity(totalQuantity);
+      setQuantity(totalQuantity);
     }
-};
-  
+  };
+
   const removeOptionValue = (optionIndex, valueIndex) => {
     const updatedOptions = [...options];
     updatedOptions[optionIndex].values.splice(valueIndex, 1);
@@ -374,9 +468,32 @@ useEffect(() => {
           <Form.Control
             value={name || ""}
             onChange={(e) => setName(e.target.value)}
-            className="mt-3"
+            className="option-container border p-3 rounded mb-3"
             placeholder="Введите название устройства"
           />
+
+          {isSubmitted && !name && (
+            <span style={{ color: "red", display: "block", marginTop: "5px" }}>
+              {errors.name}
+            </span>
+          )}
+
+          <Form.Label>Перевод названия</Form.Label>
+          {["en", "ru", "est"].map((lang) => (
+            <Form.Control
+              key={lang}
+              value={translations.name[lang] || ""}
+              onChange={(e) =>
+                setTranslations((prev) => ({
+                  ...prev,
+                  name: { ...prev.name, [lang]: e.target.value },
+                }))
+              }
+              placeholder={`Название (${lang.toUpperCase()})`}
+              className="mt-2"
+            />
+          ))}
+
           {isSubmitted && !name && (
             <span style={{ color: "red", display: "block", marginTop: "5px" }}>
               {errors.name}
@@ -399,35 +516,65 @@ useEffect(() => {
           {/* Ячейки для изображений */}
           <div className={styles.ImageGrid}>
             {images.map((img, index) => (
-              <div key={index} className={styles.ImageCell} onClick={() => document.getElementById(`file-input-${index}`).click()}>
+              <div
+                key={index}
+                className={styles.ImageCell}
+                onClick={() =>
+                  document.getElementById(`file-input-${index}`).click()
+                }
+              >
                 {img ? (
-                  <img 
-                    src={typeof img === "string" ? img : URL.createObjectURL(img)}
-                    alt={`img-${index}`} 
-                    className={styles.UploadedImage} 
+                  <img
+                    src={
+                      typeof img === "string" ? img : URL.createObjectURL(img)
+                    }
+                    alt={`img-${index}`}
+                    className={styles.UploadedImage}
                   />
                 ) : (
                   <div className={styles.EmptyCell}>+</div>
                 )}
-                <input type="file" id={`file-input-${index}`} onChange={(e) => handleImageChange(index, e)} hidden />
-                {img && <button className={styles.DeleteButton} onClick={(e) => { e.stopPropagation(); removeImage(index); }}>✖</button>}
+                <input
+                  type="file"
+                  id={`file-input-${index}`}
+                  onChange={(e) => handleImageChange(index, e)}
+                  hidden
+                />
+                {img && (
+                  <button
+                    className={styles.DeleteButton}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeImage(index);
+                    }}
+                  >
+                    ✖
+                  </button>
+                )}
               </div>
             ))}
           </div>
 
           <div className="image-preview-container mt-3">
             {imagePreviews.map((preview, index) => (
-              <img key={index} src={preview} alt={`preview-${index}`} width="100" />
+              <img
+                key={index}
+                src={preview}
+                alt={`preview-${index}`}
+                width="100"
+              />
             ))}
           </div>
-
 
           <hr />
           <Button variant="outline-dark" onClick={addOption}>
             Добавить опцию
           </Button>
           {options.map((option, optionIndex) => (
-            <div key={optionIndex} className="mt-3">
+            <div
+              key={optionIndex}
+              className="option-container border p-3 rounded mb-3"
+            >
               <Form.Control
                 value={option.name}
                 onChange={(e) => updateOptionName(optionIndex, e.target.value)}
@@ -435,35 +582,86 @@ useEffect(() => {
                 className="mb-2"
               />
               {optionErrors[`option_${optionIndex}`] && (
-  <span style={{ color: "red", fontSize: "12px" }}>
-    {optionErrors[`option_${optionIndex}`]}
-  </span>
-)}
+                <span style={{ color: "red", fontSize: "12px" }}>
+                  {optionErrors[`option_${optionIndex}`]}
+                </span>
+              )}
+
+{["en", "ru", "est"].map((lang) => (
+      <Form.Control
+        key={lang}
+        value={translations.options?.[optionIndex]?.name?.[lang] || ""}
+        onChange={(e) =>
+          updateOptionTranslation(optionIndex, lang, e.target.value)
+        }
+        className="mt-2"
+        placeholder={`Название опции (${lang.toUpperCase()})`}
+      />
+    ))}
+
               {option.values.map((value, valueIndex) => (
-                <div key={valueIndex} className="d-flex align-items-center mb-2">
+                <div
+                  key={valueIndex}
+                  className="option-container border p-3 rounded mb-3"
+                >
                   <Form.Control
                     value={value.value}
-                    onChange={(e) => updateOptionValue(optionIndex, valueIndex, "value", e.target.value)}
+                    onChange={(e) =>
+                      updateOptionValue(
+                        optionIndex,
+                        valueIndex,
+                        "value",
+                        e.target.value
+                      )
+                    }
                     placeholder="Значение (например, Красный)"
                     className="me-2"
                   />
+
+{["en", "ru", "est"].map((lang) => (
+          <Form.Control
+            key={lang}
+            value={translations.options?.[optionIndex]?.values?.[valueIndex]?.[lang] || ""}
+            onChange={(e) =>
+              updateOptionValueTranslation(optionIndex, valueIndex, lang, e.target.value)
+            }
+            className="mt-2"
+            placeholder={`Перевод значения (${lang.toUpperCase()})`}
+          />
+        ))}
+
                   <Form.Control
                     type="number"
                     value={value.price}
-                    onChange={(e) => updateOptionValue(optionIndex, valueIndex, "price", parseFloat(e.target.value))}
+                    onChange={(e) =>
+                      updateOptionValue(
+                        optionIndex,
+                        valueIndex,
+                        "price",
+                        parseFloat(e.target.value)
+                      )
+                    }
                     placeholder="Цена"
                     className="me-2"
                   />
                   <Form.Control
-          type="number"
-          value={value.quantity}
-          onChange={(e) => {
-            const newValue = e.target.value === "" ? "" : parseInt(e.target.value, 10);
-            updateOptionValue(optionIndex, valueIndex, "quantity", newValue);
-        }}
-          placeholder="Количество"
-          className="me-2"
-        />
+                    type="number"
+                    value={value.quantity}
+                    onChange={(e) => {
+                      const newValue =
+                        e.target.value === ""
+                          ? ""
+                          : parseInt(e.target.value, 10);
+                      updateOptionValue(
+                        optionIndex,
+                        valueIndex,
+                        "quantity",
+                        newValue
+                      );
+                    }}
+                    placeholder="Количество"
+                    className="me-2"
+                  />
                   <Button
                     variant="outline-danger"
                     onClick={() => removeOptionValue(optionIndex, valueIndex)}
@@ -490,27 +688,69 @@ useEffect(() => {
 
           <hr />
           <Button variant={"outline-dark"} onClick={addInfo}>
-            Добавить новое свойство
-          </Button>
-          {info.map((i) => (
-            <Row className="mt-4" key={i.number}>
-              <Col md={4}>
-                <Form.Control
-                  value={i.title}
-                  onChange={(e) =>
-                    changeInfo("title", e.target.value, i.number)
-                  }
-                  placeholder="Введите название свойства"
-                />
-              </Col>
-              <Col md={4}>
-                <Form.Control
-                  value={i.description}
-                  onChange={(e) =>
-                    changeInfo("description", e.target.value, i.number)
-                  }
-                  placeholder="Введите описание свойства"
-                />
+  Добавить новое свойство
+</Button>
+{info.map((i, index) => ( // ✅ Добавляем index здесь
+  <Row className="mt-4" key={`info-${index}`}>
+    <Col md={4}>
+      <Form.Control
+        value={i.title}
+        onChange={(e) => changeInfo("title", e.target.value, i.number)}
+        placeholder="Введите название свойства"
+      />
+
+      {["en", "ru", "est"].map((lang) => (
+        <Form.Control
+          key={lang}
+          value={translations.info?.[index]?.title?.[lang] || ""}
+          onChange={(e) => {
+            setTranslations((prev) => {
+              const updatedInfo = [...prev.info];
+
+              if (!updatedInfo[index]) {
+                updatedInfo[index] = { title: {}, description: {} };
+              }
+
+              updatedInfo[index].title[lang] = e.target.value;
+
+              return { ...prev, info: updatedInfo };
+            });
+          }}
+          placeholder={`Название (${lang.toUpperCase()})`}
+          className="mt-1"
+        />
+      ))}
+    </Col>
+
+    <Col md={4}>
+      <Form.Control
+        value={i.description}
+        onChange={(e) => changeInfo("description", e.target.value, i.number)}
+        placeholder="Введите описание свойства"
+      />
+
+      {["en", "ru", "est"].map((lang) => (
+        <Form.Control
+          key={lang}
+          value={translations.info?.[index]?.description?.[lang] || ""}
+          onChange={(e) => {
+            setTranslations((prev) => {
+              const updatedInfo = [...prev.info];
+
+              if (!updatedInfo[index]) {
+                updatedInfo[index] = { title: {}, description: {} };
+              }
+
+              updatedInfo[index].description[lang] = e.target.value;
+
+              return { ...prev, info: updatedInfo };
+            });
+          }}
+          placeholder={`Описание (${lang.toUpperCase()})`}
+          className="mt-1"
+        />
+      ))}
+
               </Col>
               <Col md={4}>
                 <Button
@@ -526,10 +766,15 @@ useEffect(() => {
       </Modal.Body>
 
       <Form.Group>
-            <Form.Label>Количество на складе</Form.Label>
-            <Form.Control type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} min="0" />
-            {errors.quantity && <p className="text-danger">{errors.quantity}</p>}
-          </Form.Group>
+        <Form.Label>Количество на складе</Form.Label>
+        <Form.Control
+          type="number"
+          value={quantity}
+          onChange={(e) => setQuantity(Number(e.target.value))}
+          min="0"
+        />
+        {errors.quantity && <p className="text-danger">{errors.quantity}</p>}
+      </Form.Group>
 
       <Modal.Footer>
         <Button variant="outline-danger" onClick={onHide}>
