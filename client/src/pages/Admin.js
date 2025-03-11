@@ -17,6 +17,8 @@ import {
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
 import "react-tabs/style/react-tabs.css";
 import Image from "react-bootstrap/Image";
+import { fetchTranslations, updateTranslation } from "../http/translationAPI"; // Функции API
+import { useTranslation } from "react-i18next";
 import styles from "./Admin.module.css";
 
 const Admin = () => {
@@ -42,11 +44,21 @@ const Admin = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOption, setSortOption] = useState("priceAsc");
 
+  const [translations, setTranslations] = useState([]);
+  const [editKey, setEditKey] = useState(null);
+  const [editLang, setEditLang] = useState(null);
+  const [editText, setEditText] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+const [newKey, setNewKey] = useState("");
+const [newLang, setNewLang] = useState("en");
+const [newText, setNewText] = useState("");
+
   useEffect(() => {
     fetchTypes().then(setTypes);
     fetchSubtypes().then(setSubtypes); // Получение подтипов
     fetchBrands().then(setBrands);
     fetchDevices().then((data) => setDevices(data.rows || []));
+    fetchTranslations().then(setTranslations);
   }, []);
 
   const handleLoadMore = () => {
@@ -139,6 +151,49 @@ const Admin = () => {
     setBrandVisible(true);
   };
 
+  const handleEdit = (key, lang, text) => {
+    setEditKey(key);
+    setEditLang(lang);
+    setEditText(text);
+  };
+
+  const handleSave = async () => {
+    await updateTranslation(editKey, editLang, editText);
+    setTranslations((prev) =>
+      prev.map((t) =>
+        t.key === editKey && t.lang === editLang ? { ...t, text: editText } : t
+      )
+    );
+    setEditKey(null);
+  };
+
+  const handleAddTranslation = async () => {
+    if (!newKey || !newLang || !newText) {
+      alert("Заполните все поля!");
+      return;
+    }
+  
+    const response = await fetch("http://localhost:5000/api/translations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: newKey, lang: newLang, text: newText }),
+    });
+  
+    if (response.ok) {
+      const newTranslation = await response.json();
+      setTranslations([...translations, newTranslation]); // Обновляем список
+      setShowAddForm(false);
+      setNewKey("");
+      setNewLang("en");
+      setNewText("");
+    } else {
+      alert("Ошибка добавления перевода");
+    }
+  };
+  
+
+  
+
   const typesMap = new Map(types.map((type) => [type.id, type]));
   const subtypesMap = new Map(subtypes.map((subtype) => [subtype.id, subtype]));
 
@@ -150,6 +205,7 @@ const Admin = () => {
           <Tab>Типы</Tab>
           <Tab>Подтипы</Tab>
           <Tab>Бренды</Tab>
+          <Tab>Переводы</Tab>
         </TabList>
 
         {/* Вкладка Устройства */}
@@ -443,6 +499,105 @@ const Admin = () => {
             ))}
           </div>
         </TabPanel>
+
+        <TabPanel>
+  <h2 className={styles.translationsTitle}>Переводы</h2>
+
+  {/* Кнопка "Добавить перевод" */}
+  <button
+    className={styles.addTranslationButton}
+    onClick={() => setShowAddForm(true)}
+  >
+    ➕ Добавить перевод
+  </button>
+
+  {/* Форма добавления перевода */}
+  {showAddForm && (
+    <div className={styles.translationForm}>
+      <input
+        type="text"
+        placeholder="Ключ (например, device_123.title)"
+        value={newKey}
+        onChange={(e) => setNewKey(e.target.value)}
+        className={styles.inputField}
+      />
+      <select
+        value={newLang}
+        onChange={(e) => setNewLang(e.target.value)}
+        className={styles.selectField}
+      >
+        <option value="en">English</option>
+        <option value="ru">Русский</option>
+        <option value="est">Eesti</option>
+      </select>
+      <input
+        type="text"
+        placeholder="Перевод"
+        value={newText}
+        onChange={(e) => setNewText(e.target.value)}
+        className={styles.inputField}
+      />
+      <button onClick={handleAddTranslation} className={styles.saveButton}>
+        ✅ Добавить
+      </button>
+      <button
+        onClick={() => setShowAddForm(false)}
+        className={styles.cancelButton}
+      >
+        ❌ Отмена
+      </button>
+    </div>
+  )}
+
+  {/* Таблица переводов */}
+  <table className={styles.translationTable}>
+    <thead>
+      <tr>
+        <th>Ключ</th>
+        <th>Язык</th>
+        <th>Перевод</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {translations.map((t) => (
+        <tr key={`${t.key}-${t.lang}`}>
+          <td>{t.key}</td>
+          <td>{t.lang}</td>
+          <td>
+            {editKey === t.key && editLang === t.lang ? (
+              <input
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                className={styles.inputField}
+              />
+            ) : (
+              t.text
+            )}
+          </td>
+          <td>
+            {editKey === t.key && editLang === t.lang ? (
+              <button
+                onClick={handleSave}
+                className={styles.saveButton}
+              >
+                💾
+              </button>
+            ) : (
+              <button
+                onClick={() => handleEdit(t.key, t.lang, t.text)}
+                className={styles.editButton}
+              >
+                ✏️
+              </button>
+            )}
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</TabPanel>
+
       </Tabs>
 
       <CreateBrand
