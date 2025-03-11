@@ -104,6 +104,15 @@ const Warehouse = sequelize.define("warehouse", {
   status: { type: DataTypes.STRING, defaultValue: "offline" },
 });
 
+const Translation = sequelize.define("translation", {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  key: { type: DataTypes.STRING, allowNull: false },
+  lang: { type: DataTypes.STRING(10), allowNull: false },
+  text: { type: DataTypes.TEXT, allowNull: false },
+}, {
+  indexes: [{ unique: true, fields: ["key", "lang"] }]
+});
+
 Warehouse.hasMany(Order);
 Order.belongsTo(Warehouse);
 
@@ -160,4 +169,5 @@ module.exports = {
   Order,
   Courier,
   Warehouse,
+  Translation,
 };
