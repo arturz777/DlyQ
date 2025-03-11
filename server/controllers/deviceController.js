@@ -1,6 +1,12 @@
 const uuid = require("uuid");
 const path = require("path");
-const { Device, DeviceInfo, SubType, Type } = require("../models/models");
+const {
+  Device,
+  DeviceInfo,
+  SubType,
+  Type,
+  Translation,
+} = require("../models/models");
 const ApiError = require("../error/ApiError");
 const { Op } = require("sequelize");
 const fs = require("fs");
@@ -10,8 +16,17 @@ class DeviceController {
   // Создание устройства
   async create(req, res, next) {
     try {
-      let { name, price, brandId, typeId, subtypeId, info, quantity, options  } =
-        req.body;
+      let {
+        name,
+        price,
+        brandId,
+        typeId,
+        subtypeId,
+        info,
+        quantity,
+        options,
+        translations,
+      } = req.body;
 
       // Проверяем, что обязательные поля заполнены
       if (!name || !price || !brandId || !typeId) {
@@ -76,21 +91,32 @@ class DeviceController {
 
       options = options ? JSON.parse(options) : [];
 
-        // ✅ Если есть опции, пересчитываем `quantity`
-        if (options.length > 0) {
-            quantity = options.reduce((sum, option) => {
-                return sum + option.values.reduce((optSum, v) => optSum + (Number(v.quantity) || 0), 0);
-            }, 0);
-        }
+      // ✅ Если есть опции, пересчитываем `quantity`
+      if (options.length > 0) {
+        quantity = options.reduce((sum, option) => {
+          return (
+            sum +
+            option.values.reduce(
+              (optSum, v) => optSum + (Number(v.quantity) || 0),
+              0
+            )
+          );
+        }, 0);
+      }
 
-// ✅ Если есть опции, суммируем их количество для установки `quantity`
-if (options.length > 0) {
-  quantity = options.reduce((sum, option) => {
-    return sum + option.values.reduce((optSum, v) => optSum + (Number(v.quantity) || 0), 0);
-  }, 0);
-}
+      // ✅ Если есть опции, суммируем их количество для установки `quantity`
+      if (options.length > 0) {
+        quantity = options.reduce((sum, option) => {
+          return (
+            sum +
+            option.values.reduce(
+              (optSum, v) => optSum + (Number(v.quantity) || 0),
+              0
+            )
+          );
+        }, 0);
+      }
 
-      
       const device = await Device.create({
         name,
         price,
@@ -103,7 +129,6 @@ if (options.length > 0) {
         quantity: quantity || 0,
       });
 
-      
       if (info) {
         info = JSON.parse(info);
         await Promise.all(
@@ -117,43 +142,185 @@ if (options.length > 0) {
         );
       }
 
-      return res.json(device);
+      if (translations) {
+        translations = JSON.parse(translations);
+        const translationEntries = [];
+    
+        // ✅ Название и описание устройства
+        Object.entries(translations.name || {}).forEach(([lang, text]) => {
+            if (text) {
+                translationEntries.push({
+                    key: `device_${device.id}.name`,
+                    lang,
+                    text,
+                });
+            }
+        });
+    
+        Object.entries(translations.description || {}).forEach(([lang, text]) => {
+            if (text) {
+                translationEntries.push({
+                    key: `device_${device.id}.description`,
+                    lang,
+                    text,
+                });
+            }
+        });
+    
+        if (translations.info && Array.isArray(translations.info)) {
+          translations.info.forEach((info, index) => {
+            Object.entries(info.title || {}).forEach(([lang, text]) => {
+              if (text) {
+                translationEntries.push({
+                  key: `device_${device.id}.info.${index}.title`,
+                  lang,
+                  text,
+                });
+              }
+            });
+            Object.entries(info.description || {}).forEach(([lang, text]) => {
+              if (text) {
+                translationEntries.push({
+                  key: `device_${device.id}.info.${index}.description`,
+                  lang,
+                  text,
+                });
+              }
+            });
+          });
+        }
+    
+        // ✅ Опции (варианты выбора)
+        if (translations.options && Array.isArray(translations.options)) {
+            translations.options.forEach((option, optionIndex) => {
+                // 🔥 Правильный способ обработки `name` (проход по языкам)
+                Object.entries(option.name || {}).forEach(([lang, text]) => {
+                    if (text) {
+                        translationEntries.push({
+                            key: `device_${device.id}.option.${optionIndex}.name`,
+                            lang,
+                            text,
+                        });
+                    }
+                });
+    
+                if (option.values && Array.isArray(option.values)) {
+                  option.values.forEach((value, valueIndex) => {
+                      // ✅ Если `value.text` нет, используем сам `value`
+                      const valueTranslations = value.text || value;
+              
+                      Object.entries(valueTranslations).forEach(([lang, text]) => {
+                          if (text) {
+                              translationEntries.push({
+                                  key: `device_${device.id}.option.${optionIndex}.value.${valueIndex}`,
+                                  lang,
+                                  text,
+                              });
+                            }
+                        });
+                    });
+                }
+            });
+        }
+    
+        if (translationEntries.length > 0) {
+            await Translation.bulkCreate(translationEntries);
+        }
+    }
+    
+    return res.json(device);
+    
     } catch (e) {
       next(ApiError.badRequest(e.message));
     }
   }
 
-  // Получение списка устройств
   async getAll(req, res) {
     try {
-      let { brandId, typeId, subtypeId, limit, page } = req.query;
-      page = page || 1;
-      limit = limit || 9;
-      const offset = page * limit - limit;
+        let { brandId, typeId, subtypeId, limit, page } = req.query;
+        page = page || 1;
+        limit = limit || 9;
+        const offset = page * limit - limit;
 
-      const where = {};
-      if (brandId) where.brandId = brandId;
-      if (typeId) where.typeId = typeId;
-      if (subtypeId) where.subtypeId = subtypeId;
+        const where = {};
+        if (brandId) where.brandId = brandId;
+        if (typeId) where.typeId = typeId;
+        if (subtypeId) where.subtypeId = subtypeId;
 
-      const devices = await Device.findAndCountAll({
-        where,
-        limit,
-        offset,
-        include: [
-          { model: SubType, as: "subtype" }, // Включаем подтип
-          { model: Type }, // Включаем тип
-        ],
-      });
+        const devices = await Device.findAndCountAll({
+            where,
+            limit,
+            offset,
+            include: [
+                { model: SubType, as: "subtype" },
+                { model: Type },
+                { model: DeviceInfo, as: "info" },
+            ],
+        });
 
-      return res.json(devices);
+        const deviceIds = devices.rows.map((d) => d.id);
+        const translations = await Translation.findAll({
+            where: {
+                key: {
+                    [Op.or]: deviceIds.map((id) => ({ [Op.like]: `device_${id}.%` })),
+                },
+            },
+        });
+
+        // ✅ Формируем объект переводов
+        const translatedSpecs = {};
+        translations.forEach((t) => {
+            const keyParts = t.key.split(".");
+            const deviceId = keyParts[0].replace("device_", "");
+            const section = keyParts[1];
+            const optionIndex = keyParts[2]; // Теперь четкое разделение индексов
+            const field = keyParts[3];
+            const valueIndex = keyParts[4]; // Добавляем обработку индекса значений
+
+            if (!translatedSpecs[deviceId]) translatedSpecs[deviceId] = {};
+
+            if (section === "info") {
+                // ✅ Обрабатываем переводы характеристик
+                if (!translatedSpecs[deviceId].info) translatedSpecs[deviceId].info = [];
+                if (!translatedSpecs[deviceId].info[optionIndex]) {
+                    translatedSpecs[deviceId].info[optionIndex] = { title: {}, description: {} };
+                }
+                translatedSpecs[deviceId].info[optionIndex][field][t.lang] = t.text;
+
+            } else if (section === "option") {
+                // ✅ Обрабатываем переводы опций
+                if (!translatedSpecs[deviceId].options) translatedSpecs[deviceId].options = [];
+                if (!translatedSpecs[deviceId].options[optionIndex]) {
+                    translatedSpecs[deviceId].options[optionIndex] = { name: {}, values: [] };
+                }
+
+                if (field === "name") {
+                    translatedSpecs[deviceId].options[optionIndex].name[t.lang] = t.text;
+                } else if (field === "value" && valueIndex !== undefined) {
+                    if (!translatedSpecs[deviceId].options[optionIndex].values[valueIndex]) {
+                        translatedSpecs[deviceId].options[optionIndex].values[valueIndex] = {};
+                    }
+                    translatedSpecs[deviceId].options[optionIndex].values[valueIndex][t.lang] = t.text;
+                }
+            } else {
+                // ✅ Обрабатываем общие переводы (name, description)
+                if (!translatedSpecs[deviceId][section]) translatedSpecs[deviceId][section] = {};
+                translatedSpecs[deviceId][section][t.lang] = t.text;
+            }
+        });
+
+        // ✅ Добавляем переводы к каждому устройству
+        devices.rows.forEach((device) => {
+            device.dataValues.translations = translatedSpecs[device.id] || {};
+        });
+
+        return res.json(devices);
     } catch (error) {
-      console.error("Ошибка при получении устройств:", error.message);
-      return res
-        .status(500)
-        .json({ message: "Ошибка при получении устройств" });
+        console.error("❌ Ошибка при получении устройств:", error.message);
+        return res.status(500).json({ message: "Ошибка при получении устройств" });
     }
-  }
+}
+
 
   // Получение одного устройства
   async getOne(req, res) {
@@ -173,16 +340,118 @@ if (options.length > 0) {
         return res.status(404).json({ message: "Устройство не найдено" });
       }
 
-      return res.json(device);
+      const translations = await Translation.findAll({
+        where: { key: { [Op.like]: `device_${id}.%` } },
+      });
+      
+      const translatedSpecs = {};
+      translations.forEach((t) => {
+        const key = t.key.replace(`device_${id}.`, "");
+        const keyParts = key.split(".");
+      
+        // ✅ Обрабатываем переводы характеристик (info)
+        if (key.startsWith("info")) {
+          const index = keyParts[1];
+          const type = keyParts[2]; // title или description
+      
+          if (!translatedSpecs.info) {
+            translatedSpecs.info = {};
+          }
+      
+          if (!translatedSpecs.info[index]) {
+            translatedSpecs.info[index] = { title: {}, description: {} };
+          }
+      
+          if (type === "title") {
+            translatedSpecs.info[index].title[t.lang] = t.text;
+          } else if (type === "description") {
+            translatedSpecs.info[index].description[t.lang] = t.text;
+          }
+        }
+      
+        // ✅ Обрабатываем переводы опций (options)
+        else if (key.startsWith("option")) {
+          const optionIndex = keyParts[1];
+          const type = keyParts[2];
+          const valueIndex = keyParts[3];
+      
+          if (!translatedSpecs.options) {
+            translatedSpecs.options = {};
+          }
+          if (!translatedSpecs.options[optionIndex]) {
+            translatedSpecs.options[optionIndex] = { name: {}, values: [] };
+          }
+      
+          if (type === "name") {
+            translatedSpecs.options[optionIndex].name[t.lang] = t.text;
+          } else if (type === "value" && valueIndex !== undefined) {
+            if (!translatedSpecs.options[optionIndex].values[valueIndex]) {
+              translatedSpecs.options[optionIndex].values[valueIndex] = {};
+            }
+            translatedSpecs.options[optionIndex].values[valueIndex][t.lang] =
+              t.text;
+          }
+        }
+      
+        // ✅ Обрабатываем остальные переводы
+        else {
+          if (!translatedSpecs[key]) {
+            translatedSpecs[key] = {};
+          }
+          translatedSpecs[key][t.lang] = t.text;
+        }
+      });
+      
+      if (device.info && Array.isArray(device.info)) {
+  device.info.forEach((infoItem, index) => {
+    if (!translatedSpecs.info) return; // Если нет переводов, пропускаем
+
+    const translatedItem = translatedSpecs.info[index];
+
+    if (translatedItem) {
+      infoItem.dataValues.translations = {
+        title: translatedItem?.title || {},
+        description: translatedItem?.description || {},
+      };
+      
+    } else {
+      infoItem.translations = { title: {}, description: {} };
+    }
+  });
+}
+
+      if (device.options && Array.isArray(device.options)) {
+        device.options.forEach((option, optionIndex) => {
+          if (translatedSpecs.options && translatedSpecs.options[optionIndex]) {
+            option.translations = {
+              name: translatedSpecs.options[optionIndex].name || {},
+              values: [],
+            };
+      
+            option.values.forEach((value, valueIndex) => {
+              if (translatedSpecs.options[optionIndex].values[valueIndex]) {
+                option.translations.values[valueIndex] =
+                  translatedSpecs.options[optionIndex].values[valueIndex];
+              }
+            });
+          }
+        });
+      }
+
+      return res.json({
+        ...device.dataValues,
+        translations: translatedSpecs || {},
+      });
+      
     } catch (error) {
-      console.error("Ошибка при получении устройства:", error.message);
+      console.error("❌ Ошибка при получении устройства:", error.message);
       return res
         .status(500)
         .json({ message: "Ошибка при получении устройства" });
     }
   }
 
-  // Обновление устройства
+ 
   async update(req, res, next) {
     try {
       const { id } = req.params;
@@ -195,6 +464,7 @@ if (options.length > 0) {
         info,
         options,
         quantity,
+        translations,
       } = req.body;
 
       let existingImages = req.body.existingImages
@@ -283,14 +553,113 @@ if (options.length > 0) {
 
         options = options ? JSON.parse(options) : [];
 
-    // ✅ Если у товара есть `options`, пересчитываем `quantity`
-    if (options.length > 0) {
-      quantity = options.reduce((sum, option) => {
-        return sum + option.values.reduce((optSum, v) => optSum + (Number(v.quantity) || 0), 0);
-      }, 0);
-    }
-
+        // ✅ Если у товара есть `options`, пересчитываем `quantity`
+        if (options.length > 0) {
+          quantity = options.reduce((sum, option) => {
+            return (
+              sum +
+              option.values.reduce(
+                (optSum, v) => optSum + (Number(v.quantity) || 0),
+                0
+              )
+            );
+          }, 0);
+        }
       }
+
+      await Translation.destroy({
+        where: { key: { [Op.like]: `device_${id}.%` } }
+    });
+
+    let translationEntries = [];
+
+    if (translations) {
+        const parsedTranslations = JSON.parse(translations);
+
+        // Обрабатываем переводы названия устройства
+        Object.entries(parsedTranslations.name || {}).forEach(([lang, text]) => {
+            if (text) {
+                translationEntries.push({
+                    key: `device_${id}.name`,
+                    lang,
+                    text,
+                });
+            }
+        });
+
+        // Обрабатываем переводы описания
+        Object.entries(parsedTranslations.description || {}).forEach(([lang, text]) => {
+            if (text) {
+                translationEntries.push({
+                    key: `device_${id}.description`,
+                    lang,
+                    text,
+                });
+            }
+        });
+
+// ✅ Обрабатываем переводы значений опций (ИСПРАВЛЕНО)
+if (parsedTranslations.options && Array.isArray(parsedTranslations.options)) {
+  parsedTranslations.options.forEach((option, optionIndex) => {
+      // 🔹 Обновление названия опции (это уже работает)
+      Object.entries(option.name || {}).forEach(([lang, text]) => {
+          if (text) {
+              translationEntries.push({
+                  key: `device_${id}.option.${optionIndex}.name`,
+                  lang,
+                  text,
+              });
+          }
+      });
+
+      // 🔹 Теперь корректно обрабатываем переводы значений опций
+      if (option.values && Array.isArray(option.values)) {
+          option.values.forEach((value, valueIndex) => {
+              Object.entries(value || {}).forEach(([lang, text]) => {
+                  if (text) {
+                      translationEntries.push({
+                          key: `device_${id}.option.${optionIndex}.value.${valueIndex}`,
+                          lang,
+                          text,
+                      });
+                  }
+              });
+          });
+      }
+  });
+}
+
+
+    
+        if (parsedTranslations.info && Array.isArray(parsedTranslations.info)) {
+          parsedTranslations.info.forEach((info, index) => {
+              Object.entries(info.title || {}).forEach(([lang, text]) => {
+                  if (text) {
+                      translationEntries.push({
+                          key: `device_${id}.info.${index}.title`,
+                          lang,
+                          text,
+                      });
+                  }
+              });
+              Object.entries(info.description || {}).forEach(([lang, text]) => {
+                  if (text) {
+                      translationEntries.push({
+                          key: `device_${id}.info.${index}.description`,
+                          lang,
+                          text,
+                      });
+                  }
+              });
+          });
+      }
+  }
+
+    
+
+    if (translationEntries.length > 0) {
+        await Translation.bulkCreate(translationEntries);
+    }
 
       // ✅ Обновляем устройство
       await Device.update(
@@ -317,6 +686,7 @@ if (options.length > 0) {
         );
       }
 
+
       const updatedDevice = await Device.findOne({ where: { id } });
       return res.json(updatedDevice);
     } catch (error) {
@@ -332,6 +702,10 @@ if (options.length > 0) {
 
       if (!device)
         return res.status(404).json({ message: "Устройство не найдено" });
+
+      await Translation.destroy({
+        where: { key: { [Op.like]: `device_${id}.%` } },
+      });
 
       const imagePath = path.resolve(__dirname, "..", "static", device.img);
 
@@ -392,50 +766,59 @@ if (options.length > 0) {
 
   async checkStock(req, res) {
     try {
-        const { deviceId, quantity, selectedOptions } = req.body;
-        const device = await Device.findByPk(deviceId);
+      const { deviceId, quantity, selectedOptions } = req.body;
+      const device = await Device.findByPk(deviceId);
 
-        if (!device) {
-          return res.json({ status: "error", message: "Товар не найден" });
-      }
-      
-
-        let availableQuantity = device.quantity;
-        let parsedOptions = [];
-
-        if (typeof device.options === "string") {
-            parsedOptions = JSON.parse(device.options);
-        } else if (Array.isArray(device.options)) {
-            parsedOptions = device.options;
-        }
-
-        
-        if (parsedOptions.length > 0 && selectedOptions) {
-            for (const [optionName, selectedValue] of Object.entries(selectedOptions)) {
-                const option = parsedOptions.find(opt => opt.name === optionName);
-                if (!option) continue;
-
-                const value = option.values.find(val => val.value === selectedValue.value);
-                if (!value) {
-                  return res.json({ status: "error", message: `Опция ${selectedValue.value} не найдена.` });
-              }
-                availableQuantity = value.quantity;
-            }
-        }
-
-        if (availableQuantity < quantity) {
+      if (!device) {
+        return res.json({ status: "error", message: "Товар не найден" });
       }
 
-      return res.json({ status: "success", message: "Товар в наличии", quantity: availableQuantity });
+      let availableQuantity = device.quantity;
+      let parsedOptions = [];
 
-  } catch (error) {
+      if (typeof device.options === "string") {
+        parsedOptions = JSON.parse(device.options);
+      } else if (Array.isArray(device.options)) {
+        parsedOptions = device.options;
+      }
+
+      if (parsedOptions.length > 0 && selectedOptions) {
+        for (const [optionName, selectedValue] of Object.entries(
+          selectedOptions
+        )) {
+          const option = parsedOptions.find((opt) => opt.name === optionName);
+          if (!option) continue;
+
+          const value = option.values.find(
+            (val) => val.value === selectedValue.value
+          );
+          if (!value) {
+            return res.json({
+              status: "error",
+              message: `Опция ${selectedValue.value} не найдена.`,
+            });
+          }
+          availableQuantity = value.quantity;
+        }
+      }
+
+      if (availableQuantity < quantity) {
+      }
+
+      return res.json({
+        status: "success",
+        message: "Товар в наличии",
+        quantity: availableQuantity,
+      });
+    } catch (error) {
       console.error("Ошибка при проверке наличия товара:", error);
-      return res.json({ status: "error", message: "Ошибка сервера при проверке наличия товара." });
+      return res.json({
+        status: "error",
+        message: "Ошибка сервера при проверке наличия товара.",
+      });
+    }
   }
 }
 
-
-
-}
-
 module.exports = new DeviceController();
+
