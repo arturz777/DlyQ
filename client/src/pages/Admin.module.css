@@ -101,4 +101,81 @@
   .emptyCategoryMessage {
 	text-align: center;
   }
+
+  .translationsTitle {
+	font-size: 24px;
+	font-weight: bold;
+	margin-bottom: 20px;
+  }
+  
+  .addTranslationButton {
+	background-color: #007bff;
+	color: white;
+	border: none;
+	padding: 10px;
+	cursor: pointer;
+	margin-bottom: 10px;
+	border-radius: 5px;
+  }
+  
+  .translationForm {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 20px;
+  }
+  
+  .inputField {
+	padding: 8px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+  }
+  
+  .selectField {
+	padding: 8px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+  }
+  
+  .saveButton {
+	background-color: #28a745;
+	color: white;
+	border: none;
+	padding: 8px;
+	cursor: pointer;
+	border-radius: 4px;
+  }
+  
+  .cancelButton {
+	background-color: #dc3545;
+	color: white;
+	border: none;
+	padding: 8px;
+	cursor: pointer;
+	border-radius: 4px;
+  }
+  
+  .editButton {
+	background-color: #ffc107;
+	color: black;
+	border: none;
+	padding: 8px;
+	cursor: pointer;
+	border-radius: 4px;
+  }
+  
+  .translationTable {
+	width: 100%;
+	border-collapse: collapse;
+  }
+  
+  .translationTable th, .translationTable td {
+	border: 1px solid #ddd;
+	padding: 10px;
+  }
+  
+  .translationTable th {
+	background-color: #f8f9fa;
+	text-align: left;
+  }
+  
   
