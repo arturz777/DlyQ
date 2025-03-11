@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import { fetchOneDevice } from "../http/deviceAPI";
 import { Context } from "../index";
 import { toast } from "react-toastify"; // Для уведомлений
-
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import styles from "./DevicePage.module.css";
 
@@ -21,6 +21,8 @@ const DevicePage = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [availableQuantity, setAvailableQuantity] = useState(0);
   const [isPreorder, setIsPreorder] = useState(false);
+  const { t, i18n } = useTranslation();
+  const currentLang = i18n.language || "en";
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
@@ -130,7 +132,6 @@ const DevicePage = () => {
       isPreorder, // ✅ Добавляем флаг предзаказа
     };
 
-
     // ✅ Добавляем товар в корзину
     basket.addItem(newItem);
     toast.success(`${device.name} добавлен в корзину!`);
@@ -189,10 +190,15 @@ const DevicePage = () => {
         </div>
         <div className={styles.DevicePageDetails}>
           <div className={styles.DevicePageCard}>
-            <h2 className={styles.DevicePageTitle}>{device.name}</h2>
+            <h2 className={styles.DevicePageTitle}>
+            {device.translations?.["name"]?.[currentLang] || device.name}
+              </h2>
             {device.options?.map((option, optionIndex) => (
               <div key={optionIndex} className={styles.DevicePageOption}>
-                <label>{option.name}</label>
+                <label>
+  {option.translations?.name?.[currentLang] || option.name}
+</label>
+
                 <select
                   value={selectedOptions[option.name]?.value || ""}
                   onChange={(e) => {
@@ -204,7 +210,8 @@ const DevicePage = () => {
                   className={styles.DevicePageSelect}
                 >
                   <option value="" disabled hidden>
-                    {`Выберите: ${option.name}`}
+                  {`${t("Выберите")}: ${option.translations?.name?.[currentLang] || option.name}`}
+
                   </option>
                   {option.values.map((valueObj, valueIndex) => (
                     <option
@@ -212,7 +219,7 @@ const DevicePage = () => {
                       value={valueObj.value}
                       disabled={valueObj.quantity <= 0}
                     >
-                      {valueObj.value}
+                      {option.translations?.values?.[valueIndex]?.[currentLang] || valueObj.value}
                     </option>
                   ))}
                 </select>
@@ -239,16 +246,16 @@ const DevicePage = () => {
               {availableQuantity <= 0 ? "Нет в наличии" : "Добавить в корзину"}
             </button>
             {availableQuantity <= 0 && (
-            <div className={styles.preorderSection}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={isPreorder}
-                  onChange={() => setIsPreorder(!isPreorder)}
-                />
-                Оформить предзаказ
-              </label>
-            </div>
+              <div className={styles.preorderSection}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={isPreorder}
+                    onChange={() => setIsPreorder(!isPreorder)}
+                  />
+                  Оформить предзаказ
+                </label>
+              </div>
             )}
           </div>
         </div>
@@ -266,8 +273,14 @@ const DevicePage = () => {
               }`}
             >
               <span className={styles.DevicePageSpecText}>
-                <strong>{info.title}:</strong> {info.description}
-              </span>
+              <strong>
+   {info.translations?.title?.[currentLang] || info.title}
+      </strong>
+      {": "}
+      {info.translations?.description?.[currentLang] || info.description}
+
+        </span>
+
             </div>
           ))}
         </div>
