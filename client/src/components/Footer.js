@@ -16,9 +16,9 @@ const Footer = () => {
         <div className={styles.linksSection}>
         <Link to="/terms-of-service">Пользовательское соглашение</Link>
         <Link to="/privacy-policy">Политика конфиденциальности</Link>
-        <Link to="/return-policy">Политика возврата</Link>
-        <Link to="/shipping-policy">Политика доставки</Link>
-        <Link to="/cookie-policy">Политика cookie</Link>
+        <Link to="/return-policy">Гарантия и возврат</Link>
+        <Link to="/shipping-policy">Доставка</Link>
+        <Link to="/cookie-policy">Cookie</Link>
         </div>
 
         {/* Социальные сети */}
