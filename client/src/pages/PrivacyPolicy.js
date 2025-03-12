@@ -1,77 +1,68 @@
 import React from "react";
 import styles from "./PrivacyPolicy.module.css";
+import { useTranslation } from "react-i18next";
 
 const PrivacyPolicy = () => {
+  const { t } = useTranslation("privacyPolicy");
+
   return (
     <div className={styles.container}>
-      <h1>Политика конфиденциальности</h1>
-      <p>Последнее обновление: 16 февраля 2025</p>
+      <h1>{t("title")}</h1>
+      <p>{t("last_updated")}</p>
 
       <section>
-        <h2>1. Введение</h2>
-        <p>
-          Настоящая Политика конфиденциальности объясняет, какие данные мы собираем, 
-          как их используем и какие права имеют пользователи в отношении их персональных данных.
-        </p>
+        <h2>{t("introduction.title")}</h2>
+        <p>{t("introduction.text")}</p>
       </section>
 
       <section>
-        <h2>2. Какие данные мы собираем?</h2>
-        <p>Мы можем собирать следующие данные:</p>
+        <h2>{t("data_collection.title")}</h2>
+        <p>{t("data_collection.text")}</p>
         <ul>
-          <li>Имя, фамилия, адрес электронной почты</li>
-          <li>Информация о заказах и платежах</li>
-          <li>IP-адрес, данные о посещении сайта</li>
-          <li>Cookies и данные для аналитики</li>
+          {(t("data_collection.list", { returnObjects: true }) || []).map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
         </ul>
       </section>
 
       <section>
-        <h2>3. Как мы используем данные?</h2>
-        <p>Мы используем персональные данные для:</p>
+        <h2>{t("data_usage.title")}</h2>
+        <p>{t("data_usage.text")}</p>
         <ul>
-          <li>Обработки заказов и предоставления услуг</li>
-          <li>Поддержки пользователей</li>
-          <li>Маркетинговых рассылок (с возможностью отказа)</li>
-          <li>Аналитики и улучшения работы сайта</li>
+          {(t("data_usage.list", { returnObjects: true }) || []).map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
         </ul>
       </section>
 
       <section>
-        <h2>4. Передача данных третьим лицам</h2>
-        <p>Мы не передаём ваши данные третьим лицам, за исключением случаев:</p>
+        <h2>{t("third_parties.title")}</h2>
+        <p>{t("third_parties.text")}</p>
         <ul>
-          <li>Для обработки платежей (Stripe, PayPal и др.)</li>
-          <li>Для выполнения доставки (курьерские службы)</li>
-          <li>По требованию законодательства</li>
+          {(t("third_parties.list", { returnObjects: true }) || []).map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
         </ul>
       </section>
 
       <section>
-        <h2>5. Безопасность данных</h2>
-        <p>
-          Мы принимаем меры для защиты ваших данных, но не можем гарантировать 100% безопасность 
-          в интернете. Используйте сложные пароли и не передавайте свои учетные данные третьим лицам.
-        </p>
+        <h2>{t("security.title")}</h2>
+        <p>{t("security.text")}</p>
       </section>
 
       <section>
-        <h2>6. Ваши права</h2>
-        <p>Вы имеете право:</p>
+        <h2>{t("user_rights.title")}</h2>
+        <p>{t("user_rights.text")}</p>
         <ul>
-          <li>Запросить информацию о ваших данных</li>
-          <li>Потребовать их удаления</li>
-          <li>Ограничить обработку данных</li>
-          <li>Отказаться от маркетинговых рассылок</li>
+          {(t("user_rights.list", { returnObjects: true }) || []).map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
         </ul>
       </section>
 
       <section>
-        <h2>7. Контакты</h2>
-        <p>
-          Если у вас есть вопросы по поводу политики конфиденциальности, свяжитесь с нами: 
-          <strong> support@mycompany.com</strong>.
-        </p>
+        <h2>{t("contact.title")}</h2>
+        <p>{t("contact.text")}</p>
       </section>
     </div>
   );
