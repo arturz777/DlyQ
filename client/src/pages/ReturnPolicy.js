@@ -1,57 +1,61 @@
 import React from "react";
 import styles from "./ReturnPolicy.module.css";
+import { useTranslation } from "react-i18next";
 
 const ReturnPolicy = () => {
+  const { t } = useTranslation("returnPolicy");
+
   return (
     <div className={styles.container}>
-      <h1>Политика возврата</h1>
-      <p>Последнее обновление: 16 февраля 2025</p>
+      <h1>{t("title")}</h1>
+      <p>{t("last_updated")}</p>
 
       <section>
-        <h2>1. Условия возврата</h2>
-        <p>
-          Мы принимаем возвраты в течение **14 дней** с момента получения заказа. 
-          Для возврата товар должен быть в оригинальном состоянии, без следов использования.
-        </p>
+        <h2>{t("return_conditions.title")}</h2>
+        <p>{t("return_conditions.text")}</p>
       </section>
 
       <section>
-        <h2>2. Как оформить возврат?</h2>
-        <p>Чтобы вернуть товар, выполните следующие шаги:</p>
+        <h2>{t("how_to_return.title")}</h2>
         <ul>
-          <li>Свяжитесь с нами по email: <strong>support@mycompany.com</strong></li>
-          <li>Укажите номер заказа и причину возврата</li>
-          <li>Отправьте товар на наш склад (адрес уточняйте у оператора)</li>
+          {(t("how_to_return.steps", { returnObjects: true }) || []).map((step, index) => (
+            <li key={index}>{step}</li>
+          ))}
         </ul>
       </section>
 
       <section>
-        <h2>3. Исключения из политики возврата</h2>
-        <p>Некоторые товары **не подлежат возврату**, если:</p>
+        <h2>{t("exceptions.title")}</h2>
+        <p>{t("exceptions.text")}</p>
         <ul>
-          <li>Использовались и имеют следы эксплуатации</li>
-          <li>Относятся к категории "личная гигиена" (например, наушники, бритвы)</li>
-          <li>Были куплены по специальной акции без права возврата</li>
+          {(t("exceptions.list", { returnObjects: true }) || []).map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
         </ul>
       </section>
 
       <section>
-        <h2>4. Возврат денежных средств</h2>
-        <p>
-          После проверки товара мы обработаем возврат средств в течение **5-10 рабочих дней**. 
-          Деньги будут возвращены на тот же способ оплаты, которым был сделан заказ.
-        </p>
+        <h2>{t("refunds.title")}</h2>
+        <p>{t("refunds.text")}</p>
+        <ul>
+          {(t("refunds.details", { returnObjects: true }) || []).map((detail, index) => (
+            <li key={index}>{detail}</li>
+          ))}
+        </ul>
       </section>
 
       <section>
-        <h2>5. Контакты</h2>
-        <p>
-          Если у вас есть вопросы по возврату, свяжитесь с нами:  
-          <strong> support@mycompany.com</strong>.
-        </p>
+        <h2>{t("warranty.title")}</h2>
+        <p>{t("warranty.text")}</p>
+      </section>
+
+      <section>
+        <h2>{t("contact.title")}</h2>
+        <p>{t("contact.text")}</p>
       </section>
     </div>
   );
 };
 
 export default ReturnPolicy;
+
