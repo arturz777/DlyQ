@@ -1,12 +1,12 @@
 {
-	"Specifications": "Характеристики",
-	"Place a pre-order": "Оформить предзаказ",
-	"out_of_stock": "Нет в наличии",
-	"add_to_cart": "Добавить в корзину",
-	"total": "Всего",
-	"Select": "Выберите",
-	"Added to cart!": "Добавлен в корзину!",
-  "Product is out of stock!": "Товара нет в наличии!",
-  "Select product options!": "Выберите параметры товара!",
-  "Loading...": "Загрузка..."
+	"Specifications": "Spetsifikatsioonid",
+	"Place a pre-order": "Tee eeltellimus",
+	"out_of_stock": "Pole saadaval",
+	"add_to_cart": "Lisa ostukorvi",
+	"total": "Kokku",
+	"Select": "Valige",
+	"Added to cart!": "Lisatud ostukorvi!",
+  "Product is out of stock!": "Toode pole laos saadaval!",
+  "Select product options!": "Valige toote valikud!",
+  "Loading...": "Laadimine..."
 }
