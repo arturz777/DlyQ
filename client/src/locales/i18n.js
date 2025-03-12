@@ -10,6 +10,7 @@ import deviceItemEst from './est/deviceItem.json';
 import deviceListEst from './est/deviceList.json';
 import cookiePolicyEst from './est/cookiePolicy.json';
 import returnPolicyEst from './est/returnPolicy.json';
+import termsOfServiceEst from './est/termsOfService.json';
 
 import navbarEn from './en/navbar.json';
 import searchbarEn from './en/searchbar.json';
@@ -18,6 +19,7 @@ import deviceItemEn from './en/deviceItem.json';
 import deviceListEn from './en/deviceList.json';
 import cookiePolicyEn from './en/cookiePolicy.json';
 import returnPolicyEn from './en/returnPolicy.json';
+import termsOfServiceEn from './en/termsOfService.json';
 
 import navbarRu from './ru/navbar.json';
 import searchbarRu from './ru/searchbar.json';
@@ -26,6 +28,7 @@ import deviceItemRu from './ru/deviceItem.json';
 import deviceListRu from './ru/deviceList.json';
 import cookiePolicyRu from './ru/cookiePolicy.json';
 import returnPolicyRu from './ru/returnPolicy.json';
+import termsOfServiceRu from './ru/termsOfService.json';
 
 
 i18n
@@ -41,6 +44,7 @@ i18n
         deviceList: deviceListEn,
         cookiePolicy: cookiePolicyEn,
         returnPolicy: returnPolicyEn,
+        termsOfService: termsOfServiceEn,
       },
       ru: {
         navbar: navbarRu,
@@ -50,6 +54,7 @@ i18n
         deviceList: deviceListRu,
         cookiePolicy: cookiePolicyRu,
         returnPolicy: returnPolicyRu,
+        termsOfService: termsOfServiceRu,
       },
       est: {
         navbar: navbarEst,
@@ -59,6 +64,7 @@ i18n
         deviceList: deviceListEst,
         cookiePolicy: cookiePolicyEst,
         returnPolicy: returnPolicyEst,
+        termsOfService: termsOfServiceEst,
       },
     },
 
