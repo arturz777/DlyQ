@@ -1,9 +1,6 @@
-import React, { useEffect, useState, useContext } from "react";
-import star from "../assets/bigStar.png";
-import { useParams } from "react-router-dom";
 import { fetchOneDevice } from "../http/deviceAPI";
 import { Context } from "../index";
-import { toast } from "react-toastify"; // Для уведомлений
+import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import styles from "./DevicePage.module.css";
@@ -23,6 +20,7 @@ const DevicePage = () => {
   const [isPreorder, setIsPreorder] = useState(false);
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
+  const deviceName = device.translations?.name?.[currentLang] || device.name;
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
@@ -80,7 +78,7 @@ const DevicePage = () => {
     setFinalPrice(device.price + additionalPrice);
   }, [selectedOptions, device.price]);
 
-  if (!device) return <p>Загрузка...</p>;
+   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
   const images = [device.img, ...(device.thumbnails || [])];
 
@@ -101,7 +99,7 @@ const DevicePage = () => {
 
   const availableOptions = device.options.map((option) => ({
     ...option,
-    values: option.values.filter((v) => v.quantity > 0), // Показываем только доступные
+    values: option.values.filter((v) => v.quantity > 0), 
   }));
 
   const handleAddToBasket = async () => {
@@ -112,31 +110,31 @@ const DevicePage = () => {
     );
     const newCount = (existingItem?.count || 0) + 1;
 
-    // ✅ Проверяем, выбраны ли все параметры товара
     if (!selectedOptions || Object.keys(selectedOptions).length === 0) {
-      toast.error("Выберите параметры товара!");
+      toast.error(`❌ ${t("Select product options!", { ns: "devicePage" })}`);
       return;
     }
 
     const isAvailable = await checkStock(device.id, newCount, selectedOptions);
 
     if (!isAvailable && !isPreorder) {
-      // Если товара нет и предзаказ выключен
-      toast.error("❌ Товара нет в наличии!");
+      toast.error(`❌ ${t("Product is out of stock!", { ns: "devicePage" })}`);
+
       return;
     }
 
     const newItem = {
       ...device,
       selectedOptions,
-      isPreorder, // ✅ Добавляем флаг предзаказа
+      isPreorder,
     };
 
-    // ✅ Добавляем товар в корзину
+    
     basket.addItem(newItem);
-    toast.success(`${device.name} добавлен в корзину!`);
+    toast.success(`${deviceName} ${t("Added to cart!", { ns: "devicePage" })}`);
 
-    // ✅ Обновляем доступное количество
+
+   
     setAvailableQuantity((prev) => prev - 1);
   };
 
@@ -210,7 +208,7 @@ const DevicePage = () => {
                   className={styles.DevicePageSelect}
                 >
                   <option value="" disabled hidden>
-                  {`${t("Выберите")}: ${option.translations?.name?.[currentLang] || option.name}`}
+                  {t("Select", { ns: "devicePage" })}: {option.translations?.name?.[currentLang] || option.name}
 
                   </option>
                   {option.values.map((valueObj, valueIndex) => (
@@ -225,17 +223,10 @@ const DevicePage = () => {
                 </select>
               </div>
             ))}
-            <p className={styles.DevicePagePrice}>Всего: {finalPrice}€</p>
+            <p className={styles.DevicePagePrice}>{t("total", { ns: "devicePage" })}: {finalPrice}€</p>
             <div className={styles.DevicePageRating}>
               <span className={styles.DevicePageRatingValue}>
-                {device.rating}
               </span>
-              <img
-                src={star}
-                alt="rating"
-                className={styles.DevicePageRatingIcon}
-              />
-              <span className={styles.DevicePageRatingText}>(42 отзывов)</span>
             </div>
 
             <button
@@ -243,7 +234,11 @@ const DevicePage = () => {
               onClick={handleAddToBasket}
               disabled={!isPreorder && availableQuantity <= 0}
             >
-              {availableQuantity <= 0 ? "Нет в наличии" : "Добавить в корзину"}
+             {availableQuantity <= 0 
+  ? t("out_of_stock", { ns: "devicePage" }) 
+  : t("add_to_cart", { ns: "devicePage" })
+}
+
             </button>
             {availableQuantity <= 0 && (
               <div className={styles.preorderSection}>
@@ -253,7 +248,7 @@ const DevicePage = () => {
                     checked={isPreorder}
                     onChange={() => setIsPreorder(!isPreorder)}
                   />
-                  Оформить предзаказ
+                 {t("Place a pre-order", { ns: "devicePage" })}
                 </label>
               </div>
             )}
@@ -261,9 +256,9 @@ const DevicePage = () => {
         </div>
       </div>
 
-      {/* Секция характеристик */}
+    
       <div className={styles.DevicePageSpecs}>
-        <h3 className={styles.DevicePageSpecsTitle}>Характеристики</h3>
+        <h3 className={styles.DevicePageSpecsTitle}>{t("Specifications", { ns: "devicePage" })}</h3>
         <div className={styles.DevicePageSpecsCard}>
           {device.info.map((info, index) => (
             <div
