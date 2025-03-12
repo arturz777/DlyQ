@@ -1,0 +1,32 @@
+{
+	"title": "Cookie Policy",
+	"last_updated": "Last updated: February 16, 2025",
+	"sections": {
+	  "what_are_cookies": {
+		"title": "1. What are cookies?",
+		"text": "Cookies are small text files that are stored on your device when you visit our site. They help improve site performance and provide personalized content."
+	  },
+	  "types_of_cookies": {
+		"title": "2. What cookies do we use?",
+		"text": "We use the following types of cookies:",
+		"list": [
+		  "Necessary cookies — help the site function properly.",
+		  "Analytical cookies — collect visit statistics (Google Analytics).",
+		  "Marketing cookies — used for personalized advertising."
+		]
+	  },
+	  "disable_cookies": {
+		"title": "3. How to disable cookies?",
+		"text": "You can disable cookies in your browser settings. However, this may affect the correct functioning of the site."
+	  },
+	  "data_access": {
+		"title": "4. Who has access to the data?",
+		"text": "We do not share data with third parties, except for analytics services (Google, Facebook)."
+	  },
+	  "contacts": {
+		"title": "5. Contact information",
+		"text": "If you have any questions about cookies, contact us at: support@mycompany.com"
+	  }
+	}
+  }
+  
