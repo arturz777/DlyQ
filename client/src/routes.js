@@ -8,7 +8,7 @@ import DevicePage from "./pages/DevicePage";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import ReturnPolicy from "./pages/ReturnPolicy";
-import ShippingPolicy from "./pages/ShippingPolicy";
+import DeliveryPolicy from "./pages/DeliveryPolicy";
 import CookiePolicy from "./pages/CookiePolicy";
 
 export const authRoutes = [
@@ -57,7 +57,7 @@ export const publicRoutes = [
 
     {
         path: SHIPPING_ROUTE,
-        Component: ShippingPolicy
+        Component: DeliveryPolicy
     },
 
     {
