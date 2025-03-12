@@ -1,0 +1,31 @@
+{
+	"title": "Küpsiste poliitika",
+	"last_updated": "Viimati uuendatud: 16. veebruar 2025",
+	"sections": {
+	  "what_are_cookies": {
+		"title": "1. Mis on küpsised?",
+		"text": "Küpsised on väikesed tekstifailid, mis salvestatakse teie seadmesse, kui külastate meie veebisaiti. Need aitavad parandada veebisaidi toimivust ja pakkuda isikupärastatud sisu."
+	  },
+	  "types_of_cookies": {
+		"title": "2. Milliseid küpsiseid me kasutame?",
+		"text": "Kasutame järgmisi küpsisetüüpe:",
+		"list": [
+		  "Vajalikud küpsised — aitavad veebilehel õigesti töötada.",
+		  "Analüütilised küpsised — koguvad külastusstatistikat (Google Analytics).",
+		  "Turundusküpsised — kasutatakse isikupärastatud reklaami jaoks."
+		]
+	  },
+	  "disable_cookies": {
+		"title": "3. Kuidas küpsiseid keelata?",
+		"text": "Saate küpsiseid keelata oma brauseri seadetes. Kuid see võib mõjutada veebisaidi õiget toimimist."
+	  },
+	  "data_access": {
+		"title": "4. Kes pääseb andmetele ligi?",
+		"text": "Me ei jaga andmeid kolmandate osapooltega, välja arvatud analüütikateenused (Google, Facebook)."
+	  },
+	  "contacts": {
+		"title": "5. Kontaktinfo",
+		"text": "Kui teil on küsimusi küpsiste kohta, võtke meiega ühendust: support@mycompany.com"
+	  }
+	}
+  }
