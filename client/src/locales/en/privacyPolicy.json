@@ -1,0 +1,55 @@
+{
+	"title": "Privacy Policy",
+	"last_updated": "Last updated: February 16, 2025",
+	"introduction": {
+		"title": "1. Introduction",
+		"text": "This Privacy Policy explains what data we collect, how we use it, and what rights users have regarding their personal data."
+	},
+	"data_collection": {
+		"title": "2. What data do we collect?",
+		"text": "We may collect the following data:",
+		"list": [
+			"Name, surname, email",
+			"Order and payment information",
+			"IP address, site visit data",
+			"Cookies and analytics data"
+		]
+	},
+	"data_usage": {
+		"title": "3. How do we use the data?",
+		"text": "We use personal data for:",
+		"list": [
+			"Processing orders and providing services",
+			"User support",
+			"Marketing emails (opt-out available)",
+			"Site analytics and improvements"
+		]
+	},
+	"third_parties": {
+		"title": "4. Data sharing with third parties",
+		"text": "We do not share your data with third parties except in the following cases:",
+		"list": [
+			"Payment processing (Stripe, PayPal, etc.)",
+			"Order delivery (courier services)",
+			"Legal requirements"
+		]
+	},
+	"security": {
+		"title": "5. Data security",
+		"text": "We take measures to protect your data but cannot guarantee 100% security on the internet."
+	},
+	"user_rights": {
+		"title": "6. Your rights",
+		"text": "You have the right to:",
+		"list": [
+			"Request information about your data",
+			"Request data deletion",
+			"Restrict data processing",
+			"Opt-out of marketing emails"
+		]
+	},
+	"contact": {
+		"title": "7. Contact information",
+		"text": "If you have any questions, contact us at: support@mycompany.com."
+	}
+}
