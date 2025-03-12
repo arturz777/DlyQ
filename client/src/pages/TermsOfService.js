@@ -1,64 +1,48 @@
 import React from "react";
 import styles from "./TermsOfService.module.css";
+import { useTranslation } from "react-i18next";
 
 const TermsOfService = () => {
+  const { t } = useTranslation("termsOfService");
+
   return (
     <div className={styles.container}>
-      <h1>Пользовательское соглашение</h1>
-      <p>Последнее обновление: 16 февраля 2025</p>
+      <h1>{t("title")}</h1>
+      <p>{t("last_updated")}</p>
 
       <section>
-        <h2>1. Общие положения</h2>
-        <p>
-          Настоящее соглашение регулирует использование интернет-магазина MyCompany. 
-          Используя сайт, вы соглашаетесь с данными условиями.
-        </p>
+        <h2>{t("general.title")}</h2>
+        <p>{t("general.text")}</p>
       </section>
 
       <section>
-        <h2>2. Регистрация и аккаунт</h2>
-        <p>
-          Для совершения покупок может потребоваться регистрация. Вы несёте ответственность 
-          за безопасность вашего аккаунта.
-        </p>
+        <h2>{t("account.title")}</h2>
+        <p>{t("account.text")}</p>
       </section>
 
       <section>
-        <h2>3. Порядок оформления заказов</h2>
-        <p>
-          Заказ считается оформленным после получения подтверждения. Мы оставляем за собой 
-          право отменять заказы в случае ошибок в цене или наличии товаров.
-        </p>
+        <h2>{t("orders.title")}</h2>
+        <p>{t("orders.text")}</p>
       </section>
 
       <section>
-        <h2>4. Оплата и возврат</h2>
-        <p>
-          Оплата осуществляется онлайн. Возврат средств возможен согласно нашей политике 
-          возврата.
-        </p>
+        <h2>{t("payment.title")}</h2>
+        <p>{t("payment.text")}</p>
       </section>
 
       <section>
-        <h2>5. Ограничение ответственности</h2>
-        <p>
-          Мы не несём ответственности за убытки, вызванные неправильным использованием товаров 
-          или техническими сбоями сайта.
-        </p>
+        <h2>{t("liability.title")}</h2>
+        <p>{t("liability.text")}</p>
       </section>
 
       <section>
-        <h2>6. Изменение условий</h2>
-        <p>
-          Мы оставляем за собой право изменять условия соглашения. Обновлённые условия вступают в силу с момента их публикации.
-        </p>
+        <h2>{t("changes.title")}</h2>
+        <p>{t("changes.text")}</p>
       </section>
 
       <section>
-        <h2>7. Контактные данные</h2>
-        <p>
-          По вопросам использования сайта свяжитесь с нами по адресу <strong>support@mycompany.com</strong>.
-        </p>
+        <h2>{t("contact.title")}</h2>
+        <p>{t("contact.text")}</p>
       </section>
     </div>
   );
