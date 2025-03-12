@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { DEVICE_ROUTE } from "../utils/consts";
 import { Context } from "../index";
 import { toast } from "react-toastify";
+import { useTranslation } from "react-i18next";
 import styles from "./DeviceItem.module.css";
 
 const DeviceItem = ({ device }) => {
@@ -13,6 +14,9 @@ const DeviceItem = ({ device }) => {
   const navigate = useNavigate();
   const [availableQuantity, setAvailableQuantity] = useState(device.quantity);
   const [isPreorder, setIsPreorder] = useState(false);
+  const { t, i18n } = useTranslation();
+  const currentLang = i18n.language || "en";
+  const deviceName = device.translations?.name?.[currentLang] || device.name;
 
 
   useEffect(() => {
@@ -54,8 +58,8 @@ const DeviceItem = ({ device }) => {
 
     const isAvailable = await checkStock(device.id, newCount);
 
-    if (!isAvailable && !isPreorder) { // Если товара нет и предзаказ выключен
-      toast.error("❌ Товара нет в наличии!");
+    if (!isAvailable && !isPreorder) {
+      toast.error(`❌ ${t("Product is out of stock!", { ns: "deviceItem" })}`);
       return;
     }
 
@@ -63,14 +67,16 @@ const DeviceItem = ({ device }) => {
     if (device.options?.length > 0) {
       device.options.forEach((option) => {
         defaultOptions[option.name] = {
-          value: "Выберите опцию",
+          value: t("Select an option"),
           price: 0,
         };
       });
     }
 
     basket.addItem({ ...device, selectedOptions: defaultOptions });
-    toast.success(`${device.name} добавлен в корзину!`);
+    toast.success(
+      `${deviceName} - ${t("Added to cart!", { ns: "devicePage" })}`
+    );
 
     setAvailableQuantity((prev) => Math.max(0, prev - 1));
   };
@@ -84,27 +90,23 @@ const DeviceItem = ({ device }) => {
       <Card className={`${styles.card}`} onClick={handleNavigate}>
         <Image className={styles.image} src={device.img} />
         <div className={styles.info}>
-          <h5 className={styles.name}>{device.name}</h5>
+          <h5 className={styles.name}>{deviceName}</h5>
           <p className={styles.price}>{device.price} €</p>
-          <div className={styles.rating}>
-            <span>{device.rating}</span>
-            <Image src={star} className={styles.star} />
-          </div>
         </div>
         <Button
-  variant="success"
-  className={styles.button}
-  disabled={availableQuantity <= 0}
-  onClick={handleAddToBasket}
->
-  {availableQuantity <= 0 ? "Нет в наличии" : "В корзину"}
-</Button>
+          variant="success"
+          className={styles.button}
+          disabled={availableQuantity <= 0}
+          onClick={handleAddToBasket}
+        >
+          {availableQuantity <= 0
+            ? t("out_of_stock", { ns: "deviceItem" })
+            : t("add_to_cart", { ns: "deviceItem" })}
+        </Button>
 
-{/* 🔥 Добавляем текст "Доступен предзаказ", если товара нет */}
-{availableQuantity <= 0 && (
-  <p className={styles.preorderText}>📅 Доступен предзаказ</p>
-)}
-
+        {availableQuantity <= 0 && (
+          <p className={styles.preorderText}>{t("Pre-order available", { ns: "deviceItem" })}</p>
+        )}
       </Card>
     </div>
   );
