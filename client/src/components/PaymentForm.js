@@ -6,9 +6,9 @@ import {
   Marker,
   useMapEvents,
   useMap,
-} from "react-leaflet"; // ✅ Добавил Leaflet
-import "leaflet/dist/leaflet.css"; // ✅ Подключил стили Leaflet
-import L from "leaflet"; // ✅ Импортируем Leaflet
+} from "react-leaflet"; 
+import "leaflet/dist/leaflet.css";
+import L from "leaflet"; 
 import {
   useStripe,
   useElements,
@@ -21,6 +21,7 @@ import { toast } from "react-toastify";
 import { fetchProfile } from "../http/userAPI";
 import { Context } from "../index";
 import { fetchDeliveryCost } from "../utils/deliveryCost";
+import { useTranslation } from "react-i18next";
 import styles from "./PaymentForm.module.css";
 
 const customIcon = new L.Icon({
@@ -35,13 +36,14 @@ const MapUpdater = ({ latitude, longitude }) => {
   const map = useMap();
   useEffect(() => {
     if (latitude && longitude) {
-      map.setView([latitude, longitude], 13, { animate: true }); // ✅ Перемещение к точке с анимацией
+      map.setView([latitude, longitude], 13, { animate: true });
     }
   }, [latitude, longitude, map]);
   return null;
 };
 
 const LocationPicker = ({ setFormData }) => {
+  const { t } = useTranslation("paymentForm");
   useMapEvents({
     click(e) {
       setFormData((prev) => ({
@@ -50,7 +52,7 @@ const LocationPicker = ({ setFormData }) => {
         longitude: e.latlng.lng,
       }));
 
-      // 🔥 Получаем адрес с Nominatim API
+      
       fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}`
       )
@@ -58,12 +60,12 @@ const LocationPicker = ({ setFormData }) => {
         .then((data) => {
           setFormData((prev) => ({
             ...prev,
-            address: data.display_name || "Адрес не найден",
+            address: data.display_name || t("address not found", { ns: "paymentForm" }),
           }));
         })
-        .catch((err) => console.error("Ошибка получения адреса:", err));
+        .catch((err) => console.error(t("address not found", { ns: "paymentForm" }), err));
 
-      toast.info("📍 Адрес выбран!");
+      toast.info(t("address selected", { ns: "paymentForm" }));
     },
   });
   return null;
@@ -78,7 +80,7 @@ const PaymentForm = ({
   const [loading, setLoading] = useState(false);
   const stripe = useStripe();
   const elements = useElements();
-  const [deliveryCost, setDeliveryCost] = useState(0); // Начальная стоимость
+  const [deliveryCost, setDeliveryCost] = useState(0); 
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -88,7 +90,7 @@ const PaymentForm = ({
     address: "",
     apartment: "",
     comment: "",
-    latitude: 59.437, // Координаты Таллинна (пример)
+    latitude: 59.437, 
     longitude: 24.753,
   });
 
@@ -100,18 +102,18 @@ const PaymentForm = ({
         longitude,
       }));
 
-      // Получаем адрес по координатам
+   
       fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
       )
-        .then((res) => res.json())
+       .then((res) => res.json())
         .then((data) => {
           setFormData((prev) => ({
             ...prev,
-            address: data.display_name || "Адрес не найден",
+            address: data.display_name || t("address not found", { ns: "paymentForm" }),
           }));
         })
-        .catch((err) => console.error("Ошибка получения адреса:", err));
+        .catch((err) => console.error(t("fetching address error", { ns: "paymentForm" }), err));
     };
 
     if (navigator.geolocation) {
@@ -120,9 +122,9 @@ const PaymentForm = ({
           updateLocation(position.coords.latitude, position.coords.longitude);
         },
         async (error) => {
-          console.warn("⚠️ Геолокация отключена, используем IP-геолокацию...");
+          console.warn(t("geolocation disabled", { ns: "paymentForm" }));
 
-          // 🔥 Используем IP-геолокацию
+     
           try {
             const res = await fetch(
               "https://ipinfo.io/json?token=e66bf7a246010e"
@@ -130,10 +132,9 @@ const PaymentForm = ({
             const data = await res.json();
             const [lat, lon] = data.loc.split(",");
 
-            console.log("🌍 IP-геолокация:", lat, lon);
             updateLocation(parseFloat(lat), parseFloat(lon));
           } catch (err) {
-            console.error("Ошибка получения IP-геолокации:", err);
+            console.error(t("ip geolocation error", { ns: "paymentForm" }), err);
           }
         },
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
@@ -143,7 +144,7 @@ const PaymentForm = ({
 
   useEffect(() => {
     const updateDeliveryCost = async () => {
-      if (!formData.latitude || !formData.longitude) return; // Ждём координаты
+      if (!formData.latitude || !formData.longitude) return; 
 
       const newDeliveryCost = await fetchDeliveryCost(
         totalPrice,
@@ -153,12 +154,12 @@ const PaymentForm = ({
 
       setDeliveryCost(newDeliveryCost);
       if (onDeliveryCostChange) {
-        onDeliveryCostChange(newDeliveryCost); // ✅ Сообщаем Basket
+        onDeliveryCostChange(newDeliveryCost);
       }
     };
 
     updateDeliveryCost();
-  }, [totalPrice, formData.latitude, formData.longitude, onDeliveryCostChange]); // Пересчёт при изменении суммы или координат
+  }, [totalPrice, formData.latitude, formData.longitude, onDeliveryCostChange]);
 
   const searchAddress = async () => {
     if (!formData.address) return;
@@ -176,13 +177,12 @@ const PaymentForm = ({
           latitude: parseFloat(location.lat),
           longitude: parseFloat(location.lon),
         }));
-        toast.success("📍 Адрес найден!");
+        toast.success(t("address found", { ns: "paymentForm" }));
       } else {
-        toast.error("❌ Адрес не найден!");
+        toast.error(t("address not found", { ns: "paymentForm" }));
       }
     } catch (error) {
-      console.error("Ошибка поиска адреса:", error);
-      toast.error("❌ Ошибка при поиске адреса.");
+      toast.error(t("address search error", { ns: "paymentForm" }));
     }
   };
 
@@ -202,9 +202,9 @@ const PaymentForm = ({
             lastName: profile.lastName || "",
             email: profile.email || "",
             phone: profile.phone || "",
-            apartment: parsedData.apartment || prev.apartment,  // ✅ Восстанавливаем квартиру
-            comment: parsedData.comment || prev.comment,  // ✅ Восстанавливаем комментарий
-            address: parsedData.address || prev.address,  // ✅ Восстанавливаем адрес
+            apartment: parsedData.apartment || prev.apartment, 
+            comment: parsedData.comment || prev.comment,  
+            address: parsedData.address || prev.address,  
             latitude: parsedData.latitude || prev.latitude,
             longitude: parsedData.longitude || prev.longitude,
           }));
@@ -244,7 +244,7 @@ const PaymentForm = ({
     setFormData((prev) => {
       const updatedData = { ...prev, [name]: value };
   
-      // ✅ Сохраняем данные в `localStorage` даже для авторизованных пользователей
+  
       localStorage.setItem("userFormData", JSON.stringify(updatedData));
   
       return updatedData;
@@ -261,13 +261,13 @@ const PaymentForm = ({
     event.preventDefault();
   
     if (!stripe || !elements) {
-      toast.error("Ошибка инициализации платежной системы. Попробуйте позже.");
+      toast.error(t("payment initialization error", { ns: "paymentForm" }));
       return;
     }
   
     const card = elements.getElement(CardNumberElement);
     if (!card) {
-      toast.error("Ошибка: элемент карты не найден.");
+      toast.error(t("card element not found", { ns: "paymentForm" }));
       return;
     }
   
@@ -282,12 +282,12 @@ const PaymentForm = ({
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success("Платеж успешно обработан!");
+        toast.success(t("payment success", { ns: "paymentForm" }));
   
         if (!user.isAuth && saveData) {
           localStorage.setItem("userFormData", JSON.stringify(formData));
         } else if (user.isAuth) {
-          // ✅ Сохраняем только `apartment` и `comment` для авторизованных пользователей
+        
           const savedData = JSON.parse(localStorage.getItem("userFormData")) || {};
           savedData.apartment = formData.apartment;
           savedData.comment = formData.comment;
@@ -296,11 +296,10 @@ const PaymentForm = ({
           localStorage.removeItem("userFormData");
         }
   
-        // Передаём результат в Basket.js
         onPaymentSuccess(paymentMethod, formData);
       }
     } catch (err) {
-      toast.error("Произошла ошибка при обработке платежа.");
+      toast.error(t("payment processing error", { ns: "paymentForm" }));
     } finally {
       setLoading(false);
     }
@@ -318,10 +317,10 @@ const PaymentForm = ({
       <Row className="mb-1">
         <Col md={6}>
           <Form.Group controlId="firstName">
-            <Form.Label>Имя</Form.Label>
+            <Form.Label>{t("first name", { ns: "paymentForm" })}</Form.Label>
             <Form.Control
               type="text"
-              placeholder="Введите имя"
+              placeholder={t("enter first name", { ns: "paymentForm" })}
               name="firstName"
               value={formData.firstName}
               onChange={handleChange}
@@ -331,10 +330,10 @@ const PaymentForm = ({
         </Col>
         <Col md={6}>
           <Form.Group controlId="lastName">
-            <Form.Label>Фамилия</Form.Label>
+            <Form.Label>{t("last name", { ns: "paymentForm" })}</Form.Label>
             <Form.Control
               type="text"
-              placeholder="Введите фамилию"
+              placeholder={t("enter last name", { ns: "paymentForm" })}
               name="lastName"
               value={formData.lastName}
               onChange={handleChange}
@@ -346,10 +345,10 @@ const PaymentForm = ({
       <Row className="mb-1">
         <Col md={6}>
           <Form.Group controlId="email">
-            <Form.Label>Email</Form.Label>
+            <Form.Label>{t("email", { ns: "paymentForm" })}</Form.Label>
             <Form.Control
               type="email"
-              placeholder="Введите email"
+              placeholder={t("enter email", { ns: "paymentForm" })}
               name="email"
               value={formData.email}
               onChange={handleChange}
@@ -359,10 +358,10 @@ const PaymentForm = ({
         </Col>
         <Col md={6}>
           <Form.Group controlId="phone">
-            <Form.Label>Телефон</Form.Label>
+            <Form.Label>{t("phone", { ns: "paymentForm" })}</Form.Label>
             <Form.Control
               type="text"
-              placeholder="Введите телефон"
+              placeholder={t("enter phone", { ns: "paymentForm" })}
               name="phone"
               value={formData.phone}
               onChange={handleChange}
@@ -376,9 +375,8 @@ const PaymentForm = ({
 
       <Row className="mb-1">
 
-        {/* Поле ввода адреса */}
         <Form.Group className="mb-1" controlId="address">
-          <Form.Label>Адрес</Form.Label>
+          <Form.Label>{t("address", { ns: "paymentForm" })}</Form.Label>
           <div className="d-flex">
             <Form.Control
               type="text"
@@ -387,7 +385,7 @@ const PaymentForm = ({
               onChange={(e) =>
                 setFormData({ ...formData, address: e.target.value })
               }
-              placeholder="Введите адрес"
+              placeholder={t("enter address", { ns: "paymentForm" })}
               onFocus={(e) => e.target.select()}
             />
             <Button onClick={searchAddress} variant="primary" className="ms-2">
@@ -417,7 +415,7 @@ const PaymentForm = ({
               latitude={formData.latitude}
               longitude={formData.longitude}
             />{" "}
-            {/* ✅ Авто-переход к точке */}
+         
             <LocationPicker setFormData={setFormData} />
             <Marker
               position={[formData.latitude, formData.longitude]}
@@ -428,10 +426,10 @@ const PaymentForm = ({
 
         <Col md={6}>
           <Form.Group controlId="apartment">
-            <Form.Label>Номер квартиры</Form.Label>
+            <Form.Label>{t("apartment", { ns: "paymentForm" })}</Form.Label>
             <Form.Control
               type="text"
-              placeholder="Введите номер квартиры"
+              placeholder={t("enter apartment number", { ns: "paymentForm" })}
               name="apartment"
               value={formData.apartment}
               onChange={handleChange}
@@ -441,11 +439,11 @@ const PaymentForm = ({
 
         <Col md={6}>
           <Form.Group controlId="comment">
-            <Form.Label>Комментарий</Form.Label>
+            <Form.Label>{t("comment", { ns: "paymentForm" })}</Form.Label>
             <Form.Control
               as="textarea"
               rows={1}
-              placeholder="Добавьте комментарий"
+              placeholder={t("add comment", { ns: "paymentForm" })}
               name="comment"
               value={formData.comment}
               onChange={handleChange}
@@ -456,14 +454,14 @@ const PaymentForm = ({
       <Form.Group className="mb-3">
         <Form.Check
           type="checkbox"
-          label="Сохранить адрес и комментарий"
+          label={t("save address and comment", { ns: "paymentForm" })}
           checked={saveData}
           onChange={handleSaveDataChange}
         />
       </Form.Group>
-      <h4 className="mb-1 text-center">Данные карты</h4>
+      <h4 className="mb-1 text-center">{t("card details", { ns: "paymentForm" })}</h4>
       <Form.Group className="mb-3">
-        <Form.Label>Номер карты</Form.Label>
+        <Form.Label>{t("card number", { ns: "paymentForm" })}</Form.Label>
         <div className="border rounded p-2">
           <CardNumberElement />
         </div>
@@ -471,7 +469,7 @@ const PaymentForm = ({
       <Row className="mb-2">
         <Col md={6}>
           <Form.Group>
-            <Form.Label>Срок действия</Form.Label>
+            <Form.Label>{t("expiry date", { ns: "paymentForm" })}</Form.Label>
             <div className="border rounded p-2">
               <CardExpiryElement />
             </div>
@@ -479,7 +477,7 @@ const PaymentForm = ({
         </Col>
         <Col md={6}>
           <Form.Group>
-            <Form.Label>CVC</Form.Label>
+            <Form.Label>{t("cvc", { ns: "paymentForm" })}</Form.Label>
             <div className="border rounded p-2">
               <CardCvcElement />
             </div>
@@ -494,8 +492,8 @@ const PaymentForm = ({
           variant="primary"
         >
           {loading
-            ? "Обработка..."
-            : `Оплатить ${(totalPrice + deliveryCost).toFixed(2)} $`}
+            ? t("processing", { ns: "paymentForm" })
+            : `${t("pay", { ns: "paymentForm" })} ${(totalPrice + deliveryCost).toFixed(2)} $`}
         </Button>
       </div>
     </Form>
