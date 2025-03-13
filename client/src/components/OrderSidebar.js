@@ -11,6 +11,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { useTranslation } from "react-i18next";
 import styles from "./OrderSidebar.module.css";
 
 const socket = io("https://zang-4.onrender.com");
@@ -28,6 +29,7 @@ const OrderSidebar = () => {
   const [isPreorder, setIsPreorder] = useState(false);
   const [preorderDate, setPreorderDate] = useState(null);
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
 
   const loadOrder = async () => {
     try {
@@ -50,9 +52,9 @@ const OrderSidebar = () => {
         if (activeOrder.processingTime) {
           const [value, unit] = activeOrder.processingTime.split(" "); // Разделяем число и единицу измерения
 
-          if (unit.includes("мин")) {
+          if (unit.includes(`${t("minutes", { ns: "orderSidebar" })}`)) {
             timeInSeconds = parseInt(value, 10) * 60; // Минуты → секунды
-          } else if (unit.includes("дн")) {
+          } else if (unit.includes(`${t("days", { ns: "orderSidebar" })}`)) {
             timeInSeconds = parseInt(value, 10) * 24 * 60 * 60; // Дни → секунды
           }
 
@@ -111,9 +113,9 @@ const OrderSidebar = () => {
           const [value, unit] = updatedOrder.processingTime.split(" "); // Разделяем число и единицу измерения
           let timeInSeconds = 0;
         
-          if (unit.includes("мин")) {
+           if (unit.includes(`${t("minutes", { ns: "orderSidebar" })}`)) {
             timeInSeconds = parseInt(value, 10) * 60; // Минуты → секунды
-          } else if (unit.includes("дн")) {
+          } else if (unit.includes(`${t("days", { ns: "orderSidebar" })}`)) {
             timeInSeconds = parseInt(value, 10) * 24 * 60 * 60; // Дни → секунды
           }
         
@@ -175,7 +177,7 @@ const OrderSidebar = () => {
   }, [timeLeft]);
 
   const formatTime = (seconds) => {
-    if (seconds <= 0) return "0 секунд"; // Если время вышло
+    if (seconds <= 0) return `${t("zero seconds", { ns: "orderSidebar" })}`; // Если время вышло
   
     const days = Math.floor(seconds / (24 * 60 * 60)); // Количество дней
     const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60)); // Оставшиеся часы
@@ -183,10 +185,10 @@ const OrderSidebar = () => {
     const secs = seconds % 60; // Оставшиеся секунды
   
     let result = "";
-    if (days > 0) result += `${days} дн `;
-    if (hours > 0) result += `${hours} ч `;
-    if (mins > 0) result += `${mins} мин `;
-    if (secs > 0 && days === 0 && hours === 0) result += `${secs} сек`; // Показываем секунды только если нет дней/часов
+    if (days > 0) result += `${days} ${t("days", { ns: "orderSidebar" })} `;
+    if (hours > 0) result += `${hours} ${t("hours", { ns: "orderSidebar" })} `;
+    if (mins > 0) result += `${mins} ${t("minutes", { ns: "orderSidebar" })} `;
+    if (secs > 0 && days === 0 && hours === 0) result += `${secs} ${t("seconds", { ns: "orderSidebar" })} `; // Показываем секунды только если нет дней/часов
   
     return result.trim(); // Убираем лишние пробелы
   };
@@ -237,7 +239,7 @@ const OrderSidebar = () => {
     }
   };
 
-  return (
+ return (
     <>
       {showIcon && (
         <div className={styles.floatingIcon} onClick={() => setIsOpen(true)}>
@@ -245,10 +247,9 @@ const OrderSidebar = () => {
         </div>
       )}
 
-      {/* 🛒 Модальное окно с информацией о доставке */}
       <div className={`${styles.sidebar} ${isOpen ? styles.open : ""}`}>
         <div className={styles.header}>
-          <h3>Статус доставки</h3>
+          <h3>{t("delivery status", { ns: "orderSidebar" })}</h3>
           <button onClick={() => setIsOpen(false)}>×</button>
         </div>
 
@@ -256,7 +257,7 @@ const OrderSidebar = () => {
           <div>
             {isPreorder ? (
               <p className={styles.preorderInfo}>
-                <strong>Предзаказ:</strong> 📅 Доставка запланирована на{" "}
+                <strong>{t("preorder", { ns: "orderSidebar" })}</strong>{t("scheduled delivery", { ns: "orderSidebar" })}{" "}
                 <span className={styles.preorderDate}>
                   {new Date(preorderDate).toLocaleString("ru-RU", {
                     year: "numeric",
@@ -267,44 +268,40 @@ const OrderSidebar = () => {
                   })}
                 </span>
               </p>
-            ) : (
+            ) : (  
               <p>
-                <strong>Статус:</strong>
+                <strong>{t("status", { ns: "orderSidebar" })}</strong>
                 <span className={styles.statusText}>
                   {!order?.status ||
                     (order?.status === "Pending" &&
-                      "🕒 Ожидаем подтверждение заказа")}
+                      `${t("waiting for order confirmation", { ns: "orderSidebar" })}`)}
                   {order?.status === "Waiting for courier" &&
-                    "✅ Заказ принят складом"}
+                    `${t("order accepted", { ns: "orderSidebar" })}`}
                   {order?.status === "Ready for pickup" &&
-                    "👨‍🍳 Заказ готов, ждет курьера"}
-                  {order?.status === "Picked up" && "🚗 Курьер в пути"}
+                    `${t("order is ready waiting for the courier", { ns: "orderSidebar" })}`}
+                  {order?.status === "Picked up" && `${t("courier is on the way", { ns: "orderSidebar" })}`}
                   {order?.status === "Arrived at destination" &&
-                    "🏠 Курьер у двери"}
+                    `${t("courier has arrived", { ns: "orderSidebar" })}`}
                   {order?.status === "Delivered" &&
-                    "✅ Заказ успешно доставлен"}
+                    `${t("order delivered", { ns: "orderSidebar" })}`}
                 </span>
               </p>
             )}
-
-            {/* ✅ Отображение времени в зависимости от статуса заказа */}
             {!order.preorderDate &&
               order?.status === "Waiting for courier" &&
               timeLeft !== null && (
                 <p>
-                  <strong>Примерное время приготовления:</strong> ⏳{" "}
+                  <strong>{t("preparation time", { ns: "orderSidebar" })}</strong> ⏳{" "}
                   {formatTime(timeLeft)}
                 </p>
               )}
 
             {order?.status === "Picked up" && timeLeft !== null && (
               <p>
-                <strong>Примерное время в пути:</strong> 🚗{" "}
+                <strong>{t("time in transit", { ns: "orderSidebar" })}</strong> 🚗{" "}
                 {formatTime(timeLeft)}
               </p>
             )}
-
-            {/* 🔥 Будущее место для карты */}
             <div className={styles.mapContainer}>
               <MapContainer
                 center={[order.deliveryLat, order.deliveryLng]}
@@ -335,27 +332,23 @@ const OrderSidebar = () => {
                 )}
               </MapContainer>
             </div>
-
-            {/* ✅ Кнопка “Заказ доставлен” */}
             {(order.status === "Delivered" || order.status === "Completed") && (
               <button
                 className={styles.completeButton}
                 onClick={handleCompleteOrder}
               >
-                🚀 Подтвердить доставку
+                {t("confirm delivery", { ns: "orderSidebar" })}
               </button>
             )}
-
-            {/* 🔥 Кнопка "Мои заказы" */}
             <button
               className={styles.orderHistoryButton}
               onClick={() => navigate("/profile")}
             >
-              📜 Мои заказы
+              {t("my orders", { ns: "orderSidebar" })}
             </button>
           </div>
         ) : (
-          <p>У вас нет активных заказов.</p>
+          <p>{t("no active orders", { ns: "orderSidebar" })}</p>
         )}
       </div>
     </>
