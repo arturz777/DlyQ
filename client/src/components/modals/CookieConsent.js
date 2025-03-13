@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import styles from "./CookieConsent.module.css";
 
 const CookieConsent = () => {
@@ -6,6 +7,7 @@ const CookieConsent = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [analytics, setAnalytics] = useState(false);
   const [marketing, setMarketing] = useState(false);
+  const { t, i18n } = useTranslation();
 
 
   useEffect(() => {
@@ -48,35 +50,35 @@ const CookieConsent = () => {
       {!showSettings ? (
         <div className={styles.cookieContent}>
           <p>
-            Мы используем cookies для улучшения работы сайта. Подробнее в 
-            <a href="/cookie-policy"> Политике использования cookies</a>.
+          {t("cookies_info", { ns: "cookieConsent" })}
+            <a href="/cookie-policy"> {t("cookies_policy", { ns: "cookieConsent" })}</a>.
           </p>
           <div className={styles.buttons}>
-            <button onClick={handleAcceptAll} className={styles.accept}>Принять все</button>
-            <button onClick={() => setShowSettings(true)} className={styles.settings}>Настроить</button>
-            <button onClick={handleNecessaryOnly} className={styles.reject}>Оставить только необходимые</button>
+            <button onClick={handleAcceptAll} className={styles.accept}>{t("Accept all", { ns: "cookieConsent" })}</button>
+            <button onClick={() => setShowSettings(true)} className={styles.settings}>{t("customize", { ns: "cookieConsent" })}</button>
+            <button onClick={handleNecessaryOnly} className={styles.reject}>{t("only_necessary", { ns: "cookieConsent" })}</button>
           </div>
         </div>
       ) : (
         <div className={styles.cookieContent}>
-          <h2>Настройки cookies</h2>
+          <h2>{t("cookies_settings", { ns: "cookieConsent" })}</h2>
           <label>
             <input
               type="checkbox"
               checked={analytics}
               onChange={() => setAnalytics(!analytics)}
-            /> Разрешить аналитические cookies
+            /> {t("allow_analytics_cookies", { ns: "cookieConsent" })}
           </label>
           <label>
             <input
               type="checkbox"
               checked={marketing}
               onChange={() => setMarketing(!marketing)}
-            /> Разрешить маркетинговые cookies
+            /> {t("allow_marketing_cookies", { ns: "cookieConsent" })}
           </label>
           <div className={styles.buttons}>
-            <button onClick={handleSaveSettings} className={styles.accept}>Сохранить настройки</button>
-            <button onClick={() => setShowSettings(false)} className={styles.settings}>Назад</button>
+            <button onClick={handleSaveSettings} className={styles.accept}>{t("save_settings", { ns: "cookieConsent" })}</button>
+            <button onClick={() => setShowSettings(false)} className={styles.settings}>{t("back", { ns: "cookieConsent" })}</button>
           </div>
         </div>
       )}
