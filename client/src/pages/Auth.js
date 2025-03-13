@@ -8,6 +8,7 @@ import { LOGIN_ROUTE, REGISTRATION_ROUTE, SHOP_ROUTE } from "../utils/consts";
 import { login, registration } from "../http/userAPI";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
+import { useTranslation } from "react-i18next";
 import styles from "./Auth.module.css";
 
 const Auth = observer(() => {
@@ -21,6 +22,7 @@ const Auth = observer(() => {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const { t, i18n } = useTranslation();
 
   const click = async () => {
     try {
@@ -41,17 +43,21 @@ const Auth = observer(() => {
   return (
     <div className={styles.authWrapper}>
       <div className={styles.authContainer}>
-        <h2 className={styles.authTitle}>{isLogin ? "Авторизация" : "Регистрация"}</h2>
+        <h2 className={styles.authTitle}>
+          {isLogin
+            ? t("authorization", { ns: "auth" })
+            : t("registration", { ns: "auth" })}
+        </h2>
         <form className={styles.authForm}>
           <input
             className={styles.inputField}
-            placeholder="Введите вашу эл. почту"
+            placeholder={t("enter your email", { ns: "auth" })}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
           <input
             className={styles.inputField}
-            placeholder="Введите ваш пароль"
+            placeholder={t("enter your password", { ns: "auth" })}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
@@ -60,19 +66,19 @@ const Auth = observer(() => {
             <>
               <input
                 className={styles.inputField}
-                placeholder="Введите ваше имя"
+                placeholder={t("enter your first name", { ns: "auth" })}
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
               />
               <input
                 className={styles.inputField}
-                placeholder="Введите вашу фамилию"
+                placeholder={t("enter your last name", { ns: "auth" })}
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
               />
               <input
                 className={styles.inputField}
-                placeholder="Введите ваш телефон"
+                placeholder={t("enter your phone", { ns: "auth" })}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
@@ -81,45 +87,52 @@ const Auth = observer(() => {
           <div className={styles.authSwitch}>
             {isLogin ? (
               <span>
-                Нет аккаунта?{" "}
-                <NavLink to={REGISTRATION_ROUTE}>Регистрация</NavLink>
+                {t("no account", { ns: "auth" })}{" "}
+                <NavLink to={REGISTRATION_ROUTE}>
+                  {t("register", { ns: "auth" })}
+                </NavLink>
               </span>
             ) : (
               <span>
-                Уже есть аккаунт? <NavLink to={LOGIN_ROUTE}>Войти</NavLink>
+                {t("already have an account", { ns: "auth" })}{" "}
+                <NavLink to={LOGIN_ROUTE}>{t("login", { ns: "auth" })}</NavLink>
               </span>
             )}
           </div>
-          {/* Чекбокс согласия */}
+
           {!isLogin && (
-  <div className={styles.checkboxContainer}>
-    <input
-      type="checkbox"
-      id="policyCheckbox"
-      checked={agreed}
-      onChange={() => setAgreed(!agreed)}
-    />
-    <label htmlFor="policyCheckbox">
-      <span>
-        Я ознакомился(-ась) и согласен(-на) с{" "}
-        <a href="/terms-of-purchase" target="_blank">Условиями покупки в интернет-магазине</a>
-        <a href="/privacy-policy" target="_blank">Политикой конфиденциальности</a>{" "}
-        <a href="/site-rules" target="_blank">Правилами пользования веб-сайтом</a>
-      </span>
-    </label>
-  </div>
-)}
-
-
-
-
+            <div className={styles.checkboxContainer}>
+              <input
+                type="checkbox"
+                id="policyCheckbox"
+                checked={agreed}
+                onChange={() => setAgreed(!agreed)}
+              />
+              <label htmlFor="policyCheckbox">
+                <span>
+                  {t("agree to terms", { ns: "auth" })}{" "}
+                  <a href="/terms-of-purchase" target="_blank">
+                    {t("terms of purchase", { ns: "auth" })}
+                  </a>
+                  <a href="/privacy-policy" target="_blank">
+                    {t("privacy policy", { ns: "auth" })}
+                  </a>{" "}
+                  <a href="/site-rules" target="_blank">
+                    {t("site rules", { ns: "auth" })}
+                  </a>
+                </span>
+              </label>
+            </div>
+          )}
           <button
-          type="button"
+            type="button"
             className={styles.authButton}
             onClick={click}
             disabled={!agreed && !isLogin}
           >
-            {isLogin ? "Войти" : "Регистрация"}
+            {isLogin
+              ? t("login", { ns: "auth" })
+              : t("register", { ns: "auth" })}
           </button>
         </form>
       </div>
