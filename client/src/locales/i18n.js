@@ -13,6 +13,7 @@ import returnPolicyEst from './est/returnPolicy.json';
 import termsOfServiceEst from './est/termsOfService.json';
 import privacyPolicyEst from './est/privacyPolicy.json';
 import deliveryPolicyEst from './est/deliveryPolicy.json';
+import cookieConsentEst from './est/cookieConsent.json';
 
 import navbarEn from './en/navbar.json';
 import searchbarEn from './en/searchbar.json';
@@ -24,6 +25,7 @@ import returnPolicyEn from './en/returnPolicy.json';
 import termsOfServiceEn from './en/termsOfService.json';
 import privacyPolicyEn from './en/privacyPolicy.json';
 import deliveryPolicyEn from './en/deliveryPolicy.json';
+import cookieConsentEn from './en/cookieConsent.json';
 
 import navbarRu from './ru/navbar.json';
 import searchbarRu from './ru/searchbar.json';
@@ -35,6 +37,7 @@ import returnPolicyRu from './ru/returnPolicy.json';
 import termsOfServiceRu from './ru/termsOfService.json';
 import privacyPolicyRu from './ru/privacyPolicy.json';
 import deliveryPolicyRu from './ru/deliveryPolicy.json';
+import cookieConsentRu from './ru/cookieConsent.json';
 
 
 i18n
@@ -53,6 +56,7 @@ i18n
         termsOfService: termsOfServiceEn,
         privacyPolicy: privacyPolicyEn,
         deliveryPolicy: deliveryPolicyEn,
+        cookieConsent: cookieConsentEn,
       },
       ru: {
         navbar: navbarRu,
@@ -65,6 +69,7 @@ i18n
         termsOfService: termsOfServiceRu,
         privacyPolicy: privacyPolicyRu,
         deliveryPolicy: deliveryPolicyRu,
+        cookieConsent: cookieConsentRu,
       },
       est: {
         navbar: navbarEst,
@@ -77,6 +82,7 @@ i18n
         termsOfService: termsOfServiceEst,
         privacyPolicy: privacyPolicyEst,
         deliveryPolicy: deliveryPolicyEst,
+        cookieConsent: cookieConsentEst,
       },
     },
 
