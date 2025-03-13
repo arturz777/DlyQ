@@ -1,4 +1,3 @@
-// client/src/components/PaymentForm.js
 import React, { useState, useEffect, useContext } from "react";
 import {
   MapContainer,
@@ -81,6 +80,7 @@ const PaymentForm = ({
   const stripe = useStripe();
   const elements = useElements();
   const [deliveryCost, setDeliveryCost] = useState(0); 
+  const { t } = useTranslation("paymentForm");
 
   const [formData, setFormData] = useState({
     firstName: "",
