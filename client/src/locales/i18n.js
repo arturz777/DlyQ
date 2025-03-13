@@ -17,6 +17,7 @@ import cookieConsentEst from './est/cookieConsent.json';
 import footerEst from './est/footer.json';
 import orderSidebarEst from './est/orderSidebar.json';
 import paymentFormEst from './est/paymentForm.json';
+import authEst from './est/auth.json';
 
 import navbarEn from './en/navbar.json';
 import searchbarEn from './en/searchbar.json';
@@ -32,6 +33,7 @@ import cookieConsentEn from './en/cookieConsent.json';
 import footerEn from './en/footer.json';
 import orderSidebarEn from './en/orderSidebar.json';
 import paymentFormEn from './en/paymentForm.json';
+import authEn from './en/auth.json';
 
 import navbarRu from './ru/navbar.json';
 import searchbarRu from './ru/searchbar.json';
@@ -47,6 +49,7 @@ import cookieConsentRu from './ru/cookieConsent.json';
 import footerRu from './ru/footer.json';
 import orderSidebarRu from './ru/orderSidebar.json';
 import paymentFormRu from './ru/paymentForm.json';
+import authRu from './ru/auth.json';
 
 
 i18n
@@ -69,6 +72,7 @@ i18n
         footer: footerEn,
         orderSidebar: orderSidebarEn,
         paymentForm: paymentFormEn,
+        auth: authEn,
       },
       ru: {
         navbar: navbarRu,
@@ -85,6 +89,7 @@ i18n
         footer: footerRu,
         orderSidebar: orderSidebarRu,
         paymentForm: paymentFormRu,
+        auth: authRu,
       },
       est: {
         navbar: navbarEst,
@@ -101,6 +106,7 @@ i18n
         footer: footerEst,
         orderSidebar: orderSidebarEst,
         paymentForm: paymentFormEst,
+        auth: authEst,
       },
     },
 
