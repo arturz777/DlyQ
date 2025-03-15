@@ -1,0 +1,18 @@
+{
+	"not enough stock": "❌ Laos pole piisavalt kaupa!",
+	"select an option": "Valige valik",
+	"select an option before payment": "❌ Valige enne maksmist valik!",
+	"order placed successfully": "✅ Teie tellimus on edukalt esitatud!",
+	"order placement error": "❌ Tellimuse esitamisel tekkis viga.",
+	"error creating order": "Viga tellimuse loomisel:",
+	"not enough stock for": "❌ Laos pole piisavalt kaupa:",
+	"cart is empty": "Ostukorv on tühi",
+	"delete": "Kustuta",
+	"preorder label": "Soovin teha ettetellimuse (määrake kohaletoimetamise kuupäev ja kellaaeg)",
+	"total": "Kokku",
+	"delivery": "Kohaletoimetamine",
+	"Товар не найден": "❌ Toodet ei leitud!",
+	"Опция не найдена": "❌ Valik ei leitud!",
+	"Ошибка сервера при проверке наличия товара.": "❌ Serveri viga laoseisu kontrollimisel.",
+	"Товар в наличии": "✅ Toode on laos"
+  }
