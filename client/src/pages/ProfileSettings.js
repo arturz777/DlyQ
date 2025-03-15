@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import { fetchProfile, updateProfile, changePassword } from "../http/userAPI";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { useTranslation } from "react-i18next";
 import styles from "./ProfileSettings.module.css";
 
 const ProfileSettings = ({ onBack }) => {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const [editField, setEditField] = useState(null);
   const [errors, setErrors] = useState({}); // ✅ Добавили useState для ошибок
   const [profile, setProfile] = useState({
@@ -40,22 +42,26 @@ const ProfileSettings = ({ onBack }) => {
     setErrors({});
   };
 
-  const handleSave = async () => {
+ const handleSave = async () => {
     if (editField === "password") {
       await handlePasswordChange();
     } else {
       if (!profile[editField]) {
-        setErrors((prev) => ({ ...prev, [editField]: "Заполните поле" }));
+        setErrors((prev) => ({
+          ...prev,
+          [editField]: t("emptyField", { ns: "profileSettings" }),
+        }));
         return;
       }
 
       try {
         await updateProfile(profile);
         setEditField(null);
-        toast.success("Данные успешно обновлены!");
+        toast.success(t("updateSuccess", { ns: "profileSettings" }));
       } catch (error) {
         toast.error(
-          error.response?.data?.message || "Ошибка обновления данных"
+          error.response?.data?.message ||
+            t("updateError", { ns: "profileSettings" })
         );
       }
     }
@@ -66,15 +72,21 @@ const ProfileSettings = ({ onBack }) => {
 
     if (!currentPassword || !newPassword || !confirmPassword) {
       setErrors({
-        currentPassword: !currentPassword ? "Заполните поле" : "",
-        newPassword: !newPassword ? "Заполните поле" : "",
-        confirmPassword: !confirmPassword ? "Заполните поле" : "",
+        currentPassword: !currentPassword
+          ? t("emptyField", { ns: "profileSettings" })
+          : "",
+        newPassword: !newPassword
+          ? t("emptyField", { ns: "profileSettings" })
+          : "",
+        confirmPassword: !confirmPassword
+          ? t("emptyField", { ns: "profileSettings" })
+          : "",
       });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error("Новый пароль и подтверждение не совпадают");
+      toast.error(t("passwordMismatch", { ns: "profileSettings" }));
       return;
     }
 
@@ -86,9 +98,12 @@ const ProfileSettings = ({ onBack }) => {
         confirmPassword: "",
       });
       setEditField(null);
-      toast.success("Пароль успешно обновлен!");
+      toast.success(t("passwordUpdateSuccess", { ns: "profileSettings" }));
     } catch (error) {
-      toast.error(error.response?.data?.message || "Ошибка смены пароля");
+      toast.error(
+        error.response?.data?.message ||
+          t("passwordUpdateError", { ns: "profileSettings" })
+      );
     }
 
     useEffect(() => {
@@ -126,21 +141,23 @@ const ProfileSettings = ({ onBack }) => {
       <div className={styles.mainContent}>
         <div className={styles.profileButtonBack}>
           <button className={styles.backButton} onClick={() => navigate(-1)}>
-            ← Назад
+            {t("back", { ns: "profileSettings" })}
           </button>
         </div>
 
         <div className={styles.profileContainer}>
-          <h1 className={styles.settingsHeader}>Настройки профиля</h1>
+          <h1 className={styles.settingsHeader}>
+            {t("settingsHeader", { ns: "profileSettings" })}
+          </h1>
 
           {["firstName", "lastName", "phone"].map((field) => (
             <div key={field} className={styles.profileItem}>
               <span>
                 {field === "firstName"
-                  ? "Имя"
+                  ? t("firstName", { ns: "profileSettings" })
                   : field === "lastName"
-                  ? "Фамилия"
-                  : "Телефон"}
+                  ? t("lastName", { ns: "profileSettings" })
+                  : t("phone", { ns: "profileSettings" })}
                 :
               </span>
               {editField === field ? (
@@ -165,13 +182,15 @@ const ProfileSettings = ({ onBack }) => {
                   editField === field ? handleSave() : handleEdit(field)
                 }
               >
-                {editField === field ? "Сохранить" : "Редактировать"}
+                {editField === field
+                  ? t("save", { ns: "profileSettings" })
+                  : t("edit", { ns: "profileSettings" })}
               </button>
             </div>
           ))}
 
           <div className={styles.profileItem}>
-            <span>Пароль:</span>
+            <span>{t("password", { ns: "profileSettings" })}</span>
             {editField === "password" ? (
               <div className={styles.passwordInputs}>
                 {["currentPassword", "newPassword", "confirmPassword"].map(
@@ -181,10 +200,10 @@ const ProfileSettings = ({ onBack }) => {
                         type="password"
                         placeholder={
                           field === "currentPassword"
-                            ? "Текущий пароль"
+                            ? t("currentPassword", { ns: "profileSettings" })
                             : field === "newPassword"
-                            ? "Новый пароль"
-                            : "Подтвердите пароль"
+                            ? t("newPassword", { ns: "profileSettings" })
+                            : t("confirmPassword", { ns: "profileSettings" })
                         }
                         value={passwordData[field]}
                         onChange={(e) =>
@@ -212,57 +231,61 @@ const ProfileSettings = ({ onBack }) => {
                 editField === "password" ? handleSave() : handleEdit("password")
               }
             >
-              {editField === "password" ? "Сохранить" : "Редактировать"}
+              {editField === "password"
+                ? t("save", { ns: "profileSettings" })
+                : t("edit", { ns: "profileSettings" })}
             </button>
           </div>
 
           <div className={styles.cookieSettings}>
-  <h3 className={styles.cookieHeaderTitle}>Настройки cookies</h3>
+            <h3 className={styles.cookieHeaderTitle}>
+              {t("cookieHeader", { ns: "profileSettings" })}
+            </h3>
 
-  <label className={styles.cookieOption}>
-    <div className={styles.checkboxWrapper}>
-      <input
-        type="checkbox"
-        checked={cookiePreferences.analytics}
-        onChange={() => handleCookieChange("analytics")}
-      />
-    </div>
-    <span>Разрешить аналитические cookies</span>
-  </label>
+            <label className={styles.cookieOption}>
+              <div className={styles.checkboxWrapper}>
+                <input
+                  type="checkbox"
+                  checked={cookiePreferences.analytics}
+                  onChange={() => handleCookieChange("analytics")}
+                />
+              </div>
+              <span>{t("analytics", { ns: "profileSettings" })}</span>
+            </label>
 
-  <label className={styles.cookieOption}>
-    <div className={styles.checkboxWrapper}>
-      <input
-        type="checkbox"
-        checked={cookiePreferences.marketing}
-        onChange={() => handleCookieChange("marketing")}
-      />
-    </div>
-    <span>Разрешить маркетинговые cookies</span>
-  </label>
+            <label className={styles.cookieOption}>
+              <div className={styles.checkboxWrapper}>
+                <input
+                  type="checkbox"
+                  checked={cookiePreferences.marketing}
+                  onChange={() => handleCookieChange("marketing")}
+                />
+              </div>
+              <span>{t("marketing", { ns: "profileSettings" })}</span>
+            </label>
 
-  <label className={styles.cookieOption}>
-    <div className={styles.checkboxWrapper}>
-      <input
-        type="checkbox"
-        checked={cookiePreferences.functional}
-        onChange={() => handleCookieChange("functional")}
-      />
-    </div>
-    <span>Разрешить функциональные cookies</span>
-  </label>
+            <label className={styles.cookieOption}>
+              <div className={styles.checkboxWrapper}>
+                <input
+                  type="checkbox"
+                  checked={cookiePreferences.functional}
+                  onChange={() => handleCookieChange("functional")}
+                />
+              </div>
+              <span>{t("functional", { ns: "profileSettings" })}</span>
+            </label>
 
-  <label className={styles.cookieOption}>
-    <div className={styles.checkboxWrapper}>
-      <input
-        type="checkbox"
-        checked={cookiePreferences.personalization}
-        onChange={() => handleCookieChange("personalization")}
-      />
-    </div>
-    <span>Разрешить cookies для персонализации</span>
-  </label>
-</div>
+            <label className={styles.cookieOption}>
+              <div className={styles.checkboxWrapper}>
+                <input
+                  type="checkbox"
+                  checked={cookiePreferences.personalization}
+                  onChange={() => handleCookieChange("personalization")}
+                />
+              </div>
+              <span>{t("personalization", { ns: "profileSettings" })}</span>
+            </label>
+          </div>
         </div>
       </div>
     </div>
