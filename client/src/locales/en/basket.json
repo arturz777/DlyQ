@@ -1,0 +1,18 @@
+{
+	"not enough stock": "❌ Not enough stock!",
+	"select an option": "Select an option",
+	"select an option before payment": "❌ Select an option before payment!",
+	"order placed successfully": "✅ Your order has been placed successfully!",
+	"order placement error": "❌ Error placing the order.",
+	"error creating order": "Error creating the order:",
+	"not enough stock for": "❌ Not enough stock for",
+	"cart is empty": "Cart is empty",
+	"delete": "Delete",
+	"preorder label": "I want to place a pre-order (specify date and time of delivery)",
+	"total": "Total",
+	"delivery": "Delivery",
+	"Товар не найден": "❌ Product not found!",
+  "Опция не найдена": "❌ Option not found!",
+  "Ошибка сервера при проверке наличия товара.": "❌ Server error during stock check.",
+  "Товар в наличии": "✅ Product in stock"
+  }
