@@ -286,19 +286,55 @@ const getUserOrders = async (req, res) => {
   try {
     const userId = req.user.id;
 
+   
     const orders = await Order.findAll({
       where: { userId },
       order: [["createdAt", "DESC"]],
     });
 
-    const formattedOrders = orders.map((order) => ({
-      ...order.toJSON(),
-      orderDetails: JSON.parse(order.orderDetails || "[]"), // ✅ Преобразуем строку JSON в массив
-    }));
+   
+    const deviceIds = orders.flatMap((order) =>
+      JSON.parse(order.orderDetails || "[]").map((d) => d.deviceId)
+    );
 
-    res.json(formattedOrders);
+    if (deviceIds.length > 0) {
+     
+      const translations = await Translation.findAll({
+        where: {
+          key: {
+            [Op.or]: deviceIds.map((id) => `device_${id}.name`),
+          },
+        },
+      });
+
+      const translationMap = {};
+      translations.forEach((t) => {
+        const deviceId = t.key.replace("device_", "").replace(".name", "");
+        if (!translationMap[deviceId]) translationMap[deviceId] = {};
+        translationMap[deviceId][t.lang] = t.text;
+      });
+      
+      orders.forEach((order) => {
+        const orderDetails = JSON.parse(order.orderDetails || "[]");
+      
+        orderDetails.forEach((detail) => {
+          const translations = translationMap[detail.deviceId] || {};
+          detail.translations = { name: translations };
+      
+          const lang = "ru"; // Можно менять на req.locale или заголовок запроса
+          if (translations[lang]) {
+            detail.name = translations[lang]; // Подставляем перевод
+          }
+        });
+      
+        order.orderDetails = orderDetails;
+      });
+      
+    }
+
+    res.json(orders);
   } catch (error) {
-    console.error("Ошибка получения заказов:", error);
+    console.error("❌ Ошибка получения заказов:", error);
     res.status(500).json({ message: "Ошибка получения заказов" });
   }
 };
