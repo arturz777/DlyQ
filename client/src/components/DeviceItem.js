@@ -67,7 +67,7 @@ const DeviceItem = ({ device }) => {
     if (device.options?.length > 0) {
       device.options.forEach((option) => {
         defaultOptions[option.name] = {
-          value: t("Select an option"),
+           value: "__UNSELECTED__",
           price: 0,
         };
       });
