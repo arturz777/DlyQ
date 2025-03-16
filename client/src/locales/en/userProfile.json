@@ -1,0 +1,22 @@
+{
+	"profileUpdated": "Profile updated",
+	"pending": "Pending",
+	"completed": "Completed",
+	"cancelled": "Cancelled",
+	"unknown": "Unknown",
+	"updateSuccess": "Data successfully updated!",
+	"updateError": "Error updating data",
+	"back": "← Back",
+	"logout": "Log out",
+	"myOrders": "My orders",
+	"order": "Order",
+	"totalAmount": "Total amount:",
+	"productUnknown": "Unknown product",
+	"quantity": "Quantity:",
+	"price": "Price:",
+	"orderImage": "Order image",
+	"orderSummary": "Order summary:",
+	"orderTotalPrice": "Total price:",
+	"noOrders": "You have no orders yet."
+  }
+  
