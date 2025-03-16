@@ -22,7 +22,7 @@ const UserProfile = () => {
   const [showSettings, setShowSettings] = useState(false);
 
   const handleBack = () => {
-    navigate(-1); // Вернуться на предыдущую страницу
+    navigate(-1); 
   };
 
   const languages = [
@@ -32,11 +32,11 @@ const UserProfile = () => {
   ];
 
   const changeLanguage = (lng) => {
-    i18n.changeLanguage(lng); // Смена языка
+    i18n.changeLanguage(lng); 
     setIsLanguageMenuOpen(false);
   };
 
-  const currentLanguage = i18n.language; // Текущий язык
+  const currentLanguage = i18n.language; 
   const currentFlag = languages.find(
     (lang) => lang.language === currentLanguage
   );
@@ -44,7 +44,7 @@ const UserProfile = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem("token"); // Убедитесь, что токен есть
+      const token = localStorage.getItem("token"); 
       const response = await axios.put(
         "http://localhost:5000/api/user/profile",
         { firstName, lastName, phone },
@@ -88,7 +88,7 @@ const UserProfile = () => {
 
   useEffect(() => {
     if (!isAuth) {
-      navigate("/login"); // Перенаправляем на страницу авторизации
+      navigate("/login"); 
     }
   }, [isAuth, navigate]);
 
