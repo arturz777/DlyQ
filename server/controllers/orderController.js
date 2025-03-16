@@ -1,6 +1,6 @@
 // server/controllers/orderController.js
 const sendEmail = require("../services/emailService");
-const { Order, Device, , Translation } = require("../models/models");
+const { Order, Device, Translation } = require("../models/models");
 const { Op } = require("sequelize");
 const getDistanceFromWarehouse = require("../utils/distance");
 const { supabase } = require("../config/supabaseClient"); // ✅ Импорт Supabase
