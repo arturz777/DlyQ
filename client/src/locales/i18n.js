@@ -20,6 +20,7 @@ import paymentFormEst from './est/paymentForm.json';
 import authEst from './est/auth.json';
 import basketEst from './est/basket.json';
 import profileSettingsEst from './est/profileSettings.json';
+import userProfileEst from './est/userProfile.json';
 
 import navbarEn from './en/navbar.json';
 import searchbarEn from './en/searchbar.json';
@@ -38,6 +39,7 @@ import paymentFormEn from './en/paymentForm.json';
 import authEn from './en/auth.json';
 import basketEn from './en/basket.json';
 import profileSettingsEn from './en/profileSettings.json';
+import userProfileEn from './en/userProfile.json';
 
 import navbarRu from './ru/navbar.json';
 import searchbarRu from './ru/searchbar.json';
@@ -56,6 +58,7 @@ import paymentFormRu from './ru/paymentForm.json';
 import authRu from './ru/auth.json';
 import basketRu from './ru/basket.json';
 import profileSettingsRu from './ru/profileSettings.json';
+import userProfileRu from './ru/userProfile.json';
 
 
 i18n
@@ -81,6 +84,7 @@ i18n
         auth: authEn,
         basket: basketEn,
         profileSettings: profileSettingsEn,
+        userProfile: userProfileEn,
       },
       ru: {
         navbar: navbarRu,
@@ -100,6 +104,7 @@ i18n
         auth: authRu,
         basket: basketRu,
         profileSettings: profileSettingsRu,
+        userProfile: userProfileRu,
       },
       est: {
         navbar: navbarEst,
@@ -119,6 +124,7 @@ i18n
         auth: authEst,
         basket: basketEst,
         profileSettings: profileSettingsEst,
+        userProfile: userProfileEst,
       },
     },
 
