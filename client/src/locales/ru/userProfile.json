@@ -1,0 +1,21 @@
+{
+	"profileUpdated": "Профиль обновлен",
+	"pending": "В ожидании",
+	"completed": "Завершено",
+	"cancelled": "Отменено",
+	"unknown": "Неизвестно",
+	"updateSuccess": "Данные успешно обновлены!",
+	"updateError": "Ошибка обновления данных",
+	"back": "← Назад",
+	"logout": "Выйти",
+	"myOrders": "Мои заказы",
+	"order": "Заказ",
+	"totalAmount": "Общая сумма:",
+	"productUnknown": "Неизвестный товар",
+	"quantity": "Кол-во:",
+	"price": "Цена:",
+	"orderImage": "Изображение заказа",
+	"orderSummary": "Общий заказ:",
+	"orderTotalPrice": "Сумма:",
+	"noOrders": "У вас пока нет заказов."
+  }
