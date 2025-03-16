@@ -1,0 +1,21 @@
+{
+	"profileUpdated": "Profiil uuendatud",
+	"pending": "Ootel",
+	"completed": "Lõpetatud",
+	"cancelled": "Tühistatud",
+	"unknown": "Tundmatu",
+	"updateSuccess": "Andmed on edukalt uuendatud!",
+	"updateError": "Andmete uuendamise viga",
+	"back": "← Tagasi",
+	"logout": "Logi välja",
+	"myOrders": "Minu tellimused",
+	"order": "Tellimus",
+	"totalAmount": "Kogusumma:",
+	"productUnknown": "Tundmatu toode",
+	"quantity": "Kogus:",
+	"price": "Hind:",
+	"orderImage": "Tellimuse pilt",
+	"orderSummary": "Tellimuse kokkuvõte:",
+	"orderTotalPrice": "Summa:",
+	"noOrders": "Teil pole veel tellimusi."
+  }
