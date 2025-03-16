@@ -111,12 +111,12 @@ const Basket = observer(() => {
   };
 
   const handlePaymentSuccess = async (paymentMethod, formData) => {
-    const hasUnselectedOptions = basket.items.some(
+   const hasUnselectedOptions = basket.items.some(
       (item) =>
         item.selectedOptions &&
         Object.values(item.selectedOptions).some(
-          (opt) => opt.value === t("select an option", { ns: "basket" })
-        )
+          (opt) => opt.value === "__UNSELECTED__" || opt.value === t("select an option", { ns: "basket" })
+        ) 
     );
 
     if (hasUnselectedOptions) {
@@ -243,13 +243,13 @@ const Basket = observer(() => {
                       onChange={(e) =>
                         handleOptionChange(item.uniqueKey, key, e.target.value)
                       }
-                      className={`form-select ${
-                        option.value === t("select an option", { ns: "basket" })
+                       className={`form-select ${
+                        option.value === "__UNSELECTED__" || option.value === t("select an option", { ns: "basket" })
                           ? styles.unselectedOption
                           : ""
                       }`}
                     >
-                      <option value={t("select an option", { ns: "basket" })}>
+                     <option value="__UNSELECTED__" disabled hidden>
                         {t("select an option", { ns: "basket" })}
                       </option>
                       {item.options
