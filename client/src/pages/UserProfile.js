@@ -20,6 +20,7 @@ const UserProfile = () => {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [showSettings, setShowSettings] = useState(false);
+   const currentLang = i18n.language;
 
   const handleBack = () => {
     navigate(-1); 
