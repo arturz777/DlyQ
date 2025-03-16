@@ -46,7 +46,7 @@ const UserProfile = () => {
     try {
       const token = localStorage.getItem("token"); 
       const response = await axios.put(
-        "http://localhost:5000/api/user/profile",
+        `${process.env.REACT_APP_API_URL}/user/profile`,
         { firstName, lastName, phone },
         {
           headers: {
@@ -54,7 +54,7 @@ const UserProfile = () => {
           },
         }
       );
-      alert("Профиль обновлен");
+      alert(t("profileUpdated", { ns: "userProfile" }));
     } catch (error) {
       console.error("Ошибка обновления профиля", error);
     }
@@ -67,13 +67,13 @@ const UserProfile = () => {
     navigate("/login");
   };
 
-  const translateStatus = (status) => {
+ const translateStatus = (status) => {
     const statuses = {
-      Pending: "В ожидании",
-      Completed: "Завершено",
-      Cancelled: "Отменено",
+      Pending: t("pending", { ns: "userProfile" }),
+      Completed: t("completed", { ns: "userProfile" }),
+      Cancelled: t("cancelled", { ns: "userProfile" }),
     };
-    return statuses[status] || "Неизвестно";
+    return statuses[status] || t("unknown", { ns: "userProfile" });
   };
 
   useEffect(() => {
@@ -88,7 +88,7 @@ const UserProfile = () => {
 
   useEffect(() => {
     if (!isAuth) {
-      navigate("/login"); 
+      navigate("/login");
     }
   }, [isAuth, navigate]);
 
@@ -104,9 +104,9 @@ const UserProfile = () => {
   const handleSave = async () => {
     try {
       await updateProfile({ firstName, lastName, phone });
-      toast.success("Данные успешно обновлены!");
+      toast.success(t("updateSuccess", { ns: "userProfile" }));
     } catch (error) {
-      toast.error(error.response?.data?.message || "Ошибка обновления данных");
+      toast.error(error.response?.data?.message || t("updateError", { ns: "userProfile" }));
     }
   };
 
@@ -115,7 +115,7 @@ const UserProfile = () => {
       <div className={styles.mainContent}>
         <div className={styles.buttonsContainer}>
           <button className={styles.backButton} onClick={() => navigate(-1)}>
-            ← Назад
+            {t("back", { ns: "userProfile" })}
           </button>
 
           <div
@@ -152,19 +152,19 @@ const UserProfile = () => {
 
           <div className={styles.profileButtonLogOut} onClick={handleLogOut}>
             <FaSignOutAlt size={20} />
-            <span className={styles.navbarLinkTitle}>Выйти</span>
+            <span className={styles.navbarLinkTitle}>{t("logout", { ns: "userProfile" })}</span>
           </div>
         </div>
 
-        <h1 className={styles.ProfileTitle}>Мои заказы</h1>
+        <h1 className={styles.ProfileTitle}>{t("myOrders", { ns: "userProfile" })}</h1>
         <div className={styles.ordersContainer}>
           {orders.length > 0 ? (
             orders.map((order) => (
               <div key={order.id} className={styles.orderGroup}>
-                {/* Заголовок заказа */}
+               
                 <div className={styles.orderHeader}>
-                  <strong>Заказ №{order.id}</strong>
-                  <span>Общая сумма: {order.totalPrice} €</span>
+                  <strong>{t("order", { ns: "userProfile" })} №{order.id}</strong>
+                  <span>{t("totalAmount", { ns: "userProfile" })} {order.totalPrice} €</span>
                   <span>{translateStatus(order.status)}</span>
                   <span>
                     {new Date(order.createdAt).toLocaleString("ru-RU", {
@@ -187,10 +187,12 @@ const UserProfile = () => {
                         className={styles.deviceImage}
                       />
                       <div className={styles.orderDetails}>
-                        <span>{product.name || "Неизвестный товар"}</span>
-                        <span>Кол-во: {product.count || "Не указано"}</span>
                         <span>
-                          Цена:{" "}
+                        {product.translations?.name?.[currentLang] || product.name} 
+                        </span>
+                        <span>{t("quantity", { ns: "userProfile" })} {product.count || "Не указано"}</span>
+                        <span>
+                          {t("price", { ns: "userProfile" })}{" "}
                           {product.price ? `${product.price} €` : "Не указана"}
                         </span>
                       </div>
@@ -204,8 +206,8 @@ const UserProfile = () => {
                       className={styles.deviceImage}
                     />
                     <div className={styles.orderDetails}>
-                      <span>Общий заказ: {order.productName}</span>
-                      <span>Сумма: {order.totalPrice} €</span>
+                      <span>{t("orderSummary", { ns: "userProfile" })} {order.productName}</span>
+                      <span>{t("orderTotalPrice", { ns: "userProfile" })} {order.totalPrice} €</span>
                       <span>{translateStatus(order.status)}</span>
                     </div>
                   </div>
@@ -213,7 +215,7 @@ const UserProfile = () => {
               </div>
             ))
           ) : (
-            <p className={styles.NoOrderTitle}>У вас пока нет заказов.</p>
+            <p className={styles.NoOrderTitle}>{t("noOrders", { ns: "userProfile" })}</p>
           )}
         </div>
       </div>
