@@ -12,8 +12,9 @@ const DeviceList = observer(() => {
     const deviceName = device.translations?.name?.[currentLang] || device.name;
 
   const groupedDevices = device.types.reduce((acc, type) => {
+    const typeName = type.translations?.name?.[currentLang] || type.name;
     acc[type.id] = {
-      typeName: type.name,
+      typeName,
       subtypes: {},
       noSubtypeDevices: [], 
     };
@@ -22,19 +23,18 @@ const DeviceList = observer(() => {
     device.subtypes
       .filter((sub) => sub.typeId === type.id)
       .forEach((sub) => {
+        const subtypeName = sub.translations?.name?.[currentLang] || sub.name; 
         acc[type.id].subtypes[sub.id] = {
           devices: [],
-          subtypeName: sub.name, 
+          subtypeName, 
         };
       });
 
     device.devices.forEach((dev) => {
       if (dev.typeId === type.id) {
         if (dev.subtypeId && acc[type.id].subtypes[dev.subtypeId]) {
-     
           acc[type.id].subtypes[dev.subtypeId].devices.push(dev);
         } else if (!dev.subtypeId) {
-  
           acc[type.id].noSubtypeDevices.push(dev);
         }
       }
