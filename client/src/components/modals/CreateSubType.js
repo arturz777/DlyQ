@@ -9,6 +9,11 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
   const [types, setTypes] = useState([]);
   const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [translations, setTranslations] = useState({
+    en: "",
+    ru: "",
+    est: "",
+  });
 
   useEffect(() => {
     fetchTypes().then((data) => {
@@ -20,9 +25,11 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
     if (editableSubtype) {
       setValue(editableSubtype.name);
       setTypeId(editableSubtype.typeId || "");
+      setTranslations(editableSubtype.translations || { en: "", ru: "", est: "" });
     } else {
       setValue("");
       setTypeId("");
+      setTranslations({ en: "", ru: "", est: "" });
     }
   }, [editableSubtype]);
 
@@ -36,7 +43,11 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
       return;
     }
 
-    const data = { name: value, typeId: Number(typeId) };
+    const data = { 
+      name: value, 
+      typeId: Number(typeId),
+      translations: JSON.stringify({ name: translations }), 
+    };
 
     if (editableSubtype) {
       updateSubType(editableSubtype.id, data)
@@ -102,6 +113,41 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
               </option>
             ))}
           </Form.Select>
+
+          <h5 className="mt-3">Переводы:</h5>
+          <Form.Group>
+            <Form.Label>Английский (EN)</Form.Label>
+            <Form.Control
+              value={translations.en}
+              onChange={(e) =>
+                setTranslations((prev) => ({ ...prev, en: e.target.value }))
+              }
+              placeholder="Название на английском"
+            />
+          </Form.Group>
+
+          <Form.Group>
+            <Form.Label>Русский (RU)</Form.Label>
+            <Form.Control
+              value={translations.ru}
+              onChange={(e) =>
+                setTranslations((prev) => ({ ...prev, ru: e.target.value }))
+              }
+              placeholder="Название на русском"
+            />
+          </Form.Group>
+
+          <Form.Group>
+            <Form.Label>Эстонский (EST)</Form.Label>
+            <Form.Control
+              value={translations.est}
+              onChange={(e) =>
+                setTranslations((prev) => ({ ...prev, est: e.target.value }))
+              }
+              placeholder="Название на эстонском"
+            />
+          </Form.Group>
+          
           {isSubmitted && !typeId && (
             <span style={{ color: "red", display: "block", marginTop: "5px" }}>
               Выберите тип
