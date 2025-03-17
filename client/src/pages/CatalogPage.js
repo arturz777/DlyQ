@@ -6,21 +6,38 @@ import BrandBar from "../components/BrandBar";
 import SubTypeBar from "..//components/SubTypeBar";
 import DeviceList from "../components/DeviceList";
 import { fetchBrands, fetchDevices, fetchTypes, fetchSubtypes, fetchSubtypesByType } from "../http/deviceAPI";
+import { useTranslation } from "react-i18next";
 import catalogStyles from "./CatalogPage.module.css";
 
 const CatalogPage = observer(() => {
   const { device } = useContext(Context);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const { t, i18n } = useTranslation();
+const currentLang = i18n.language || "en";
 
-  useEffect(() => {
-    fetchTypes().then((data) => device.setTypes(data));
-    fetchSubtypes().then((data) => device.setSubtypes(data));
+useEffect(() => {
+  fetchTypes().then((data) => {
+    const translatedTypes = data.map((type) => ({
+      ...type,
+      translations: type.translations || {},
+    }));
+    device.setTypes(translatedTypes);
+  });
+    
+  fetchSubtypes().then((data) => {
+    const translatedSubtypes = data.map((subtype) => ({
+      ...subtype,
+      translations: subtype.translations || {},
+    }));
+    device.setSubtypes(translatedSubtypes);
+  });
+  
     fetchBrands().then((data) => device.setBrands(data));
     fetchDevices(null, null, 1, device.limit).then((data) => {
       device.setDevices(data.rows);
       device.setTotalCount(data.count);
     });
-  }, []);
+  }, [currentLang]);
 
   useEffect(() => {
     fetchDevices(
@@ -101,7 +118,8 @@ const CatalogPage = observer(() => {
   return (
     <div className={catalogStyles.catalogWrapper}>
       <div className={catalogStyles.catalogContent}>
-        <h1 className={catalogStyles.catalogTitle}>Каталог товаров</h1>
+        <h1 className={catalogStyles.catalogTitle}>{t("product Catalog"
+, { ns: "deviceList" })}</h1>
 
         {/* Блок фильтров */}
         <div className={catalogStyles.filters}>
