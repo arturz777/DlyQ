@@ -1,20 +1,23 @@
 import React, { useContext, useEffect } from "react";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
-import styles from "./TypeBar.module.css";
+import { useTranslation } from "react-i18next";
 import { fetchSubtypesByType } from "../http/deviceAPI";
+import styles from "./TypeBar.module.css";
 
 const SubTypeBar = observer(() => {
   const { device } = useContext(Context);
+  const { i18n } = useTranslation();
+  const currentLang = i18n.language || "en";
 
   useEffect(() => {
-    // Загружаем подтипы, если выбран тип
+   
     if (device.selectedType.id) {
       fetchSubtypesByType(device.selectedType.id).then((data) => {
-        device.setSubtypes(data); // Обновляем подтипы в MobX
+        device.setSubtypes(data);
       });
     } else {
-      device.setSubtypes([]); // Очищаем подтипы, если тип не выбран
+      device.setSubtypes([]);
     }
   }, [device.selectedType]);
 
@@ -37,7 +40,7 @@ const SubTypeBar = observer(() => {
           className={`${styles.typeItem}`}
           onClick={() => handleScrollToSubtype(subtype.id)}
         >
-          <span className={styles.typeName}>{subtype.name}</span>
+          <span className={styles.typeName}>{subtype.translations?.name?.[currentLang] || subtype.name}</span>
         </div>
       ))}
     </div>
