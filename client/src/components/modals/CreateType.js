@@ -9,12 +9,20 @@ const CreateType = ({ show, onHide, editableType, onTypeSaved }) => {
   const [existingImage, setExistingImage] = useState(null);
   const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [translations, setTranslations] = useState({
+    en: "",
+    ru: "",
+    est: "",
+  });
+
+  const isEditMode = !!editableType;
 
   useEffect(() => {
     if (editableType) {
       setValue(editableType.name);
       setExistingImage(editableType.img);
       setFile(null);
+      setTranslations(editableType.translations || { en: "", ru: "", est: "" });
     } else {
       resetFields();
     }
@@ -26,6 +34,7 @@ const CreateType = ({ show, onHide, editableType, onTypeSaved }) => {
     setExistingImage(null);
     setErrors({});
     setIsSubmitted(false);
+    setTranslations({ en: "", ru: "", est: "" });
   };
 
   const selectFile = (e) => {
@@ -40,14 +49,19 @@ const CreateType = ({ show, onHide, editableType, onTypeSaved }) => {
       return;
     }
 
-    if (!file && !existingImage) {
+    const formData = new FormData();
+    formData.append("name", value);
+
+    formData.append("translations", JSON.stringify({ name: translations }));
+    
+    if (file) {
+      formData.append("img", file);
+    }
+
+    if (!isEditMode && !file) {
       setErrors({ img: "Загрузите изображение" });
       return;
     }
-
-    const formData = new FormData();
-    formData.append("name", value);
-    if (file) formData.append("img", file);
 
     const saveAction = editableType
       ? updateType(editableType.id, formData)
@@ -83,6 +97,40 @@ const CreateType = ({ show, onHide, editableType, onTypeSaved }) => {
               Введите название типа
             </span>
           )}
+          
+          <h5 className="mt-3">Переводы:</h5>
+          <Form.Group>
+            <Form.Label>Английский (EN)</Form.Label>
+            <Form.Control
+               value={translations.en || ""}
+              onChange={(e) =>
+                setTranslations((prev) => ({ ...prev, en: e.target.value }))
+              }
+              placeholder="Название на английском"
+            />
+          </Form.Group>
+
+          <Form.Group>
+            <Form.Label>Русский (RU)</Form.Label>
+            <Form.Control
+              value={translations.ru || ""}
+              onChange={(e) =>
+                setTranslations((prev) => ({ ...prev, ru: e.target.value }))
+              }
+              placeholder="Название на русском"
+            />
+          </Form.Group>
+
+          <Form.Group>
+            <Form.Label>Эстонский (EST)</Form.Label>
+            <Form.Control
+              value={translations.est || ""}
+              onChange={(e) =>
+                setTranslations((prev) => ({ ...prev, est: e.target.value }))
+              }
+              placeholder="Название на эстонском"
+            />
+          </Form.Group>
 
           <Form.Control type="file" onChange={selectFile} />
           {existingImage && !file && (
@@ -100,11 +148,12 @@ const CreateType = ({ show, onHide, editableType, onTypeSaved }) => {
                 />
             </div>
           )}
-          {isSubmitted && !file && (
-            <span style={{ color: "red", display: "block", marginTop: "5px" }}>
-              Загрузите изображение
-            </span>
-          )}
+         {isSubmitted && !file && !isEditMode && (
+  <span style={{ color: "red", display: "block", marginTop: "5px" }}>
+    Загрузите изображение
+  </span>
+)}
+
         </Form>
       </Modal.Body>
       <Modal.Footer>
