@@ -17,12 +17,17 @@ export default class DeviceStore {
 
   setTypes(types) {
     this._types = types;
+    this._selectedType = {};
+    this._selectedSubType = {};
   }
+
   setActiveType(type) {
     this._selectedType = type;
   }
+
   setSubtypes(subtypes) {
     this._subtypes = subtypes;
+    this._selectedSubType = {};
   }
   
   setBrands(brands) {
@@ -34,32 +39,30 @@ export default class DeviceStore {
 
   setSelectedType(type) {
     if (this._selectedType.id === type.id) {
-      this._selectedType = {}; // Сбрасываем выбранный тип
-      this._selectedSubType = {}; // Сбрасываем подтип
+      this._selectedType = {};
+      this._selectedSubType = {};
     } else {
       this.setPage(1);
       this._selectedType = type;
-      this._selectedSubType = {}; // Сбрасываем подтип при смене типа
+      this._selectedSubType = {};
     }
   }
 
   setSelectedSubType(subtype) {
-    // Если выбранный подтип тот же, что и уже выбранный, сбрасываем фильтр
     if (this._selectedSubType.id === subtype.id) {
-      this._selectedSubType = {}; // Сбрасываем выбранный подтип
+      this._selectedSubType = {};
     } else {
       this.setPage(1);
-      this._selectedSubType = subtype; // Устанавливаем новый подтип
+      this._selectedSubType = subtype;
     }
   }
 
   setSelectedBrand(brand) {
-    // Если выбранный бренд тот же, что и уже выбранный, сбрасываем фильтр
     if (this._selectedBrand.id === brand.id) {
-      this._selectedBrand = {}; // Сбрасываем выбранный бренд
+      this._selectedBrand = {};
     } else {
       this.setPage(1);
-      this._selectedBrand = brand; // Устанавливаем новый бренд
+      this._selectedBrand = brand;
     }
   }
   setPage(page) {
