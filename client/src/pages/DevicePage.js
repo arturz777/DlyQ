@@ -112,7 +112,7 @@ const DevicePage = () => {
     );
     const newCount = (existingItem?.count || 0) + 1;
 
-    if (!selectedOptions || Object.keys(selectedOptions).length === 0) {
+    if (device.options?.length > 0 && Object.keys(selectedOptions).length === 0) {
       toast.error(`❌ ${t("Select product options!", { ns: "devicePage" })}`);
       return;
     }
