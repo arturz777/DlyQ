@@ -26,9 +26,13 @@ export default class DeviceStore {
   }
 
   setSubtypes(subtypes) {
-    this._subtypes = subtypes;
+    this._subtypes = subtypes.map((subtype) => ({
+        ...subtype,
+        translations: subtype.translations || {},
+    }));
     this._selectedSubType = {};
-  }
+}
+
   
   setBrands(brands) {
     this._brands = brands;
