@@ -6,15 +6,16 @@ import NavBar from "./components/NavBar";
 import { observer } from "mobx-react-lite";
 import { Context } from "./index";
 import { check } from "./http/userAPI";
-import { Spinner } from "react-bootstrap";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { Elements } from "@stripe/react-stripe-js";  // Импортируем Elements
+import { Elements } from "@stripe/react-stripe-js"; 
 import { loadStripe } from "@stripe/stripe-js";
 import MobileNavBar from "./components/MobileNavBar";
 import OrderSidebar from "./components/OrderSidebar";
 import Footer from "./components/Footer";
+import appStore from "./store/appStore";
 import CookieConsent from "./components/modals/CookieConsent";
+import LoadingBar from "./components/LoadingBar";
 import './locales/i18n';
 import "./App.css"; 
 
@@ -48,12 +49,13 @@ const App = observer(() => {
   }, [user]);
 
   if (loading) {
-    return <Spinner animation={"grow"} />; // Показать спиннер, пока идет проверка авторизации
+    return <LoadingBar />;
   }
-
+  
   return (
     <BrowserRouter>
      <Elements stripe={stripePromise}>
+     <LoadingBar />
       <NavBar />
       <AppRouter />
       <ToastContainer position="top-right" autoClose={3000} />
