@@ -13,7 +13,6 @@ const fs = require("fs");
 const { supabase } = require("../config/supabaseClient");
 
 class DeviceController {
-  // Создание устройства
   async create(req, res, next) {
     try {
       let {
@@ -28,7 +27,6 @@ class DeviceController {
         translations,
       } = req.body;
 
-      // Проверяем, что обязательные поля заполнены
       if (!name || !price || !brandId || !typeId) {
         return res.status(400).json({
           message:
@@ -36,7 +34,6 @@ class DeviceController {
         });
       }
 
-      // Проверка и обработка изображения
       if (!req.files || !req.files.img) {
         return res
           .status(400)
@@ -46,7 +43,6 @@ class DeviceController {
       const { img } = req.files;
       const fileName = `${uuid.v4()}${path.extname(img.name)}`;
 
-      // 📌 Загружаем изображение в Supabase Storage
       const { data, error } = await supabase.storage
         .from("images")
         .upload(fileName, img.data, { contentType: img.mimetype });
@@ -55,7 +51,6 @@ class DeviceController {
         throw new Error("Ошибка загрузки изображения в Supabase Storage");
       }
 
-      // 📌 Получаем публичный URL
       const publicURL = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
 
       let thumbnails = [];
@@ -68,7 +63,6 @@ class DeviceController {
           images.map(async (image) => {
             const thumbFileName = `${uuid.v4()}${path.extname(image.name)}`;
 
-            // Загружаем миниатюру в Supabase Storage
             const { data, error } = await supabase.storage
               .from("images")
               .upload(thumbFileName, image.data, {
@@ -80,18 +74,15 @@ class DeviceController {
               return null;
             }
 
-            // Получаем публичный URL загруженного изображения
             return `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${thumbFileName}`;
           })
         );
 
-        // Удаляем `null`, если какие-то изображения не загрузились
         thumbnails = thumbnails.filter((url) => url !== null);
       }
 
       options = options ? JSON.parse(options) : [];
 
-      // ✅ Если есть опции, пересчитываем `quantity`
       if (options.length > 0) {
         quantity = options.reduce((sum, option) => {
           return (
@@ -104,7 +95,6 @@ class DeviceController {
         }, 0);
       }
 
-      // ✅ Если есть опции, суммируем их количество для установки `quantity`
       if (options.length > 0) {
         quantity = options.reduce((sum, option) => {
           return (
@@ -145,28 +135,29 @@ class DeviceController {
       if (translations) {
         translations = JSON.parse(translations);
         const translationEntries = [];
-    
-        // ✅ Название и описание устройства
+
         Object.entries(translations.name || {}).forEach(([lang, text]) => {
-            if (text) {
-                translationEntries.push({
-                    key: `device_${device.id}.name`,
-                    lang,
-                    text,
-                });
-            }
+          if (text) {
+            translationEntries.push({
+              key: `device_${device.id}.name`,
+              lang,
+              text,
+            });
+          }
         });
-    
-        Object.entries(translations.description || {}).forEach(([lang, text]) => {
+
+        Object.entries(translations.description || {}).forEach(
+          ([lang, text]) => {
             if (text) {
-                translationEntries.push({
-                    key: `device_${device.id}.description`,
-                    lang,
-                    text,
-                });
+              translationEntries.push({
+                key: `device_${device.id}.description`,
+                lang,
+                text,
+              });
             }
-        });
-    
+          }
+        );
+
         if (translations.info && Array.isArray(translations.info)) {
           translations.info.forEach((info, index) => {
             Object.entries(info.title || {}).forEach(([lang, text]) => {
@@ -189,47 +180,43 @@ class DeviceController {
             });
           });
         }
-    
-        // ✅ Опции (варианты выбора)
+
         if (translations.options && Array.isArray(translations.options)) {
-            translations.options.forEach((option, optionIndex) => {
-                // 🔥 Правильный способ обработки `name` (проход по языкам)
-                Object.entries(option.name || {}).forEach(([lang, text]) => {
-                    if (text) {
-                        translationEntries.push({
-                            key: `device_${device.id}.option.${optionIndex}.name`,
-                            lang,
-                            text,
-                        });
-                    }
+          translations.options.forEach((option, optionIndex) => {
+            Object.entries(option.name || {}).forEach(([lang, text]) => {
+              if (text) {
+                translationEntries.push({
+                  key: `device_${device.id}.option.${optionIndex}.name`,
+                  lang,
+                  text,
                 });
-    
-                if (option.values && Array.isArray(option.values)) {
-                  option.values.forEach((value, valueIndex) => {
-                      // ✅ Если `value.text` нет, используем сам `value`
-                      const valueTranslations = value.text || value;
-              
-                      Object.entries(valueTranslations).forEach(([lang, text]) => {
-                          if (text) {
-                              translationEntries.push({
-                                  key: `device_${device.id}.option.${optionIndex}.value.${valueIndex}`,
-                                  lang,
-                                  text,
-                              });
-                            }
-                        });
-                    });
-                }
+              }
             });
+
+            if (option.values && Array.isArray(option.values)) {
+              option.values.forEach((value, valueIndex) => {
+                const valueTranslations = value.text || value;
+
+                Object.entries(valueTranslations).forEach(([lang, text]) => {
+                  if (text) {
+                    translationEntries.push({
+                      key: `device_${device.id}.option.${optionIndex}.value.${valueIndex}`,
+                      lang,
+                      text,
+                    });
+                  }
+                });
+              });
+            }
+          });
         }
-    
+
         if (translationEntries.length > 0) {
-            await Translation.bulkCreate(translationEntries);
+          await Translation.bulkCreate(translationEntries);
         }
-    }
-    
-    return res.json(device);
-    
+      }
+
+      return res.json(device);
     } catch (e) {
       next(ApiError.badRequest(e.message));
     }
@@ -237,92 +224,102 @@ class DeviceController {
 
   async getAll(req, res) {
     try {
-        let { brandId, typeId, subtypeId, limit, page } = req.query;
-        page = page || 1;
-        limit = limit || 9;
-        const offset = page * limit - limit;
+      let { brandId, typeId, subtypeId, limit, page } = req.query;
+      page = page || 1;
+      limit = limit || 9;
+      const offset = page * limit - limit;
 
-        const where = {};
-        if (brandId) where.brandId = brandId;
-        if (typeId) where.typeId = typeId;
-        if (subtypeId) where.subtypeId = subtypeId;
+      const where = {};
+      if (brandId) where.brandId = brandId;
+      if (typeId) where.typeId = typeId;
+      if (subtypeId) where.subtypeId = subtypeId;
 
-        const devices = await Device.findAndCountAll({
-            where,
-            limit,
-            offset,
-            include: [
-                { model: SubType, as: "subtype" },
-                { model: Type },
-                { model: DeviceInfo, as: "info" },
-            ],
-        });
+      const devices = await Device.findAndCountAll({
+        where,
+        limit,
+        offset,
+        include: [
+          { model: SubType, as: "subtype" },
+          { model: Type },
+          { model: DeviceInfo, as: "info" },
+        ],
+      });
 
-        const deviceIds = devices.rows.map((d) => d.id);
-        const translations = await Translation.findAll({
-            where: {
-                key: {
-                    [Op.or]: deviceIds.map((id) => ({ [Op.like]: `device_${id}.%` })),
-                },
-            },
-        });
+      const deviceIds = devices.rows.map((d) => d.id);
+      const translations = await Translation.findAll({
+        where: {
+          key: {
+            [Op.or]: deviceIds.map((id) => ({ [Op.like]: `device_${id}.%` })),
+          },
+        },
+      });
 
-        // ✅ Формируем объект переводов
-        const translatedSpecs = {};
-        translations.forEach((t) => {
-            const keyParts = t.key.split(".");
-            const deviceId = keyParts[0].replace("device_", "");
-            const section = keyParts[1];
-            const optionIndex = keyParts[2]; // Теперь четкое разделение индексов
-            const field = keyParts[3];
-            const valueIndex = keyParts[4]; // Добавляем обработку индекса значений
+      const translatedSpecs = {};
+      translations.forEach((t) => {
+        const keyParts = t.key.split(".");
+        const deviceId = keyParts[0].replace("device_", "");
+        const section = keyParts[1];
+        const optionIndex = keyParts[2];
+        const field = keyParts[3];
+        const valueIndex = keyParts[4];
 
-            if (!translatedSpecs[deviceId]) translatedSpecs[deviceId] = {};
+        if (!translatedSpecs[deviceId]) translatedSpecs[deviceId] = {};
 
-            if (section === "info") {
-                // ✅ Обрабатываем переводы характеристик
-                if (!translatedSpecs[deviceId].info) translatedSpecs[deviceId].info = [];
-                if (!translatedSpecs[deviceId].info[optionIndex]) {
-                    translatedSpecs[deviceId].info[optionIndex] = { title: {}, description: {} };
-                }
-                translatedSpecs[deviceId].info[optionIndex][field][t.lang] = t.text;
+        if (section === "info") {
+          if (!translatedSpecs[deviceId].info)
+            translatedSpecs[deviceId].info = [];
+          if (!translatedSpecs[deviceId].info[optionIndex]) {
+            translatedSpecs[deviceId].info[optionIndex] = {
+              title: {},
+              description: {},
+            };
+          }
+          translatedSpecs[deviceId].info[optionIndex][field][t.lang] = t.text;
+        } else if (section === "option") {
+          if (!translatedSpecs[deviceId].options)
+            translatedSpecs[deviceId].options = [];
+          if (!translatedSpecs[deviceId].options[optionIndex]) {
+            translatedSpecs[deviceId].options[optionIndex] = {
+              name: {},
+              values: [],
+            };
+          }
 
-            } else if (section === "option") {
-                // ✅ Обрабатываем переводы опций
-                if (!translatedSpecs[deviceId].options) translatedSpecs[deviceId].options = [];
-                if (!translatedSpecs[deviceId].options[optionIndex]) {
-                    translatedSpecs[deviceId].options[optionIndex] = { name: {}, values: [] };
-                }
-
-                if (field === "name") {
-                    translatedSpecs[deviceId].options[optionIndex].name[t.lang] = t.text;
-                } else if (field === "value" && valueIndex !== undefined) {
-                    if (!translatedSpecs[deviceId].options[optionIndex].values[valueIndex]) {
-                        translatedSpecs[deviceId].options[optionIndex].values[valueIndex] = {};
-                    }
-                    translatedSpecs[deviceId].options[optionIndex].values[valueIndex][t.lang] = t.text;
-                }
-            } else {
-                // ✅ Обрабатываем общие переводы (name, description)
-                if (!translatedSpecs[deviceId][section]) translatedSpecs[deviceId][section] = {};
-                translatedSpecs[deviceId][section][t.lang] = t.text;
+          if (field === "name") {
+            translatedSpecs[deviceId].options[optionIndex].name[t.lang] =
+              t.text;
+          } else if (field === "value" && valueIndex !== undefined) {
+            if (
+              !translatedSpecs[deviceId].options[optionIndex].values[valueIndex]
+            ) {
+              translatedSpecs[deviceId].options[optionIndex].values[
+                valueIndex
+              ] = {};
             }
-        });
+            translatedSpecs[deviceId].options[optionIndex].values[valueIndex][
+              t.lang
+            ] = t.text;
+          }
+        } else {
+          if (!translatedSpecs[deviceId][section])
+            translatedSpecs[deviceId][section] = {};
+          translatedSpecs[deviceId][section][t.lang] = t.text;
+        }
+      });
 
-        // ✅ Добавляем переводы к каждому устройству
-        devices.rows.forEach((device) => {
-            device.dataValues.translations = translatedSpecs[device.id] || {};
-        });
+      devices.rows.forEach((device) => {
+        device.dataValues.translations = translatedSpecs[device.id] || {};
+      });
 
-        return res.json(devices);
+      return res.json(devices);
     } catch (error) {
-        console.error("❌ Ошибка при получении устройств:", error.message);
-        return res.status(500).json({ message: "Ошибка при получении устройств" });
+      console.error("❌ Ошибка при получении устройств:", error.message);
+      return res
+        .status(500)
+        .json({ message: "Ошибка при получении устройств" });
     }
-}
+  }
 
-
-  // Получение одного устройства
   async getOne(req, res) {
     try {
       const { id } = req.params;
@@ -330,9 +327,9 @@ class DeviceController {
       const device = await Device.findOne({
         where: { id },
         include: [
-          { model: DeviceInfo, as: "info" }, // Включаем характеристики устройства
-          { model: SubType, as: "subtype" }, // Включаем подтип
-          { model: Type }, // Включаем тип
+          { model: DeviceInfo, as: "info" },
+          { model: SubType, as: "subtype" },
+          { model: Type },
         ],
       });
 
@@ -343,45 +340,41 @@ class DeviceController {
       const translations = await Translation.findAll({
         where: { key: { [Op.like]: `device_${id}.%` } },
       });
-      
+
       const translatedSpecs = {};
       translations.forEach((t) => {
         const key = t.key.replace(`device_${id}.`, "");
         const keyParts = key.split(".");
-      
-        // ✅ Обрабатываем переводы характеристик (info)
+
         if (key.startsWith("info")) {
           const index = keyParts[1];
-          const type = keyParts[2]; // title или description
-      
+          const type = keyParts[2];
+
           if (!translatedSpecs.info) {
             translatedSpecs.info = {};
           }
-      
+
           if (!translatedSpecs.info[index]) {
             translatedSpecs.info[index] = { title: {}, description: {} };
           }
-      
+
           if (type === "title") {
             translatedSpecs.info[index].title[t.lang] = t.text;
           } else if (type === "description") {
             translatedSpecs.info[index].description[t.lang] = t.text;
           }
-        }
-      
-        // ✅ Обрабатываем переводы опций (options)
-        else if (key.startsWith("option")) {
+        } else if (key.startsWith("option")) {
           const optionIndex = keyParts[1];
           const type = keyParts[2];
           const valueIndex = keyParts[3];
-      
+
           if (!translatedSpecs.options) {
             translatedSpecs.options = {};
           }
           if (!translatedSpecs.options[optionIndex]) {
             translatedSpecs.options[optionIndex] = { name: {}, values: [] };
           }
-      
+
           if (type === "name") {
             translatedSpecs.options[optionIndex].name[t.lang] = t.text;
           } else if (type === "value" && valueIndex !== undefined) {
@@ -391,34 +384,30 @@ class DeviceController {
             translatedSpecs.options[optionIndex].values[valueIndex][t.lang] =
               t.text;
           }
-        }
-      
-        // ✅ Обрабатываем остальные переводы
-        else {
+        } else {
           if (!translatedSpecs[key]) {
             translatedSpecs[key] = {};
           }
           translatedSpecs[key][t.lang] = t.text;
         }
       });
-      
+
       if (device.info && Array.isArray(device.info)) {
-  device.info.forEach((infoItem, index) => {
-    if (!translatedSpecs.info) return; // Если нет переводов, пропускаем
+        device.info.forEach((infoItem, index) => {
+          if (!translatedSpecs.info) return;
 
-    const translatedItem = translatedSpecs.info[index];
+          const translatedItem = translatedSpecs.info[index];
 
-    if (translatedItem) {
-      infoItem.dataValues.translations = {
-        title: translatedItem?.title || {},
-        description: translatedItem?.description || {},
-      };
-      
-    } else {
-      infoItem.translations = { title: {}, description: {} };
-    }
-  });
-}
+          if (translatedItem) {
+            infoItem.dataValues.translations = {
+              title: translatedItem?.title || {},
+              description: translatedItem?.description || {},
+            };
+          } else {
+            infoItem.translations = { title: {}, description: {} };
+          }
+        });
+      }
 
       if (device.options && Array.isArray(device.options)) {
         device.options.forEach((option, optionIndex) => {
@@ -427,7 +416,7 @@ class DeviceController {
               name: translatedSpecs.options[optionIndex].name || {},
               values: [],
             };
-      
+
             option.values.forEach((value, valueIndex) => {
               if (translatedSpecs.options[optionIndex].values[valueIndex]) {
                 option.translations.values[valueIndex] =
@@ -442,7 +431,6 @@ class DeviceController {
         ...device.dataValues,
         translations: translatedSpecs || {},
       });
-      
     } catch (error) {
       console.error("❌ Ошибка при получении устройства:", error.message);
       return res
@@ -451,7 +439,6 @@ class DeviceController {
     }
   }
 
- 
   async update(req, res, next) {
     try {
       const { id } = req.params;
@@ -483,7 +470,6 @@ class DeviceController {
       const files = req.files || {};
       const img = files.img || null;
 
-      // ✅ Обновление главного изображения
       if (img) {
         if (device.img) {
           const oldFileName = device.img.split("/").pop();
@@ -505,7 +491,6 @@ class DeviceController {
         fileName = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${newFileName}`;
       }
 
-      // ✅ Удаление старых миниатюр
       if (existingImages.length === 0) {
         const imagesToDelete = thumbnails.map((img) => img.split("/").pop());
         if (imagesToDelete.length > 0) {
@@ -522,7 +507,6 @@ class DeviceController {
         thumbnails = existingImages.filter((img) => img !== fileName);
       }
 
-      // ✅ Добавляем новые миниатюры
       if (req.files && req.files.thumbnails) {
         const images = Array.isArray(req.files.thumbnails)
           ? req.files.thumbnails
@@ -553,7 +537,6 @@ class DeviceController {
 
         options = options ? JSON.parse(options) : [];
 
-        // ✅ Если у товара есть `options`, пересчитываем `quantity`
         if (options.length > 0) {
           quantity = options.reduce((sum, option) => {
             return (
@@ -568,100 +551,97 @@ class DeviceController {
       }
 
       await Translation.destroy({
-        where: { key: { [Op.like]: `device_${id}.%` } }
-    });
+        where: { key: { [Op.like]: `device_${id}.%` } },
+      });
 
-    let translationEntries = [];
+      let translationEntries = [];
 
-    if (translations) {
+      if (translations) {
         const parsedTranslations = JSON.parse(translations);
 
-        // Обрабатываем переводы названия устройства
-        Object.entries(parsedTranslations.name || {}).forEach(([lang, text]) => {
+        Object.entries(parsedTranslations.name || {}).forEach(
+          ([lang, text]) => {
             if (text) {
-                translationEntries.push({
-                    key: `device_${id}.name`,
-                    lang,
-                    text,
-                });
-            }
-        });
-
-        // Обрабатываем переводы описания
-        Object.entries(parsedTranslations.description || {}).forEach(([lang, text]) => {
-            if (text) {
-                translationEntries.push({
-                    key: `device_${id}.description`,
-                    lang,
-                    text,
-                });
-            }
-        });
-
-// ✅ Обрабатываем переводы значений опций (ИСПРАВЛЕНО)
-if (parsedTranslations.options && Array.isArray(parsedTranslations.options)) {
-  parsedTranslations.options.forEach((option, optionIndex) => {
-      // 🔹 Обновление названия опции (это уже работает)
-      Object.entries(option.name || {}).forEach(([lang, text]) => {
-          if (text) {
               translationEntries.push({
+                key: `device_${id}.name`,
+                lang,
+                text,
+              });
+            }
+          }
+        );
+
+        Object.entries(parsedTranslations.description || {}).forEach(
+          ([lang, text]) => {
+            if (text) {
+              translationEntries.push({
+                key: `device_${id}.description`,
+                lang,
+                text,
+              });
+            }
+          }
+        );
+
+        if (
+          parsedTranslations.options &&
+          Array.isArray(parsedTranslations.options)
+        ) {
+          parsedTranslations.options.forEach((option, optionIndex) => {
+            Object.entries(option.name || {}).forEach(([lang, text]) => {
+              if (text) {
+                translationEntries.push({
                   key: `device_${id}.option.${optionIndex}.name`,
                   lang,
                   text,
-              });
-          }
-      });
+                });
+              }
+            });
 
-      // 🔹 Теперь корректно обрабатываем переводы значений опций
-      if (option.values && Array.isArray(option.values)) {
-          option.values.forEach((value, valueIndex) => {
-              Object.entries(value || {}).forEach(([lang, text]) => {
+            if (option.values && Array.isArray(option.values)) {
+              option.values.forEach((value, valueIndex) => {
+                Object.entries(value || {}).forEach(([lang, text]) => {
                   if (text) {
-                      translationEntries.push({
-                          key: `device_${id}.option.${optionIndex}.value.${valueIndex}`,
-                          lang,
-                          text,
-                      });
+                    translationEntries.push({
+                      key: `device_${id}.option.${optionIndex}.value.${valueIndex}`,
+                      lang,
+                      text,
+                    });
                   }
+                });
               });
+            }
           });
-      }
-  });
-}
+        }
 
-
-    
         if (parsedTranslations.info && Array.isArray(parsedTranslations.info)) {
           parsedTranslations.info.forEach((info, index) => {
-              Object.entries(info.title || {}).forEach(([lang, text]) => {
-                  if (text) {
-                      translationEntries.push({
-                          key: `device_${id}.info.${index}.title`,
-                          lang,
-                          text,
-                      });
-                  }
-              });
-              Object.entries(info.description || {}).forEach(([lang, text]) => {
-                  if (text) {
-                      translationEntries.push({
-                          key: `device_${id}.info.${index}.description`,
-                          lang,
-                          text,
-                      });
-                  }
-              });
+            Object.entries(info.title || {}).forEach(([lang, text]) => {
+              if (text) {
+                translationEntries.push({
+                  key: `device_${id}.info.${index}.title`,
+                  lang,
+                  text,
+                });
+              }
+            });
+            Object.entries(info.description || {}).forEach(([lang, text]) => {
+              if (text) {
+                translationEntries.push({
+                  key: `device_${id}.info.${index}.description`,
+                  lang,
+                  text,
+                });
+              }
+            });
           });
+        }
       }
-  }
 
-    
-
-    if (translationEntries.length > 0) {
+      if (translationEntries.length > 0) {
         await Translation.bulkCreate(translationEntries);
-    }
+      }
 
-      // ✅ Обновляем устройство
       await Device.update(
         {
           name,
@@ -677,7 +657,6 @@ if (parsedTranslations.options && Array.isArray(parsedTranslations.options)) {
         { where: { id } }
       );
 
-      // ✅ Обновляем характеристики устройства
       if (info) {
         const parsedInfo = JSON.parse(info);
         await DeviceInfo.destroy({ where: { deviceId: id } });
@@ -686,7 +665,6 @@ if (parsedTranslations.options && Array.isArray(parsedTranslations.options)) {
         );
       }
 
-
       const updatedDevice = await Device.findOne({ where: { id } });
       return res.json(updatedDevice);
     } catch (error) {
@@ -694,7 +672,6 @@ if (parsedTranslations.options && Array.isArray(parsedTranslations.options)) {
     }
   }
 
-  // Удаление устройства
   async delete(req, res) {
     try {
       const { id } = req.params;
@@ -710,7 +687,7 @@ if (parsedTranslations.options && Array.isArray(parsedTranslations.options)) {
       const imagePath = path.resolve(__dirname, "..", "static", device.img);
 
       if (device.img) {
-        const fileName = device.img.split("/").pop(); // Получаем имя файла
+        const fileName = device.img.split("/").pop();
         const { error } = await supabase.storage
           .from("images")
           .remove([fileName]);
@@ -721,7 +698,6 @@ if (parsedTranslations.options && Array.isArray(parsedTranslations.options)) {
           );
       }
 
-      // Удаляем миниатюры (thumbnails) из Supabase Storage
       if (device.thumbnails && device.thumbnails.length > 0) {
         const filesToDelete = device.thumbnails.map((url) =>
           url.split("/").pop()
@@ -743,7 +719,6 @@ if (parsedTranslations.options && Array.isArray(parsedTranslations.options)) {
     }
   }
 
-  // Поиск устройств
   async search(req, res, next) {
     try {
       const { q } = req.query;
@@ -751,15 +726,55 @@ if (parsedTranslations.options && Array.isArray(parsedTranslations.options)) {
         return res.status(400).json({ message: "Параметр поиска не указан" });
 
       const devices = await Device.findAll({
-        where: {
-          name: {
-            [Op.iLike]: `%${q}%`,
-          },
-        },
+        where: { name: { [Op.iLike]: `%${q}%` } },
       });
 
-      return res.json(devices);
+      const translations = await Translation.findAll({
+        where: {
+          key: { [Op.like]: `device_%.name` },
+          text: { [Op.iLike]: `%${q}%` },
+        },
+        attributes: ["key", "lang", "text"],
+      });
+
+      console.log("🔍 Найденные переводы:", translations);
+
+      const translationMap = {};
+      translations.forEach(({ key, lang, text }) => {
+        const deviceId = key.match(/\d+/)?.[0];
+        if (!deviceId) return;
+
+        if (!translationMap[deviceId]) translationMap[deviceId] = { name: {} };
+        translationMap[deviceId].name[lang] = text;
+      });
+
+      const translatedDeviceIds = Object.keys(translationMap);
+
+      const translatedDevices = await Device.findAll({
+        where: { id: { [Op.in]: translatedDeviceIds } },
+      });
+
+      translatedDevices.forEach((device) => {
+        device.dataValues.translations = translationMap[device.id] || {};
+      });
+
+      devices.forEach((device) => {
+        device.dataValues.translations = translationMap[device.id] || {};
+      });
+
+      const allDevices = [...devices, ...translatedDevices].filter(
+        (value, index, self) =>
+          index === self.findIndex((d) => d.id === value.id)
+      );
+
+      console.log(
+        "🚀 Итоговый результат поиска:",
+        allDevices.map((d) => d.id)
+      );
+
+      return res.json(allDevices);
     } catch (error) {
+      console.error("❌ Ошибка при поиске:", error);
       next(ApiError.internal("Ошибка сервера при выполнении поиска"));
     }
   }
@@ -821,4 +836,5 @@ if (parsedTranslations.options && Array.isArray(parsedTranslations.options)) {
 }
 
 module.exports = new DeviceController();
+
 
