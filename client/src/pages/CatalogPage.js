@@ -5,38 +5,51 @@ import TypeBar from "../components/TypeBar";
 import BrandBar from "../components/BrandBar";
 import SubTypeBar from "..//components/SubTypeBar";
 import DeviceList from "../components/DeviceList";
-import { fetchBrands, fetchDevices, fetchTypes, fetchSubtypes, fetchSubtypesByType } from "../http/deviceAPI";
+import appStore from "../store/appStore";
+import {
+  fetchBrands,
+  fetchDevices,
+  fetchTypes,
+  fetchSubtypes,
+  fetchSubtypesByType,
+} from "../http/deviceAPI";
 import { useTranslation } from "react-i18next";
 import catalogStyles from "./CatalogPage.module.css";
 
 const CatalogPage = observer(() => {
   const { device } = useContext(Context);
-  const [showScrollTop, setShowScrollTop] = useState(false);
   const { t, i18n } = useTranslation();
-const currentLang = i18n.language || "en";
+  const currentLang = i18n.language || "en";
 
-useEffect(() => {
-  fetchTypes().then((data) => {
-    const translatedTypes = data.map((type) => ({
-      ...type,
-      translations: type.translations || {},
-    }));
-    device.setTypes(translatedTypes);
-  });
-    
-  fetchSubtypes().then((data) => {
-    const translatedSubtypes = data.map((subtype) => ({
-      ...subtype,
-      translations: subtype.translations || {},
-    }));
-    device.setSubtypes(translatedSubtypes);
-  });
-  
-    fetchBrands().then((data) => device.setBrands(data));
-    fetchDevices(null, null, 1, device.limit).then((data) => {
-      device.setDevices(data.rows);
-      device.setTotalCount(data.count);
-    });
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    appStore.startLoading();
+
+    Promise.all([
+      fetchTypes(),
+      fetchSubtypes(),
+      fetchBrands(),
+      fetchDevices(null, null, 1, device.limit),
+    ])
+      .then(([typesData, subtypesData, brandsData, devicesData]) => {
+        const translatedTypes = typesData.map((type) => ({
+          ...type,
+          translations: type.translations || {},
+        }));
+        device.setTypes(translatedTypes);
+
+        const translatedSubtypes = subtypesData.map((subtype) => ({
+          ...subtype,
+          translations: subtype.translations || {},
+        }));
+        device.setSubtypes(translatedSubtypes);
+
+        device.setBrands(brandsData);
+        device.setDevices(devicesData.rows);
+        device.setTotalCount(devicesData.count);
+      })
+      .finally(() => appStore.stopLoading());
   }, [currentLang]);
 
   useEffect(() => {
@@ -50,12 +63,16 @@ useEffect(() => {
       device.setDevices(data.rows);
       device.setTotalCount(data.count);
     });
-  }, [device.page, device.selectedType, device.selectedSubType, device.selectedBrand]);
+  }, [
+    device.page,
+    device.selectedType,
+    device.selectedSubType,
+    device.selectedBrand,
+  ]);
 
   useEffect(() => {
     const loadDevices = async () => {
       try {
-  
         const devicesData = await fetchDevices(
           device.selectedType?.id || null,
           device.selectedSubType?.id || null,
@@ -63,43 +80,50 @@ useEffect(() => {
           device.page,
           device.limit
         );
-  
+
         device.setDevices(devicesData.rows);
         device.setTotalCount(devicesData.count);
       } catch (error) {
         console.error("Ошибка при фильтрации устройств:", error);
       }
     };
-  
+
     loadDevices();
-  }, [device.selectedType, device.selectedBrand, device.selectedSubType, device.page]);
-  
+  }, [
+    device.selectedType,
+    device.selectedBrand,
+    device.selectedSubType,
+    device.page,
+  ]);
 
   useEffect(() => {
     const loadSubtypes = async () => {
       try {
+        let subtypesData;
         if (device.selectedType.id) {
-          // Загружаем подтипы для выбранного типа
-          const subtypesData = await fetchSubtypesByType(device.selectedType.id);
-          device.setSubtypes(subtypesData);
+          subtypesData = await fetchSubtypesByType(device.selectedType.id);
         } else {
-          // Если фильтр типа снят, восстанавливаем все подтипы
-          const allSubtypes = await fetchSubtypes();
-          device.setSubtypes(allSubtypes);
+          subtypesData = await fetchSubtypes();
         }
-        device.setSelectedSubType({}); // Сбрасываем выбранный подтип
+
+        const translatedSubtypes = subtypesData.map((subtype) => ({
+          ...subtype,
+          translations: subtype.translations || {},
+        }));
+
+        device.setSubtypes(translatedSubtypes);
+        device.setSelectedSubType({});
       } catch (error) {
         console.error("Ошибка при загрузке подтипов:", error);
       }
     };
 
     loadSubtypes();
-  }, [device.selectedType]);
+  }, [device.selectedType, currentLang]);
 
-  // Логика кнопки "Вернуться наверх"
   useEffect(() => {
     const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300); // Порог появления кнопки
+      setShowScrollTop(window.scrollY > 300);
     };
 
     window.addEventListener("scroll", handleScroll);
@@ -118,10 +142,10 @@ useEffect(() => {
   return (
     <div className={catalogStyles.catalogWrapper}>
       <div className={catalogStyles.catalogContent}>
-        <h1 className={catalogStyles.catalogTitle}>{t("product Catalog"
-, { ns: "deviceList" })}</h1>
+        <h1 className={catalogStyles.catalogTitle}>
+          {t("product Catalog", { ns: "deviceList" })}
+        </h1>
 
-        {/* Блок фильтров */}
         <div className={catalogStyles.filters}>
           <div className={catalogStyles.brandFilter}>
             <BrandBar />
