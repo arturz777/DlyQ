@@ -1,178 +1,50 @@
-import React, { useEffect, useContext, useState } from "react";
+import React, { useContext, useEffect } from "react";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
-import TypeBar from "../components/TypeBar";
-import BrandBar from "../components/BrandBar";
-import SubTypeBar from "..//components/SubTypeBar";
-import DeviceList from "../components/DeviceList";
-import appStore from "../store/appStore";
-import {
-  fetchBrands,
-  fetchDevices,
-  fetchTypes,
-  fetchSubtypes,
-  fetchSubtypesByType,
-} from "../http/deviceAPI";
 import { useTranslation } from "react-i18next";
-import catalogStyles from "./CatalogPage.module.css";
+import { fetchSubtypesByType } from "../http/deviceAPI";
+import styles from "./TypeBar.module.css";
 
-const CatalogPage = observer(() => {
+const SubTypeBar = observer(() => {
   const { device } = useContext(Context);
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const currentLang = i18n.language || "en";
 
-  const [showScrollTop, setShowScrollTop] = useState(false);
-
   useEffect(() => {
-    appStore.startLoading();
+   
+    if (device.selectedType.id) {
+      fetchSubtypesByType(device.selectedType.id).then((data) => {
+        device.setSubtypes(data);
+      });
+    } else {
+      device.setSubtypes([]);
+    }
+  }, [device.selectedType]);
 
-    Promise.all([
-      fetchTypes(),
-      fetchSubtypes(),
-      fetchBrands(),
-      fetchDevices(null, null, 1, device.limit),
-    ])
-      .then(([typesData, subtypesData, brandsData, devicesData]) => {
-        const translatedTypes = typesData.map((type) => ({
-          ...type,
-          translations: type.translations || {},
-        }));
-        device.setTypes(translatedTypes);
-
-        const translatedSubtypes = subtypesData.map((subtype) => ({
-          ...subtype,
-          translations: subtype.translations || {},
-        }));
-        device.setSubtypes(translatedSubtypes);
-
-        device.setBrands(brandsData);
-        device.setDevices(devicesData.rows);
-        device.setTotalCount(devicesData.count);
-      })
-      .finally(() => appStore.stopLoading());
-  }, [currentLang]);
-
-  useEffect(() => {
-    fetchDevices(
-      device.selectedType.id,
-      device.selectedSubType?.id,
-      device.selectedBrand.id,
-      device.page,
-      device.limit
-    ).then((data) => {
-      device.setDevices(data.rows);
-      device.setTotalCount(data.count);
-    });
-  }, [
-    device.page,
-    device.selectedType,
-    device.selectedSubType,
-    device.selectedBrand,
-  ]);
-
-  useEffect(() => {
-    const loadDevices = async () => {
-      try {
-        const devicesData = await fetchDevices(
-          device.selectedType?.id || null,
-          device.selectedSubType?.id || null,
-          device.selectedBrand?.id || null,
-          device.page,
-          device.limit
-        );
-
-        device.setDevices(devicesData.rows);
-        device.setTotalCount(devicesData.count);
-      } catch (error) {
-        console.error("Ошибка при фильтрации устройств:", error);
-      }
-    };
-
-    loadDevices();
-  }, [
-    device.selectedType,
-    device.selectedBrand,
-    device.selectedSubType,
-    device.page,
-  ]);
-
-  useEffect(() => {
-    const loadSubtypes = async () => {
-      try {
-        let subtypesData;
-        if (device.selectedType.id) {
-          subtypesData = await fetchSubtypesByType(device.selectedType.id);
-        } else {
-          subtypesData = await fetchSubtypes();
-        }
-
-        const translatedSubtypes = subtypesData.map((subtype) => ({
-          ...subtype,
-          translations: subtype.translations || {},
-        }));
-
-        device.setSubtypes(translatedSubtypes);
-        device.setSelectedSubType({});
-      } catch (error) {
-        console.error("Ошибка при загрузке подтипов:", error);
-      }
-    };
-
-    loadSubtypes();
-  }, [device.selectedType, currentLang]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+  const handleScrollToSubtype = (subtypeId) => {
+    const element = document.getElementById(`subtype-${subtypeId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
+  if (!device.selectedType.id) {
+    return null;
+  }
+
   return (
-    <div className={catalogStyles.catalogWrapper}>
-      <div className={catalogStyles.catalogContent}>
-        <h1 className={catalogStyles.catalogTitle}>
-          {t("product Catalog", { ns: "deviceList" })}
-        </h1>
-
-        <div className={catalogStyles.filters}>
-          <div className={catalogStyles.brandFilter}>
-            <BrandBar />
-          </div>
-          <div className={catalogStyles.typeFilter}>
-            <TypeBar />
-          </div>
-          <div className={catalogStyles.subtypeFilter}>
-            <SubTypeBar />
-          </div>
+    <div className={styles.typeBar}>
+      {device.subtypes.map((subtype) => (
+        <div
+          key={subtype.id}
+          className={`${styles.typeItem}`}
+          onClick={() => handleScrollToSubtype(subtype.id)}
+        >
+          <span className={styles.typeName}>{subtype.translations?.name?.[currentLang] || subtype.name}</span>
         </div>
-
-        {/* Блок устройств */}
-        <div className={catalogStyles.deviceContainer}>
-          <DeviceList />
-        </div>
-        {showScrollTop && (
-          <button
-            onClick={scrollToTop}
-            className={catalogStyles.scrollToTopButton}
-          >
-            ↑
-          </button>
-        )}
-      </div>
+      ))}
     </div>
   );
 });
 
-export default CatalogPage;
+export default SubTypeBar;
