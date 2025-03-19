@@ -3,7 +3,7 @@ import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import { useTranslation } from "react-i18next";
 import { fetchSubtypesByType } from "../http/deviceAPI";
-import styles from "./TypeBar.module.css";
+import styles from "./SubTypeBar.module.css";
 
 const SubTypeBar = observer(() => {
   const { device } = useContext(Context);
@@ -33,11 +33,11 @@ const SubTypeBar = observer(() => {
   }
 
   return (
-    <div className={styles.typeBar}>
+    <div className={styles.subTypeBar}>
       {device.subtypes.map((subtype) => (
         <div
           key={subtype.id}
-          className={`${styles.typeItem}`}
+          className={`${styles.subTypeItem}`}
           onClick={() => handleScrollToSubtype(subtype.id)}
         >
           <span className={styles.typeName}>{subtype.translations?.name?.[currentLang] || subtype.name}</span>
