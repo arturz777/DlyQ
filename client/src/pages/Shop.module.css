@@ -4,16 +4,14 @@
 	align-items: center; /* Центрируем содержимое по вертикали */
 	min-height: 100vh; /* Высота экрана */
 	padding: 20px; /* Отступы внутри страницы */
-	margin-top: 100px; /* Отступ сверху */
+	margin-top: 50px; /* Отступ сверху */
   }
   
   .mainContent {
 	width: 100%;
 	max-width: 1400px; /* Ограничиваем ширину страницы */
 	background-color: #fff; /* Белый фон */
-	border-radius: 8px; /* Округлые края */
 	padding: 20px; /* Отступы внутри */
-	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Тень для глубины */
 	padding-bottom: 100px; /* отступ с низу */
   }
   
