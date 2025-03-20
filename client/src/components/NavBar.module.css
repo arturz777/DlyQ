@@ -1,7 +1,6 @@
 /* Общие стили для навбара */
 .navbar {
   background-color: #000000; /* Белый фон */
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Тень для глубины */
   font-family: Arial, sans-serif;
   margin-top: 10px; /* Отступ сверху */
 }
