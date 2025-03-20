@@ -16,7 +16,7 @@ const MobileNavBar = () => {
           style={{ cursor: "pointer" }}
         >
           <i className="bi bi-house" style={{ fontSize: "1.5rem" }}></i>
-          <div style={{ fontSize: "0.75rem" }}>Главная</div>
+          <div style={{ fontSize: "0.75rem" }}>{t("home", { ns: "mobileNavBar" })}</div>
         </div>
         <div
           className="text-center"
@@ -24,7 +24,7 @@ const MobileNavBar = () => {
           style={{ cursor: "pointer" }}
         >
           <i className="bi bi-search" style={{ fontSize: "1.5rem" }}></i>
-          <div style={{ fontSize: "0.75rem" }}>Поиск</div>
+          <div style={{ fontSize: "0.75rem" }}>{t("search", { ns: "mobileNavBar" })}</div>
         </div>
         <div
           className="text-center"
@@ -32,7 +32,7 @@ const MobileNavBar = () => {
           style={{ cursor: "pointer" }}
         >
           <i className="bi bi-bag" style={{ fontSize: "1.5rem" }}></i>
-          <div style={{ fontSize: "0.75rem" }}>Корзина</div>
+          <div style={{ fontSize: "0.75rem" }}>{t("cart", { ns: "mobileNavBar" })}</div>
         </div>
         {user.isAuth ? (
           <div
@@ -41,7 +41,7 @@ const MobileNavBar = () => {
             style={{ cursor: "pointer" }}
           >
             <i className="bi bi-person" style={{ fontSize: "1.5rem" }}></i>
-            <div style={{ fontSize: "0.75rem" }}>Профиль</div>
+            <div style={{ fontSize: "0.75rem" }}>{t("profile", { ns: "mobileNavBar" })}</div>
           </div>
         ) : (
           <div
@@ -50,7 +50,7 @@ const MobileNavBar = () => {
             style={{ cursor: "pointer" }}
           >
             <i className="bi bi-person" style={{ fontSize: "1.5rem" }}></i>
-            <div style={{ fontSize: "0.75rem" }}>Профиль</div>
+            <div style={{ fontSize: "0.75rem" }}>{t("profile", { ns: "mobileNavBar" })}</div>
           </div>
         )}
       </div>
