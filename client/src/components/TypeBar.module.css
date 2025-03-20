@@ -6,8 +6,6 @@
 	overflow-x: auto; /* Горизонтальная прокрутка */
 	padding: 10px;
 	background: #ffffff;
-	border-radius: 12px;
-	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   }
   
   .typeBar::-webkit-scrollbar {
@@ -16,8 +14,8 @@
   
   .typeItem {
 	cursor: pointer;
-	width: 190px; /* Фиксированная ширина */
-	height: 140px; /* Фиксированная высота */
+	width: 150px; /* Фиксированная ширина */
+	height: 120px; /* Фиксированная высота */
 	padding: 12px;
 	background: white;
 	border-radius: 10px;
@@ -82,7 +80,3 @@
 	  overflow-x: visible; /* Убираем горизонтальную прокрутку */
 	}
   }
-
-  
-  
-  
