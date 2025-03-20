@@ -2,23 +2,22 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 20px;
-  margin-top: 100px;
+  padding: 60px;
 }
 
 .mainContent {
   display: flex; /* Добавляем flexbox */
+  position: relative;
   justify-content: center; /* Центрируем содержимое по горизонтали */
   align-items: center;
   width: 100%;
   max-width: 1400px;
   background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .settingsHeader {
   font-size: 16px;
+  margin-top: 20px;
 }
 
 .profileContainer {
@@ -34,17 +33,41 @@
   font-size: 20px;
 }
 
-.profileButtonBack {
-  margin-bottom: 280px;
+.buttonsContainer {
+  position: absolute; /* Абсолютное позиционирование */
+  top: 20px; /* Отступ сверху */
+  left: 0; /* Центрирование по горизонтали */
+  z-index: 10; /* Убедитесь, что кнопка выше других элементов */
 }
 
 .backButton {
-  margin-bottom: 150px;
-  background-color: transparent;
+  background-color: #00a746;
+  color: white;
   border: none;
-  color: #009945;
-  font-size: 16px;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
   cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .buttonsContainer {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 5px;
+  }
+
+  .backButton{
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 5px;
+  }
+
+  .settingsButton svg{
+    width: 16px;
+    height: 16px;
+  }
 }
 
 .profileItem {
