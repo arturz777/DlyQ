@@ -40,7 +40,6 @@ const DevicePage = () => {
       const data = await response.json();
 
       if (data.status === "error") {
-        // ✅ Теперь проверяем статус, а не response.ok
         toast.error(`❌ ${data.message}`);
         return false;
       }
@@ -65,7 +64,7 @@ const DevicePage = () => {
       const initialOptions = {};
       data.options?.forEach((option) => {
         if (option.values.length > 0) {
-          initialOptions[option.name] = option.values[0]; // Устанавливаем первое значение
+          initialOptions[option.name] = option.values[0];
         }
       });
       setSelectedOptions({});
@@ -80,7 +79,7 @@ const DevicePage = () => {
     setFinalPrice(device.price + additionalPrice);
   }, [selectedOptions, device.price]);
 
-   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
+  if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
   const images = [device.img, ...(device.thumbnails || [])];
 
@@ -101,7 +100,7 @@ const DevicePage = () => {
 
   const availableOptions = device.options.map((option) => ({
     ...option,
-    values: option.values.filter((v) => v.quantity > 0), 
+    values: option.values.filter((v) => v.quantity > 0),
   }));
 
   const handleAddToBasket = async () => {
@@ -131,12 +130,9 @@ const DevicePage = () => {
       isPreorder,
     };
 
-    
     basket.addItem(newItem);
     toast.success(`${deviceName} ${t("Added to cart!", { ns: "devicePage" })}`);
 
-
-   
     setAvailableQuantity((prev) => prev - 1);
   };
 
@@ -191,13 +187,13 @@ const DevicePage = () => {
         <div className={styles.DevicePageDetails}>
           <div className={styles.DevicePageCard}>
             <h2 className={styles.DevicePageTitle}>
-            {device.translations?.["name"]?.[currentLang] || device.name}
-              </h2>
+              {device.translations?.["name"]?.[currentLang] || device.name}
+            </h2>
             {device.options?.map((option, optionIndex) => (
               <div key={optionIndex} className={styles.DevicePageOption}>
                 <label>
-  {option.translations?.name?.[currentLang] || option.name}
-</label>
+                  {option.translations?.name?.[currentLang] || option.name}
+                </label>
 
                 <select
                   value={selectedOptions[option.name]?.value || ""}
@@ -210,8 +206,8 @@ const DevicePage = () => {
                   className={styles.DevicePageSelect}
                 >
                   <option value="" disabled hidden>
-                  {t("Select", { ns: "devicePage" })}: {option.translations?.name?.[currentLang] || option.name}
-
+                    {t("Select", { ns: "devicePage" })}:{" "}
+                    {option.translations?.name?.[currentLang] || option.name}
                   </option>
                   {option.values.map((valueObj, valueIndex) => (
                     <option
@@ -219,16 +215,19 @@ const DevicePage = () => {
                       value={valueObj.value}
                       disabled={valueObj.quantity <= 0}
                     >
-                      {option.translations?.values?.[valueIndex]?.[currentLang] || valueObj.value}
+                      {option.translations?.values?.[valueIndex]?.[
+                        currentLang
+                      ] || valueObj.value}
                     </option>
                   ))}
                 </select>
               </div>
             ))}
-            <p className={styles.DevicePagePrice}>{t("total", { ns: "devicePage" })}: {finalPrice}€</p>
+            <p className={styles.DevicePagePrice}>
+              {t("total", { ns: "devicePage" })}: {finalPrice}€
+            </p>
             <div className={styles.DevicePageRating}>
-              <span className={styles.DevicePageRatingValue}>
-              </span>
+              <span className={styles.DevicePageRatingValue}></span>
             </div>
 
             <button
@@ -236,11 +235,9 @@ const DevicePage = () => {
               onClick={handleAddToBasket}
               disabled={!isPreorder && availableQuantity <= 0}
             >
-             {availableQuantity <= 0 
-  ? t("out_of_stock", { ns: "devicePage" }) 
-  : t("add_to_cart", { ns: "devicePage" })
-}
-
+              {availableQuantity <= 0
+                ? t("out_of_stock", { ns: "devicePage" })
+                : t("add_to_cart", { ns: "devicePage" })}
             </button>
             {availableQuantity <= 0 && (
               <div className={styles.preorderSection}>
@@ -250,7 +247,7 @@ const DevicePage = () => {
                     checked={isPreorder}
                     onChange={() => setIsPreorder(!isPreorder)}
                   />
-                 {t("Place a pre-order", { ns: "devicePage" })}
+                  {t("Place a pre-order", { ns: "devicePage" })}
                 </label>
               </div>
             )}
@@ -258,9 +255,10 @@ const DevicePage = () => {
         </div>
       </div>
 
-    
       <div className={styles.DevicePageSpecs}>
-        <h3 className={styles.DevicePageSpecsTitle}>{t("Specifications", { ns: "devicePage" })}</h3>
+        <h3 className={styles.DevicePageSpecsTitle}>
+          {t("Specifications", { ns: "devicePage" })}
+        </h3>
         <div className={styles.DevicePageSpecsCard}>
           {device.info.map((info, index) => (
             <div
@@ -270,14 +268,13 @@ const DevicePage = () => {
               }`}
             >
               <span className={styles.DevicePageSpecText}>
-              <strong>
-   {info.translations?.title?.[currentLang] || info.title}
-      </strong>
-      {": "}
-      {info.translations?.description?.[currentLang] || info.description}
-
-        </span>
-
+                <strong>
+                  {info.translations?.title?.[currentLang] || info.title}
+                </strong>
+                {": "}
+                {info.translations?.description?.[currentLang] ||
+                  info.description}
+              </span>
             </div>
           ))}
         </div>
@@ -287,3 +284,4 @@ const DevicePage = () => {
 };
 
 export default DevicePage;
+
