@@ -1,13 +1,18 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect  } from "react";
 import { Context } from "../index";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation  } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import "bootstrap-icons/font/bootstrap-icons.css"; // Подключение Bootstrap Icons
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 const MobileNavBar = () => {
   const navigate = useNavigate();
   const { user } = useContext(Context);
-   const { t, i18n } = useTranslation();
+  const location = useLocation();
+  const { t, i18n } = useTranslation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0); // Прокручиваем страницу вверх
+  }, [location.pathname]);
 
   return (
     <div className="MobileNavBar d-md-none fixed-bottom bg-light border-top">
