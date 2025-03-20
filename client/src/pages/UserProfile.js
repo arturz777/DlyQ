@@ -2,12 +2,13 @@ import React, { useContext, useEffect, useState } from "react";
 import { Context } from "../index";
 import { fetchUserOrders } from "../http/orderAPI";
 import { updateProfile, fetchProfile } from "../http/userAPI";
-import styles from "./UserProfile.module.css";
+import OrderSidebar from "../components/OrderSidebar";
 import { FaCog, FaSignOutAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Flag from "react-world-flags";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
+import styles from "./UserProfile.module.css";
 
 const UserProfile = () => {
   const [orders, setOrders] = useState([]);
@@ -21,6 +22,7 @@ const UserProfile = () => {
   const [phone, setPhone] = useState("");
   const [showSettings, setShowSettings] = useState(false);
    const currentLang = i18n.language;
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   const handleBack = () => {
     navigate(-1); 
@@ -111,7 +113,7 @@ const UserProfile = () => {
     }
   };
 
-  return (
+ return (
     <div className={styles.shopWrapper}>
       <div className={styles.mainContent}>
         <div className={styles.buttonsContainer}>
@@ -153,19 +155,37 @@ const UserProfile = () => {
 
           <div className={styles.profileButtonLogOut} onClick={handleLogOut}>
             <FaSignOutAlt size={20} />
-            <span className={styles.navbarLinkTitle}>{t("logout", { ns: "userProfile" })}</span>
+            <span className={styles.navbarLinkTitle}></span>
           </div>
+
+          <OrderSidebar
+            isSidebarOpen={isSidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+          />
         </div>
 
-        <h1 className={styles.ProfileTitle}>{t("myOrders", { ns: "userProfile" })}</h1>
+        <button
+          className={styles.openSidebarButton}
+          onClick={() => setSidebarOpen(true)}
+        >
+          {t("order", { ns: "userProfile" })}
+        </button>
+
+        <h1 className={styles.ProfileTitle}>
+          {t("myOrders", { ns: "userProfile" })}
+        </h1>
         <div className={styles.ordersContainer}>
           {orders.length > 0 ? (
             orders.map((order) => (
               <div key={order.id} className={styles.orderGroup}>
-               
                 <div className={styles.orderHeader}>
-                  <strong>{t("order", { ns: "userProfile" })} №{order.id}</strong>
-                  <span>{t("totalAmount", { ns: "userProfile" })} {order.totalPrice} €</span>
+                  <strong>
+                    {t("order", { ns: "userProfile" })} №{order.id}
+                  </strong>
+                  <span>
+                    {t("totalAmount", { ns: "userProfile" })} {order.totalPrice}{" "}
+                    €
+                  </span>
                   <span>{translateStatus(order.status)}</span>
                   <span>
                     {new Date(order.createdAt).toLocaleString("ru-RU", {
@@ -178,7 +198,6 @@ const UserProfile = () => {
                   </span>
                 </div>
 
-                {/* Товары из заказа */}
                 {order.orderDetails && order.orderDetails.length > 0 ? (
                   order.orderDetails.map((product, index) => (
                     <div key={index} className={styles.orderCard}>
@@ -189,9 +208,13 @@ const UserProfile = () => {
                       />
                       <div className={styles.orderDetails}>
                         <span>
-                        {product.translations?.name?.[currentLang] || product.name} 
+                          {product.translations?.name?.[currentLang] ||
+                            product.name}
                         </span>
-                        <span>{t("quantity", { ns: "userProfile" })} {product.count || "Не указано"}</span>
+                        <span>
+                          {t("quantity", { ns: "userProfile" })}{" "}
+                          {product.count || "Не указано"}
+                        </span>
                         <span>
                           {t("price", { ns: "userProfile" })}{" "}
                           {product.price ? `${product.price} €` : "Не указана"}
@@ -207,8 +230,14 @@ const UserProfile = () => {
                       className={styles.deviceImage}
                     />
                     <div className={styles.orderDetails}>
-                      <span>{t("orderSummary", { ns: "userProfile" })} {order.productName}</span>
-                      <span>{t("orderTotalPrice", { ns: "userProfile" })} {order.totalPrice} €</span>
+                      <span>
+                        {t("orderSummary", { ns: "userProfile" })}{" "}
+                        {order.productName}
+                      </span>
+                      <span>
+                        {t("orderTotalPrice", { ns: "userProfile" })}{" "}
+                        {order.totalPrice} €
+                      </span>
                       <span>{translateStatus(order.status)}</span>
                     </div>
                   </div>
@@ -216,7 +245,9 @@ const UserProfile = () => {
               </div>
             ))
           ) : (
-            <p className={styles.NoOrderTitle}>{t("noOrders", { ns: "userProfile" })}</p>
+            <p className={styles.NoOrderTitle}>
+              {t("noOrders", { ns: "userProfile" })}
+            </p>
           )}
         </div>
       </div>
