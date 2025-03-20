@@ -1,11 +1,13 @@
 import React, { useContext } from "react";
 import { Context } from "../index";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import "bootstrap-icons/font/bootstrap-icons.css"; // Подключение Bootstrap Icons
 
 const MobileNavBar = () => {
   const navigate = useNavigate();
   const { user } = useContext(Context);
+   const { t, i18n } = useTranslation();
 
   return (
     <div className="MobileNavBar d-md-none fixed-bottom bg-light border-top">
