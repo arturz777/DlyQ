@@ -136,7 +136,7 @@ const DevicePage = () => {
     setAvailableQuantity((prev) => prev - 1);
   };
 
-  return (
+ return (
     <div className={styles.DevicePageContainer}>
       <div className={styles.DevicePageContent}>
         <div className={styles.DevicePageColImg}>
@@ -226,9 +226,6 @@ const DevicePage = () => {
             <p className={styles.DevicePagePrice}>
               {t("total", { ns: "devicePage" })}: {finalPrice}€
             </p>
-            <div className={styles.DevicePageRating}>
-              <span className={styles.DevicePageRatingValue}></span>
-            </div>
 
             <button
               className={styles.DevicePageAddToCart}
@@ -284,4 +281,3 @@ const DevicePage = () => {
 };
 
 export default DevicePage;
-
