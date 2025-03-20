@@ -114,13 +114,14 @@ const UserProfile = () => {
   };
 
  return (
-    <div className={styles.shopWrapper}>
+   <div className={styles.shopWrapper}>
       <div className={styles.mainContent}>
         <div className={styles.buttonsContainer}>
           <button className={styles.backButton} onClick={() => navigate(-1)}>
             {t("back", { ns: "userProfile" })}
           </button>
 
+          <div className={styles.rightButtons}>
           <div
             className={styles.languageSelectorWrapper}
             onMouseLeave={() => setIsLanguageMenuOpen(false)}
@@ -162,6 +163,7 @@ const UserProfile = () => {
             isSidebarOpen={isSidebarOpen}
             setSidebarOpen={setSidebarOpen}
           />
+        </div>
         </div>
 
         <button
