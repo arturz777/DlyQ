@@ -26,7 +26,7 @@
 	position: fixed;
 	top: 0;
 	right: -100%; /* Начальное скрытое состояние */
-	width: 100vw; /* Делаем на всю ширину экрана */
+	width: 90vw; /* Делаем на всю ширину экрана */
 	height: 100vh; /* Делаем на всю высоту экрана */
 	background-color: white;
 	box-shadow: -4px 0 10px rgba(0, 0, 0, 0.1);
