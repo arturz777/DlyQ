@@ -139,9 +139,9 @@ const ProfileSettings = ({ onBack }) => {
   return (
     <div className={styles.settingsWrapper}>
       <div className={styles.mainContent}>
-        <div className={styles.profileButtonBack}>
+        <div className={styles.buttonsContainer}>
           <button className={styles.backButton} onClick={() => navigate(-1)}>
-            {t("back", { ns: "profileSettings" })}
+            {t("back", { ns: "userProfile" })}
           </button>
         </div>
 
