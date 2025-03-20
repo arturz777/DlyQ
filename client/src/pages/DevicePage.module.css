@@ -1,372 +1,351 @@
 /* Главный контейнер */
 .DevicePageContainer {
-	display: flex;
+  display: flex;
   flex-wrap: wrap; /* Делаем колонки адаптивными */
   justify-content: center; /* Выравниваем по центру */
   align-items: flex-start; /* Выравниваем верхний край */
   gap: 20px;
   margin-top: 100px;
-  }
-  
-  .DevicePageContent {
-	width: 100%;
-	max-width: 1400px;
-	background-color: #fff;
-	border-radius: 8px;
-	padding: 20px;
-	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-	display: flex;
-	flex-wrap: wrap;
-  }
-  
-  /* Левая колонка */
-  .DevicePageColImg {
-	flex: 1;
-	min-width: 400px;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-  }
-  
-  .DevicePageImageWrapper {
-	padding: 1.5rem;
-	border-radius: 8px;
-	max-width: 400px;
-	width: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-  }
-  
-  .DevicePageMainImage {
-	width: 100%;
-	object-fit: cover;
-	border-radius: 8px;
-  }
-  
-  /* Миниатюры */
-  .DevicePageThumbnailContainer {
-	display: flex;
-	justify-content: center;
-	gap: 10px;
-	margin-top: 10px;
-  }
-  
-  .DevicePageThumbnail {
-	width: 60px;
-	height: 60px;
-	object-fit: cover;
-	cursor: pointer;
-	border: 2px solid transparent;
-	border-radius: 6px;
-	transition: border 0.2s ease-in-out;
-  }
-  
-  .DevicePageThumbnail:hover {
-	border-color: #008b07;
-  }
-  
-  /* Правая колонка */
-  .DevicePageDetails {
-	flex: 1;
-	margin-top: 40px;
-	min-width: 400px;
-	display: flex;
-	flex-direction: column;
-	align-items: stretch;
-  }
-  
-  .DevicePageCard {
-	display: flex;
-	flex-direction: column;
-	padding: 1.5rem;
-	border-radius: 8px;
-	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-	width: 100%;
-	min-height: 430px;
-	background-color: #fff;
-  }
-  
-  /* Заголовок и бренд */
-  .DevicePageBrand {
-	color: #6c757d;
-	margin-bottom: 5px;
-  }
-  
-  .DevicePageTitle {
-	font-size: 2rem;
-	font-weight: bold;
-	margin-bottom: 15px;
-  }
-  
-  /* Опции */
-  .DevicePageOption {
-	margin-bottom: 15px;
-  }
-  
-  .DevicePageOption label {
-	font-weight: 500;
-	display: block;
-	margin-bottom: 5px;
-  }
-  
-  .DevicePageSelect {
-	width: 100%;
-	padding: 8px;
-	border: 1px solid #ced4da;
-	border-radius: 4px;
-	font-size: 1rem;
-	cursor: pointer;
-  }
-  
-  .DevicePageSelect:focus {
-	border-color: #008b07;
-	outline: none;
-  }
-  
-  /* Цена */
-  .DevicePagePrice {
-	font-size: 1.2rem;
-	font-weight: 600;
-	color: #333;
-	margin-bottom: 20px;
-  }
-  
-  /* Рейтинг */
-  .DevicePageRating {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	margin-bottom: 20px;
-  }
-  
-  .DevicePageRatingValue {
-	font-size: 1.2rem;
-  }
-  
-  .DevicePageRatingIcon {
-	width: 20px;
-	height: 20px;
-  }
-  
-  .DevicePageRatingText {
-	color: #6c757d;
-  }
-  
-  /* Кнопка "Добавить в корзину" */
-  .DevicePageAddToCart {
-	width: 100%;
-	padding: 12px;
-	font-size: 1.1rem;
-	font-weight: 600;
-	background-color: #008b07;
-	color: #fff;
-	border: none;
-	border-radius: 6px;
-	cursor: pointer;
-	transition: background 0.2s ease-in-out;
-  }
-  
-  .DevicePageAddToCart:hover {
-	background-color: #006d05;
-  }
-  
-  /* Блок характеристик */
-  .DevicePageSpecs {
-	width: 100%; /* Полная ширина */
-	max-width: 1400px; /* Ограничиваем по ширине */
-	margin-top: 30px; /* Отступ сверху */
-	margin-bottom: 100px;
-	align-self: center; /* Центрируем в родительском flex-контейнере */
-  }
-  
-  
-  .DevicePageSpecsTitle {
-	font-size: 1.8rem;
-	margin-bottom: 20px;
-  }
-  
-  .DevicePageSpecsCard {
-	padding: 15px;
-	border-radius: 8px;
-	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-	background-color: #fff;
-  }
-  
-  .DevicePageSpecRow {
-	padding: 10px;
-	border-radius: 4px;
-	margin: 5px 0;
-  }
-  
-  .DevicePageSpecRow:nth-child(even) {
-	background-color: #ffffff; /* Светло-серый */
-  }
-  
-  .DevicePageSpecRow:nth-child(odd) {
-	background-color: #f9f9f9; /* Белый */
-  }
-  
-  .DevicePageSpecText {
-	color: #6c757d;
-	font-weight: 500;
-  }
-  
-  /* Адаптивность */
-  @media (max-width: 768px) {
-	.DevicePageContent {
-	  flex-direction: column;
-	}
-  }
-  
-  /* Цена */
-.DevicePagePrice {
-	font-size: 1.2rem;
-	font-weight: 600;
-	color: #333;
-	margin-bottom: 20px;
-  }
-  
-  /* Рейтинг */
-  .DevicePageRating {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	margin-bottom: 20px;
-  }
-  
-  .DevicePageRatingValue {
-	font-size: 1.2rem;
-  }
-  
-  .DevicePageRatingIcon {
-	width: 20px;
-	height: 20px;
-  }
-  
-  .DevicePageRatingText {
-	color: #6c757d;
-  }
-  
-  /* Кнопка "Добавить в корзину" */
-  .DevicePageAddToCart {
-	width: 100%;
-	padding: 12px;
-	font-size: 1.1rem;
-	font-weight: 600;
-	background-color: #008b07;
-	color: #fff;
-	border: none;
-	border-radius: 6px;
-	cursor: pointer;
-	transition: background 0.2s ease-in-out;
-  }
-  
-  .DevicePageAddToCart:hover {
-	background-color: #006d05;
-  }
-  
-  /* Характеристики */
-  .DevicePageSpecs {
-	margin-top: 50px;
-	text-align: center;
-  }
-  
-  .DevicePageSpecsTitle {
-	font-size: 1.8rem;
-	margin-bottom: 20px;
-  }
-  
-  .DevicePageSpecsCard {
-	padding: 15px;
-	border-radius: 8px;
-	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-	background-color: #fff;
-  }
-  
-  /* Строки характеристик */
-  .DevicePageSpecRow {
-	padding: 10px;
-	border-radius: 4px;
-	margin: 5px 0;
-  }
-  
-  .DevicePageSpecRowEven {
-	background-color: #f9f9f9;
-  }
-  
-  .DevicePageSpecText {
-	color: #6c757d;
-	font-weight: 500;
-  }
+}
 
-  .DevicePageImageWrapper {
-	position: relative;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	min-height: 400px; /* Фикс высоты, чтобы не прыгало */
+.DevicePageContent {
+  width: 100%;
+  max-width: 1400px;
+  background-color: #fff;
+  padding: 20px;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+/* Левая колонка */
+.DevicePageColImg {
+  flex: 1;
+  min-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.DevicePageImageWrapper {
+  padding: 1.5rem;
+  border-radius: 8px;
+  max-width: 400px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.DevicePageMainImage {
+  width: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* Миниатюры */
+.DevicePageThumbnailContainer {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.DevicePageThumbnail {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  transition: border 0.2s ease-in-out;
+}
+
+.DevicePageThumbnail:hover {
+  border-color: #008b07;
+}
+
+/* Правая колонка */
+.DevicePageDetails {
+  flex: 1;
+  margin-top: 40px;
+  min-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.DevicePageCard {
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  width: 100%;
+  min-height: 430px;
+  background-color: #fff;
+}
+
+/* Заголовок и бренд */
+.DevicePageBrand {
+  color: #6c757d;
+  margin-bottom: 5px;
+}
+
+.DevicePageTitle {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+/* Опции */
+.DevicePageOption label {
+  font-weight: 500;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.DevicePageSelect {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.DevicePageSelect:focus {
+  border-color: #008b07;
+  outline: none;
+}
+
+/* Цена */
+.DevicePagePrice {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+/* Рейтинг */
+.DevicePageRating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.DevicePageRatingValue {
+  font-size: 1.2rem;
+}
+
+.DevicePageRatingIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.DevicePageRatingText {
+  color: #6c757d;
+}
+
+.DevicePageAddToCart {
+  width: 100%;
+  padding: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background-color: #008b07;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease-in-out;
+}
+
+.DevicePageAddToCart:hover {
+  background-color: #006d05;
+}
+
+/* Блок характеристик */
+.DevicePageSpecs {
+  width: 100%; /* Полная ширина */
+  max-width: 1400px; /* Ограничиваем по ширине */
+  margin-top: 30px; /* Отступ сверху */
+  margin-bottom: 100px;
+  align-self: center; /* Центрируем в родительском flex-контейнере */
+}
+
+.DevicePageSpecsTitle {
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+}
+
+.DevicePageSpecsCard {
+  padding: 15px;
+  background-color: #fff;
+}
+
+.DevicePageSpecRow {
+  padding: 10px;
+  margin: 5px 0;
+}
+
+.DevicePageSpecRow:nth-child(even) {
+  background-color: #ffffff; /* Светло-серый */
+}
+
+.DevicePageSpecRow:nth-child(odd) {
+  background-color: #f9f9f9; /* Белый */
+}
+
+.DevicePageSpecText {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .DevicePageContent {
+    flex-direction: column;
   }
-  
-  .ImageContainer {
-	position: relative;
-	width: 100%;
-	height: 400px; /* Фиксированная высота */
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	overflow: hidden;
-  }
-  
-  .DevicePageMainImage {
-	position: absolute;
-	width: 100%;
-	height: auto;
-	max-height: 400px;
-	object-fit: contain;
-  }
-  
-  
-  /* Кнопки навигации */
-  .ArrowButtons {
-	position: absolute;
-	width: 100%;
-	top: 50%;
-	display: flex;
-	justify-content: space-between;
-	transform: translateY(-50%);
-  }
-  
-  .PrevButton, .NextButton {
-	color: rgb(128, 128, 128);
-	border: none;
-	font-size: 20px;
-	padding: 15px 10px;
-	cursor: pointer;
-	border-radius: 50%;
-	transition: 0.3s;
-  }
-  
-  /* Миниатюры */
-  .DevicePageThumbnailContainer {
-	display: flex;
-	justify-content: center;
-	gap: 5px;
-	margin-top: 10px;
-  }
-  
-  .DevicePageThumbnail {
-	width: 60px;
-	height: 60px;
-	object-fit: cover;
-	border-radius: 5px;
-	cursor: pointer;
-	opacity: 0.6;
-	transition: 0.3s;
-  }
-  
-  .DevicePageThumbnail:hover, .ActiveThumbnail {
-	opacity: 1;
-	border: 2px solid #007bff;
-  }
-  
+}
+
+/* Цена */
+.DevicePagePrice {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+/* Рейтинг */
+.DevicePageRating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.DevicePageRatingValue {
+  font-size: 1.2rem;
+}
+
+.DevicePageRatingIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.DevicePageRatingText {
+  color: #6c757d;
+}
+
+/* Кнопка "Добавить в корзину" */
+.DevicePageAddToCart {
+  width: 100%;
+  padding: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background-color: #008b07;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease-in-out;
+}
+
+.DevicePageAddToCart:hover {
+  background-color: #006d05;
+}
+
+/* Характеристики */
+.DevicePageSpecs {
+  margin-top: 50px;
+  text-align: center;
+}
+
+.DevicePageSpecsTitle {
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+}
+
+.DevicePageSpecsCard {
+  padding: 15px;
+  background-color: #fff;
+}
+
+/* Строки характеристик */
+.DevicePageSpecRow {
+  padding: 10px;
+  border-radius: 4px;
+  margin: 5px 0;
+}
+
+.DevicePageSpecRowEven {
+  background-color: #f9f9f9;
+}
+
+.DevicePageSpecText {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.DevicePageImageWrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px; /* Фикс высоты, чтобы не прыгало */
+}
+
+.ImageContainer {
+  position: relative;
+  width: 100%;
+  height: 400px; /* Фиксированная высота */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.DevicePageMainImage {
+  position: absolute;
+  width: 100%;
+  height: auto;
+  max-height: 400px;
+  object-fit: contain;
+}
+
+/* Кнопки навигации */
+.ArrowButtons {
+  position: absolute;
+  width: 100%;
+  top: 50%;
+  display: flex;
+  justify-content: space-between;
+  transform: translateY(-50%);
+}
+
+.PrevButton,
+.NextButton {
+  color: rgb(128, 128, 128);
+  border: none;
+  font-size: 20px;
+  padding: 15px 10px;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+/* Миниатюры */
+.DevicePageThumbnailContainer {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.DevicePageThumbnail {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 5px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: 0.3s;
+}
