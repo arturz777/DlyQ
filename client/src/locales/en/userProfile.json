@@ -7,7 +7,6 @@
 	"updateSuccess": "Data successfully updated!",
 	"updateError": "Error updating data",
 	"back": "← Back",
-	"logout": "Log out",
 	"myOrders": "My orders",
 	"order": "Order",
 	"totalAmount": "Total amount:",
