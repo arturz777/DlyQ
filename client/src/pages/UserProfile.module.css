@@ -109,7 +109,6 @@
 .languageSelectorWrapper {
   position: relative;
   display: inline-block;
-  margin-left: 180px;
 }
 
 .currentLanguageButton {
@@ -133,6 +132,12 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+}
+
+.rightButtons {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Расстояние между кнопками справа */
 }
 
 .backButton {
