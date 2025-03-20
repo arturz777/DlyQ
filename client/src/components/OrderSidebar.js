@@ -16,7 +16,7 @@ import styles from "./OrderSidebar.module.css";
 
 const socket = io("https://zang-4.onrender.com");
 
-const OrderSidebar = () => {
+const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const [order, setOrder] = useState(null);
   const [isOpen, setIsOpen] = useState(() => {
     return localStorage.getItem("orderSidebarOpen") === "true";
