@@ -2,13 +2,12 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 60px;
+  padding: 80px;
 }
 
 .mainContent {
   display: flex; /* Добавляем flexbox */
-  position: relative;
-  justify-content: center; /* Центрируем содержимое по горизонтали */
+  flex-direction: column;
   align-items: center;
   width: 100%;
   max-width: 1400px;
@@ -34,10 +33,10 @@
 }
 
 .buttonsContainer {
-  position: absolute; /* Абсолютное позиционирование */
-  top: 20px; /* Отступ сверху */
-  left: 0; /* Центрирование по горизонтали */
-  z-index: 10; /* Убедитесь, что кнопка выше других элементов */
+  width: 100%; /* Занимает всю ширину */
+  display: flex;
+  justify-content: flex-start; /* Кнопка "Назад" слева */
+  margin-bottom: 20px; /* Отступ снизу */
 }
 
 .backButton {
@@ -49,6 +48,8 @@
   font-size: 14px;
   cursor: pointer;
   transition: background 0.3s ease;
+  margin-left: 20px;
+  
 }
 
 @media (max-width: 768px) {
@@ -56,6 +57,7 @@
     flex-wrap: wrap;
     justify-content: space-between;
     gap: 5px;
+    margin-right: 120px;
   }
 
   .backButton{
