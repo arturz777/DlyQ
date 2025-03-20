@@ -241,16 +241,15 @@ const OrderSidebar = () => {
 
  return (
     <>
-      {showIcon && (
-        <div className={styles.floatingIcon} onClick={() => setIsOpen(true)}>
-          📦
-        </div>
-      )}
-
-      <div className={`${styles.sidebar} ${isOpen ? styles.open : ""}`}>
+      {showIcon && setSidebarOpen && (
+  <div className={styles.floatingIcon} onClick={() => setSidebarOpen(true)}>
+    📦
+  </div>
+)}
+      <div className={`${styles.sidebar} ${isSidebarOpen  ? styles.open : ""}`}>
         <div className={styles.header}>
           <h3>{t("delivery status", { ns: "orderSidebar" })}</h3>
-          <button onClick={() => setIsOpen(false)}>×</button>
+          <button onClick={() => setSidebarOpen(false)}>×</button>
         </div>
 
         {order ? (
