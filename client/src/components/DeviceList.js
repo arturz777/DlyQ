@@ -58,11 +58,6 @@ const DeviceList = observer(() => {
       group.noSubtypeDevices.length > 0
   );
 
-  if (!hasVisibleDevices) {
-    return <p className={styles.noDevices}>{t("No available products"
-, { ns: "deviceList" })}</p>;
-  }
-
   return (
     <div>
       {Object.keys(groupedDevices).map((typeId) => {
