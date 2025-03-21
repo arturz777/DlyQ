@@ -83,7 +83,7 @@ const NavBar = observer(() => {
   return (
     <div className={`${styles.navbar} NavBar`} style={navbarStyle}>
       <div className={styles.navbarContainer}>
-        <NavLink to={SHOP_ROUTE} className={styles.navbarLogo}>
+        <NavLink to="/" className={styles.navbarLogo}>
           Zang
         </NavLink>
 
