@@ -3,6 +3,7 @@ import Admin from "./pages/Admin";
 import { ADMIN_ROUTE, BASKET_ROUTE, DEVICE_ROUTE, LOGIN_ROUTE, REGISTRATION_ROUTE, SHOP_ROUTE, TERMS_ROUTE, PRIVACY_ROUTE, RETURN_ROUTE, SHIPPING_ROUTE, COOKIE_ROUTE } from "./utils/consts";
 import Basket from "./pages/Basket";
 import Shop from "./pages/Shop";
+import HomePage from "./pages/HomePage";
 import Auth from "./pages/Auth";
 import DevicePage from "./pages/DevicePage";
 import TermsOfService from "./pages/TermsOfService";
@@ -23,6 +24,10 @@ export const authRoutes = [
 ]
 
 export const publicRoutes = [
+    {
+        path: "/",
+        Component: HomePage
+    },
     {
         path: SHOP_ROUTE,
         Component: Shop
