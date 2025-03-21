@@ -14,8 +14,8 @@
   
   .typeItem {
 	cursor: pointer;
-	width: 150px; /* Фиксированная ширина */
-	height: 120px; /* Фиксированная высота */
+	width: 180px; /* Фиксированная ширина */
+	height: 150px; /* Фиксированная высота */
 	padding: 12px;
 	background: white;
 	border-radius: 10px;
