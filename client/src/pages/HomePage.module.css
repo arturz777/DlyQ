@@ -1,0 +1,106 @@
+.homePage {
+	font-family: Arial, sans-serif;
+	background-color: #f8f8f8;
+	padding: 10px;
+	margin-top: 70px;
+  }
+  
+  /* 🔥 Баннер */
+  .banner {
+	text-align: center;
+	background: linear-gradient(135deg, #ff8c00, #ff0080);
+	color: white;
+	padding: 30px 15px;
+	font-size: 18px;
+	font-weight: bold;
+	border-radius: 10px;
+  }
+  
+  /* 🎉 Категории (ГОРИЗОНТАЛЬНАЯ ПРОКРУТКА) */
+  .categories {
+	display: flex;
+	gap: 10px;
+	overflow-x: auto;
+	scroll-snap-type: x mandatory;
+	scrollbar-width: none; /* Для Firefox */
+	-ms-overflow-style: none; /* Для Internet Explorer и Edge */
+	padding-bottom: 10px;
+	margin-top: 15px;
+  }
+  
+  .category {
+	flex: 0 0 auto;
+	background: white;
+	padding: 10px;
+	border-radius: 6px;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+	font-size: 14px;
+	cursor: pointer;
+	transition: 0.3s;
+	text-align: center;
+	min-width: 120px;
+	scroll-snap-align: center;
+  }
+  
+  .category:hover {
+	background: #ddd;
+  }
+
+  .section {
+	margin-top: 20px;
+  }
+  
+  /* 🌟 Товары (Карусель на мобильных, Grid на больших) */
+  .deviceCarousel {
+	display: flex;
+	gap: 25px;
+	overflow-x: auto;
+	scroll-snap-type: x mandatory;
+	padding-bottom: 10px;
+	margin-top: 30px;
+  }
+  
+  .deviceCarousel::-webkit-scrollbar {
+	display: none;
+  }
+  
+  .deviceItem {
+	flex: 0 0 auto;
+	min-width: 160px;
+	scroll-snap-align: center;
+  }
+  
+  /* 🖥 Адаптация для больших экранов */
+  @media screen and (min-width: 1024px) {
+	.banner {
+	  font-size: 26px;
+	  padding: 50px 30px;
+	}
+  
+	.categories {
+	  justify-content: space-around;
+	  overflow-x: unset;
+	}
+  
+	.category {
+	  min-width: 300px;
+	  font-size: 18px;
+	  padding: 15px;
+	}
+  
+	.section {
+	  max-width: 1200px;
+	  margin: 40px auto;
+	}
+  
+	.deviceCarousel {
+	  display: grid;
+	  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	  gap: 20px;
+	  overflow-x: unset;
+	}
+  
+	.deviceItem {
+	  min-width: auto;
+	}
+  }
