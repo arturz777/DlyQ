@@ -31,27 +31,6 @@ export const fetchRecommendedDevices = async (limit = 10) => {
   return data;
 };
 
-export const fetchNewDevices = async (limit = 10) => {
-  const { data } = await $host.get("/device", {
-    params: { sortBy: "createdAt", limit },
-  });
-  return data;
-};
-
-export const fetchDiscountedDevices = async (limit = 10) => {
-  const { data } = await $host.get("/device", {
-    params: { discount: true, limit },
-  });
-  return data;
-};
-
-export const fetchRecommendedDevices = async (limit = 10) => {
-  const { data } = await $host.get("/device", {
-    params: { recommended: true, limit },
-  });
-  return data;
-};
-
 export const createType = async (type) => {
   const { data } = await $authHost.post("/type", type);
   return data;
