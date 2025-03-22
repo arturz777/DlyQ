@@ -4,6 +4,8 @@ const router = new Router()
 const deviceController = require('../controllers/deviceController')
 
 
+router.put("/updateNewStatus", deviceController.updateNewStatus);
+router.get("/new", deviceController.getNewDevices);
 router.post('/', deviceController.create)
 router.get('/', deviceController.getAll)
 router.get('/search', deviceController.search);
