@@ -1,831 +1,885 @@
-import React, { useContext, useEffect, useState } from "react";
-import Modal from "react-bootstrap/Modal";
-import { Button, Dropdown, Form, Row, Col } from "react-bootstrap";
-import { Context } from "../../index";
-import {
-  createDevice,
-  updateDevice,
-  fetchBrands,
-  fetchTypes,
-  fetchSubtypesByType,
-} from "../../http/deviceAPI";
-import { observer } from "mobx-react-lite";
-import styles from "./CreateDevice.module.css";
+const uuid = require("uuid");
+const path = require("path");
+const {
+  Device,
+  DeviceInfo,
+  SubType,
+  Type,
+  Translation,
+} = require("../models/models");
+const ApiError = require("../error/ApiError");
+const { Op } = require("sequelize");
+const fs = require("fs");
+const { supabase } = require("../config/supabaseClient");
 
-const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
-  const [isNew, setIsNew] = useState(false);
-  const { device } = useContext(Context);
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState(null);
-  const [mainImage, setMainImage] = useState(null);
-  const [images, setImages] = useState(Array(5).fill(null));
-  const [imagePreviews, setImagePreviews] = useState([]);
-  const [existingImages, setExistingImages] = useState([]);
-  const [info, setInfo] = useState([]);
-  const [options, setOptions] = useState([]);
-  const [subtypes, setSubtypes] = useState([]);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [quantity, setQuantity] = useState(0);
-  const [optionErrors, setOptionErrors] = useState({});
-  const [translations, setTranslations] = useState({
-    name: { en: "", ru: "", est: "" },
-    options: [],
-    info: [],
-  });
+class DeviceController {
+  async create(req, res, next) {
+    try {
+      let {
+        name,
+        price,
+        brandId,
+        typeId,
+        subtypeId,
+        info,
+        quantity,
+        options,
+        translations,
+        isNew,
+      } = req.body;
 
-  useEffect(() => {
-    if (editableDevice) {
-      setName(editableDevice.name);
-      setPrice(editableDevice.price);
-      setInfo(editableDevice.info || []);
-      setOptions(editableDevice.options || []);
-      setIsEditMode(true);
-      setExistingImages([editableDevice.img, ...editableDevice.thumbnails]);
-      setQuantity(
-        editableDevice.quantity !== undefined ? editableDevice.quantity : 0
-      );
-      setTranslations({
-        name: editableDevice.translations?.name || { en: "", ru: "", est: "" },
-        options: Array.isArray(editableDevice.translations?.options)
-          ? editableDevice.translations.options
-          : [],
-        info: Array.isArray(editableDevice.translations?.info)
-          ? editableDevice.translations.info
-          : [],
+      if (!name || !price || !brandId || !typeId) {
+        return res.status(400).json({
+          message:
+            "Обязательные поля (name, price, brandId, typeId) должны быть заполнены.",
+        });
+      }
+
+      if (!req.files || !req.files.img) {
+        return res
+          .status(400)
+          .json({ message: "Необходимо загрузить изображение устройства." });
+      }
+
+      const { img } = req.files;
+      const fileName = `${uuid.v4()}${path.extname(img.name)}`;
+
+      const { data, error } = await supabase.storage
+        .from("images")
+        .upload(fileName, img.data, { contentType: img.mimetype });
+
+      if (error) {
+        throw new Error("Ошибка загрузки изображения в Supabase Storage");
+      }
+
+      const publicURL = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
+
+      let thumbnails = [];
+      if (req.files && req.files.thumbnails) {
+        const images = Array.isArray(req.files.thumbnails)
+          ? req.files.thumbnails
+          : [req.files.thumbnails];
+
+        thumbnails = await Promise.all(
+          images.map(async (image) => {
+            const thumbFileName = `${uuid.v4()}${path.extname(image.name)}`;
+
+            const { data, error } = await supabase.storage
+              .from("images")
+              .upload(thumbFileName, image.data, {
+                contentType: image.mimetype,
+              });
+
+            if (error) {
+              console.error("Ошибка загрузки миниатюры в Supabase:", error);
+              return null;
+            }
+
+            return `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${thumbFileName}`;
+          })
+        );
+
+        thumbnails = thumbnails.filter((url) => url !== null);
+      }
+
+      options = options ? JSON.parse(options) : [];
+
+      if (options.length > 0) {
+        quantity = options.reduce((sum, option) => {
+          return (
+            sum +
+            option.values.reduce(
+              (optSum, v) => optSum + (Number(v.quantity) || 0),
+              0
+            )
+          );
+        }, 0);
+      }
+
+      if (options.length > 0) {
+        quantity = options.reduce((sum, option) => {
+          return (
+            sum +
+            option.values.reduce(
+              (optSum, v) => optSum + (Number(v.quantity) || 0),
+              0
+            )
+          );
+        }, 0);
+      }
+
+      const device = await Device.create({
+        name,
+        price,
+        brandId,
+        typeId,
+        subtypeId: subtypeId || null,
+        img: publicURL,
+        thumbnails,
+        options,
+        quantity: quantity || 0,
+        isNew: isNew === "true",
       });
 
-      if (editableDevice.brandId) {
-        const selectedBrand = device.brands.find(
-          (b) => b.id === editableDevice.brandId
+      if (info) {
+        info = JSON.parse(info);
+        await Promise.all(
+          info.map((i) =>
+            DeviceInfo.create({
+              title: i.title,
+              description: i.description,
+              deviceId: device.id,
+            })
+          )
         );
-        if (selectedBrand) {
-          device.setSelectedBrand(selectedBrand);
-        }
       }
 
-      if (editableDevice.typeId) {
-        const selectedType = device.types.find(
-          (t) => t.id === editableDevice.typeId
-        );
-        if (selectedType) {
-          device.setSelectedType(selectedType);
-        }
-      }
+      if (translations) {
+        translations = JSON.parse(translations);
+        const translationEntries = [];
 
-      if (editableDevice.typeId) {
-        fetchSubtypesByType(editableDevice.typeId).then((data) => {
-          device.setSubtypes(data);
-          if (editableDevice.subtypeId) {
-            const selectedSubType = data.find(
-              (st) => st.id === editableDevice.subtypeId
-            );
-            if (selectedSubType) {
-              device.setSelectedSubType(selectedSubType);
+        Object.entries(translations.name || {}).forEach(([lang, text]) => {
+          if (text) {
+            translationEntries.push({
+              key: `device_${device.id}.name`,
+              lang,
+              text,
+            });
+          }
+        });
+
+        Object.entries(translations.description || {}).forEach(
+          ([lang, text]) => {
+            if (text) {
+              translationEntries.push({
+                key: `device_${device.id}.description`,
+                lang,
+                text,
+              });
             }
+          }
+        );
+
+        if (translations.info && Array.isArray(translations.info)) {
+          translations.info.forEach((info, index) => {
+            Object.entries(info.title || {}).forEach(([lang, text]) => {
+              if (text) {
+                translationEntries.push({
+                  key: `device_${device.id}.info.${index}.title`,
+                  lang,
+                  text,
+                });
+              }
+            });
+            Object.entries(info.description || {}).forEach(([lang, text]) => {
+              if (text) {
+                translationEntries.push({
+                  key: `device_${device.id}.info.${index}.description`,
+                  lang,
+                  text,
+                });
+              }
+            });
+          });
+        }
+
+        if (translations.options && Array.isArray(translations.options)) {
+          translations.options.forEach((option, optionIndex) => {
+            Object.entries(option.name || {}).forEach(([lang, text]) => {
+              if (text) {
+                translationEntries.push({
+                  key: `device_${device.id}.option.${optionIndex}.name`,
+                  lang,
+                  text,
+                });
+              }
+            });
+
+            if (option.values && Array.isArray(option.values)) {
+              option.values.forEach((value, valueIndex) => {
+                const valueTranslations = value.text || value;
+
+                Object.entries(valueTranslations).forEach(([lang, text]) => {
+                  if (text) {
+                    translationEntries.push({
+                      key: `device_${device.id}.option.${optionIndex}.value.${valueIndex}`,
+                      lang,
+                      text,
+                    });
+                  }
+                });
+              });
+            }
+          });
+        }
+
+        if (translationEntries.length > 0) {
+          await Translation.bulkCreate(translationEntries);
+        }
+      }
+
+      return res.json(device);
+    } catch (e) {
+      next(ApiError.badRequest(e.message));
+    }
+  }
+
+  async getAll(req, res) {
+    try {
+      let { brandId, typeId, subtypeId, limit, page, isNew } = req.query;
+      page = page || 1;
+      limit = limit || 9;
+      const offset = page * limit - limit;
+
+      const where = {};
+      if (brandId) where.brandId = brandId;
+      if (typeId) where.typeId = typeId;
+      if (subtypeId) where.subtypeId = subtypeId;
+      if (isNew !== undefined) where.isNew = isNew === "true";
+
+      const devices = await Device.findAndCountAll({
+        where,
+        limit,
+        offset,
+        include: [
+          { model: SubType, as: "subtype" },
+          { model: Type },
+          { model: DeviceInfo, as: "info" },
+        ],
+      });
+
+      const deviceIds = devices.rows.map((d) => d.id);
+      const translations = await Translation.findAll({
+        where: {
+          key: {
+            [Op.or]: deviceIds.map((id) => ({ [Op.like]: `device_${id}.%` })),
+          },
+        },
+      });
+
+      const translatedSpecs = {};
+      translations.forEach((t) => {
+        const keyParts = t.key.split(".");
+        const deviceId = keyParts[0].replace("device_", "");
+        const section = keyParts[1];
+        const optionIndex = keyParts[2];
+        const field = keyParts[3];
+        const valueIndex = keyParts[4];
+
+        if (!translatedSpecs[deviceId]) translatedSpecs[deviceId] = {};
+
+        if (section === "info") {
+          if (!translatedSpecs[deviceId].info)
+            translatedSpecs[deviceId].info = [];
+          if (!translatedSpecs[deviceId].info[optionIndex]) {
+            translatedSpecs[deviceId].info[optionIndex] = {
+              title: {},
+              description: {},
+            };
+          }
+          translatedSpecs[deviceId].info[optionIndex][field][t.lang] = t.text;
+        } else if (section === "option") {
+          if (!translatedSpecs[deviceId].options)
+            translatedSpecs[deviceId].options = [];
+          if (!translatedSpecs[deviceId].options[optionIndex]) {
+            translatedSpecs[deviceId].options[optionIndex] = {
+              name: {},
+              values: [],
+            };
+          }
+
+          if (field === "name") {
+            translatedSpecs[deviceId].options[optionIndex].name[t.lang] =
+              t.text;
+          } else if (field === "value" && valueIndex !== undefined) {
+            if (
+              !translatedSpecs[deviceId].options[optionIndex].values[valueIndex]
+            ) {
+              translatedSpecs[deviceId].options[optionIndex].values[
+                valueIndex
+              ] = {};
+            }
+            translatedSpecs[deviceId].options[optionIndex].values[valueIndex][
+              t.lang
+            ] = t.text;
+          }
+        } else {
+          if (!translatedSpecs[deviceId][section])
+            translatedSpecs[deviceId][section] = {};
+          translatedSpecs[deviceId][section][t.lang] = t.text;
+        }
+      });
+
+      devices.rows.forEach((device) => {
+        device.dataValues.translations = translatedSpecs[device.id] || {};
+      });
+
+      return res.json(devices);
+    } catch (error) {
+      console.error("❌ Ошибка при получении устройств:", error.message);
+      return res
+        .status(500)
+        .json({ message: "Ошибка при получении устройств" });
+    }
+  }
+
+  async getOne(req, res) {
+    try {
+      const { id } = req.params;
+
+      const device = await Device.findOne({
+        where: { id },
+        include: [
+          { model: DeviceInfo, as: "info" },
+          { model: SubType, as: "subtype" },
+          { model: Type },
+        ],
+      });
+
+      if (!device) {
+        return res.status(404).json({ message: "Устройство не найдено" });
+      }
+
+      const translations = await Translation.findAll({
+        where: { key: { [Op.like]: `device_${id}.%` } },
+      });
+
+      const translatedSpecs = {};
+      translations.forEach((t) => {
+        const key = t.key.replace(`device_${id}.`, "");
+        const keyParts = key.split(".");
+
+        if (key.startsWith("info")) {
+          const index = keyParts[1];
+          const type = keyParts[2];
+
+          if (!translatedSpecs.info) {
+            translatedSpecs.info = {};
+          }
+
+          if (!translatedSpecs.info[index]) {
+            translatedSpecs.info[index] = { title: {}, description: {} };
+          }
+
+          if (type === "title") {
+            translatedSpecs.info[index].title[t.lang] = t.text;
+          } else if (type === "description") {
+            translatedSpecs.info[index].description[t.lang] = t.text;
+          }
+        } else if (key.startsWith("option")) {
+          const optionIndex = keyParts[1];
+          const type = keyParts[2];
+          const valueIndex = keyParts[3];
+
+          if (!translatedSpecs.options) {
+            translatedSpecs.options = {};
+          }
+          if (!translatedSpecs.options[optionIndex]) {
+            translatedSpecs.options[optionIndex] = { name: {}, values: [] };
+          }
+
+          if (type === "name") {
+            translatedSpecs.options[optionIndex].name[t.lang] = t.text;
+          } else if (type === "value" && valueIndex !== undefined) {
+            if (!translatedSpecs.options[optionIndex].values[valueIndex]) {
+              translatedSpecs.options[optionIndex].values[valueIndex] = {};
+            }
+            translatedSpecs.options[optionIndex].values[valueIndex][t.lang] =
+              t.text;
+          }
+        } else {
+          if (!translatedSpecs[key]) {
+            translatedSpecs[key] = {};
+          }
+          translatedSpecs[key][t.lang] = t.text;
+        }
+      });
+
+      if (device.info && Array.isArray(device.info)) {
+        device.info.forEach((infoItem, index) => {
+          if (!translatedSpecs.info) return;
+
+          const translatedItem = translatedSpecs.info[index];
+
+          if (translatedItem) {
+            infoItem.dataValues.translations = {
+              title: translatedItem?.title || {},
+              description: translatedItem?.description || {},
+            };
+          } else {
+            infoItem.translations = { title: {}, description: {} };
           }
         });
       }
 
-      const updatedImages = [
-        ...new Set([editableDevice.img, ...(editableDevice.thumbnails || [])]),
-      ];
-      setExistingImages(updatedImages);
+      if (device.options && Array.isArray(device.options)) {
+        device.options.forEach((option, optionIndex) => {
+          if (translatedSpecs.options && translatedSpecs.options[optionIndex]) {
+            option.translations = {
+              name: translatedSpecs.options[optionIndex].name || {},
+              values: [],
+            };
 
-      const updatedDisplayedImages = [
-        ...updatedImages,
-        ...Array(5 - updatedImages.length).fill(null),
-      ];
-      setImages(updatedDisplayedImages);
-    } else {
-      resetFields();
-    }
-  }, [editableDevice, device.brands, device.types]);
-
-  const resetFields = () => {
-    setName("");
-    setPrice("");
-    setInfo([]);
-    setOptions([]);
-    setMainImage(null);
-    setImages(Array(5).fill(null));
-    setImagePreviews([]);
-    setExistingImages([]);
-    setIsEditMode(false);
-    setQuantity("");
-  };
-
-  const handleImageChange = (index, e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const newImages = [...images];
-      newImages[index] = file;
-      setImages(newImages);
-    }
-  };
-
-  const removeImage = (index) => {
-    setImages((prev) => prev.map((img, i) => (i === index ? null : img)));
-
-    // Если удаляем существующее изображение, удаляем его из existingImages
-    setExistingImages((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const selectMainImage = (e) => {
-    setMainImage(e.target.files[0]);
-  };
-
-  const selectThumbnails = (e) => {
-    const files = Array.from(e.target.files);
-    const previews = files.map((file) => URL.createObjectURL(file));
-
-    setImages((prev) => [...prev, ...files]);
-    setImagePreviews((prev) => [...prev, ...previews]);
-  };
-
-  useEffect(() => {
-    // Загружаем бренды и типы при первой загрузке
-    fetchTypes().then((data) => device.setTypes(data));
-    fetchBrands().then((data) => device.setBrands(data));
-  }, []); // <-- Загружаем 1 раз при монтировании
-
-  useEffect(() => {
-    if (device.selectedType?.id) {
-      fetchSubtypesByType(device.selectedType.id).then((data) => {
-        device.setSubtypes(data);
-      });
-    }
-  }, [device.selectedType]);
-
-  const validateDevice = () => {
-    const errors = {};
-    if (!device.selectedBrand?.id) errors.brand = "Выберите бренд";
-    if (!device.selectedType?.id) errors.type = "Выберите тип";
-    if (!price || isNaN(price)) errors.price = "Введите цену";
-    if (!name) errors.name = "Введите название устройства";
-    if (!images.some((img) => img) && !isEditMode) {
-      errors.img = "Загрузите хотя бы одно изображение";
-    }
-    if (quantity === "" || quantity === null || quantity === undefined) {
-      errors.quantity = "Введите количество товара"; // ✅ Проверяем, введено ли значение
-    } else if (quantity < 0) {
-      errors.quantity = "Количество не может быть отрицательным"; // ✅ Проверка на отрицательное число
-    }
-
-    options.forEach((option, index) => {
-      if (!option.name.trim()) {
-        errors[`option_${index}`] = `Введите название для опции ${index + 1}`;
-      }
-      if (option.values.length === 0) {
-        errors[
-          `option_values_${index}`
-        ] = `Добавьте хотя бы одно значение для опции ${
-          option.name || index + 1
-        }`;
-      }
-    });
-
-    return errors;
-  };
-
-  const handleSave = () => {
-    setIsSubmitted(true);
-    const validationErrors = validateDevice();
-
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      setOptionErrors(validationErrors);
-      return;
-    }
-
-    setErrors({});
-    setOptionErrors({});
-
-    const formData = new FormData();
-    formData.append("isNew", isNew);
-    formData.append("name", name);
-    formData.append("price", price);
-    formData.append("quantity", quantity);
-
-    if (images[0] && typeof images[0] !== "string") {
-      formData.append("img", images[0]); // Главное фото
-    }
-
-    images.slice(1).forEach((image) => {
-      if (image && typeof image !== "string") {
-        formData.append("thumbnails", image); // Миниатюры
-      }
-    });
-
-    formData.append("existingImages", JSON.stringify(existingImages));
-
-    formData.append(
-      "brandId",
-      device.selectedBrand.id || editableDevice?.brandId
-    );
-    formData.append("typeId", device.selectedType.id || editableDevice?.typeId);
-
-    if (device.selectedSubType?.id) {
-      formData.append("subtypeId", device.selectedSubType.id);
-    }
-
-    formData.append("info", JSON.stringify(info));
-    formData.append("options", JSON.stringify(options));
-    formData.append("translations", JSON.stringify(translations));
-
-    const saveAction = isEditMode
-      ? updateDevice(editableDevice.id, formData) // PUT для редактирования
-      : createDevice(formData); // POST для нового устройства
-
-    saveAction
-      .then(() => {
-        onHide();
-        resetFields();
-      })
-      .catch((error) => {
-        console.error(
-          "Ошибка при отправке запроса:",
-          error.response?.data || error.message
-        );
-      });
-  };
-
-  const updateOptionTranslation = (optionIndex, lang, value) => {
-    setTranslations((prev) => {
-      const updatedTranslations = { ...prev };
-
-      if (!Array.isArray(updatedTranslations.options)) {
-        updatedTranslations.options = [];
-      }
-
-      if (!updatedTranslations.options[optionIndex]) {
-        updatedTranslations.options[optionIndex] = { name: {}, values: [] };
-      }
-
-      if (!updatedTranslations.options[optionIndex].name) {
-        updatedTranslations.options[optionIndex].name = {};
-      }
-
-      updatedTranslations.options[optionIndex].name[lang] = value;
-
-      return updatedTranslations;
-    });
-  };
-
-  const updateOptionValueTranslation = (
-    optionIndex,
-    valueIndex,
-    lang,
-    value
-  ) => {
-    setTranslations((prev) => {
-      const updatedTranslations = { ...prev };
-
-      if (!Array.isArray(updatedTranslations.options)) {
-        updatedTranslations.options = [];
-      }
-
-      if (!updatedTranslations.options[optionIndex]) {
-        updatedTranslations.options[optionIndex] = { name: {}, values: [] };
-      }
-
-      if (!Array.isArray(updatedTranslations.options[optionIndex].values)) {
-        updatedTranslations.options[optionIndex].values = [];
-      }
-
-      if (!updatedTranslations.options[optionIndex].values[valueIndex]) {
-        updatedTranslations.options[optionIndex].values[valueIndex] = {};
-      }
-
-      updatedTranslations.options[optionIndex].values[valueIndex][lang] = value;
-
-      return updatedTranslations;
-    });
-  };
-
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-
-    const previews = files.map((file) => URL.createObjectURL(file));
-
-    setImages((prevImages) => [...prevImages, ...files]); // Добавляем файлы
-    setImagePreviews((prevPreviews) => [...prevPreviews, ...previews]); // Добавляем превью
-  };
-
-  const removeExistingImage = (index) => {
-    setExistingImages((prev) => prev.filter((_, i) => i !== index)); // Удаляем старое фото
-  };
-
-  const addInfo = () => {
-    setInfo([
-      ...info,
-      {
-        title: "",
-        description: "",
-        number: Date.now(),
-        translations: { title: {}, description: {} },
-      },
-    ]);
-  };
-
-  const removeInfo = (number) => {
-    setInfo(info.filter((i) => i.number !== number));
-  };
-
-  const changeInfo = (key, value, number) => {
-    setInfo(
-      info.map((i) => (i.number === number ? { ...i, [key]: value } : i))
-    );
-  };
-
-  const addOption = () => {
-    setOptions([...options, { name: "", values: [] }]);
-  };
-
-  const updateOptionName = (index, value) => {
-    const updatedOptions = [...options];
-    updatedOptions[index].name = value;
-    setOptions(updatedOptions);
-  };
-
-  const addOptionValue = (optionIndex) => {
-    const updatedOptions = [...options];
-    updatedOptions[optionIndex].values.push({
-      value: "",
-      price: 0,
-      quantity: 0,
-    });
-    setOptions(updatedOptions);
-  };
-
-  const updateOptionValue = (optionIndex, valueIndex, key, value) => {
-    const updatedOptions = [...options];
-    updatedOptions[optionIndex].values[valueIndex][key] = value;
-
-    setOptions(updatedOptions);
-
-    // 🔥 Если обновляем `quantity` у опции, пересчитываем общее `quantity`
-    if (key === "quantity") {
-      const totalQuantity = updatedOptions.reduce((sum, option) => {
-        return (
-          sum +
-          option.values.reduce(
-            (optSum, v) => optSum + (Number(v.quantity) || 0),
-            0
-          )
-        );
-      }, 0);
-
-      setQuantity(totalQuantity);
-    }
-  };
-
-  const removeOptionValue = (optionIndex, valueIndex) => {
-    const updatedOptions = [...options];
-    updatedOptions[optionIndex].values.splice(valueIndex, 1);
-    setOptions(updatedOptions);
-  };
-
-  const removeOption = (index) => {
-    setOptions(options.filter((_, i) => i !== index));
-  };
-
-  return (
-    <Modal show={show} onHide={onHide} centered>
-      <Modal.Header closeButton>
-        <Modal.Title>
-          {isEditMode ? "Редактировать устройство" : "Добавить устройство"}
-        </Modal.Title>
-      </Modal.Header>
-
-      <Form.Group controlId="formIsNew">
-  <Form.Check
-    type="checkbox"
-    label="Новый товар"
-    checked={isNew}
-    onChange={(e) => setIsNew(e.target.checked)}
-  />
-</Form.Group>
-
-      
-      <Modal.Body>
-        <Form>
-          <Dropdown className="mt-2 mb-2">
-            <Dropdown.Toggle>
-              {device.selectedType.name || "Выберите тип"}
-            </Dropdown.Toggle>
-            {isSubmitted && !device.selectedType?.id && (
-              <span
-                style={{ color: "red", display: "block", marginTop: "5px" }}
-              >
-                {errors.type}
-              </span>
-            )}
-            <Dropdown.Menu>
-              {device.types.map((type) => (
-                <Dropdown.Item
-                  onClick={() => {
-                    device.setSelectedType(type);
-                    // Загружаем соответствующие подтипы для выбранного типа
-                    fetchSubtypesByType(type.id).then((data) =>
-                      device.setSubtypes(data)
-                    );
-                  }}
-                  key={type.id}
-                >
-                  {type.name}
-                </Dropdown.Item>
-              ))}
-            </Dropdown.Menu>
-          </Dropdown>
-
-          <Dropdown className="mt-2 mb-2">
-            <Dropdown.Toggle>
-              {device.selectedSubType?.name ||
-                "Выберите подтип (необязательно)"}
-            </Dropdown.Toggle>
-            <Dropdown.Menu>
-              <Dropdown.Item onClick={() => device.setSelectedSubType(null)}>
-                Не выбирать подтип
-              </Dropdown.Item>
-              {device.subtypes.map((subtype) => (
-                <Dropdown.Item
-                  onClick={() => device.setSelectedSubType(subtype)}
-                  key={subtype.id}
-                >
-                  {subtype.name}
-                </Dropdown.Item>
-              ))}
-            </Dropdown.Menu>
-          </Dropdown>
-
-          <Dropdown className="mt-2 mb-2">
-            <Dropdown.Toggle>
-              {device.selectedBrand.name || "Выберите бренд"}
-            </Dropdown.Toggle>
-            {isSubmitted && !device.selectedBrand?.id && (
-              <span
-                style={{ color: "red", display: "block", marginTop: "5px" }}
-              >
-                {errors.brand}
-              </span>
-            )}
-            <Dropdown.Menu>
-              {device.brands.map((brand) => (
-                <Dropdown.Item
-                  onClick={() => device.setSelectedBrand(brand)}
-                  key={brand.id}
-                >
-                  {brand.name}
-                </Dropdown.Item>
-              ))}
-            </Dropdown.Menu>
-          </Dropdown>
-
-          <Form.Control
-            value={name || ""}
-            onChange={(e) => setName(e.target.value)}
-            className="option-container border p-3 rounded mb-3"
-            placeholder="Введите название устройства"
-          />
-
-          {isSubmitted && !name && (
-            <span style={{ color: "red", display: "block", marginTop: "5px" }}>
-              {errors.name}
-            </span>
-          )}
-
-          <Form.Label>Перевод названия</Form.Label>
-          {["en", "ru", "est"].map((lang) => (
-            <Form.Control
-              key={lang}
-              value={translations.name[lang] || ""}
-              onChange={(e) =>
-                setTranslations((prev) => ({
-                  ...prev,
-                  name: { ...prev.name, [lang]: e.target.value },
-                }))
+            option.values.forEach((value, valueIndex) => {
+              if (translatedSpecs.options[optionIndex].values[valueIndex]) {
+                option.translations.values[valueIndex] =
+                  translatedSpecs.options[optionIndex].values[valueIndex];
               }
-              placeholder={`Название (${lang.toUpperCase()})`}
-              className="mt-2"
-            />
-          ))}
+            });
+          }
+        });
+      }
 
-          {isSubmitted && !name && (
-            <span style={{ color: "red", display: "block", marginTop: "5px" }}>
-              {errors.name}
-            </span>
-          )}
+      return res.json({
+        ...device.dataValues,
+        translations: translatedSpecs || {},
+      });
+    } catch (error) {
+      console.error("❌ Ошибка при получении устройства:", error.message);
+      return res
+        .status(500)
+        .json({ message: "Ошибка при получении устройства" });
+    }
+  }
 
-          <Form.Control
-            value={price || ""}
-            onChange={(e) => setPrice(Number(e.target.value))}
-            className="mt-3"
-            placeholder="Введите стоимость устройства"
-            type="number"
-          />
-          {((isSubmitted && !price) || isNaN(price)) && (
-            <span style={{ color: "red", display: "block", marginTop: "5px" }}>
-              {errors.price}
-            </span>
-          )}
+  async update(req, res, next) {
+    try {
+      const { id } = req.params;
+      const {
+        name,
+        price,
+        brandId,
+        typeId,
+        subtypeId,
+        info,
+        options,
+        quantity,
+        translations,
+        isNew,
+      } = req.body;
 
-          {/* Ячейки для изображений */}
-          <div className={styles.ImageGrid}>
-            {images.map((img, index) => (
-              <div
-                key={index}
-                className={styles.ImageCell}
-                onClick={() =>
-                  document.getElementById(`file-input-${index}`).click()
-                }
-              >
-                {img ? (
-                  <img
-                    src={
-                      typeof img === "string" ? img : URL.createObjectURL(img)
-                    }
-                    alt={`img-${index}`}
-                    className={styles.UploadedImage}
-                  />
-                ) : (
-                  <div className={styles.EmptyCell}>+</div>
-                )}
-                <input
-                  type="file"
-                  id={`file-input-${index}`}
-                  onChange={(e) => handleImageChange(index, e)}
-                  hidden
-                />
-                {img && (
-                  <button
-                    className={styles.DeleteButton}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeImage(index);
-                    }}
-                  >
-                    ✖
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
+      let existingImages = req.body.existingImages
+        ? JSON.parse(req.body.existingImages)
+        : [];
 
-          <div className="image-preview-container mt-3">
-            {imagePreviews.map((preview, index) => (
-              <img
-                key={index}
-                src={preview}
-                alt={`preview-${index}`}
-                width="100"
-              />
-            ))}
-          </div>
+      const device = await Device.findOne({ where: { id } });
+      if (!device)
+        return res.status(404).json({ message: "Устройство не найдено" });
 
-          <hr />
-          <Button variant="outline-dark" onClick={addOption}>
-            Добавить опцию
-          </Button>
-          {options.map((option, optionIndex) => (
-            <div
-              key={optionIndex}
-              className="option-container border p-3 rounded mb-3"
-            >
-              <Form.Control
-                value={option.name}
-                onChange={(e) => updateOptionName(optionIndex, e.target.value)}
-                placeholder="Название опции (например, Цвет)"
-                className="mb-2"
-              />
-              {optionErrors[`option_${optionIndex}`] && (
-                <span style={{ color: "red", fontSize: "12px" }}>
-                  {optionErrors[`option_${optionIndex}`]}
-                </span>
-              )}
+      let fileName = device.img;
+      let thumbnails = Array.isArray(device.thumbnails)
+        ? [...device.thumbnails]
+        : [];
 
-              {["en", "ru", "est"].map((lang) => (
-                <Form.Control
-                  key={lang}
-                  value={
-                    translations.options?.[optionIndex]?.name?.[lang] || ""
+      const files = req.files || {};
+      const img = files.img || null;
+
+      if (img) {
+        if (device.img) {
+          const oldFileName = device.img.split("/").pop();
+          await supabase.storage.from("images").remove([oldFileName]);
+        }
+
+        const newFileName = `${uuid.v4()}${path.extname(img.name)}`;
+        const { error } = await supabase.storage
+          .from("images")
+          .upload(newFileName, img.data, { contentType: img.mimetype });
+
+        if (error) {
+          return res.status(500).json({
+            message: "Ошибка загрузки нового изображения в Supabase",
+            error,
+          });
+        }
+
+        fileName = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${newFileName}`;
+      }
+
+      if (existingImages.length === 0) {
+        const imagesToDelete = thumbnails.map((img) => img.split("/").pop());
+        if (imagesToDelete.length > 0) {
+          await supabase.storage.from("images").remove(imagesToDelete);
+        }
+        thumbnails = [];
+      } else {
+        const imagesToDelete = thumbnails
+          .filter((img) => !existingImages.includes(img))
+          .map((img) => img.split("/").pop());
+        if (imagesToDelete.length > 0) {
+          await supabase.storage.from("images").remove(imagesToDelete);
+        }
+        thumbnails = existingImages.filter((img) => img !== fileName);
+      }
+
+      if (req.files && req.files.thumbnails) {
+        const images = Array.isArray(req.files.thumbnails)
+          ? req.files.thumbnails
+          : [req.files.thumbnails];
+
+        const newThumbnails = await Promise.all(
+          images.map(async (image) => {
+            const thumbFileName = `${uuid.v4()}${path.extname(image.name)}`;
+            const { error } = await supabase.storage
+              .from("images")
+              .upload(thumbFileName, image.data, {
+                contentType: image.mimetype,
+              });
+
+            if (error) {
+              console.error("Ошибка загрузки миниатюры в Supabase:", error);
+              return null;
+            }
+
+            return `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${thumbFileName}`;
+          })
+        );
+
+        thumbnails = [
+          ...thumbnails,
+          ...newThumbnails.filter((url) => url !== null),
+        ];
+
+        options = options ? JSON.parse(options) : [];
+
+        if (options.length > 0) {
+          quantity = options.reduce((sum, option) => {
+            return (
+              sum +
+              option.values.reduce(
+                (optSum, v) => optSum + (Number(v.quantity) || 0),
+                0
+              )
+            );
+          }, 0);
+        }
+      }
+
+      await Translation.destroy({
+        where: { key: { [Op.like]: `device_${id}.%` } },
+      });
+
+      let translationEntries = [];
+
+      if (translations) {
+        const parsedTranslations = JSON.parse(translations);
+
+        Object.entries(parsedTranslations.name || {}).forEach(
+          ([lang, text]) => {
+            if (text) {
+              translationEntries.push({
+                key: `device_${id}.name`,
+                lang,
+                text,
+              });
+            }
+          }
+        );
+
+        Object.entries(parsedTranslations.description || {}).forEach(
+          ([lang, text]) => {
+            if (text) {
+              translationEntries.push({
+                key: `device_${id}.description`,
+                lang,
+                text,
+              });
+            }
+          }
+        );
+
+        if (
+          parsedTranslations.options &&
+          Array.isArray(parsedTranslations.options)
+        ) {
+          parsedTranslations.options.forEach((option, optionIndex) => {
+            Object.entries(option.name || {}).forEach(([lang, text]) => {
+              if (text) {
+                translationEntries.push({
+                  key: `device_${id}.option.${optionIndex}.name`,
+                  lang,
+                  text,
+                });
+              }
+            });
+
+            if (option.values && Array.isArray(option.values)) {
+              option.values.forEach((value, valueIndex) => {
+                Object.entries(value || {}).forEach(([lang, text]) => {
+                  if (text) {
+                    translationEntries.push({
+                      key: `device_${id}.option.${optionIndex}.value.${valueIndex}`,
+                      lang,
+                      text,
+                    });
                   }
-                  onChange={(e) =>
-                    updateOptionTranslation(optionIndex, lang, e.target.value)
-                  }
-                  className="mt-2"
-                  placeholder={`Название опции (${lang.toUpperCase()})`}
-                />
-              ))}
+                });
+              });
+            }
+          });
+        }
 
-              {option.values.map((value, valueIndex) => (
-                <div
-                  key={valueIndex}
-                  className="option-container border p-3 rounded mb-3"
-                >
-                  <Form.Control
-                    value={value.value}
-                    onChange={(e) =>
-                      updateOptionValue(
-                        optionIndex,
-                        valueIndex,
-                        "value",
-                        e.target.value
-                      )
-                    }
-                    placeholder="Значение (например, Красный)"
-                    className="me-2"
-                  />
+        if (parsedTranslations.info && Array.isArray(parsedTranslations.info)) {
+          parsedTranslations.info.forEach((info, index) => {
+            Object.entries(info.title || {}).forEach(([lang, text]) => {
+              if (text) {
+                translationEntries.push({
+                  key: `device_${id}.info.${index}.title`,
+                  lang,
+                  text,
+                });
+              }
+            });
+            Object.entries(info.description || {}).forEach(([lang, text]) => {
+              if (text) {
+                translationEntries.push({
+                  key: `device_${id}.info.${index}.description`,
+                  lang,
+                  text,
+                });
+              }
+            });
+          });
+        }
+      }
 
-                  {["en", "ru", "est"].map((lang) => (
-                    <Form.Control
-                      key={lang}
-                      value={
-                        translations.options?.[optionIndex]?.values?.[
-                          valueIndex
-                        ]?.[lang] || ""
-                      }
-                      onChange={(e) =>
-                        updateOptionValueTranslation(
-                          optionIndex,
-                          valueIndex,
-                          lang,
-                          e.target.value
-                        )
-                      }
-                      className="mt-2"
-                      placeholder={`Перевод значения (${lang.toUpperCase()})`}
-                    />
-                  ))}
+      if (translationEntries.length > 0) {
+        await Translation.bulkCreate(translationEntries);
+      }
 
-                  <Form.Control
-                    type="number"
-                    value={value.price}
-                    onChange={(e) =>
-                      updateOptionValue(
-                        optionIndex,
-                        valueIndex,
-                        "price",
-                        parseFloat(e.target.value)
-                      )
-                    }
-                    placeholder="Цена"
-                    className="me-2"
-                  />
-                  <Form.Control
-                    type="number"
-                    value={value.quantity}
-                    onChange={(e) => {
-                      const newValue =
-                        e.target.value === ""
-                          ? ""
-                          : parseInt(e.target.value, 10);
-                      updateOptionValue(
-                        optionIndex,
-                        valueIndex,
-                        "quantity",
-                        newValue
-                      );
-                    }}
-                    placeholder="Количество"
-                    className="me-2"
-                  />
-                  <Button
-                    variant="outline-danger"
-                    onClick={() => removeOptionValue(optionIndex, valueIndex)}
-                  >
-                    Удалить
-                  </Button>
-                </div>
-              ))}
-              <Button
-                variant="outline-dark"
-                onClick={() => addOptionValue(optionIndex)}
-              >
-                Добавить значение
-              </Button>
-              <Button
-                variant="outline-danger"
-                className="ms-2"
-                onClick={() => removeOption(optionIndex)}
-              >
-                Удалить опцию
-              </Button>
-            </div>
-          ))}
+      await Device.update(
+        {
+          name,
+          price,
+          brandId,
+          typeId,
+          subtypeId: subtypeId || null,
+          img: fileName,
+          thumbnails,
+          options: options ? JSON.parse(options) : [],
+          quantity: quantity || 0,
+          isNew: isNew === "true",
+        },
+        { where: { id } }
+      );
 
-          <hr />
-          <Button variant={"outline-dark"} onClick={addInfo}>
-            Добавить новое свойство
-          </Button>
-          {info.map(
-            (
-              i,
-              index // ✅ Добавляем index здесь
-            ) => (
-              <Row className="mt-4" key={`info-${index}`}>
-                <Col md={4}>
-                  <Form.Control
-                    value={i.title}
-                    onChange={(e) =>
-                      changeInfo("title", e.target.value, i.number)
-                    }
-                    placeholder="Введите название свойства"
-                  />
+      if (info) {
+        const parsedInfo = JSON.parse(info);
+        await DeviceInfo.destroy({ where: { deviceId: id } });
+        await Promise.all(
+          parsedInfo.map((i) => DeviceInfo.create({ ...i, deviceId: id }))
+        );
+      }
 
-                  {["en", "ru", "est"].map((lang) => (
-                    <Form.Control
-                      key={lang}
-                      value={translations.info?.[index]?.title?.[lang] || ""}
-                      onChange={(e) => {
-                        setTranslations((prev) => {
-                          const updatedInfo = [...prev.info];
+      const updatedDevice = await Device.findOne({ where: { id } });
+      return res.json(updatedDevice);
+    } catch (error) {
+      next(ApiError.badRequest(error.message));
+    }
+  }
 
-                          if (!updatedInfo[index]) {
-                            updatedInfo[index] = { title: {}, description: {} };
-                          }
+  async getNewDevices(req, res) {
+    try {
+      let { limit } = req.query;
+      limit = limit ? parseInt(limit) : 10;
 
-                          updatedInfo[index].title[lang] = e.target.value;
+      const devices = await Device.findAndCountAll({
+        where: { isNew: true },
+        limit,
+        order: [["createdAt", "DESC"]],
+      });
 
-                          return { ...prev, info: updatedInfo };
-                        });
-                      }}
-                      placeholder={`Название (${lang.toUpperCase()})`}
-                      className="mt-1"
-                    />
-                  ))}
-                </Col>
+      if (!devices.rows.length) {
+        return res.json({ count: 0, devices: [] });
+      }
 
-                <Col md={4}>
-                  <Form.Control
-                    value={i.description}
-                    onChange={(e) =>
-                      changeInfo("description", e.target.value, i.number)
-                    }
-                    placeholder="Введите описание свойства"
-                  />
+      return res.json({ count: devices.count, devices: devices.rows });
+    } catch (error) {
+      console.error("❌ Ошибка загрузки новых товаров:", error);
+      return res
+        .status(500)
+        .json({ message: "Ошибка сервера при загрузке новых товаров" });
+    }
+  }
 
-                  {["en", "ru", "est"].map((lang) => (
-                    <Form.Control
-                      key={lang}
-                      value={
-                        translations.info?.[index]?.description?.[lang] || ""
-                      }
-                      onChange={(e) => {
-                        setTranslations((prev) => {
-                          const updatedInfo = [...prev.info];
+  async updateNewStatus(req, res) {
+    try {
+      const { id, isNew } = req.body;
 
-                          if (!updatedInfo[index]) {
-                            updatedInfo[index] = { title: {}, description: {} };
-                          }
+      const device = await Device.findByPk(id);
+      if (!device) {
+        return res.status(404).json({ message: "Товар не найден" });
+      }
 
-                          updatedInfo[index].description[lang] = e.target.value;
+      device.isNew = isNew === "true";
+      await device.save();
 
-                          return { ...prev, info: updatedInfo };
-                        });
-                      }}
-                      placeholder={`Описание (${lang.toUpperCase()})`}
-                      className="mt-1"
-                    />
-                  ))}
-                </Col>
-                <Col md={4}>
-                  <Button
-                    onClick={() => removeInfo(i.number)}
-                    variant={"outline-danger"}
-                  >
-                    Удалить
-                  </Button>
-                </Col>
-              </Row>
-            )
-          )}
-        </Form>
-      </Modal.Body>
+      return res.json({ message: `Товар ${id} обновлён`, isNew: device.isNew });
+    } catch (error) {
+      return res.status(500).json({ message: "Ошибка при обновлении статуса" });
+    }
+  }
 
-      <Form.Group>
-        <Form.Label>Количество на складе</Form.Label>
-        <Form.Control
-          type="number"
-          value={quantity}
-          onChange={(e) => setQuantity(Number(e.target.value))}
-          min="0"
-        />
-        {errors.quantity && <p className="text-danger">{errors.quantity}</p>}
-      </Form.Group>
+  async delete(req, res) {
+    try {
+      const { id } = req.params;
+      const device = await Device.findOne({ where: { id } });
 
-      <Modal.Footer>
-        <Button variant="outline-danger" onClick={onHide}>
-          Закрыть
-        </Button>
-        <Button variant="outline-success" onClick={handleSave}>
-          {isEditMode ? "Сохранить изменения" : "Добавить устройство"}
-        </Button>
-      </Modal.Footer>
-    </Modal>
-  );
-});
+      if (!device)
+        return res.status(404).json({ message: "Устройство не найдено" });
 
-export default CreateDevice;
+      await Translation.destroy({
+        where: { key: { [Op.like]: `device_${id}.%` } },
+      });
+
+      const imagePath = path.resolve(__dirname, "..", "static", device.img);
+
+      if (device.img) {
+        const fileName = device.img.split("/").pop();
+        const { error } = await supabase.storage
+          .from("images")
+          .remove([fileName]);
+        if (error)
+          console.error(
+            "Ошибка при удалении главного изображения из Supabase:",
+            error
+          );
+      }
+
+      if (device.thumbnails && device.thumbnails.length > 0) {
+        const filesToDelete = device.thumbnails.map((url) =>
+          url.split("/").pop()
+        );
+        const { error } = await supabase.storage
+          .from("images")
+          .remove(filesToDelete);
+        if (error)
+          console.error("Ошибка при удалении миниатюр из Supabase:", error);
+      }
+
+      await Device.destroy({ where: { id } });
+
+      return res.status(200).json({ message: "Устройство успешно удалено" });
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ message: "Ошибка при удалении устройства" });
+    }
+  }
+
+  async search(req, res, next) {
+    try {
+      const { q } = req.query;
+      if (!q)
+        return res.status(400).json({ message: "Параметр поиска не указан" });
+
+      const devices = await Device.findAll({
+        where: { name: { [Op.iLike]: `%${q}%` } },
+      });
+
+      const translations = await Translation.findAll({
+        where: {
+          key: { [Op.like]: `device_%.name` },
+          text: { [Op.iLike]: `%${q}%` },
+        },
+        attributes: ["key", "lang", "text"],
+      });
+
+      console.log("🔍 Найденные переводы:", translations);
+
+      const translationMap = {};
+      translations.forEach(({ key, lang, text }) => {
+        const deviceId = key.match(/\d+/)?.[0];
+        if (!deviceId) return;
+
+        if (!translationMap[deviceId]) translationMap[deviceId] = { name: {} };
+        translationMap[deviceId].name[lang] = text;
+      });
+
+      const translatedDeviceIds = Object.keys(translationMap);
+
+      const translatedDevices = await Device.findAll({
+        where: { id: { [Op.in]: translatedDeviceIds } },
+      });
+
+      translatedDevices.forEach((device) => {
+        device.dataValues.translations = translationMap[device.id] || {};
+      });
+
+      devices.forEach((device) => {
+        device.dataValues.translations = translationMap[device.id] || {};
+      });
+
+      const allDevices = [...devices, ...translatedDevices].filter(
+        (value, index, self) =>
+          index === self.findIndex((d) => d.id === value.id)
+      );
+
+      console.log(
+        "🚀 Итоговый результат поиска:",
+        allDevices.map((d) => d.id)
+      );
+
+      return res.json(allDevices);
+    } catch (error) {
+      console.error("❌ Ошибка при поиске:", error);
+      next(ApiError.internal("Ошибка сервера при выполнении поиска"));
+    }
+  }
+
+  async checkStock(req, res) {
+    try {
+      const { deviceId, quantity, selectedOptions } = req.body;
+      const device = await Device.findByPk(deviceId);
+
+      if (!device) {
+        return res.json({ status: "error", message: "Товар не найден" });
+      }
+
+      let availableQuantity = device.quantity;
+      let parsedOptions = [];
+
+      if (typeof device.options === "string") {
+        parsedOptions = JSON.parse(device.options);
+      } else if (Array.isArray(device.options)) {
+        parsedOptions = device.options;
+      }
+
+      if (parsedOptions.length > 0 && selectedOptions) {
+        for (const [optionName, selectedValue] of Object.entries(
+          selectedOptions
+        )) {
+          const option = parsedOptions.find((opt) => opt.name === optionName);
+          if (!option) continue;
+
+          const value = option.values.find(
+            (val) => val.value === selectedValue.value
+          );
+          if (!value) {
+            return res.json({
+              status: "error",
+              message: `Опция ${selectedValue.value} не найдена.`,
+            });
+          }
+          availableQuantity = value.quantity;
+        }
+      }
+
+      if (availableQuantity < quantity) {
+      }
+
+      return res.json({
+        status: "success",
+        message: "Товар в наличии",
+        quantity: availableQuantity,
+      });
+    } catch (error) {
+      console.error("Ошибка при проверке наличия товара:", error);
+      return res.json({
+        status: "error",
+        message: "Ошибка сервера при проверке наличия товара.",
+      });
+    }
+  }
+}
+
+module.exports = new DeviceController();
