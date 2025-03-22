@@ -30,6 +30,7 @@ const Device = sequelize.define("device", {
   subtypeId: { type: DataTypes.INTEGER, allowNull: true },
   options: { type: DataTypes.JSONB, allowNull: true, defaultValue: [] },
   quantity: { type: DataTypes.INTEGER, defaultValue: 0 },
+  isNew: { type: DataTypes.BOOLEAN, defaultValue: false },
 });
 
 const Type = sequelize.define("type", {
