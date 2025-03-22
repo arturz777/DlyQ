@@ -186,3 +186,4 @@ const CatalogPage = observer(() => {
 });
 
 export default CatalogPage;
+
