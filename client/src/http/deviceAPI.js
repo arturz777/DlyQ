@@ -2,6 +2,36 @@ import { $authHost, $host } from "./index";
 import jwt_decode from "jwt-decode";
 
 export const fetchNewDevices = async (limit = 10) => {
+  try {
+    const { data } = await $host.get("/device/new", { params: { limit } });
+
+    if (!data.devices) {
+      console.warn("⚠️ Сервер не вернул ожидаемые данные:", data);
+      return [];
+    }
+
+    return data.devices; // Теперь ожидаем devices, а не просто data
+  } catch (error) {
+    console.error("❌ Ошибка загрузки новых товаров:", error);
+    return [];
+  }
+};
+
+export const fetchDiscountedDevices = async (limit = 10) => {
+  const { data } = await $host.get("/device", {
+    params: { discount: true, limit },
+  });
+  return data;
+};
+
+export const fetchRecommendedDevices = async (limit = 10) => {
+  const { data } = await $host.get("/device", {
+    params: { recommended: true, limit },
+  });
+  return data;
+};
+
+export const fetchNewDevices = async (limit = 10) => {
   const { data } = await $host.get("/device", {
     params: { sortBy: "createdAt", limit },
   });
