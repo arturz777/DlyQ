@@ -13,6 +13,7 @@ import { observer } from "mobx-react-lite";
 import styles from "./CreateDevice.module.css";
 
 const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
+  const [isNew, setIsNew] = useState(false);
   const { device } = useContext(Context);
   const [name, setName] = useState("");
   const [price, setPrice] = useState(null);
@@ -30,12 +31,11 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [optionErrors, setOptionErrors] = useState({});
   const [translations, setTranslations] = useState({
     name: { en: "", ru: "", est: "" },
-    options: [], // ✅ Добавляем переводы для опций
-    info: [], // ✅ Добавляем переводы для информации
+    options: [],
+    info: [],
   });
 
   useEffect(() => {
-    // Инициализация значений для редактирования
     if (editableDevice) {
       setName(editableDevice.name);
       setPrice(editableDevice.price);
@@ -74,7 +74,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         }
       }
 
-      // ✅ Загружаем подтипы, только если они не загружены
       if (editableDevice.typeId) {
         fetchSubtypesByType(editableDevice.typeId).then((data) => {
           device.setSubtypes(data);
@@ -204,6 +203,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     setOptionErrors({});
 
     const formData = new FormData();
+    formData.append("isNew", isNew);
     formData.append("name", name);
     formData.append("price", price);
     formData.append("quantity", quantity);
@@ -233,7 +233,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     formData.append("info", JSON.stringify(info));
     formData.append("options", JSON.stringify(options));
     formData.append("translations", JSON.stringify(translations));
-    
 
     const saveAction = isEditMode
       ? updateDevice(editableDevice.id, formData) // PUT для редактирования
@@ -255,51 +254,55 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const updateOptionTranslation = (optionIndex, lang, value) => {
     setTranslations((prev) => {
       const updatedTranslations = { ...prev };
-  
+
       if (!Array.isArray(updatedTranslations.options)) {
         updatedTranslations.options = [];
       }
-  
+
       if (!updatedTranslations.options[optionIndex]) {
         updatedTranslations.options[optionIndex] = { name: {}, values: [] };
       }
-  
+
       if (!updatedTranslations.options[optionIndex].name) {
         updatedTranslations.options[optionIndex].name = {};
       }
-  
+
       updatedTranslations.options[optionIndex].name[lang] = value;
-  
+
       return updatedTranslations;
     });
   };
-  
-  const updateOptionValueTranslation = (optionIndex, valueIndex, lang, value) => {
+
+  const updateOptionValueTranslation = (
+    optionIndex,
+    valueIndex,
+    lang,
+    value
+  ) => {
     setTranslations((prev) => {
       const updatedTranslations = { ...prev };
-  
+
       if (!Array.isArray(updatedTranslations.options)) {
         updatedTranslations.options = [];
       }
-  
+
       if (!updatedTranslations.options[optionIndex]) {
         updatedTranslations.options[optionIndex] = { name: {}, values: [] };
       }
-  
+
       if (!Array.isArray(updatedTranslations.options[optionIndex].values)) {
         updatedTranslations.options[optionIndex].values = [];
       }
-  
+
       if (!updatedTranslations.options[optionIndex].values[valueIndex]) {
         updatedTranslations.options[optionIndex].values[valueIndex] = {};
       }
-  
+
       updatedTranslations.options[optionIndex].values[valueIndex][lang] = value;
-  
+
       return updatedTranslations;
     });
   };
-  
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
@@ -318,7 +321,12 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const addInfo = () => {
     setInfo([
       ...info,
-      { title: "", description: "", number: Date.now(), translations: { title: {}, description: {} } },
+      {
+        title: "",
+        description: "",
+        number: Date.now(),
+        translations: { title: {}, description: {} },
+      },
     ]);
   };
 
@@ -391,6 +399,17 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
           {isEditMode ? "Редактировать устройство" : "Добавить устройство"}
         </Modal.Title>
       </Modal.Header>
+
+      <Form.Group controlId="formIsNew">
+  <Form.Check
+    type="checkbox"
+    label="Новый товар"
+    checked={isNew}
+    onChange={(e) => setIsNew(e.target.checked)}
+  />
+</Form.Group>
+
+      
       <Modal.Body>
         <Form>
           <Dropdown className="mt-2 mb-2">
@@ -587,17 +606,19 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                 </span>
               )}
 
-{["en", "ru", "est"].map((lang) => (
-      <Form.Control
-        key={lang}
-        value={translations.options?.[optionIndex]?.name?.[lang] || ""}
-        onChange={(e) =>
-          updateOptionTranslation(optionIndex, lang, e.target.value)
-        }
-        className="mt-2"
-        placeholder={`Название опции (${lang.toUpperCase()})`}
-      />
-    ))}
+              {["en", "ru", "est"].map((lang) => (
+                <Form.Control
+                  key={lang}
+                  value={
+                    translations.options?.[optionIndex]?.name?.[lang] || ""
+                  }
+                  onChange={(e) =>
+                    updateOptionTranslation(optionIndex, lang, e.target.value)
+                  }
+                  className="mt-2"
+                  placeholder={`Название опции (${lang.toUpperCase()})`}
+                />
+              ))}
 
               {option.values.map((value, valueIndex) => (
                 <div
@@ -618,17 +639,26 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                     className="me-2"
                   />
 
-{["en", "ru", "est"].map((lang) => (
-          <Form.Control
-            key={lang}
-            value={translations.options?.[optionIndex]?.values?.[valueIndex]?.[lang] || ""}
-            onChange={(e) =>
-              updateOptionValueTranslation(optionIndex, valueIndex, lang, e.target.value)
-            }
-            className="mt-2"
-            placeholder={`Перевод значения (${lang.toUpperCase()})`}
-          />
-        ))}
+                  {["en", "ru", "est"].map((lang) => (
+                    <Form.Control
+                      key={lang}
+                      value={
+                        translations.options?.[optionIndex]?.values?.[
+                          valueIndex
+                        ]?.[lang] || ""
+                      }
+                      onChange={(e) =>
+                        updateOptionValueTranslation(
+                          optionIndex,
+                          valueIndex,
+                          lang,
+                          e.target.value
+                        )
+                      }
+                      className="mt-2"
+                      placeholder={`Перевод значения (${lang.toUpperCase()})`}
+                    />
+                  ))}
 
                   <Form.Control
                     type="number"
@@ -688,80 +718,90 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
           <hr />
           <Button variant={"outline-dark"} onClick={addInfo}>
-  Добавить новое свойство
-</Button>
-{info.map((i, index) => ( // ✅ Добавляем index здесь
-  <Row className="mt-4" key={`info-${index}`}>
-    <Col md={4}>
-      <Form.Control
-        value={i.title}
-        onChange={(e) => changeInfo("title", e.target.value, i.number)}
-        placeholder="Введите название свойства"
-      />
+            Добавить новое свойство
+          </Button>
+          {info.map(
+            (
+              i,
+              index // ✅ Добавляем index здесь
+            ) => (
+              <Row className="mt-4" key={`info-${index}`}>
+                <Col md={4}>
+                  <Form.Control
+                    value={i.title}
+                    onChange={(e) =>
+                      changeInfo("title", e.target.value, i.number)
+                    }
+                    placeholder="Введите название свойства"
+                  />
 
-      {["en", "ru", "est"].map((lang) => (
-        <Form.Control
-          key={lang}
-          value={translations.info?.[index]?.title?.[lang] || ""}
-          onChange={(e) => {
-            setTranslations((prev) => {
-              const updatedInfo = [...prev.info];
+                  {["en", "ru", "est"].map((lang) => (
+                    <Form.Control
+                      key={lang}
+                      value={translations.info?.[index]?.title?.[lang] || ""}
+                      onChange={(e) => {
+                        setTranslations((prev) => {
+                          const updatedInfo = [...prev.info];
 
-              if (!updatedInfo[index]) {
-                updatedInfo[index] = { title: {}, description: {} };
-              }
+                          if (!updatedInfo[index]) {
+                            updatedInfo[index] = { title: {}, description: {} };
+                          }
 
-              updatedInfo[index].title[lang] = e.target.value;
+                          updatedInfo[index].title[lang] = e.target.value;
 
-              return { ...prev, info: updatedInfo };
-            });
-          }}
-          placeholder={`Название (${lang.toUpperCase()})`}
-          className="mt-1"
-        />
-      ))}
-    </Col>
+                          return { ...prev, info: updatedInfo };
+                        });
+                      }}
+                      placeholder={`Название (${lang.toUpperCase()})`}
+                      className="mt-1"
+                    />
+                  ))}
+                </Col>
 
-    <Col md={4}>
-      <Form.Control
-        value={i.description}
-        onChange={(e) => changeInfo("description", e.target.value, i.number)}
-        placeholder="Введите описание свойства"
-      />
+                <Col md={4}>
+                  <Form.Control
+                    value={i.description}
+                    onChange={(e) =>
+                      changeInfo("description", e.target.value, i.number)
+                    }
+                    placeholder="Введите описание свойства"
+                  />
 
-      {["en", "ru", "est"].map((lang) => (
-        <Form.Control
-          key={lang}
-          value={translations.info?.[index]?.description?.[lang] || ""}
-          onChange={(e) => {
-            setTranslations((prev) => {
-              const updatedInfo = [...prev.info];
+                  {["en", "ru", "est"].map((lang) => (
+                    <Form.Control
+                      key={lang}
+                      value={
+                        translations.info?.[index]?.description?.[lang] || ""
+                      }
+                      onChange={(e) => {
+                        setTranslations((prev) => {
+                          const updatedInfo = [...prev.info];
 
-              if (!updatedInfo[index]) {
-                updatedInfo[index] = { title: {}, description: {} };
-              }
+                          if (!updatedInfo[index]) {
+                            updatedInfo[index] = { title: {}, description: {} };
+                          }
 
-              updatedInfo[index].description[lang] = e.target.value;
+                          updatedInfo[index].description[lang] = e.target.value;
 
-              return { ...prev, info: updatedInfo };
-            });
-          }}
-          placeholder={`Описание (${lang.toUpperCase()})`}
-          className="mt-1"
-        />
-      ))}
-
-              </Col>
-              <Col md={4}>
-                <Button
-                  onClick={() => removeInfo(i.number)}
-                  variant={"outline-danger"}
-                >
-                  Удалить
-                </Button>
-              </Col>
-            </Row>
-          ))}
+                          return { ...prev, info: updatedInfo };
+                        });
+                      }}
+                      placeholder={`Описание (${lang.toUpperCase()})`}
+                      className="mt-1"
+                    />
+                  ))}
+                </Col>
+                <Col md={4}>
+                  <Button
+                    onClick={() => removeInfo(i.number)}
+                    variant={"outline-danger"}
+                  >
+                    Удалить
+                  </Button>
+                </Col>
+              </Row>
+            )
+          )}
         </Form>
       </Modal.Body>
 
