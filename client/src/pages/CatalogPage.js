@@ -1,6 +1,7 @@
 import React, { useEffect, useContext, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
+import { useSearchParams } from "react-router-dom";
 import TypeBar from "../components/TypeBar";
 import BrandBar from "../components/BrandBar";
 import SubTypeBar from "..//components/SubTypeBar";
@@ -19,6 +20,8 @@ import catalogStyles from "./CatalogPage.module.css";
 const CatalogPage = observer(() => {
   const { device } = useContext(Context);
   const { t, i18n } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const typeIdFromUrl = searchParams.get("typeId");
   const currentLang = i18n.language || "en";
 
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -48,6 +51,13 @@ const CatalogPage = observer(() => {
         device.setBrands(brandsData);
         device.setDevices(devicesData.rows);
         device.setTotalCount(devicesData.count);
+
+        if (typeIdFromUrl) {
+          const selectedType = typesData.find((type) => type.id === Number(typeIdFromUrl));
+          if (selectedType) {
+            device.setSelectedType(selectedType);
+          }
+        }
       })
       .finally(() => appStore.stopLoading());
   }, [currentLang]);
