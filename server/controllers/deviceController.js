@@ -25,6 +25,7 @@ class DeviceController {
         quantity,
         options,
         translations,
+        isNew,
       } = req.body;
 
       if (!name || !price || !brandId || !typeId) {
@@ -117,6 +118,7 @@ class DeviceController {
         thumbnails,
         options,
         quantity: quantity || 0,
+        isNew: isNew === "true",
       });
 
       if (info) {
@@ -224,7 +226,7 @@ class DeviceController {
 
   async getAll(req, res) {
     try {
-      let { brandId, typeId, subtypeId, limit, page } = req.query;
+      let { brandId, typeId, subtypeId, limit, page, isNew } = req.query;
       page = page || 1;
       limit = limit || 9;
       const offset = page * limit - limit;
@@ -233,6 +235,7 @@ class DeviceController {
       if (brandId) where.brandId = brandId;
       if (typeId) where.typeId = typeId;
       if (subtypeId) where.subtypeId = subtypeId;
+      if (isNew !== undefined) where.isNew = isNew === "true";
 
       const devices = await Device.findAndCountAll({
         where,
@@ -452,6 +455,7 @@ class DeviceController {
         options,
         quantity,
         translations,
+        isNew,
       } = req.body;
 
       let existingImages = req.body.existingImages
@@ -653,6 +657,7 @@ class DeviceController {
           thumbnails,
           options: options ? JSON.parse(options) : [],
           quantity: quantity || 0,
+          isNew: isNew === "true",
         },
         { where: { id } }
       );
@@ -669,6 +674,48 @@ class DeviceController {
       return res.json(updatedDevice);
     } catch (error) {
       next(ApiError.badRequest(error.message));
+    }
+  }
+
+  async getNewDevices(req, res) {
+    try {
+      let { limit } = req.query;
+      limit = limit ? parseInt(limit) : 10;
+
+      const devices = await Device.findAndCountAll({
+        where: { isNew: true },
+        limit,
+        order: [["createdAt", "DESC"]],
+      });
+
+      if (!devices.rows.length) {
+        return res.json({ count: 0, devices: [] });
+      }
+
+      return res.json({ count: devices.count, devices: devices.rows });
+    } catch (error) {
+      console.error("❌ Ошибка загрузки новых товаров:", error);
+      return res
+        .status(500)
+        .json({ message: "Ошибка сервера при загрузке новых товаров" });
+    }
+  }
+
+  async updateNewStatus(req, res) {
+    try {
+      const { id, isNew } = req.body;
+
+      const device = await Device.findByPk(id);
+      if (!device) {
+        return res.status(404).json({ message: "Товар не найден" });
+      }
+
+      device.isNew = isNew === "true";
+      await device.save();
+
+      return res.json({ message: `Товар ${id} обновлён`, isNew: device.isNew });
+    } catch (error) {
+      return res.status(500).json({ message: "Ошибка при обновлении статуса" });
     }
   }
 
@@ -836,5 +883,3 @@ class DeviceController {
 }
 
 module.exports = new DeviceController();
-
-
