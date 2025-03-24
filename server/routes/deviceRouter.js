@@ -6,6 +6,9 @@ const deviceController = require('../controllers/deviceController')
 
 router.put("/updateNewStatus", deviceController.updateNewStatus);
 router.get("/new", deviceController.getNewDevices);
+router.get("/discounted", deviceController.getDiscountedDevices);
+router.put("/updateDiscountStatus", deviceController.update);
+router.get("/recommended", deviceController.getRecommendedDevices);
 router.post('/', deviceController.create)
 router.get('/', deviceController.getAll)
 router.get('/search', deviceController.search);
