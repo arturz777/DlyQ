@@ -133,7 +133,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const removeImage = (index) => {
     setImages((prev) => prev.map((img, i) => (i === index ? null : img)));
 
-    // Если удаляем существующее изображение, удаляем его из existingImages
     setExistingImages((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -150,10 +149,9 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   };
 
   useEffect(() => {
-    // Загружаем бренды и типы при первой загрузке
     fetchTypes().then((data) => device.setTypes(data));
     fetchBrands().then((data) => device.setBrands(data));
-  }, []); // <-- Загружаем 1 раз при монтировании
+  }, []);
 
   useEffect(() => {
     if (device.selectedType?.id) {
@@ -230,7 +228,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
     images.slice(1).forEach((image) => {
       if (image && typeof image !== "string") {
-        formData.append("thumbnails", image); // Миниатюры
+        formData.append("thumbnails", image);
       }
     });
 
@@ -251,8 +249,8 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     formData.append("translations", JSON.stringify(translations));
 
     const saveAction = isEditMode
-      ? updateDevice(editableDevice.id, formData) // PUT для редактирования
-      : createDevice(formData); // POST для нового устройства
+      ? updateDevice(editableDevice.id, formData)
+      : createDevice(formData);
 
     saveAction
       .then(() => {
@@ -326,12 +324,12 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
     const previews = files.map((file) => URL.createObjectURL(file));
 
-    setImages((prevImages) => [...prevImages, ...files]); // Добавляем файлы
-    setImagePreviews((prevPreviews) => [...prevPreviews, ...previews]); // Добавляем превью
+    setImages((prevImages) => [...prevImages, ...files]);
+    setImagePreviews((prevPreviews) => [...prevPreviews, ...previews]);
   };
 
   const removeExistingImage = (index) => {
-    setExistingImages((prev) => prev.filter((_, i) => i !== index)); // Удаляем старое фото
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const addInfo = () => {
@@ -541,53 +539,56 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
             </span>
           )}
 
-<Form.Group className="mt-3">
-  <Form.Check
-    type="checkbox"
-    label="💰 Цена со скидкой"
-    checked={discount}
-    onChange={(e) => {
-      setDiscount(e.target.checked);
-      if (!e.target.checked) {
-        setOldPrice(""); // Если скидка отключена, убираем старую цену
-        setPrice(""); // 💡 Очищаем новую цену, чтобы избежать путаницы
-      }
-    }}
-  />
-</Form.Group>
+          <Form.Group className="mt-3">
+            <Form.Check
+              type="checkbox"
+              label="💰 Цена со скидкой"
+              checked={discount}
+              onChange={(e) => {
+                setDiscount(e.target.checked);
+                if (!e.target.checked) {
+                  setOldPrice("");
+                  setPrice("");
+                }
+              }}
+            />
+          </Form.Group>
 
-{discount && (
-  <Form.Group className="mt-3">
-    <Form.Label>Старая цена (до скидки)</Form.Label>
-    <Form.Control
-      type="number"
-      value={oldPrice}
-      onChange={(e) => setOldPrice(e.target.value)}
-      placeholder="Старая цена (до скидки)"
-    />
-    {isSubmitted && discount && (!oldPrice || isNaN(oldPrice)) && (
-      <span style={{ color: "red", display: "block", marginTop: "5px" }}>
-        {errors.oldPrice}
-      </span>
-    )}
-  </Form.Group>
-)}
+          {discount && (
+            <Form.Group className="mt-3">
+              <Form.Label>Старая цена (до скидки)</Form.Label>
+              <Form.Control
+                type="number"
+                value={oldPrice}
+                onChange={(e) => setOldPrice(e.target.value)}
+                placeholder="Старая цена (до скидки)"
+              />
+              {isSubmitted && discount && (!oldPrice || isNaN(oldPrice)) && (
+                <span
+                  style={{ color: "red", display: "block", marginTop: "5px" }}
+                >
+                  {errors.oldPrice}
+                </span>
+              )}
+            </Form.Group>
+          )}
 
-<Form.Group className="mt-3">
-  <Form.Label>Новая цена (со скидкой)</Form.Label>
-  <Form.Control
-    type="number"
-    value={price || ""}
-    onChange={(e) => setPrice(Number(e.target.value))}
-    placeholder="Новая цена (со скидкой)"
-  />
-  {((isSubmitted && !price) || isNaN(price)) && (
-    <span style={{ color: "red", display: "block", marginTop: "5px" }}>
-      {errors.price}
-    </span>
-  )}
-</Form.Group>
-
+          <Form.Group className="mt-3">
+            <Form.Label>Новая цена (со скидкой)</Form.Label>
+            <Form.Control
+              type="number"
+              value={price || ""}
+              onChange={(e) => setPrice(Number(e.target.value))}
+              placeholder="Новая цена (со скидкой)"
+            />
+            {((isSubmitted && !price) || isNaN(price)) && (
+              <span
+                style={{ color: "red", display: "block", marginTop: "5px" }}
+              >
+                {errors.price}
+              </span>
+            )}
+          </Form.Group>
 
           <div className={styles.ImageGrid}>
             {images.map((img, index) => (
@@ -779,7 +780,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
           {info.map(
             (
               i,
-              index // ✅ Добавляем index здесь
+              index 
             ) => (
               <Row className="mt-4" key={`info-${index}`}>
                 <Col md={4}>
