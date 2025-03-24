@@ -22,10 +22,23 @@ const HomePage = () => {
       .then((devices) => setNewDevices(devices || []))
       .catch((err) => console.error("❌ Ошибка загрузки новых товаров:", err));
 
-    fetchDiscountedDevices(10).then((data) => setDiscountedDevices(data.rows));
-    fetchRecommendedDevices(10).then((data) =>
-      setRecommendedDevices(data.rows)
-    );
+      fetchDiscountedDevices(10)
+      .then((devices) => {
+        setDiscountedDevices(devices || []);
+      })
+      .catch((err) => {
+        console.error("❌ Ошибка загрузки скидок:", err);
+        setDiscountedDevices([]);
+      });
+  
+    fetchRecommendedDevices(10)
+      .then((devices) => {
+        setRecommendedDevices(devices || []);
+      })
+      .catch((err) => {
+        console.error("❌ Ошибка загрузки рекомендаций:", err);
+        setRecommendedDevices([]);
+      });
 
     fetchTypes()
       .then((data) => {
@@ -40,10 +53,11 @@ const HomePage = () => {
       })
       .catch((err) => console.error("❌ Ошибка загрузки категорий:", err));
   }, []);
+  
 
   useEffect(() => {
     const handleResize = () => {
-      setIsDesktop(window.innerWidth >= 1024); // Переключаем состояние
+      setIsDesktop(window.innerWidth >= 1024);
     };
 
     window.addEventListener("resize", handleResize);
@@ -52,84 +66,125 @@ const HomePage = () => {
 
   return (
     <div className={styles.homePage}>
-    <div className={styles.banner}>
-      <h1>🔥 Добро пожаловать в наш магазин!</h1>
-      <p>Лучшая техника по отличным ценам</p>
-    </div>
+      <div className={styles.banner}>
+        <h1>🔥 Добро пожаловать в наш магазин!</h1>
+        <p>Лучшая техника по отличным ценам</p>
+      </div>
 
-    <div className={styles.categories}>
-      {isDesktop && types.length > 6 ? (
-        <>
-          {types.slice(0, 5).map((type) => (
-            <Link key={type.id} to={`/catalog?typeId=${type.id}`} className={styles.category}>
-              {type.img && <img src={type.img} alt={type.name} className={styles.categoryIcon} />}
+      <div className={styles.categories}>
+        {isDesktop && types.length > 6 ? (
+          <>
+            {types.slice(0, 5).map((type) => (
+              <Link
+                key={type.id}
+                to={`/catalog?typeId=${type.id}`}
+                className={styles.category}
+              >
+                {type.img && (
+                  <img
+                    src={type.img}
+                    alt={type.name}
+                    className={styles.categoryIcon}
+                  />
+                )}
+                {type.name}
+              </Link>
+            ))}
+            <div className={styles.dropdownContainer}>
+              <div
+                className={`${styles.category} ${styles.moreButton}`}
+                onClick={() => setShowAllTypes(!showAllTypes)}
+              >
+                {showAllTypes ? "▲ Скрыть" : "▼ Ещё"}
+              </div>
+
+              {showAllTypes && (
+                <div className={styles.dropdownMenu}>
+                  {types.slice(6).map((type) => (
+                    <Link
+                      key={type.id}
+                      to={`/catalog?typeId=${type.id}`}
+                      className={styles.dropdownItem}
+                    >
+                      {type.img && (
+                        <img
+                          src={type.img}
+                          alt={type.name}
+                          className={styles.categoryIcon}
+                        />
+                      )}
+                      {type.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          types.map((type) => (
+            <Link
+              key={type.id}
+              to={`/catalog?typeId=${type.id}`}
+              className={styles.category}
+            >
+              {type.img && (
+                <img
+                  src={type.img}
+                  alt={type.name}
+                  className={styles.categoryIcon}
+                />
+              )}
               {type.name}
             </Link>
-          ))}
-          <div className={styles.dropdownContainer}>
-            <div className={`${styles.category} ${styles.moreButton}`} onClick={() => setShowAllTypes(!showAllTypes)}>
-              {showAllTypes ? "▲ Скрыть" : "▼ Ещё"}
-            </div>
-
-            {showAllTypes && (
-              <div className={styles.dropdownMenu}>
-                {types.slice(6).map((type) => (
-                  <Link key={type.id} to={`/catalog?typeId=${type.id}`} className={styles.dropdownItem}>
-                    {type.img && <img src={type.img} alt={type.name} className={styles.categoryIcon} />}
-                    {type.name}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      ) : (
-        types.map((type) => (
-          <Link key={type.id} to={`/catalog?typeId=${type.id}`} className={styles.category}>
-            {type.img && <img src={type.img} alt={type.name} className={styles.categoryIcon} />}
-            {type.name}
-          </Link>
-        ))
-      )}
-    </div>
-
-    <section className={styles.section}>
-      <h2>🌟 Новые поступления</h2>
-      <div className={styles.deviceCarousel}>
-        {newDevices.length > 0 ? (
-          newDevices.map((device) => (
-            <div key={device.id} className={styles.deviceItem}>
-              <DeviceItem device={device} />
-            </div>
           ))
-        ) : (
-          <p>Нет новых товаров</p>
         )}
       </div>
-    </section>
 
-    <section className={styles.section}>
-      <h2>💰 Супер скидки</h2>
-      <div className={styles.deviceCarousel}>
-        {discountedDevices.map((device) => (
-          <div key={device.id} className={styles.deviceItem}>
-            <DeviceItem device={device} />
-          </div>
-        ))}
-      </div>
-    </section>
+      <section className={styles.section}>
+        <h2>🌟 Новые поступления</h2>
+        <div className={styles.deviceCarousel}>
+          {newDevices.length > 0 ? (
+            newDevices.map((device) => (
+              <div key={device.id} className={styles.deviceItem}>
+                <DeviceItem device={device} />
+              </div>
+            ))
+          ) : (
+            <p>Нет новых товаров</p>
+          )}
+        </div>
+      </section>
 
-    <section className={styles.section}>
-      <h2>🎯 Рекомендуем вам</h2>
-      <div className={styles.deviceCarousel}>
-        {recommendedDevices.map((device) => (
-          <div key={device.id} className={styles.deviceItem}>
-            <DeviceItem device={device} />
-          </div>
-        ))}
-      </div>
-    </section>
+      <section className={styles.section}>
+  <h2>💰 Супер скидки</h2>
+  <div className={styles.deviceCarousel}>
+    {Array.isArray(discountedDevices) && discountedDevices.length > 0 ? (
+      discountedDevices.map((device) => (
+        <div key={device.id} className={styles.deviceItem}>
+          <DeviceItem device={device} />
+        </div>
+      ))
+    ) : (
+      <p>Нет товаров со скидкой</p>
+    )}
   </div>
+</section>
+
+<section className={styles.section}>
+  <h2>🎯 Рекомендуем вам</h2>
+  <div className={styles.deviceCarousel}>
+    {Array.isArray(recommendedDevices) && recommendedDevices.length > 0 ? (
+      recommendedDevices.map((device) => (
+        <div key={device.id} className={styles.deviceItem}>
+          <DeviceItem device={device} />
+        </div>
+      ))
+    ) : (
+      <p>Нет рекомендованных товаров</p>
+    )}
+  </div>
+</section>
+    </div>
   );
 };
 
