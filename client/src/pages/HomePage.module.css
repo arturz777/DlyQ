@@ -1,176 +1,171 @@
 .homePage {
-	font-family: Arial, sans-serif;
-	background-color: #f8f8f8;
-	padding: 10px;
-	margin-top: 70px;
-  }
+  font-family: Arial, sans-serif;
+  background-color: #f8f8f8;
+  padding: 10px;
+  margin-top: 70px;
+}
 
+.banner {
+  text-align: center;
+  background: linear-gradient(135deg, #ff8c00, #ff0080);
+  color: white;
+  padding: 30px 15px;
+  font-size: 18px;
+  font-weight: bold;
+  border-radius: 10px;
+}
+
+.categories {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-bottom: 10px;
+  margin-top: 15px;
+}
+
+.category {
+  flex: 0 0 auto;
+  background: white;
+  color: #000000;
+  text-decoration: none;
+  padding: 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.3s;
+  text-align: center;
+  min-width: 120px;
+  scroll-snap-align: center;
+}
+
+.category:hover {
+  background: #ddd;
+}
+
+.category:hover .categoryIcon {
+  filter: brightness(1);
+}
+
+.categoryIcon {
+  width: 24px;
+  height: 24px;
+  margin-right: 5px;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+
+.moreButton:hover {
+  background: #e07c00;
+}
+
+.noTypes {
+  text-align: center;
+  font-size: 14px;
+  padding: 10px;
+  color: #888;
+}
+
+.deviceCarousel {
+  display: flex;
+  gap: 25px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 10px;
+  margin-top: 30px;
+}
+
+.deviceCarousel::-webkit-scrollbar {
+  display: none;
+}
+
+.deviceItem {
+  flex: 0 0 auto;
+  min-width: 160px;
+  scroll-snap-align: center;
+}
+
+@media screen and (min-width: 1024px) {
   .banner {
-	text-align: center;
-	background: linear-gradient(135deg, #ff8c00, #ff0080);
-	color: white;
-	padding: 30px 15px;
-	font-size: 18px;
-	font-weight: bold;
-	border-radius: 10px;
+    font-size: 26px;
+    padding: 50px 30px;
   }
-  
+
   .categories {
-	display: flex;
-	gap: 10px;
-	overflow-x: auto;
-	scroll-snap-type: x mandatory;
-	scrollbar-width: none;
-	-ms-overflow-style: none;
-	padding-bottom: 10px;
-	margin-top: 15px;
+    display: flex;
+    gap: 10px;
+    padding-bottom: 10px;
+    margin-top: 15px;
+    overflow: visible;
+    justify-content: flex-end;
   }
-  
+
   .category {
-	flex: 0 0 auto;
-	background: white;
-	color: #000000;
-	text-decoration: none;
-	padding: 10px;
-	border-radius: 6px;
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-	font-size: 14px;
-	cursor: pointer;
-	transition: 0.3s;
-	text-align: center;
-	min-width: 120px;
-	scroll-snap-align: center;
-  }
-  
-  .category:hover {
-	background: #ddd;
-  }
-  
-  .category:hover .categoryIcon {
-	filter: brightness(1); /* Оставляем яркость 100%, чтобы не затемнялось */
+    min-width: 300px;
+    font-size: 18px;
+    padding: 15px;
   }
 
-  .categoryIcon {
-	width: 24px; 
-	height: 24px;
-	margin-right: 5px;
-	object-fit: contain; 
-	mix-blend-mode: multiply;
-  }
- 
-  .moreButton:hover {
-	background: #e07c00;
+  .section {
+    max-width: 1200px;
+    margin: 40px auto;
   }
 
+  .dropdownContainer {
+    position: relative;
+    display: flex;
+    justify-content: flex-end;
+  }
 
-  .noTypes {
-	text-align: center;
-	font-size: 14px;
-	padding: 10px;
-	color: #888;
+  .dropdownMenu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: rgb(255, 255, 255);
+    border-radius: 6px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 10px;
+    margin-top: 5px;
+    z-index: 100;
+    width: 300px;
+    display: flex;
+    flex-direction: column;
   }
-  
-  .deviceCarousel {
-	display: flex;
-	gap: 25px;
-	overflow-x: auto;
-	scroll-snap-type: x mandatory;
-	padding-bottom: 10px;
-	margin-top: 30px;
-  }
-  
-  .deviceCarousel::-webkit-scrollbar {
-	display: none;
-  }
-  
-  .deviceItem {
-	flex: 0 0 auto;
-	min-width: 160px;
-	scroll-snap-align: center;
-  }
-  
-  @media screen and (min-width: 1024px) {
-	.banner {
-	  font-size: 26px;
-	  padding: 50px 30px;
-	}
-  
-	.categories {
-		display: flex;
-		gap: 10px;
-		padding-bottom: 10px;
-		margin-top: 15px;
-		overflow: visible;
-		justify-content: flex-end; /* Выравниваем кнопку "Ещё" справа */
-	  }
-  
-	.category {
-	  min-width: 300px;
-	  font-size: 18px;
-	  padding: 15px;
-	}
-  
-	.section {
-	  max-width: 1200px;
-	  margin: 40px auto;
-	}
 
-	.dropdownContainer {
-		position: relative;
-		display: flex;
-		justify-content: flex-end; 
-	  }
-
-	 .dropdownMenu {
-	position: absolute;
-	top: 100%;
-  left: 0;
-	background: rgb(255, 255, 255);
-	border-radius: 6px;
-	box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-	padding: 10px;
-	margin-top: 5px;
-	z-index: 100;
-	width: 300px;
-	display: flex;
-	flex-direction: column;
-  }
-  
   .dropdownItem {
-	color: #000000;
-	text-decoration: none;
-	padding: 8px 10px;
-	font-size: 14px;
-	cursor: pointer;
-	transition: 0.3s;
+    color: #000000;
+    text-decoration: none;
+    padding: 8px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: 0.3s;
   }
-  
+
   .dropdownItem:hover {
-	background: #ddd;
+    background: #ddd;
   }
 
-	.moreButton {
-		color: rgb(0, 0, 0);
-		text-align: center;
-		min-width: 300px;
-		cursor: pointer;
-		transition: 0.3s;
-		border-radius: 6px;
-		padding: 10px;
-		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-	  }
-  
-	.deviceCarousel {
-	  display: grid;
-	  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-	  gap: 20px;
-	}
-  
-	.deviceItem {
-	  min-width: auto;
-	}
+  .moreButton {
+    color: rgb(0, 0, 0);
+    text-align: center;
+    min-width: 300px;
+    cursor: pointer;
+    transition: 0.3s;
+    border-radius: 6px;
+    padding: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   }
-  
 
-  
-  
+  .deviceCarousel {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+  }
+
+  .deviceItem {
+    min-width: auto;
+  }
+}
