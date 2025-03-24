@@ -17,24 +17,36 @@ const DeviceItem = ({ device }) => {
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
   const deviceName = device.translations?.name?.[currentLang] || device.name;
+  const oldPrice = Number(device.oldPrice) || 0;
+const newPrice = Number(device.price) || 0;
 
+const discountPercentage =
+device.discount && device.oldPrice > device.price
+  ? Math.round(((device.oldPrice - device.price) / device.oldPrice) * 100)
+  : null;
 
   useEffect(() => {
     const itemsInBasket = basket.items.filter((item) => item.id === device.id);
-    const totalInBasket = itemsInBasket.reduce((sum, item) => sum + (item.count || 0), 0);
-    
+    const totalInBasket = itemsInBasket.reduce(
+      (sum, item) => sum + (item.count || 0),
+      0
+    );
+
     const newAvailable = Math.max(0, device.quantity - totalInBasket);
-    
+
     setAvailableQuantity(newAvailable);
   }, [basket.items, device.quantity]);
 
   const checkStock = async (deviceId, quantity) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/device/check-stock`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId, quantity }),
-      });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/device/check-stock`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deviceId, quantity }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -42,7 +54,7 @@ const DeviceItem = ({ device }) => {
       }
 
       const data = await response.json();
-      return data.quantity >= quantity; // ✅ Проверяем, хватает ли товара
+      return data.quantity >= quantity;
     } catch (error) {
       console.error("Ошибка при проверке наличия товара:", error.message);
       return false;
@@ -53,7 +65,10 @@ const DeviceItem = ({ device }) => {
     e.stopPropagation();
 
     const itemsInBasket = basket.items.filter((item) => item.id === device.id);
-    const totalInBasket = itemsInBasket.reduce((sum, item) => sum + (item.count || 0), 0);
+    const totalInBasket = itemsInBasket.reduce(
+      (sum, item) => sum + (item.count || 0),
+      0
+    );
     const newCount = totalInBasket + 1;
 
     const isAvailable = await checkStock(device.id, newCount);
@@ -67,7 +82,7 @@ const DeviceItem = ({ device }) => {
     if (device.options?.length > 0) {
       device.options.forEach((option) => {
         defaultOptions[option.name] = {
-           value: "__UNSELECTED__",
+          value: "__UNSELECTED__",
           price: 0,
         };
       });
@@ -87,29 +102,49 @@ const DeviceItem = ({ device }) => {
 
   return (
     <div onClick={() => navigate(DEVICE_ROUTE + "/" + device.id)}>
-      <Card className={`${styles.card}`} onClick={handleNavigate}>
-        <Image className={styles.image} src={device.img} />
-        <div className={styles.info}>
-          <h5 className={styles.name}>{deviceName}</h5>
-          <p className={styles.price}>{device.price} €</p>
-        </div>
-        <Button
-          variant="success"
-          className={styles.button}
-          disabled={availableQuantity <= 0}
-          onClick={handleAddToBasket}
-        >
-          {availableQuantity <= 0
-            ? t("out_of_stock", { ns: "deviceItem" })
-            : t("add_to_cart", { ns: "deviceItem" })}
-        </Button>
+    <Card className={`${styles.card}`} onClick={(e) => navigate(DEVICE_ROUTE + "/" + device.id)}>
+      {discountPercentage && (
+        <div className={styles.discountBadge}>-{discountPercentage}%</div>
+      )}
 
-        {availableQuantity <= 0 && (
-          <p className={styles.preorderText}>{t("Pre-order available", { ns: "deviceItem" })}</p>
-        )}
-      </Card>
-    </div>
+      <Image className={styles.image} src={device.img} />
+
+      <div className={styles.info}>
+        <h5 className={styles.name}>{device.name}</h5>
+
+        {/* Блок цен */}
+        <div className={styles.priceBlock}>
+          {device.discount && device.oldPrice > device.price ? (
+            <>
+              <span className={styles.oldPrice}>{device.oldPrice} €</span>
+              <span className={styles.newPrice}>{device.price} €</span>
+            </>
+          ) : (
+            <span className={styles.regularPrice}>{device.price} €</span>
+          )}
+        </div>
+      </div>
+
+      <Button
+        variant="success"
+        className={styles.button}
+        disabled={availableQuantity <= 0}
+        onClick={handleAddToBasket}
+      >
+        {availableQuantity <= 0
+          ? t("out_of_stock", { ns: "deviceItem" })
+          : t("add_to_cart", { ns: "deviceItem" })}
+      </Button>
+
+      {availableQuantity <= 0 && (
+        <p className={styles.preorderText}>
+          {t("Pre-order available", { ns: "deviceItem" })}
+        </p>
+      )}
+    </Card>
+  </div>
   );
 };
 
 export default DeviceItem;
+
