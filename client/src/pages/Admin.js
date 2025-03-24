@@ -167,7 +167,7 @@ const Admin = () => {
       return;
     }
 
-    const response = await fetch("http://localhost:5000/api/translations", {
+    const response = await fetch(`${process.env.REACT_APP_API_URL}/translations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: newKey, lang: newLang, text: newText }),
