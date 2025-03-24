@@ -136,11 +136,17 @@ const DevicePage = () => {
     setAvailableQuantity((prev) => prev - 1);
   };
 
- return (
+  return (
     <div className={styles.DevicePageContainer}>
       <div className={styles.DevicePageContent}>
         <div className={styles.DevicePageColImg}>
           <div className={styles.DevicePageImageWrapper}>
+          {device.oldPrice && device.oldPrice > device.price && (
+  <div className={styles.DevicePageDiscountBadge}>
+    -{Math.round(((device.oldPrice - device.price) / device.oldPrice) * 100)}%
+  </div>
+)}
+
             <div className={styles.ImageContainer}>
               <AnimatePresence mode="wait">
                 {images.map(
@@ -223,9 +229,17 @@ const DevicePage = () => {
                 </select>
               </div>
             ))}
-            <p className={styles.DevicePagePrice}>
-              {t("total", { ns: "devicePage" })}: {finalPrice}€
-            </p>
+           <div className={styles.DevicePagePriceBlock}>
+  {device.oldPrice && device.oldPrice > device.price ? (
+    <>
+      <span className={styles.DevicePageOldPrice}>{device.oldPrice} €</span>
+      <span className={styles.DevicePageNewPrice}>{device.price} €</span>
+    </>
+  ) : (
+    <span className={styles.DevicePageRegularPrice}>{device.price} €</span>
+  )}
+</div>
+
 
             <button
               className={styles.DevicePageAddToCart}
