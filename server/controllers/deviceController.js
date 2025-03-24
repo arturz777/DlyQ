@@ -18,6 +18,7 @@ class DeviceController {
       let {
         name,
         price,
+        oldPrice,
         brandId,
         typeId,
         subtypeId,
@@ -26,6 +27,8 @@ class DeviceController {
         options,
         translations,
         isNew,
+        discount,
+        recommended,
       } = req.body;
 
       if (!name || !price || !brandId || !typeId) {
@@ -108,9 +111,14 @@ class DeviceController {
         }, 0);
       }
 
+      if (discount === "true" && !oldPrice) {
+        oldPrice = price;
+      }
+
       const device = await Device.create({
         name,
         price,
+        oldPrice: oldPrice || null,
         brandId,
         typeId,
         subtypeId: subtypeId || null,
@@ -119,6 +127,8 @@ class DeviceController {
         options,
         quantity: quantity || 0,
         isNew: isNew === "true",
+        discount: discount === "true",
+        recommended: recommended === "true",
       });
 
       if (info) {
@@ -226,7 +236,7 @@ class DeviceController {
 
   async getAll(req, res) {
     try {
-      let { brandId, typeId, subtypeId, limit, page, isNew } = req.query;
+      let { brandId, typeId, subtypeId, limit, page, isNew, discount, recommended } = req.query;
       page = page || 1;
       limit = limit || 9;
       const offset = page * limit - limit;
@@ -236,6 +246,8 @@ class DeviceController {
       if (typeId) where.typeId = typeId;
       if (subtypeId) where.subtypeId = subtypeId;
       if (isNew !== undefined) where.isNew = isNew === "true";
+      if (discount !== undefined) where.discount = discount === "true";
+    if (recommended !== undefined) where.recommended = recommended === "true";
 
       const devices = await Device.findAndCountAll({
         where,
@@ -448,6 +460,7 @@ class DeviceController {
       const {
         name,
         price,
+        oldPrice,
         brandId,
         typeId,
         subtypeId,
@@ -456,6 +469,8 @@ class DeviceController {
         quantity,
         translations,
         isNew,
+        discount,
+        recommended,
       } = req.body;
 
       let existingImages = req.body.existingImages
@@ -465,6 +480,14 @@ class DeviceController {
       const device = await Device.findOne({ where: { id } });
       if (!device)
         return res.status(404).json({ message: "Устройство не найдено" });
+
+      if (discount === "true" && !oldPrice) {
+        oldPrice = price;
+      }
+
+      if (discount === "false") {
+        oldPrice = null;
+      }
 
       let fileName = device.img;
       let thumbnails = Array.isArray(device.thumbnails)
@@ -650,6 +673,7 @@ class DeviceController {
         {
           name,
           price,
+          oldPrice,
           brandId,
           typeId,
           subtypeId: subtypeId || null,
@@ -658,6 +682,8 @@ class DeviceController {
           options: options ? JSON.parse(options) : [],
           quantity: quantity || 0,
           isNew: isNew === "true",
+          discount: discount === "true",
+          recommended: recommended === "true",
         },
         { where: { id } }
       );
@@ -716,6 +742,48 @@ class DeviceController {
       return res.json({ message: `Товар ${id} обновлён`, isNew: device.isNew });
     } catch (error) {
       return res.status(500).json({ message: "Ошибка при обновлении статуса" });
+    }
+  }
+
+  async getDiscountedDevices(req, res) {
+    try {
+      let { limit } = req.query;
+      limit = limit ? parseInt(limit) : 10;
+
+      const devices = await Device.findAndCountAll({
+        where: { discount: true },
+        limit,
+        order: [["createdAt", "DESC"]],
+      });
+
+      return res.json({ count: devices.count, devices: devices.rows });
+    } catch (error) {
+      console.error("❌ Ошибка загрузки товаров со скидками:", error);
+      return res
+        .status(500)
+        .json({ message: "Ошибка сервера при загрузке товаров со скидками" });
+    }
+  }
+
+  async getRecommendedDevices(req, res) {
+    try {
+      let { limit } = req.query;
+      limit = limit ? parseInt(limit) : 10;
+
+      const devices = await Device.findAndCountAll({
+        where: { recommended: true },
+        limit,
+        order: [["createdAt", "DESC"]],
+      });
+
+      return res.json({ count: devices.count, devices: devices.rows });
+    } catch (error) {
+      console.error("❌ Ошибка загрузки рекомендованных товаров:", error);
+      return res
+        .status(500)
+        .json({
+          message: "Ошибка сервера при загрузке рекомендованных товаров",
+        });
     }
   }
 
