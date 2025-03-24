@@ -457,7 +457,7 @@ class DeviceController {
   async update(req, res, next) {
     try {
       const { id } = req.params;
-      const {
+      let {
         name,
         price,
         oldPrice,
@@ -851,8 +851,6 @@ class DeviceController {
         },
         attributes: ["key", "lang", "text"],
       });
-
-      console.log("🔍 Найденные переводы:", translations);
 
       const translationMap = {};
       translations.forEach(({ key, lang, text }) => {
