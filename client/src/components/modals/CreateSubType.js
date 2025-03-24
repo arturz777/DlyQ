@@ -23,7 +23,7 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
 
   useEffect(() => {
     if (editableSubtype) {
-      setValue(editableSubtype.name);
+      setValue(editableSubtype.name || "");
       setTypeId(editableSubtype.typeId || "");
       setTranslations(editableSubtype.translations || { en: "", ru: "", est: "" });
     } else {
@@ -84,7 +84,7 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
       <Modal.Body>
         <Form>
           <Form.Control
-            value={value}
+            value={value || ""}
             onChange={(e) => {
               setValue(e.target.value);
               if (errors.name) setErrors((prev) => ({ ...prev, name: null }));
@@ -118,7 +118,7 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
           <Form.Group>
             <Form.Label>Английский (EN)</Form.Label>
             <Form.Control
-              value={translations.en}
+              value={translations.en || ""}
               onChange={(e) =>
                 setTranslations((prev) => ({ ...prev, en: e.target.value }))
               }
@@ -129,7 +129,7 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
           <Form.Group>
             <Form.Label>Русский (RU)</Form.Label>
             <Form.Control
-              value={translations.ru}
+              value={translations.ru || ""}
               onChange={(e) =>
                 setTranslations((prev) => ({ ...prev, ru: e.target.value }))
               }
@@ -140,7 +140,7 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
           <Form.Group>
             <Form.Label>Эстонский (EST)</Form.Label>
             <Form.Control
-              value={translations.est}
+              value={translations.est || ""}
               onChange={(e) =>
                 setTranslations((prev) => ({ ...prev, est: e.target.value }))
               }
