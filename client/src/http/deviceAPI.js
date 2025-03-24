@@ -18,17 +18,30 @@ export const fetchNewDevices = async (limit = 10) => {
 };
 
 export const fetchDiscountedDevices = async (limit = 10) => {
-  const { data } = await $host.get("/device", {
-    params: { discount: true, limit },
-  });
-  return data;
+  try {
+    const { data } = await $host.get("/device", {
+      params: { discount: true, limit },
+    });
+    
+    return data.rows || []; // 🔥 Используем `data.rows`, а не `data.devices`
+  } catch (error) {
+    console.error("❌ Ошибка загрузки товаров со скидками:", error);
+    return [];
+  }
 };
 
+
 export const fetchRecommendedDevices = async (limit = 10) => {
-  const { data } = await $host.get("/device", {
-    params: { recommended: true, limit },
-  });
-  return data;
+  try {
+    const { data } = await $host.get("/device", {
+      params: { recommended: true, limit },
+    });
+    
+    return data.rows || []; // 🔥 Используем `data.rows`, а не `data.devices`
+  } catch (error) {
+    console.error("❌ Ошибка загрузки рекомендованных товаров:", error);
+    return [];
+  }
 };
 
 export const createType = async (type) => {
