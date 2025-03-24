@@ -40,7 +40,7 @@ device.discount && device.oldPrice > device.price
   const checkStock = async (deviceId, quantity) => {
     try {
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/device/check-stock`,
+        `${process.env.REACT_APP_API_URL}api/device/check-stock`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -147,4 +147,3 @@ device.discount && device.oldPrice > device.price
 };
 
 export default DeviceItem;
-
