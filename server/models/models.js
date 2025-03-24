@@ -24,6 +24,7 @@ const Device = sequelize.define("device", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   name: { type: DataTypes.STRING, unique: true, allowNull: false },
   price: { type: DataTypes.INTEGER, allowNull: false },
+  oldPrice: { type: DataTypes.INTEGER, allowNull: true },
   rating: { type: DataTypes.INTEGER, defaultValue: 0 },
   img: { type: DataTypes.STRING, allowNull: false },
   thumbnails: { type: DataTypes.JSONB, allowNull: true, defaultValue: [] },
@@ -31,6 +32,8 @@ const Device = sequelize.define("device", {
   options: { type: DataTypes.JSONB, allowNull: true, defaultValue: [] },
   quantity: { type: DataTypes.INTEGER, defaultValue: 0 },
   isNew: { type: DataTypes.BOOLEAN, defaultValue: false },
+  discount: { type: DataTypes.BOOLEAN, defaultValue: false },
+  recommended: { type: DataTypes.BOOLEAN, defaultValue: false },
 });
 
 const Type = sequelize.define("type", {
