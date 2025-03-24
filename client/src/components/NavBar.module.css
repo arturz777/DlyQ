@@ -1,24 +1,21 @@
-/* Общие стили для навбара */
 .navbar {
-  background-color: #000000; /* Белый фон */
+  background-color: #000000; 
   font-family: Arial, sans-serif;
-  margin-top: 10px; /* Отступ сверху */
+  margin-top: 10px; 
 }
 
-/* Контейнер для навбара */
 .navbarContainer {
   width: 100%;
-  max-width: 1400px; /* Максимальная ширина для согласованности с каталогом */
-  margin: 0 auto; /* Центрируем по горизонтали */
+  max-width: 1400px; 
+  margin: 0 auto; 
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px; /* Отступы слева и справа */
+  padding: 0 20px; 
 }
 
-/* Логотип */
 .navbarLogo {
-  color: green;
+  color: #be3402;
   font-size: 40px;
   font-weight: bold;
   text-decoration: none;
@@ -58,11 +55,11 @@
 }
 
 .navbarLink span {
-  min-width: 80px; /* Фиксируем минимальную ширину для текста */
-  display: inline-block; /* Обеспечиваем, что текст занимает место */
-  text-align: center; /* Центрируем текст */
-  white-space: nowrap; /* Запрещаем перенос текста */
-  overflow: hidden; /* Скрываем текст, если он слишком длинный */
+  min-width: 80px; 
+  display: inline-block;
+  text-align: center;
+  white-space: nowrap; 
+  overflow: hidden; 
   text-overflow: ellipsis;
 }
 
@@ -94,13 +91,11 @@
   }
 }
 
-/* Блок авторизации */
 .navbarAuth {
   display: flex;
   align-items: center;
 }
 
-/* Кнопки */
 .navbarButton {
   background-color: transparent;
   border: 1px solid black;
@@ -120,7 +115,6 @@
   outline: none;
 }
 
-/* В NavBar.module.css */
 .subcategoryNav {
   display: flex;
   gap: 10px;
@@ -152,8 +146,8 @@
   border: none;
   cursor: pointer;
   padding: 0;
-  width: 35px; /* Фиксируем ширину кнопки, чтобы ничего не двигалось */
-  height: 25px; /* Фиксируем высоту кнопки */
+  width: 35px; 
+  height: 25px; 
   display: flex;
   align-items: center;
   justify-content: center;
@@ -176,14 +170,14 @@
 
 .dropdownMenu {
   position: absolute;
-  top: 100%; /* Прямо под кнопкой */
+  top: 100%; 
   left: 0;
   background: rgb(238, 238, 238);
   box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   overflow: hidden;
   z-index: 1000;
-  margin-top: 0px; /* Убираем любые отступы между кнопкой и меню */
+  margin-top: 0px; 
   width: 35px;
 }
 
@@ -191,8 +185,8 @@
   background: none;
   border: none;
   padding: 5px;
-  width: 100%; /* Совпадает с шириной меню */
-  height: 25px; /* Совпадает с высотой кнопки */
+  width: 100%; 
+  height: 25px; 
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -212,14 +206,14 @@
 
 @media (max-width: 1200px) {
 	.searchBarContainer {
-	  width: 600px; /* Ширина для экрана до 1200px */
+	  width: 600px; 
 	}
   }
 
 
 @media (max-width: 992px) {
 	.searchBarContainer {
-	  width: 300px; /* Ширина для экрана до 992px */
+	  width: 300px; 
 	}
   }
 
@@ -293,8 +287,7 @@
   color: #888;
 }
 
-/* Добавьте в ваш файл стилей (например, SearchBar.module.css) */
 .selected {
-  background-color: #f0f0f0; /* Цвет фона для выбранного элемента */
-  outline: none; /* Убираем стандартное выделение */
+  background-color: #f0f0f0; 
+  outline: none; 
 }
