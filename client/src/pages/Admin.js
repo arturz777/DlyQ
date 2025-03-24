@@ -270,7 +270,19 @@ const [newText, setNewText] = useState("");
 
                           <div className={styles.buttons}>
                             <div className={styles.adminDevicePrice}>
-                              {device.price} € |
+                              {device.discount ? (
+                                <>
+                                  <span className={styles.discountedPrice}>
+                                    {device.price} €
+                                  </span>
+                                  <span className={styles.oldPrice}>
+                                    {device.oldPrice} €
+                                  </span>
+                                </>
+                              ) : (
+                                <span>{device.price} €</span>
+                              )}
+                            </div>
                               <span className={styles.deviceQuantity}>
                                 {device.quantity === 0 ? (
                                   <span style={{ color: "red" }}>
