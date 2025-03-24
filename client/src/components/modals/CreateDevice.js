@@ -14,6 +14,9 @@ import styles from "./CreateDevice.module.css";
 
 const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [isNew, setIsNew] = useState(false);
+  const [discount, setDiscount] = useState(false);
+  const [oldPrice, setOldPrice] = useState("");
+  const [recommended, setRecommended] = useState(false);
   const { device } = useContext(Context);
   const [name, setName] = useState("");
   const [price, setPrice] = useState(null);
@@ -39,6 +42,8 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     if (editableDevice) {
       setName(editableDevice.name);
       setPrice(editableDevice.price);
+      setDiscount(editableDevice.discount || false);
+      setRecommended(editableDevice.recommended || false);
       setInfo(editableDevice.info || []);
       setOptions(editableDevice.options || []);
       setIsEditMode(true);
@@ -163,14 +168,17 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     if (!device.selectedBrand?.id) errors.brand = "Выберите бренд";
     if (!device.selectedType?.id) errors.type = "Выберите тип";
     if (!price || isNaN(price)) errors.price = "Введите цену";
+    if (discount && (!oldPrice || isNaN(oldPrice))) {
+      errors.oldPrice = "Введите цену со скидкой";
+    }
     if (!name) errors.name = "Введите название устройства";
     if (!images.some((img) => img) && !isEditMode) {
       errors.img = "Загрузите хотя бы одно изображение";
     }
     if (quantity === "" || quantity === null || quantity === undefined) {
-      errors.quantity = "Введите количество товара"; // ✅ Проверяем, введено ли значение
+      errors.quantity = "Введите количество товара";
     } else if (quantity < 0) {
-      errors.quantity = "Количество не может быть отрицательным"; // ✅ Проверка на отрицательное число
+      errors.quantity = "Количество не может быть отрицательным";
     }
 
     options.forEach((option, index) => {
@@ -204,12 +212,20 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
     const formData = new FormData();
     formData.append("isNew", isNew);
+    formData.append("discount", discount);
+    formData.append("recommended", recommended);
     formData.append("name", name);
     formData.append("price", price);
     formData.append("quantity", quantity);
 
+    if (discount) {
+      formData.append("oldPrice", oldPrice);
+    } else {
+      formData.append("oldPrice", "");
+    }
+
     if (images[0] && typeof images[0] !== "string") {
-      formData.append("img", images[0]); // Главное фото
+      formData.append("img", images[0]);
     }
 
     images.slice(1).forEach((image) => {
@@ -366,7 +382,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
     setOptions(updatedOptions);
 
-    // 🔥 Если обновляем `quantity` у опции, пересчитываем общее `quantity`
     if (key === "quantity") {
       const totalQuantity = updatedOptions.reduce((sum, option) => {
         return (
@@ -401,15 +416,23 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       </Modal.Header>
 
       <Form.Group controlId="formIsNew">
-  <Form.Check
-    type="checkbox"
-    label="Новый товар"
-    checked={isNew}
-    onChange={(e) => setIsNew(e.target.checked)}
-  />
-</Form.Group>
+        <Form.Check
+          type="checkbox"
+          label="Новый товар"
+          checked={isNew}
+          onChange={(e) => setIsNew(e.target.checked)}
+        />
+      </Form.Group>
 
-      
+      <Form.Group controlId="formRecommended">
+        <Form.Check
+          type="checkbox"
+          label="Рекомендованный товар"
+          checked={recommended}
+          onChange={(e) => setRecommended(e.target.checked)}
+        />
+      </Form.Group>
+
       <Modal.Body>
         <Form>
           <Dropdown className="mt-2 mb-2">
@@ -428,7 +451,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                 <Dropdown.Item
                   onClick={() => {
                     device.setSelectedType(type);
-                    // Загружаем соответствующие подтипы для выбранного типа
                     fetchSubtypesByType(type.id).then((data) =>
                       device.setSubtypes(data)
                     );
@@ -519,20 +541,54 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
             </span>
           )}
 
-          <Form.Control
-            value={price || ""}
-            onChange={(e) => setPrice(Number(e.target.value))}
-            className="mt-3"
-            placeholder="Введите стоимость устройства"
-            type="number"
-          />
-          {((isSubmitted && !price) || isNaN(price)) && (
-            <span style={{ color: "red", display: "block", marginTop: "5px" }}>
-              {errors.price}
-            </span>
-          )}
+<Form.Group className="mt-3">
+  <Form.Check
+    type="checkbox"
+    label="💰 Цена со скидкой"
+    checked={discount}
+    onChange={(e) => {
+      setDiscount(e.target.checked);
+      if (!e.target.checked) {
+        setOldPrice(""); // Если скидка отключена, убираем старую цену
+        setPrice(""); // 💡 Очищаем новую цену, чтобы избежать путаницы
+      }
+    }}
+  />
+</Form.Group>
 
-          {/* Ячейки для изображений */}
+{discount && (
+  <Form.Group className="mt-3">
+    <Form.Label>Старая цена (до скидки)</Form.Label>
+    <Form.Control
+      type="number"
+      value={oldPrice}
+      onChange={(e) => setOldPrice(e.target.value)}
+      placeholder="Старая цена (до скидки)"
+    />
+    {isSubmitted && discount && (!oldPrice || isNaN(oldPrice)) && (
+      <span style={{ color: "red", display: "block", marginTop: "5px" }}>
+        {errors.oldPrice}
+      </span>
+    )}
+  </Form.Group>
+)}
+
+<Form.Group className="mt-3">
+  <Form.Label>Новая цена (со скидкой)</Form.Label>
+  <Form.Control
+    type="number"
+    value={price || ""}
+    onChange={(e) => setPrice(Number(e.target.value))}
+    placeholder="Новая цена (со скидкой)"
+  />
+  {((isSubmitted && !price) || isNaN(price)) && (
+    <span style={{ color: "red", display: "block", marginTop: "5px" }}>
+      {errors.price}
+    </span>
+  )}
+</Form.Group>
+
+
           <div className={styles.ImageGrid}>
             {images.map((img, index) => (
               <div
