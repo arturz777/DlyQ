@@ -1,657 +1,888 @@
-import React, { useState, useEffect, useContext } from "react";
-import { Context } from "../index";
-import CreateBrand from "../components/modals/CreateBrand";
-import CreateDevice from "../components/modals/CreateDevice";
-import CreateType from "../components/modals/CreateType";
-import CreateSubType from "../components/modals/CreateSubType";
+import React, { useContext, useEffect, useState } from "react";
+import Modal from "react-bootstrap/Modal";
+import { Button, Dropdown, Form, Row, Col } from "react-bootstrap";
+import { Context } from "../../index";
 import {
-  fetchTypes,
-  fetchSubtypes,
+  createDevice,
+  updateDevice,
   fetchBrands,
-  fetchDevices,
-  deleteType,
-  deleteSubtype,
-  deleteBrand,
-  deleteDevice,
-} from "../http/deviceAPI";
-import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
-import "react-tabs/style/react-tabs.css";
-import Image from "react-bootstrap/Image";
-import { fetchTranslations, updateTranslation } from "../http/translationAPI"; // Функции API
-import { useTranslation } from "react-i18next";
-import styles from "./Admin.module.css";
+  fetchTypes,
+  fetchSubtypesByType,
+} from "../../http/deviceAPI";
+import { observer } from "mobx-react-lite";
+import styles from "./CreateDevice.module.css";
 
-const Admin = () => {
+const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
+  const [isNew, setIsNew] = useState(false);
+  const [discount, setDiscount] = useState(false);
+  const [oldPrice, setOldPrice] = useState("");
+  const [recommended, setRecommended] = useState(false);
   const { device } = useContext(Context);
-  const [types, setTypes] = useState([]);
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState(null);
+  const [mainImage, setMainImage] = useState(null);
+  const [images, setImages] = useState(Array(5).fill(null));
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
+  const [info, setInfo] = useState([]);
+  const [options, setOptions] = useState([]);
   const [subtypes, setSubtypes] = useState([]);
-  const [brands, setBrands] = useState([]);
-  const [devices, setDevices] = useState([]);
-  const [visibleDevices, setVisibleDevices] = useState([]);
-  const [currentOffset, setCurrentOffset] = useState(0);
-  const limit = 10; // Количество товаров для загрузки за раз
-
-  const [brandVisible, setBrandVisible] = useState(false);
-  const [typeVisible, setTypeVisible] = useState(false);
-  const [subtypeVisible, setSubtypeVisible] = useState(false);
-  const [deviceVisible, setDeviceVisible] = useState(false);
-
-  const [editableDevice, setEditableDevice] = useState(null);
-  const [editableType, setEditableType] = useState(null);
-  const [editableSubtype, setEditableSubtype] = useState(null);
-  const [editableBrand, setEditableBrand] = useState(null);
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortOption, setSortOption] = useState("priceAsc");
-
-  const [translations, setTranslations] = useState([]);
-  const [editKey, setEditKey] = useState(null);
-  const [editLang, setEditLang] = useState(null);
-  const [editText, setEditText] = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
-const [newKey, setNewKey] = useState("");
-const [newLang, setNewLang] = useState("en");
-const [newText, setNewText] = useState("");
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [quantity, setQuantity] = useState(0);
+  const [optionErrors, setOptionErrors] = useState({});
+  const [translations, setTranslations] = useState({
+    name: { en: "", ru: "", est: "" },
+    options: [],
+    info: [],
+  });
 
   useEffect(() => {
-    fetchTypes().then(setTypes);
-    fetchSubtypes().then(setSubtypes); // Получение подтипов
-    fetchBrands().then(setBrands);
-    fetchDevices().then((data) => setDevices(data.rows || []));
-    fetchTranslations().then(setTranslations);
-  }, []);
-
-  const handleLoadMore = () => {
-    const nextOffset = currentOffset + limit;
-    const newDevices = filteredDevices.slice(nextOffset, nextOffset + limit);
-    setVisibleDevices((prev) => [...prev, ...newDevices]);
-    setCurrentOffset(nextOffset);
-  };
-
-  // Фильтрация и поиск
-  const filteredDevices = React.useMemo(() => {
-    return devices
-      .filter((device) =>
-        device.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-      .sort((a, b) => {
-        if (sortOption === "priceAsc") return a.price - b.price;
-        if (sortOption === "priceDesc") return b.price - a.price;
-        if (sortOption === "nameAsc") return a.name.localeCompare(b.name);
-        if (sortOption === "nameDesc") return b.name.localeCompare(a.name);
-        return 0;
+    if (editableDevice) {
+      setName(editableDevice.name);
+      setPrice(editableDevice.price);
+      setDiscount(editableDevice.discount || false);
+      setRecommended(editableDevice.recommended || false);
+      setInfo(editableDevice.info || []);
+      setOptions(editableDevice.options || []);
+      setIsEditMode(true);
+      setExistingImages([editableDevice.img, ...editableDevice.thumbnails]);
+      setQuantity(
+        editableDevice.quantity !== undefined ? editableDevice.quantity : 0
+      );
+      setTranslations({
+        name: editableDevice.translations?.name || { en: "", ru: "", est: "" },
+        options: Array.isArray(editableDevice.translations?.options)
+          ? editableDevice.translations.options
+          : [],
+        info: Array.isArray(editableDevice.translations?.info)
+          ? editableDevice.translations.info
+          : [],
       });
-  }, [devices, searchQuery, sortOption]);
+
+      if (editableDevice.brandId) {
+        const selectedBrand = device.brands.find(
+          (b) => b.id === editableDevice.brandId
+        );
+        if (selectedBrand) {
+          device.setSelectedBrand(selectedBrand);
+        }
+      }
+
+      if (editableDevice.typeId) {
+        const selectedType = device.types.find(
+          (t) => t.id === editableDevice.typeId
+        );
+        if (selectedType) {
+          device.setSelectedType(selectedType);
+        }
+      }
+
+      if (editableDevice.typeId) {
+        fetchSubtypesByType(editableDevice.typeId).then((data) => {
+          device.setSubtypes(data);
+          if (editableDevice.subtypeId) {
+            const selectedSubType = data.find(
+              (st) => st.id === editableDevice.subtypeId
+            );
+            if (selectedSubType) {
+              device.setSelectedSubType(selectedSubType);
+            }
+          }
+        });
+      }
+
+      const updatedImages = [
+        ...new Set([editableDevice.img, ...(editableDevice.thumbnails || [])]),
+      ];
+      setExistingImages(updatedImages);
+
+      const updatedDisplayedImages = [
+        ...updatedImages,
+        ...Array(5 - updatedImages.length).fill(null),
+      ];
+      setImages(updatedDisplayedImages);
+    } else {
+      resetFields();
+    }
+  }, [editableDevice, device.brands, device.types]);
+
+  const resetFields = () => {
+    setName("");
+    setPrice("");
+    setInfo([]);
+    setOptions([]);
+    setMainImage(null);
+    setImages(Array(5).fill(null));
+    setImagePreviews([]);
+    setExistingImages([]);
+    setIsEditMode(false);
+    setQuantity("");
+  };
+
+  const handleImageChange = (index, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const newImages = [...images];
+      newImages[index] = file;
+      setImages(newImages);
+    }
+  };
+
+  const removeImage = (index) => {
+    setImages((prev) => prev.map((img, i) => (i === index ? null : img)));
+
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const selectMainImage = (e) => {
+    setMainImage(e.target.files[0]);
+  };
+
+  const selectThumbnails = (e) => {
+    const files = Array.from(e.target.files);
+    const previews = files.map((file) => URL.createObjectURL(file));
+
+    setImages((prev) => [...prev, ...files]);
+    setImagePreviews((prev) => [...prev, ...previews]);
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      const typesData = await fetchTypes();
-      setTypes(typesData);
-
-      const subtypesData = await fetchSubtypes();
-      setSubtypes(subtypesData);
-
-      const brandsData = await fetchBrands();
-      setBrands(brandsData);
-
-      const devicesData = await fetchDevices();
-      setDevices(devicesData.rows || devicesData);
-      setVisibleDevices((devicesData.rows || devicesData).slice(0, limit));
-    };
-
-    fetchData();
+    fetchTypes().then((data) => device.setTypes(data));
+    fetchBrands().then((data) => device.setBrands(data));
   }, []);
 
   useEffect(() => {
-    // Обновляем видимые устройства, когда фильтры или сортировка изменяются
-    setVisibleDevices(filteredDevices.slice(0, limit));
-    setCurrentOffset(0); // Сбрасываем offset на начальную позицию
-  }, [filteredDevices]);
+    if (device.selectedType?.id) {
+      fetchSubtypesByType(device.selectedType.id).then((data) => {
+        device.setSubtypes(data);
+      });
+    }
+  }, [device.selectedType]);
 
-  // Удаление типа
-  const handleDeleteType = async (id) => {
-    await deleteType(id);
-    setTypes((prev) => prev.filter((type) => type.id !== id)); // Обновляем локально
+  const validateDevice = () => {
+    const errors = {};
+    if (!device.selectedBrand?.id) errors.brand = "Выберите бренд";
+    if (!device.selectedType?.id) errors.type = "Выберите тип";
+    if (!price || isNaN(price)) errors.price = "Введите цену";
+    if (discount && (!oldPrice || isNaN(oldPrice))) {
+      errors.oldPrice = "Введите цену со скидкой";
+    }
+    if (!name) errors.name = "Введите название устройства";
+    if (!images.some((img) => img) && !isEditMode) {
+      errors.img = "Загрузите хотя бы одно изображение";
+    }
+    if (quantity === "" || quantity === null || quantity === undefined) {
+      errors.quantity = "Введите количество товара";
+    } else if (quantity < 0) {
+      errors.quantity = "Количество не может быть отрицательным";
+    }
+
+    options.forEach((option, index) => {
+      if (!option.name.trim()) {
+        errors[`option_${index}`] = `Введите название для опции ${index + 1}`;
+      }
+      if (option.values.length === 0) {
+        errors[
+          `option_values_${index}`
+        ] = `Добавьте хотя бы одно значение для опции ${
+          option.name || index + 1
+        }`;
+      }
+    });
+
+    return errors;
   };
 
-  const handleDeleteSubtype = async (id) => {
-    await deleteSubtype(id);
-    setSubtypes((prev) => prev.filter((subtype) => subtype.id !== id));
-  };
+  const handleSave = () => {
+    setIsSubmitted(true);
+    const validationErrors = validateDevice();
 
-  // Удаление бренда
-  const handleDeleteBrand = async (id) => {
-    await deleteBrand(id);
-    setBrands((prev) => prev.filter((brand) => brand.id !== id)); // Обновляем локально
-  };
-
-  const handleEditDevice = (device) => {
-    setEditableDevice(device);
-    setDeviceVisible(true);
-  };
-
-  // Удаление устройства
-  const handleDeleteDevice = async (id) => {
-    await deleteDevice(id);
-    setDevices((prev) => prev.filter((device) => device.id !== id)); // Обновляем локально
-  };
-
-  const handleEditType = (type) => {
-    setEditableType(type); // Устанавливаем редактируемый тип
-    setTypeVisible(true);
-  };
-
-  const handleEditSubtype = (subtype) => {
-    setEditableSubtype(subtype);
-    setSubtypeVisible(true);
-  };
-
-  const handleEditBrand = (brand) => {
-    setEditableBrand(brand); // Устанавливаем редактируемый бренд
-    setBrandVisible(true);
-  };
-
-  const handleEdit = (key, lang, text) => {
-    setEditKey(key);
-    setEditLang(lang);
-    setEditText(text);
-  };
-
-  const handleSave = async () => {
-    await updateTranslation(editKey, editLang, editText);
-    setTranslations((prev) =>
-      prev.map((t) =>
-        t.key === editKey && t.lang === editLang ? { ...t, text: editText } : t
-      )
-    );
-    setEditKey(null);
-  };
-
-  const handleAddTranslation = async () => {
-    if (!newKey || !newLang || !newText) {
-      alert("Заполните все поля!");
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      setOptionErrors(validationErrors);
       return;
     }
-  
-    const response = await fetch(`${process.env.REACT_APP_API_URL}translations`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: newKey, lang: newLang, text: newText }),
-    });
-  
-    if (response.ok) {
-      const newTranslation = await response.json();
-      setTranslations([...translations, newTranslation]); // Обновляем список
-      setShowAddForm(false);
-      setNewKey("");
-      setNewLang("en");
-      setNewText("");
+
+    setErrors({});
+    setOptionErrors({});
+
+    const formData = new FormData();
+    formData.append("isNew", isNew);
+    formData.append("discount", discount);
+    formData.append("recommended", recommended);
+    formData.append("name", name);
+    formData.append("price", price);
+    formData.append("quantity", quantity);
+
+    if (discount) {
+      formData.append("oldPrice", oldPrice);
     } else {
-      alert("Ошибка добавления перевода");
+      formData.append("oldPrice", "");
+    }
+
+    if (images[0] && typeof images[0] !== "string") {
+      formData.append("img", images[0]);
+    }
+
+    images.slice(1).forEach((image) => {
+      if (image && typeof image !== "string") {
+        formData.append("thumbnails", image);
+      }
+    });
+
+    formData.append("existingImages", JSON.stringify(existingImages));
+
+    formData.append(
+      "brandId",
+      device.selectedBrand.id || editableDevice?.brandId
+    );
+    formData.append("typeId", device.selectedType.id || editableDevice?.typeId);
+
+    if (device.selectedSubType?.id) {
+      formData.append("subtypeId", device.selectedSubType.id);
+    }
+
+    formData.append("info", JSON.stringify(info));
+    formData.append("options", JSON.stringify(options));
+    formData.append("translations", JSON.stringify(translations));
+
+    const saveAction = isEditMode
+      ? updateDevice(editableDevice.id, formData)
+      : createDevice(formData);
+
+    saveAction
+      .then(() => {
+        onHide();
+        resetFields();
+      })
+      .catch((error) => {
+        console.error(
+          "Ошибка при отправке запроса:",
+          error.response?.data || error.message
+        );
+      });
+  };
+
+  const updateOptionTranslation = (optionIndex, lang, value) => {
+    setTranslations((prev) => {
+      const updatedTranslations = { ...prev };
+
+      if (!Array.isArray(updatedTranslations.options)) {
+        updatedTranslations.options = [];
+      }
+
+      if (!updatedTranslations.options[optionIndex]) {
+        updatedTranslations.options[optionIndex] = { name: {}, values: [] };
+      }
+
+      if (!updatedTranslations.options[optionIndex].name) {
+        updatedTranslations.options[optionIndex].name = {};
+      }
+
+      updatedTranslations.options[optionIndex].name[lang] = value;
+
+      return updatedTranslations;
+    });
+  };
+
+  const updateOptionValueTranslation = (
+    optionIndex,
+    valueIndex,
+    lang,
+    value
+  ) => {
+    setTranslations((prev) => {
+      const updatedTranslations = { ...prev };
+
+      if (!Array.isArray(updatedTranslations.options)) {
+        updatedTranslations.options = [];
+      }
+
+      if (!updatedTranslations.options[optionIndex]) {
+        updatedTranslations.options[optionIndex] = { name: {}, values: [] };
+      }
+
+      if (!Array.isArray(updatedTranslations.options[optionIndex].values)) {
+        updatedTranslations.options[optionIndex].values = [];
+      }
+
+      if (!updatedTranslations.options[optionIndex].values[valueIndex]) {
+        updatedTranslations.options[optionIndex].values[valueIndex] = {};
+      }
+
+      updatedTranslations.options[optionIndex].values[valueIndex][lang] = value;
+
+      return updatedTranslations;
+    });
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    const previews = files.map((file) => URL.createObjectURL(file));
+
+    setImages((prevImages) => [...prevImages, ...files]);
+    setImagePreviews((prevPreviews) => [...prevPreviews, ...previews]);
+  };
+
+  const removeExistingImage = (index) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const addInfo = () => {
+    setInfo([
+      ...info,
+      {
+        title: "",
+        description: "",
+        number: Date.now(),
+        translations: { title: {}, description: {} },
+      },
+    ]);
+  };
+
+  const removeInfo = (number) => {
+    setInfo(info.filter((i) => i.number !== number));
+  };
+
+  const changeInfo = (key, value, number) => {
+    setInfo(
+      info.map((i) => (i.number === number ? { ...i, [key]: value } : i))
+    );
+  };
+
+  const addOption = () => {
+    setOptions([...options, { name: "", values: [] }]);
+  };
+
+  const updateOptionName = (index, value) => {
+    const updatedOptions = [...options];
+    updatedOptions[index].name = value;
+    setOptions(updatedOptions);
+  };
+
+  const addOptionValue = (optionIndex) => {
+    const updatedOptions = [...options];
+    updatedOptions[optionIndex].values.push({
+      value: "",
+      price: 0,
+      quantity: 0,
+    });
+    setOptions(updatedOptions);
+  };
+
+  const updateOptionValue = (optionIndex, valueIndex, key, value) => {
+    const updatedOptions = [...options];
+    updatedOptions[optionIndex].values[valueIndex][key] = value;
+
+    setOptions(updatedOptions);
+
+    if (key === "quantity") {
+      const totalQuantity = updatedOptions.reduce((sum, option) => {
+        return (
+          sum +
+          option.values.reduce(
+            (optSum, v) => optSum + (Number(v.quantity) || 0),
+            0
+          )
+        );
+      }, 0);
+
+      setQuantity(totalQuantity);
     }
   };
-  
 
-  
+  const removeOptionValue = (optionIndex, valueIndex) => {
+    const updatedOptions = [...options];
+    updatedOptions[optionIndex].values.splice(valueIndex, 1);
+    setOptions(updatedOptions);
+  };
 
-  const typesMap = new Map(types.map((type) => [type.id, type]));
-  const subtypesMap = new Map(subtypes.map((subtype) => [subtype.id, subtype]));
+  const removeOption = (index) => {
+    setOptions(options.filter((_, i) => i !== index));
+  };
 
   return (
-    <div className={styles.adminPanelContainer}>
-      <Tabs>
-        <TabList>
-          <Tab>Устройства</Tab>
-          <Tab>Типы</Tab>
-          <Tab>Подтипы</Tab>
-          <Tab>Бренды</Tab>
-          <Tab>Переводы</Tab>
-        </TabList>
+    <Modal show={show} onHide={onHide} centered>
+      <Modal.Header closeButton>
+        <Modal.Title>
+          {isEditMode ? "Редактировать устройство" : "Добавить устройство"}
+        </Modal.Title>
+      </Modal.Header>
 
-        {/* Вкладка Устройства */}
-        <TabPanel>
-          <div className={styles.actionButtons}>
-            <button
-              onClick={() => setDeviceVisible(true)}
-              className={styles.actionButton}
-            >
-              Добавить устройство
-            </button>
-          </div>
+      <Form.Group controlId="formIsNew">
+        <Form.Check
+          type="checkbox"
+          label="Новый товар"
+          checked={isNew}
+          onChange={(e) => setIsNew(e.target.checked)}
+        />
+      </Form.Group>
 
-          {/* Фильтрация и сортировка */}
-          <div className={styles.filterContainer}>
-            <input
-              type="text"
-              placeholder="Поиск по названию..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <select onChange={(e) => setSortOption(e.target.value)}>
-              <option value="priceAsc">Цена (по возрастанию)</option>
-              <option value="priceDesc">Цена (по убыванию)</option>
-              <option value="nameAsc">Имя (А-Я)</option>
-              <option value="nameDesc">Имя (Я-А)</option>
-            </select>
-          </div>
+      <Form.Group controlId="formRecommended">
+        <Form.Check
+          type="checkbox"
+          label="Рекомендованный товар"
+          checked={recommended}
+          onChange={(e) => setRecommended(e.target.checked)}
+        />
+      </Form.Group>
 
-          {types.map((type) => {
-            const typeDevices = filteredDevices.filter(
-              (device) => device.typeId === type.id
-            );
-            const subtypesForType = subtypes.filter(
-              (subtype) => subtype.typeId === type.id
-            );
+      <Modal.Body>
+        <Form>
+          <Dropdown className="mt-2 mb-2">
+            <Dropdown.Toggle>
+              {device.selectedType.name || "Выберите тип"}
+            </Dropdown.Toggle>
+            {isSubmitted && !device.selectedType?.id && (
+              <span
+                style={{ color: "red", display: "block", marginTop: "5px" }}
+              >
+                {errors.type}
+              </span>
+            )}
+            <Dropdown.Menu>
+              {device.types.map((type) => (
+                <Dropdown.Item
+                  onClick={() => {
+                    device.setSelectedType(type);
+                    fetchSubtypesByType(type.id).then((data) =>
+                      device.setSubtypes(data)
+                    );
+                  }}
+                  key={type.id}
+                >
+                  {type.name}
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown>
 
-            return (
-              <div key={type.id} className={styles.typeGroup}>
-                <h5 className={styles.typeTitle}>{type.name}</h5>
+          <Dropdown className="mt-2 mb-2">
+            <Dropdown.Toggle>
+              {device.selectedSubType?.name ||
+                "Выберите подтип (необязательно)"}
+            </Dropdown.Toggle>
+            <Dropdown.Menu>
+              <Dropdown.Item onClick={() => device.setSelectedSubType(null)}>
+                Не выбирать подтип
+              </Dropdown.Item>
+              {device.subtypes.map((subtype) => (
+                <Dropdown.Item
+                  onClick={() => device.setSelectedSubType(subtype)}
+                  key={subtype.id}
+                >
+                  {subtype.name}
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown>
 
-                {typeDevices.filter((device) => !device.subtypeId).length >
-                  0 && (
-                  <div className={styles.itemList}>
-                    {typeDevices
-                      .filter((device) => !device.subtypeId)
-                      .map((device) => (
-                        <div key={device.id} className={styles.item}>
-                          <div>
-                            id-
-                            {device.id}
-                            <Image
-                              className={styles.adminDeviceImg}
-                              width={50}
-                              height={50}
-                              src={device.img}
-                            />
-                          </div>
-                          <span className={styles.adminDeviceName}>
-                            {device.name}
-                          </span>
+          <Dropdown className="mt-2 mb-2">
+            <Dropdown.Toggle>
+              {device.selectedBrand.name || "Выберите бренд"}
+            </Dropdown.Toggle>
+            {isSubmitted && !device.selectedBrand?.id && (
+              <span
+                style={{ color: "red", display: "block", marginTop: "5px" }}
+              >
+                {errors.brand}
+              </span>
+            )}
+            <Dropdown.Menu>
+              {device.brands.map((brand) => (
+                <Dropdown.Item
+                  onClick={() => device.setSelectedBrand(brand)}
+                  key={brand.id}
+                >
+                  {brand.name}
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown>
 
-                          <div className={styles.buttons}>
-                            <div className={styles.adminDevicePrice}>
-                              {device.discount ? (
-                                <>
-                                  <span className={styles.discountedPrice}>
-                                    {device.price} €
-                                  </span>
-                                  <span className={styles.oldPrice}>
-                                    {device.oldPrice} €
-                                  </span>
-                                </>
-                              ) : (
-                                <span>{device.price} €</span>
-                              )}
-                            </div>
-                              <span className={styles.deviceQuantity}>
-                                {device.quantity === 0 ? (
-                                  <span style={{ color: "red" }}>
-                                    Нет в наличии
-                                  </span>
-                                ) : (
-                                  <span style={{ color: "green" }}>
-                                    В наличии: {device.quantity}
-                                  </span>
-                                )}
-                              </span>
-                            </div>
+          <Form.Control
+            value={name || ""}
+            onChange={(e) => setName(e.target.value)}
+            className="option-container border p-3 rounded mb-3"
+            placeholder="Введите название устройства"
+          />
 
-                            <button
-                              className={styles.editButton}
-                              onClick={() => handleEditDevice(device)}
-                            >
-                              Редактировать
-                            </button>
-                            <button
-                              className={styles.deleteButton}
-                              onClick={() => handleDeleteDevice(device.id)}
-                            >
-                              Удалить
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-
-                {subtypesForType.map((subtype) => {
-                  const subtypeDevices = typeDevices.filter(
-                    (device) => device.subtypeId === subtype.id
-                  );
-                  return (
-                    <div key={subtype.id} className={styles.typeGroup}>
-                      <h5 className={styles.typeTitle}>{subtype.name}</h5>
-
-                      <div className={styles.itemList}>
-                        {subtypeDevices.length > 0 ? (
-                          subtypeDevices.map((device) => (
-                            <div key={device.id} className={styles.item}>
-                              <div>
-                                id-
-                                {device.id}
-                                <Image
-                                  className={styles.adminDeviceImg}
-                                  width={50}
-                                  height={50}
-                                  src={device.img}
-                                />
-                              </div>
-                              <span className={styles.adminDeviceName}>
-                                {device.name}
-                              </span>
-
-                              <div className={styles.buttons}>
-                                <div className={styles.adminDevicePrice}>
-                                  {device.price} € |
-                                  <span className={styles.deviceQuantity}>
-                                    {device.quantity === 0 ? (
-                                      <span style={{ color: "red" }}>
-                                        Нет в наличии
-                                      </span>
-                                    ) : (
-                                      <span style={{ color: "green" }}>
-                                        В наличии: {device.quantity}
-                                      </span>
-                                    )}
-                                  </span>
-                                </div>
-
-                                <button
-                                  className={styles.editButton}
-                                  onClick={() => handleEditDevice(device)}
-                                >
-                                  Редактировать
-                                </button>
-                                <button
-                                  className={styles.deleteButton}
-                                  onClick={() => handleDeleteDevice(device.id)}
-                                >
-                                  Удалить
-                                </button>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <p className={styles.emptyCategoryMessage}>
-                            Нет доступных товаров в этом подтипе.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {typeDevices.length === 0 && subtypesForType.length === 0 && (
-                  <p className={styles.emptyCategoryMessage}>
-                    У этого типа нет товаров.
-                  </p>
-                )}
-              </div>
-            );
-          })}
-
-          {visibleDevices.length < filteredDevices.length ? (
-            <button onClick={handleLoadMore} className={styles.loadMoreButton}>
-              Еще
-            </button>
-          ) : (
-            <p className={styles.emptyCategoryMessage}>Все товары загружены.</p>
+          {isSubmitted && !name && (
+            <span style={{ color: "red", display: "block", marginTop: "5px" }}>
+              {errors.name}
+            </span>
           )}
-        </TabPanel>
 
-        {/* Вкладка Типы */}
-        <TabPanel>
-          <div className={styles.actionButtons}>
-            <button
-              onClick={() => setTypeVisible(true)}
-              className={styles.actionButton}
-            >
-              Добавить тип
-            </button>
-          </div>
+          <Form.Label>Перевод названия</Form.Label>
+          {["en", "ru", "est"].map((lang) => (
+            <Form.Control
+              key={lang}
+              value={translations.name[lang] || ""}
+              onChange={(e) =>
+                setTranslations((prev) => ({
+                  ...prev,
+                  name: { ...prev.name, [lang]: e.target.value },
+                }))
+              }
+              placeholder={`Название (${lang.toUpperCase()})`}
+              className="mt-2"
+            />
+          ))}
 
-          <div className={styles.itemList}>
-            {types.map((type) => (
-              <div key={type.id} className={styles.item}>
-                <img
-                  width={50}
-                  height={50}
-                  src={type.img}
-                  alt={type.name}
-                  className={styles.typeImage}
-                />
-                <span>{type.name}</span>
+          {isSubmitted && !name && (
+            <span style={{ color: "red", display: "block", marginTop: "5px" }}>
+              {errors.name}
+            </span>
+          )}
 
-                <div className={styles.buttons}>
-                  <button
-                    className={styles.editButton}
-                    onClick={() => handleEditType(type)} // Редактирование типа
-                  >
-                    Редактировать
-                  </button>
-                  <button
-                    className={styles.deleteButton}
-                    onClick={() => handleDeleteType(type.id)}
-                  >
-                    Удалить
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </TabPanel>
+          <Form.Group className="mt-3">
+            <Form.Check
+              type="checkbox"
+              label="💰 Цена со скидкой"
+              checked={discount}
+              onChange={(e) => {
+                setDiscount(e.target.checked);
+                if (!e.target.checked) {
+                  setOldPrice("");
+                  setPrice("");
+                }
+              }}
+            />
+          </Form.Group>
 
-        <TabPanel>
-          <div className={styles.actionButtons}>
-            <button
-              onClick={() => setSubtypeVisible(true)}
-              className={styles.actionButton}
-            >
-              Добавить подтип
-            </button>
-          </div>
-
-          <div className={styles.itemList}>
-            {subtypes.map((subtype) => (
-              <div key={subtype.id} className={styles.item}>
-                <span>
-                  {subtype.name} (Тип:{" "}
-                  {typesMap.get(subtype.typeId)?.name || "N/A"})
-                </span>
-                <div className={styles.buttons}>
-                  <button
-                    className={styles.editButton}
-                    onClick={() => handleEditSubtype(subtype)}
-                  >
-                    Редактировать
-                  </button>
-                  <button
-                    className={styles.deleteButton}
-                    onClick={() => handleDeleteSubtype(subtype.id)}
-                  >
-                    Удалить
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </TabPanel>
-
-        {/* Вкладка Бренды */}
-        <TabPanel>
-          <div className={styles.actionButtons}>
-            <button
-              onClick={() => setBrandVisible(true)}
-              className={styles.actionButton}
-            >
-              Добавить бренд
-            </button>
-          </div>
-
-          <div className={styles.itemList}>
-            {brands.map((brand) => (
-              <div key={brand.id} className={styles.item}>
-                <span>{brand.name}</span>
-
-                <div className={styles.buttons}>
-                  <button
-                    className={styles.editButton}
-                    onClick={() => handleEditBrand(brand)} // Редактирование бренда
-                  >
-                    Редактировать
-                  </button>
-                  <button
-                    className={styles.deleteButton}
-                    onClick={() => handleDeleteBrand(brand.id)}
-                  >
-                    Удалить
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </TabPanel>
-
-        <TabPanel>
-  <h2 className={styles.translationsTitle}>Переводы</h2>
-
-  {/* Кнопка "Добавить перевод" */}
-  <button
-    className={styles.addTranslationButton}
-    onClick={() => setShowAddForm(true)}
-  >
-    ➕ Добавить перевод
-  </button>
-
-  {/* Форма добавления перевода */}
-  {showAddForm && (
-    <div className={styles.translationForm}>
-      <input
-        type="text"
-        placeholder="Ключ (например, device_123.title)"
-        value={newKey}
-        onChange={(e) => setNewKey(e.target.value)}
-        className={styles.inputField}
-      />
-      <select
-        value={newLang}
-        onChange={(e) => setNewLang(e.target.value)}
-        className={styles.selectField}
-      >
-        <option value="en">English</option>
-        <option value="ru">Русский</option>
-        <option value="est">Eesti</option>
-      </select>
-      <input
-        type="text"
-        placeholder="Перевод"
-        value={newText}
-        onChange={(e) => setNewText(e.target.value)}
-        className={styles.inputField}
-      />
-      <button onClick={handleAddTranslation} className={styles.saveButton}>
-        ✅ Добавить
-      </button>
-      <button
-        onClick={() => setShowAddForm(false)}
-        className={styles.cancelButton}
-      >
-        ❌ Отмена
-      </button>
-    </div>
-  )}
-
-  {/* Таблица переводов */}
-  <table className={styles.translationTable}>
-    <thead>
-      <tr>
-        <th>Ключ</th>
-        <th>Язык</th>
-        <th>Перевод</th>
-        <th>Действия</th>
-      </tr>
-    </thead>
-    <tbody>
-      {translations.map((t) => (
-        <tr key={`${t.key}-${t.lang}`}>
-          <td>{t.key}</td>
-          <td>{t.lang}</td>
-          <td>
-            {editKey === t.key && editLang === t.lang ? (
-              <input
-                value={editText}
-                onChange={(e) => setEditText(e.target.value)}
-                className={styles.inputField}
+          {discount && (
+            <Form.Group className="mt-3">
+              <Form.Label>Старая цена (до скидки)</Form.Label>
+              <Form.Control
+                type="number"
+                value={oldPrice}
+                onChange={(e) => setOldPrice(e.target.value)}
+                placeholder="Старая цена (до скидки)"
               />
-            ) : (
-              t.text
-            )}
-          </td>
-          <td>
-            {editKey === t.key && editLang === t.lang ? (
-              <button
-                onClick={handleSave}
-                className={styles.saveButton}
-              >
-                💾
-              </button>
-            ) : (
-              <button
-                onClick={() => handleEdit(t.key, t.lang, t.text)}
-                className={styles.editButton}
-              >
-                ✏️
-              </button>
-            )}
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</TabPanel>
+              {isSubmitted && discount && (!oldPrice || isNaN(oldPrice)) && (
+                <span
+                  style={{ color: "red", display: "block", marginTop: "5px" }}
+                >
+                  {errors.oldPrice}
+                </span>
+              )}
+            </Form.Group>
+          )}
 
-      </Tabs>
+          <Form.Group className="mt-3">
+            <Form.Label>Новая цена (со скидкой)</Form.Label>
+            <Form.Control
+              type="number"
+              value={price || ""}
+              onChange={(e) => setPrice(Number(e.target.value))}
+              placeholder="Новая цена (со скидкой)"
+            />
+            {((isSubmitted && !price) || isNaN(price)) && (
+              <span
+                style={{ color: "red", display: "block", marginTop: "5px" }}
+              >
+                {errors.price}
+              </span>
+            )}
+          </Form.Group>
 
-      <CreateBrand
-        show={brandVisible}
-        onHide={() => {
-          setBrandVisible(false);
-          fetchBrands().then(setBrands);
-        }}
-        editableBrand={editableBrand} // Передача редактируемого бренда
-      />
-      <CreateDevice
-        show={deviceVisible}
-        onHide={() => {
-          setDeviceVisible(false);
-          fetchDevices().then((data) => setDevices(data.rows || []));
-        }}
-        editableDevice={editableDevice} // Передача в компонент
-        onDeviceSaved={() => setEditableDevice(null)} // Очистка после сохранения
-      />
-      <CreateType
-        show={typeVisible}
-        onHide={() => {
-          setTypeVisible(false);
-          setEditableType(null); // Сбросить редактируемый тип
-          fetchTypes().then(setTypes);
-        }}
-        editableType={editableType}
-        onTypeSaved={() => setEditableType(null)} // Очистка после сохранения
-      />
-      <CreateSubType
-        show={subtypeVisible}
-        onHide={() => {
-          setSubtypeVisible(false);
-          setEditableSubtype(null); // Сброс редактируемого подтипа
-        }}
-        editableSubtype={editableSubtype}
-        onSubtypeSaved={() => {
-          fetchSubtypes().then(setSubtypes); // Обновляем подтипы
-        }}
-      />
-    </div>
+          <div className={styles.ImageGrid}>
+            {images.map((img, index) => (
+              <div
+                key={index}
+                className={styles.ImageCell}
+                onClick={() =>
+                  document.getElementById(`file-input-${index}`).click()
+                }
+              >
+                {img ? (
+                  <img
+                    src={
+                      typeof img === "string" ? img : URL.createObjectURL(img)
+                    }
+                    alt={`img-${index}`}
+                    className={styles.UploadedImage}
+                  />
+                ) : (
+                  <div className={styles.EmptyCell}>+</div>
+                )}
+                <input
+                  type="file"
+                  id={`file-input-${index}`}
+                  onChange={(e) => handleImageChange(index, e)}
+                  hidden
+                />
+                {img && (
+                  <button
+                    className={styles.DeleteButton}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeImage(index);
+                    }}
+                  >
+                    ✖
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="image-preview-container mt-3">
+            {imagePreviews.map((preview, index) => (
+              <img
+                key={index}
+                src={preview}
+                alt={`preview-${index}`}
+                width="100"
+              />
+            ))}
+          </div>
+
+          <hr />
+          <Button variant="outline-dark" onClick={addOption}>
+            Добавить опцию
+          </Button>
+          {options.map((option, optionIndex) => (
+            <div
+              key={optionIndex}
+              className="option-container border p-3 rounded mb-3"
+            >
+              <Form.Control
+                value={option.name}
+                onChange={(e) => updateOptionName(optionIndex, e.target.value)}
+                placeholder="Название опции (например, Цвет)"
+                className="mb-2"
+              />
+              {optionErrors[`option_${optionIndex}`] && (
+                <span style={{ color: "red", fontSize: "12px" }}>
+                  {optionErrors[`option_${optionIndex}`]}
+                </span>
+              )}
+
+              {["en", "ru", "est"].map((lang) => (
+                <Form.Control
+                  key={lang}
+                  value={
+                    translations.options?.[optionIndex]?.name?.[lang] || ""
+                  }
+                  onChange={(e) =>
+                    updateOptionTranslation(optionIndex, lang, e.target.value)
+                  }
+                  className="mt-2"
+                  placeholder={`Название опции (${lang.toUpperCase()})`}
+                />
+              ))}
+
+              {option.values.map((value, valueIndex) => (
+                <div
+                  key={valueIndex}
+                  className="option-container border p-3 rounded mb-3"
+                >
+                  <Form.Control
+                    value={value.value}
+                    onChange={(e) =>
+                      updateOptionValue(
+                        optionIndex,
+                        valueIndex,
+                        "value",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Значение (например, Красный)"
+                    className="me-2"
+                  />
+
+                  {["en", "ru", "est"].map((lang) => (
+                    <Form.Control
+                      key={lang}
+                      value={
+                        translations.options?.[optionIndex]?.values?.[
+                          valueIndex
+                        ]?.[lang] || ""
+                      }
+                      onChange={(e) =>
+                        updateOptionValueTranslation(
+                          optionIndex,
+                          valueIndex,
+                          lang,
+                          e.target.value
+                        )
+                      }
+                      className="mt-2"
+                      placeholder={`Перевод значения (${lang.toUpperCase()})`}
+                    />
+                  ))}
+
+                  <Form.Control
+                    type="number"
+                    value={value.price}
+                    onChange={(e) =>
+                      updateOptionValue(
+                        optionIndex,
+                        valueIndex,
+                        "price",
+                        parseFloat(e.target.value)
+                      )
+                    }
+                    placeholder="Цена"
+                    className="me-2"
+                  />
+                  <Form.Control
+                    type="number"
+                    value={value.quantity}
+                    onChange={(e) => {
+                      const newValue =
+                        e.target.value === ""
+                          ? ""
+                          : parseInt(e.target.value, 10);
+                      updateOptionValue(
+                        optionIndex,
+                        valueIndex,
+                        "quantity",
+                        newValue
+                      );
+                    }}
+                    placeholder="Количество"
+                    className="me-2"
+                  />
+                  <Button
+                    variant="outline-danger"
+                    onClick={() => removeOptionValue(optionIndex, valueIndex)}
+                  >
+                    Удалить
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="outline-dark"
+                onClick={() => addOptionValue(optionIndex)}
+              >
+                Добавить значение
+              </Button>
+              <Button
+                variant="outline-danger"
+                className="ms-2"
+                onClick={() => removeOption(optionIndex)}
+              >
+                Удалить опцию
+              </Button>
+            </div>
+          ))}
+
+          <hr />
+          <Button variant={"outline-dark"} onClick={addInfo}>
+            Добавить новое свойство
+          </Button>
+          {info.map(
+            (
+              i,
+              index 
+            ) => (
+              <Row className="mt-4" key={`info-${index}`}>
+                <Col md={4}>
+                  <Form.Control
+                    value={i.title}
+                    onChange={(e) =>
+                      changeInfo("title", e.target.value, i.number)
+                    }
+                    placeholder="Введите название свойства"
+                  />
+
+                  {["en", "ru", "est"].map((lang) => (
+                    <Form.Control
+                      key={lang}
+                      value={translations.info?.[index]?.title?.[lang] || ""}
+                      onChange={(e) => {
+                        setTranslations((prev) => {
+                          const updatedInfo = [...prev.info];
+
+                          if (!updatedInfo[index]) {
+                            updatedInfo[index] = { title: {}, description: {} };
+                          }
+
+                          updatedInfo[index].title[lang] = e.target.value;
+
+                          return { ...prev, info: updatedInfo };
+                        });
+                      }}
+                      placeholder={`Название (${lang.toUpperCase()})`}
+                      className="mt-1"
+                    />
+                  ))}
+                </Col>
+
+                <Col md={4}>
+                  <Form.Control
+                    value={i.description}
+                    onChange={(e) =>
+                      changeInfo("description", e.target.value, i.number)
+                    }
+                    placeholder="Введите описание свойства"
+                  />
+
+                  {["en", "ru", "est"].map((lang) => (
+                    <Form.Control
+                      key={lang}
+                      value={
+                        translations.info?.[index]?.description?.[lang] || ""
+                      }
+                      onChange={(e) => {
+                        setTranslations((prev) => {
+                          const updatedInfo = [...prev.info];
+
+                          if (!updatedInfo[index]) {
+                            updatedInfo[index] = { title: {}, description: {} };
+                          }
+
+                          updatedInfo[index].description[lang] = e.target.value;
+
+                          return { ...prev, info: updatedInfo };
+                        });
+                      }}
+                      placeholder={`Описание (${lang.toUpperCase()})`}
+                      className="mt-1"
+                    />
+                  ))}
+                </Col>
+                <Col md={4}>
+                  <Button
+                    onClick={() => removeInfo(i.number)}
+                    variant={"outline-danger"}
+                  >
+                    Удалить
+                  </Button>
+                </Col>
+              </Row>
+            )
+          )}
+        </Form>
+      </Modal.Body>
+
+      <Form.Group>
+        <Form.Label>Количество на складе</Form.Label>
+        <Form.Control
+          type="number"
+          value={quantity}
+          onChange={(e) => setQuantity(Number(e.target.value))}
+          min="0"
+        />
+        {errors.quantity && <p className="text-danger">{errors.quantity}</p>}
+      </Form.Group>
+
+      <Modal.Footer>
+        <Button variant="outline-danger" onClick={onHide}>
+          Закрыть
+        </Button>
+        <Button variant="outline-success" onClick={handleSave}>
+          {isEditMode ? "Сохранить изменения" : "Добавить устройство"}
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
-};
+});
 
-export default Admin;
+export default CreateDevice;
