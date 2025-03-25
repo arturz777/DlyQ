@@ -5,6 +5,7 @@ import {
   fetchRecommendedDevices,
   fetchTypes,
 } from "../http/deviceAPI";
+import { useTranslation } from "react-i18next";
 import DeviceItem from "../components/DeviceItem";
 import styles from "./HomePage.module.css";
 import { Link } from "react-router-dom";
@@ -16,6 +17,8 @@ const HomePage = () => {
   const [types, setTypes] = useState([]);
   const [showAllTypes, setShowAllTypes] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+    const { t, i18n } = useTranslation();
+    const currentLang = i18n.language || "en";
 
   useEffect(() => {
     fetchNewDevices(10)
@@ -83,11 +86,11 @@ const HomePage = () => {
                 {type.img && (
                   <img
                     src={type.img}
-                    alt={type.name}
+                    alt={type.translations?.name?.[currentLang] || type.name}
                     className={styles.categoryIcon}
                   />
                 )}
-                {type.name}
+                {type.translations?.name?.[currentLang] || type.name}
               </Link>
             ))}
             <div className={styles.dropdownContainer}>
@@ -95,7 +98,7 @@ const HomePage = () => {
                 className={`${styles.category} ${styles.moreButton}`}
                 onClick={() => setShowAllTypes(!showAllTypes)}
               >
-                {showAllTypes ? "▲ Скрыть" : "▼ Ещё"}
+                {showAllTypes ? t("hide", { ns: "homePage" }) : t("more", { ns: "homePage" })}
               </div>
 
               {showAllTypes && (
@@ -113,7 +116,7 @@ const HomePage = () => {
                           className={styles.categoryIcon}
                         />
                       )}
-                      {type.name}
+                     {type.translations?.name?.[currentLang] || type.name}
                     </Link>
                   ))}
                 </div>
@@ -134,14 +137,14 @@ const HomePage = () => {
                   className={styles.categoryIcon}
                 />
               )}
-              {type.name}
+              {type.translations?.name?.[currentLang] || type.name}
             </Link>
           ))
         )}
       </div>
 
       <section className={styles.section}>
-        <h2>🌟 Новые поступления</h2>
+        <h2>{t("new", { ns: "homePage" })}</h2>
         <div className={styles.deviceCarousel}>
           {newDevices.length > 0 ? (
             newDevices.map((device) => (
@@ -150,13 +153,13 @@ const HomePage = () => {
               </div>
             ))
           ) : (
-            <p>Нет новых товаров</p>
+            <p>{t("loading", { ns: "homePage" })}</p>
           )}
         </div>
       </section>
 
       <section className={styles.section}>
-  <h2>💰 Супер скидки</h2>
+  <h2>{t("discounts", { ns: "homePage" })}</h2>
   <div className={styles.deviceCarousel}>
     {Array.isArray(discountedDevices) && discountedDevices.length > 0 ? (
       discountedDevices.map((device) => (
@@ -165,13 +168,13 @@ const HomePage = () => {
         </div>
       ))
     ) : (
-      <p>Нет товаров со скидкой</p>
+      <p>{t("loading", { ns: "homePage" })}</p>
     )}
   </div>
 </section>
 
 <section className={styles.section}>
-  <h2>🎯 Рекомендуем вам</h2>
+  <h2>{t("recommended", { ns: "homePage" })}</h2>
   <div className={styles.deviceCarousel}>
     {Array.isArray(recommendedDevices) && recommendedDevices.length > 0 ? (
       recommendedDevices.map((device) => (
@@ -180,7 +183,7 @@ const HomePage = () => {
         </div>
       ))
     ) : (
-      <p>Нет рекомендованных товаров</p>
+      <p>{t("loading", { ns: "homePage" })}</p>
     )}
   </div>
 </section>
