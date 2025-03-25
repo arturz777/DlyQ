@@ -22,6 +22,7 @@ import basketEst from './est/basket.json';
 import profileSettingsEst from './est/profileSettings.json';
 import userProfileEst from './est/userProfile.json';
 import mobileNavBarEst from './est/mobileNavBar.json';
+import homePageEst from './est/homePage.json';
 
 import navbarEn from './en/navbar.json';
 import searchbarEn from './en/searchbar.json';
@@ -42,6 +43,7 @@ import basketEn from './en/basket.json';
 import profileSettingsEn from './en/profileSettings.json';
 import userProfileEn from './en/userProfile.json';
 import mobileNavBarEn from './en/mobileNavBar.json';
+import homePageEn from './en/homePage.json';
 
 import navbarRu from './ru/navbar.json';
 import searchbarRu from './ru/searchbar.json';
@@ -62,6 +64,7 @@ import basketRu from './ru/basket.json';
 import profileSettingsRu from './ru/profileSettings.json';
 import userProfileRu from './ru/userProfile.json';
 import mobileNavBarRu from './ru/mobileNavBar.json';
+import homePageRu from './ru/homePage.json';
 
 
 i18n
@@ -89,6 +92,7 @@ i18n
         profileSettings: profileSettingsEn,
         userProfile: userProfileEn,
         mobileNavBar: mobileNavBarEn,
+        homePage: homePageEn,
       },
       ru: {
         navbar: navbarRu,
@@ -110,6 +114,7 @@ i18n
         profileSettings: profileSettingsRu,
         userProfile: userProfileRu,
         mobileNavBar: mobileNavBarRu,
+        homePage: homePageRu,
       },
       est: {
         navbar: navbarEst,
@@ -131,6 +136,7 @@ i18n
         profileSettings: profileSettingsEst,
         userProfile: userProfileEst,
         mobileNavBar: mobileNavBarEst,
+        homePage: homePageEst,
       },
     },
 
