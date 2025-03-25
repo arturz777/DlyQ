@@ -704,28 +704,57 @@ class DeviceController {
   }
 
   async getNewDevices(req, res) {
-    try {
-      let { limit } = req.query;
-      limit = limit ? parseInt(limit) : 10;
+  try {
+    const { limit = 10 } = req.query;
 
-      const devices = await Device.findAndCountAll({
-        where: { isNew: true },
-        limit,
-        order: [["createdAt", "DESC"]],
-      });
+    // 1. Получаем устройства с isNew: true
+    const devices = await Device.findAll({
+      where: { isNew: true },
+      limit: parseInt(limit),
+      order: [["createdAt", "DESC"]],
+      include: [ // Важно: те же include, что и в getAll
+        { model: SubType, as: "subtype" },
+        { model: Type },
+        { model: DeviceInfo, as: "info" },
+      ],
+    });
 
-      if (!devices.rows.length) {
-        return res.json({ count: 0, devices: [] });
-      }
+    if (!devices.length) return res.json([]);
 
-      return res.json({ count: devices.count, devices: devices.rows });
-    } catch (error) {
-      console.error("❌ Ошибка загрузки новых товаров:", error);
-      return res
-        .status(500)
-        .json({ message: "Ошибка сервера при загрузке новых товаров" });
-    }
+    // 2. Загружаем переводы для этих устройств
+    const deviceIds = devices.map(d => d.id);
+    const translations = await Translation.findAll({
+      where: { 
+        key: { 
+          [Op.or]: deviceIds.map(id => `device_${id}.%`) 
+        } 
+      },
+    });
+
+    // 3. Прикрепляем переводы к устройствам
+    const devicesWithTranslations = devices.map(device => {
+      const deviceTranslations = {};
+      translations
+        .filter(t => t.key.startsWith(`device_${device.id}.`))
+        .forEach(t => {
+          const [_, field] = t.key.split(`device_${device.id}.`);
+          if (!field) return;
+          deviceTranslations[field] = deviceTranslations[field] || {};
+          deviceTranslations[field][t.lang] = t.text;
+        });
+
+      return {
+        ...device.get({ plain: true }),
+        translations: deviceTranslations,
+      };
+    });
+
+    res.json(devicesWithTranslations);
+  } catch (error) {
+    console.error("❌ getNewDevices error:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
   }
+}
 
   async updateNewStatus(req, res) {
     try {
