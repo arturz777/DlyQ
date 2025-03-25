@@ -3,16 +3,12 @@ import jwt_decode from "jwt-decode";
 
 export const fetchNewDevices = async (limit = 10) => {
   try {
-    const { data } = await $host.get("/device/new", { params: { limit } });
-
-    if (!data.devices) {
-      console.warn("⚠️ Сервер не вернул ожидаемые данные:", data);
-      return [];
-    }
-
-    return data.devices; // Теперь ожидаем devices, а не просто data
+    const { data } = await $host.get("/device", {
+      params: { isNew: true, limit }
+    });
+    return data.rows || [];
   } catch (error) {
-    console.error("❌ Ошибка загрузки новых товаров:", error);
+    console.error("Error fetching new devices:", error);
     return [];
   }
 };
@@ -23,7 +19,7 @@ export const fetchDiscountedDevices = async (limit = 10) => {
       params: { discount: true, limit },
     });
     
-    return data.rows || []; // 🔥 Используем `data.rows`, а не `data.devices`
+    return data.rows || []; 
   } catch (error) {
     console.error("❌ Ошибка загрузки товаров со скидками:", error);
     return [];
@@ -37,7 +33,7 @@ export const fetchRecommendedDevices = async (limit = 10) => {
       params: { recommended: true, limit },
     });
     
-    return data.rows || []; // 🔥 Используем `data.rows`, а не `data.devices`
+    return data.rows || []; 
   } catch (error) {
     console.error("❌ Ошибка загрузки рекомендованных товаров:", error);
     return [];
