@@ -110,7 +110,7 @@ device.discount && device.oldPrice > device.price
       <Image className={styles.image} src={device.img} />
 
       <div className={styles.info}>
-        <h5 className={styles.name}>{device.name}</h5>
+        <h5 className={styles.name}>{deviceName}</h5>
 
         {/* Блок цен */}
         <div className={styles.priceBlock}>
