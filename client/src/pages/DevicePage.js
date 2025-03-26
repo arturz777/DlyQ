@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useContext } from "react";
 import { useParams } from "react-router-dom";
-import { fetchOneDevice } from "../http/deviceAPI";
+import { fetchOneDevice, fetchRecommendedDevices } from "../http/deviceAPI";
 import { Context } from "../index";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import styles from "./DevicePage.module.css";
+import DeviceItem from "../components/DeviceItem";
 
 const DevicePage = () => {
   const { basket } = useContext(Context);
@@ -14,6 +15,7 @@ const DevicePage = () => {
     options: [],
     thumbnails: [],
   });
+  const [recommendedDevices, setRecommendedDevices] = useState([]);
   const [selectedOptions, setSelectedOptions] = useState({});
   const [finalPrice, setFinalPrice] = useState(0);
   const { id } = useParams();
@@ -111,7 +113,10 @@ const DevicePage = () => {
     );
     const newCount = (existingItem?.count || 0) + 1;
 
-    if (device.options?.length > 0 && Object.keys(selectedOptions).length === 0) {
+    if (
+      device.options?.length > 0 &&
+      Object.keys(selectedOptions).length === 0
+    ) {
       toast.error(`❌ ${t("Select product options!", { ns: "devicePage" })}`);
       return;
     }
@@ -136,16 +141,38 @@ const DevicePage = () => {
     setAvailableQuantity((prev) => prev - 1);
   };
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const deviceData = await fetchOneDevice(id);
+        setDevice(deviceData);
+
+        // Фильтрация рекомендованных товаров по типу устройства
+        const recommendedData = await fetchRecommendedDevices(deviceData.type); // предполагаем, что в API есть поле `type`
+        setRecommendedDevices(recommendedData);
+      } catch (error) {
+        toast.error("❌ Error fetching device data");
+      }
+    };
+    fetchData();
+  }, [id]);
+
+  if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
+
   return (
     <div className={styles.DevicePageContainer}>
       <div className={styles.DevicePageContent}>
         <div className={styles.DevicePageColImg}>
           <div className={styles.DevicePageImageWrapper}>
-          {device.oldPrice && device.oldPrice > device.price && (
-  <div className={styles.DevicePageDiscountBadge}>
-    -{Math.round(((device.oldPrice - device.price) / device.oldPrice) * 100)}%
-  </div>
-)}
+            {device.oldPrice && device.oldPrice > device.price && (
+              <div className={styles.DevicePageDiscountBadge}>
+                -
+                {Math.round(
+                  ((device.oldPrice - device.price) / device.oldPrice) * 100
+                )}
+                %
+              </div>
+            )}
 
             <div className={styles.ImageContainer}>
               <AnimatePresence mode="wait">
@@ -229,17 +256,22 @@ const DevicePage = () => {
                 </select>
               </div>
             ))}
-           <div className={styles.DevicePagePriceBlock}>
-  {device.oldPrice && device.oldPrice > device.price ? (
-    <>
-      <span className={styles.DevicePageOldPrice}>{device.oldPrice} €</span>
-      <span className={styles.DevicePageNewPrice}>{device.price} €</span>
-    </>
-  ) : (
-    <span className={styles.DevicePageRegularPrice}>{device.price} €</span>
-  )}
-</div>
-
+            <div className={styles.DevicePagePriceBlock}>
+              {device.oldPrice && device.oldPrice > device.price ? (
+                <>
+                  <span className={styles.DevicePageOldPrice}>
+                    {device.oldPrice} €
+                  </span>
+                  <span className={styles.DevicePageNewPrice}>
+                    {device.price} €
+                  </span>
+                </>
+              ) : (
+                <span className={styles.DevicePageRegularPrice}>
+                  {device.price} €
+                </span>
+              )}
+            </div>
 
             <button
               className={styles.DevicePageAddToCart}
@@ -289,6 +321,22 @@ const DevicePage = () => {
             </div>
           ))}
         </div>
+
+        <section className={styles.section}>
+          <h2>{t("recommended", { ns: "homePage" })}</h2>
+          <div className={styles.deviceCarousel}>
+            {Array.isArray(recommendedDevices) &&
+            recommendedDevices.length > 0 ? (
+              recommendedDevices.map((device) => (
+                <div key={device.id} className={styles.deviceItem}>
+                  <DeviceItem device={device} />
+                </div>
+              ))
+            ) : (
+              <p>{t("loading", { ns: "homePage" })}</p>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );
