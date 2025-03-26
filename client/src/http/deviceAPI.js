@@ -26,14 +26,13 @@ export const fetchDiscountedDevices = async (limit = 10) => {
   }
 };
 
-
-export const fetchRecommendedDevices = async (limit = 10) => {
+export const fetchRecommendedDevices = async (deviceType, limit = 10) => {
   try {
     const { data } = await $host.get("/device", {
-      params: { recommended: true, limit },
+      params: { type: deviceType, recommended: true, limit },
     });
-    
-    return data.rows || []; 
+
+    return data.rows || [];
   } catch (error) {
     console.error("❌ Ошибка загрузки рекомендованных товаров:", error);
     return [];
