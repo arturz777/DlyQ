@@ -37,22 +37,18 @@ class WarehouseController {
 }
 	}
 
-  // 📌 Принятие заказа складом
   async acceptOrder(req, res) {
     try {
       const { id } = req.params;
-      const { processingTime } = req.body; // Сколько времени нужно для обработки
-      const adminId = req.user.id; // ID текущего пользователя (админа)
+      const { processingTime } = req.body;
+      const adminId = req.user.id; 
 
-      
-
-      // ✅ Проверяем, существует ли склад (Warehouse)
       let warehouse = await Warehouse.findOne({ where: { id: adminId } });
 
       if (!warehouse) {
         warehouse = await Warehouse.create({
-          id: adminId, // Привязываем к администратору
-          name: "Склад №1", // Можно настроить
+          id: adminId, 
+          name: "Склад №1", 
           status: "active",
         });
       }
@@ -62,14 +58,14 @@ class WarehouseController {
         return res.status(404).json({ message: "Заказ не найден" });
       }
 
-      // ✅ Привязываем заказ к складу
-      order.warehouseStatus = "processing"; // Меняем статус
-      order.processingTime = processingTime; // Устанавливаем время обработки
-      order.warehouseId = warehouse.id; // Привязываем заказ к складу
+      order.warehouseStatus = "processing"; 
+      order.processingTime = processingTime; 
+      order.processingStartTime = new Date();
+      order.warehouseId = warehouse.id; 
       order.status = "Waiting for courier"; 
       await order.save();
 
-      const io = req.app.get("io"); // 🔥 Получаем WebSocket-сервер из `app`
+      const io = req.app.get("io"); 
       io.emit("warehouseOrder", order);
       io.emit("orderStatusUpdate", order); 
 
