@@ -79,6 +79,7 @@ const Order = sequelize.define(
     formData: { type: DataTypes.JSON, allowNull: true },
     orderDetails: { type: DataTypes.JSON, allowNull: true },
     courierId: { type: DataTypes.INTEGER, allowNull: true },
+    pickupStartTime: { type: DataTypes.DATE, allowNull: true },
     deliveryLat: { type: DataTypes.FLOAT, allowNull: true },
     deliveryLng: { type: DataTypes.FLOAT, allowNull: true },
     deliveryAddress: { type: DataTypes.STRING, allowNull: false },
