@@ -20,9 +20,7 @@ import styles from "./Courier.module.css";
 
 const socket = io(process.env.REACT_APP_API_URL || "https://zang-4.onrender.com");
 
-
-const WAREHOUSE_LOCATION = { lat: 59.513720, lng: 24.828888 };
- 
+const WAREHOUSE_LOCATION = { lat: 59.51372, lng: 24.828888 };
 
 const customIcon = new L.Icon({
   iconUrl:
@@ -55,10 +53,10 @@ const Courier = () => {
   const [currentOrder, setCurrentOrder] = useState(null);
 
   useEffect(() => {
-    document.body.classList.add("courier-page"); // ✅ Добавляем класс при входе
+    document.body.classList.add("courier-page");
 
     return () => {
-      document.body.classList.remove("courier-page"); // ✅ Удаляем при выходе
+      document.body.classList.remove("courier-page");
     };
   }, []);
 
@@ -69,7 +67,7 @@ const Courier = () => {
   const playNotificationSound = () => {
     const audio = document.getElementById("notificationSound");
     if (audio) {
-      audio.currentTime = 0; // Сброс воспроизведения
+      audio.currentTime = 0;
       audio
         .play()
         .catch((error) =>
@@ -96,20 +94,19 @@ const Courier = () => {
     });
 
     return () => {
-      socket.off("warehouseOrder"); // ✅ Отписка при размонтировании компонента
+      socket.off("warehouseOrder");
     };
   }, []);
 
   useEffect(() => {
     socket.on("orderReady", (updatedOrder) => {
-      // ✅ Проверяем, соответствует ли этот заказ нашему текущему заказу
       if (currentOrder && updatedOrder.id === currentOrder.id) {
-        setCurrentOrder(updatedOrder); // 🔄 Обновляем статус заказа
+        setCurrentOrder(updatedOrder);
       }
     });
 
     return () => {
-      socket.off("orderReady"); // ✅ Отписываемся при размонтировании
+      socket.off("orderReady");
     };
   }, [currentOrder]);
 
@@ -151,7 +148,7 @@ const Courier = () => {
   };
 
   const handleAcceptOrder = async (orderId) => {
-    if (isAccepting) return; // 📌 Если уже идет обработка, игнорируем нажатие
+    if (isAccepting) return;
 
     setIsAccepting(true);
     try {
@@ -231,27 +228,27 @@ const Courier = () => {
     }
   };
 
-useEffect(() => {
-  const sendLocationUpdate = async () => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        const { latitude, longitude } = position.coords;
-        try {
-          await updateCourierLocation(latitude, longitude);
-          console.log(`📍 Обновлено местоположение: ${latitude}, ${longitude}`);
-        } catch (error) {
-          console.error("❌ Ошибка обновления местоположения курьера:", error);
-        }
-      });
-    }
-  };
+  useEffect(() => {
+    const sendLocationUpdate = async () => {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(async (position) => {
+          const { latitude, longitude } = position.coords;
+          try {
+            await updateCourierLocation(latitude, longitude);
+          } catch (error) {
+            console.error(
+              "❌ Ошибка обновления местоположения курьера:",
+              error
+            );
+          }
+        });
+      }
+    };
 
-  // Запускаем интервал
-  const interval = setInterval(sendLocationUpdate, 10000);
-
-  return () => clearInterval(interval);
-}, []);
-
+    sendLocationUpdate();
+    const interval = setInterval(sendLocationUpdate, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchRoute = async (start, end) => {
     if (!start.lat || !start.lng || !end.lat || !end.lng) {
