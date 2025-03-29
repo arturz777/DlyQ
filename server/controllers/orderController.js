@@ -1,9 +1,8 @@
-// server/controllers/orderController.js
 const sendEmail = require("../services/emailService");
 const { Order, Device, Translation } = require("../models/models");
 const { Op } = require("sequelize");
 const getDistanceFromWarehouse = require("../utils/distance");
-const { supabase } = require("../config/supabaseClient"); // ✅ Импорт Supabase
+const { supabase } = require("../config/supabaseClient"); 
 const uuid = require("uuid");
 
 const calculateDeliveryCost = (totalPrice, distance) => {
@@ -106,7 +105,7 @@ const createOrder = async (req, res) => {
         }
 
         if (device.quantity < item.count) {
-          isPreorder = true; // Если товара нет в наличии, это предзаказ
+          isPreorder = true; 
         } else {
           await device.update({ quantity: device.quantity - item.count });
         }
@@ -115,7 +114,7 @@ const createOrder = async (req, res) => {
       // Определяем статус заказа
       let status = "Pending";
       if (isPreorder || desiredDeliveryDate) {
-        status = "preorder"; // Если предзаказ — статус "preorder"
+        status = "preorder";
       }
     }
 
@@ -136,6 +135,7 @@ const createOrder = async (req, res) => {
         orderDetails.length > 0 ? orderDetails[0].name : "Неизвестный товар",
       orderDetails: JSON.stringify(orderDetails),
       desiredDeliveryDate: desiredDeliveryDate || null,
+      formData: JSON.stringify(formData),
     });
 
     const io = req.app.get("io");
@@ -340,27 +340,34 @@ const getUserOrders = async (req, res) => {
   }
 };
 
+
 const getActiveOrder = async (req, res) => {
   try {
     const userId = req.user ? req.user.id : null;
+
     const order = await Order.findOne({
-      where: { userId, status: "Pending" },
+      where: {
+        userId,
+        status: {
+          [Op.in]: ["Pending", "Waiting for courier", "Ready for pickup", "Picked up", "Arrived at destination", "Delivered"],
+        },
+      },
+      order: [["createdAt", "DESC"]],
     });
+    
 
     if (!order) {
       return res.json(null);
     }
 
-    // ✅ Извлекаем товары из formData (потому что они там сохранены)
     let orderItems = [];
     try {
       const parsedData = order.formData ? JSON.parse(order.formData) : {};
-      orderItems = parsedData.orderDetails || []; // Берём товары
+      orderItems = parsedData.orderDetails || []; 
     } catch (error) {
       console.error("Ошибка парсинга formData:", error);
     }
 
-    // ✅ Добавляем товары в ответ
     res.json({
       ...order.toJSON(),
       order_items: orderItems,
