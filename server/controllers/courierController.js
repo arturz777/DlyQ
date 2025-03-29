@@ -52,7 +52,6 @@ class CourierController {
     }
   }
 
-  // 🔹 Принятие заказа курьером
   async acceptOrder(req, res) {
     try {
       const { id } = req.params;
@@ -89,23 +88,27 @@ class CourierController {
           .json({ message: "Заказ уже занят или не доступен для курьера." });
       }
 
-      // ✅ Если заказ уже "Ready for pickup", не меняем статус (чтобы не сбрасывать его)
-      if (order.status === "Ready for pickup") {
-        order.courierId = courierId;
-      } else {
-        order.status = "Accepted";
-        order.courierId = courierId;
-      }
+      order.courierId = courierId;
+      order.acceptedAt = new Date();
 
-      await order.save(); // 🔥 Сохраняем изменения
+      await order.save();
 
-      // ✅ Отправляем обновление через WebSocket
       const io = req.app.get("io");
 
-      // ✅ Отправляем актуальные данные на фронтенд
+      io.emit("orderStatusUpdate", {
+        id: order.id,
+        status: order.status,
+        accepted: true,
+        courierId: order.courierId,
+        courierLocation:
+          courier.currentLat && courier.currentLng
+            ? { lat: courier.currentLat, lng: courier.currentLng }
+            : null,
+      });
+
       return res.json({
         id: order.id,
-        status: order.status, // Теперь статус всегда актуальный!
+        status: order.status,
         deliveryLat: order.deliveryLat,
         deliveryLng: order.deliveryLng,
         deliveryAddress: order.deliveryAddress,
@@ -139,56 +142,55 @@ class CourierController {
 
       return res.json({ message: `Вы в статусе: ${status}` });
     } catch (error) {
+      console.error("❌ Ошибка смены статуса курьера:", error);
       return res.status(500).json({ message: "Ошибка сервера" });
     }
   }
 
   async updateDeliveryStatus(req, res) {
     try {
-        const { id } = req.params;
-        const { status } = req.body;
-        const courierId = req.user.id;
+      const { id } = req.params;
+      const { status } = req.body;
+      const courierId = req.user.id;
 
-        if (!courierId) {
-            return res.status(401).json({ message: "Вы не авторизованы." });
-        }
+      if (!courierId) {
+        return res.status(401).json({ message: "Вы не авторизованы." });
+      }
 
-        const order = await Order.findByPk(id);
-        if (!order) {
-            return res.status(404).json({ message: "Заказ не найден." });
-        }
+      const order = await Order.findByPk(id);
+      if (!order) {
+        return res.status(404).json({ message: "Заказ не найден." });
+      }
 
-        if (order.courierId !== courierId) {
-            return res.status(403).json({ message: "Этот заказ вам не принадлежит." });
-        }
+      if (order.courierId !== courierId) {
+        return res
+          .status(403)
+          .json({ message: "Этот заказ вам не принадлежит." });
+      }
 
-        // ✅ Устанавливаем новый статус
-        order.status = status;
+      order.status = status;
 
-        // ✅ Когда курьер забрал заказ, рассчитываем время маршрута
-        if (order.status === "Picked up") {
-            const estimatedTime = await calculateRouteTime(order);
-            order.estimatedTime = estimatedTime; // ✅ Реальное время
-        }
+      if (order.status === "Picked up") {
+        const estimatedTime = await calculateRouteTime(order);
+        order.estimatedTime = estimatedTime;
+        order.pickupStartTime = new Date();
+      }
 
-        await order.save();
+      await order.save();
 
-        // 🔥 Отправляем обновление через WebSocket
-        const io = req.app.get("io");
-        io.emit("orderStatusUpdate", {
-            id: order.id,
-            status: order.status,
-            estimatedTime: order.estimatedTime || null,
-        });
+      const io = req.app.get("io");
+      io.emit("orderStatusUpdate", {
+        id: order.id,
+        status: order.status,
+        estimatedTime: order.estimatedTime || null,
+      });
 
-
-        return res.json(order);
+      return res.json(order);
     } catch (error) {
-        console.error("❌ Ошибка обновления статуса доставки:", error);
-        return res.status(500).json({ message: "Ошибка сервера" });
+      console.error("❌ Ошибка обновления статуса доставки:", error);
+      return res.status(500).json({ message: "Ошибка сервера" });
     }
-}
-
+  }
 
   // 📌 Завершение заказа (доставлено)
   async completeDelivery(req, res) {
@@ -236,74 +238,72 @@ class CourierController {
 
   async updateCourierLocation(req, res) {
     try {
-        const { lat, lng } = req.body;
-        const courierId = req.user.id;
+      const { lat, lng } = req.body;
+      const courierId = req.user.id;
 
-        if (!courierId) {
-            return res.status(401).json({ message: "Вы не авторизованы." });
-        }
+      if (!courierId) {
+        return res.status(401).json({ message: "Вы не авторизованы." });
+      }
 
-        if (!lat || !lng) {
-            return res.status(400).json({ message: "Координаты не переданы." });
-        }
+      if (!lat || !lng) {
+        return res.status(400).json({ message: "Координаты не переданы." });
+      }
 
-        let courier = await Courier.findByPk(courierId);
-        if (!courier) {
-            return res.status(404).json({ message: "Курьер не найден." });
-        }
+      let courier = await Courier.findByPk(courierId);
+      if (!courier) {
+        return res.status(404).json({ message: "Курьер не найден." });
+      }
 
-        // ✅ Обновляем координаты курьера
-        courier.currentLat = lat;
-        courier.currentLng = lng;
-        await courier.save();
+      // ✅ Обновляем координаты курьера
+      courier.currentLat = lat;
+      courier.currentLng = lng;
+      await courier.save();
 
-        // 🔥 Отправляем обновление через WebSocket
-        const io = req.app.get("io");
-        io.emit("courierLocationUpdate", { courierId, lat, lng });
+      // 🔥 Отправляем обновление через WebSocket
+      const io = req.app.get("io");
+      io.emit("courierLocationUpdate", { courierId, lat, lng });
 
-        return res.json({ message: "Местоположение обновлено!" });
+      return res.json({ message: "Местоположение обновлено!" });
     } catch (error) {
-        console.error("❌ Ошибка обновления местоположения курьера:", error);
-        return res.status(500).json({ message: "Ошибка сервера" });
+      console.error("❌ Ошибка обновления местоположения курьера:", error);
+      return res.status(500).json({ message: "Ошибка сервера" });
     }
-}
-
-
+  }
 }
 
 async function calculateRouteTime(order) {
   if (!order.deliveryLat || !order.deliveryLng) {
-      return 15 * 60; // ❗ Возвращаем заглушку 15 минут
+    return 15 * 60; // ❗ Возвращаем заглушку 15 минут
   }
 
   // ✅ Получаем данные о курьере
   const courier = await Courier.findByPk(order.courierId);
   if (!courier || !courier.currentLat || !courier.currentLng) {
-      return 15 * 60;
+    return 15 * 60;
   }
 
   const API_KEY = "5b3ce3597851110001cf624889e39f2834a84a62aaca04f731838a64"; // 🔥 Замени на свой ключ
   const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${API_KEY}&start=${courier.currentLng},${courier.currentLat}&end=${order.deliveryLng},${order.deliveryLat}`;
 
   try {
-      const response = await fetch(url);
-      const data = await response.json();
+    const response = await fetch(url);
+    const data = await response.json();
 
-
-      if (data.features && data.features.length > 0) {
-          const realTime = Math.round(data.features[0].properties.segments[0].duration);
-          return realTime; // ✅ Настоящее время в пути (секунды)
-      } else {
-          console.warn("⚠️ Не удалось получить данные маршрута, оставляем 15 минут.");
-          return 15 * 60; // ❗ Если API не дал ответ – ставим заглушку
-      }
+    if (data.features && data.features.length > 0) {
+      const realTime = Math.round(
+        data.features[0].properties.segments[0].duration
+      );
+      return realTime; // ✅ Настоящее время в пути (секунды)
+    } else {
+      console.warn(
+        "⚠️ Не удалось получить данные маршрута, оставляем 15 минут."
+      );
+      return 15 * 60; // ❗ Если API не дал ответ – ставим заглушку
+    }
   } catch (error) {
-      console.error("❌ Ошибка получения маршрута:", error);
-      return 15 * 60; // ❗ Ошибка – ставим заглушку
+    console.error("❌ Ошибка получения маршрута:", error);
+    return 15 * 60; // ❗ Ошибка – ставим заглушку
   }
 }
-
-
-
 
 module.exports = new CourierController();
