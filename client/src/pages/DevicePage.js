@@ -136,7 +136,19 @@ const DevicePage = () => {
     };
 
     basket.addItem(newItem);
-    toast.success(`${deviceName} ${t("Added to cart!", { ns: "devicePage" })}`);
+     toast.success(
+          <>
+            <strong className={styles.toastTitle}>{deviceName}</strong>
+            <span className={styles.toastSubtitle}>
+              {t("Added to cart!", { ns: "devicePage" })}
+            </span>
+          </>,
+          {
+            style: {
+              maxWidth: "400px",
+            },
+          }
+        );
 
     setAvailableQuantity((prev) => prev - 1);
   };
