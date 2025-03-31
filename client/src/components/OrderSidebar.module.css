@@ -1,3 +1,4 @@
+/* Плавающая иконка справа */
 .floatingIcon {
 	position: fixed;
 	right: 20px;
@@ -26,7 +27,7 @@
 	position: fixed;
 	top: 0;
 	right: -100%; /* Начальное скрытое состояние */
-	width: 90vw; /* Делаем на всю ширину экрана */
+	width: 100vw; /* Делаем на всю ширину экрана */
 	height: 100vh; /* Делаем на всю высоту экрана */
 	background-color: white;
 	box-shadow: -4px 0 10px rgba(0, 0, 0, 0.1);
@@ -64,4 +65,41 @@
 	text-align: center;
 	margin-top: 20px;
   }
-  
+
+  .completeButton,
+.orderHistoryButton {
+  width: 100%;
+  padding: 12px 20px;
+  margin-top: 15px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.completeButton {
+  background-color: #28a745;
+  color: white;
+}
+
+.completeButton:hover {
+  background-color: #218838;
+}
+
+.orderHistoryButton {
+  background-color: #007bff;
+  color: white;
+}
+
+.orderHistoryButton:hover {
+  background-color: #0056b3;
+}
+
+.mapContainer {
+	margin-top: 20px;
+	border-radius: 12px;
+	overflow: hidden;
+	box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
