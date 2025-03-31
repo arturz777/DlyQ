@@ -27,6 +27,7 @@ const Footer = () => {
             {t("warranty and Returns", { ns: "footer" })}
           </Link>
           <Link to="/shipping-policy">{t("delivery", { ns: "footer" })}</Link>
+          <Link to="/courier-policy">{t("about Couriers", { ns: "footer" })}</Link>
           <Link to="/cookie-policy">Cookie</Link>
         </div>
       </div>
