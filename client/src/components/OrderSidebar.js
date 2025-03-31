@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { fetchActiveOrder, updateOrderStatus } from "../http/orderAPI";
 import { useNavigate } from "react-router-dom";
+import { useRef } from "react";
+import { useMap } from "react-leaflet";
 import { io } from "socket.io-client";
 import {
   MapContainer,
@@ -30,6 +32,33 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const [preorderDate, setPreorderDate] = useState(null);
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const courierMarkerRef = useRef(null);
+
+  const courierIcon = new L.Icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png", // 🚗 машинка
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40],
+  });
+
+  useEffect(() => {
+    if (courierMarkerRef.current && courierLocation) {
+      courierMarkerRef.current.setLatLng([
+        courierLocation.lat,
+        courierLocation.lng,
+      ]);
+    }
+  }, [courierLocation]);
+
+  const AutoPanToCourier = ({ position }) => {
+    const map = useMap();
+    useEffect(() => {
+      if (position) {
+        map.panTo(position);
+      }
+    }, [position]);
+    return null;
+  };
 
   const loadOrder = async () => {
     try {
@@ -244,7 +273,7 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
 
         const durationInSeconds =
           data.features[0].properties.segments[0].duration;
-        setRouteTime(Math.round(durationInSeconds)); // Округляем до целого числа
+        setRouteTime(Math.round(durationInSeconds));
       }
     } catch (error) {
       console.error("Ошибка получения маршрута:", error);
@@ -254,18 +283,17 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const handleToggleSidebar = () => {
     setSidebarOpen((prevState) => {
       const newState = !prevState;
-      localStorage.setItem("orderSidebarOpen", newState); // ✅ Сохраняем в localStorage
+      localStorage.setItem("orderSidebarOpen", newState);
       return newState;
     });
   };
 
-  // ✅ Завершаем заказ
   const handleCompleteOrder = async () => {
     if (!order) return;
     try {
       await updateOrderStatus(order.id, "Completed");
-      setOrder(null); // ✅ Скрываем заказ после завершения
-      setShowIcon(false); // ✅ Убираем иконку
+      setOrder(null);
+      setShowIcon(false);
       window.dispatchEvent(new Event("orderUpdated"));
     } catch (error) {
       console.error("Ошибка завершения заказа:", error);
@@ -355,6 +383,11 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution="&copy; OpenStreetMap"
                 />
+                {courierLocation && (
+                  <AutoPanToCourier
+                    position={[courierLocation.lat, courierLocation.lng]}
+                  />
+                )}
                 <Marker
                   position={[order.deliveryLat, order.deliveryLng]}
                   icon={
@@ -372,13 +405,8 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
                     )) && (
                     <Marker
                       position={[courierLocation.lat, courierLocation.lng]}
-                      icon={
-                        new L.Icon({
-                          iconUrl:
-                            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-                          iconSize: [25, 41],
-                        })
-                      }
+                      icon={courierIcon}
+                      ref={courierMarkerRef}
                     >
                       <Popup>🚗 Курьер</Popup>
                     </Marker>
