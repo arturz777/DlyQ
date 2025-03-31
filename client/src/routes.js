@@ -11,6 +11,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import ReturnPolicy from "./pages/ReturnPolicy";
 import DeliveryPolicy from "./pages/DeliveryPolicy";
 import CookiePolicy from "./pages/CookiePolicy";
+import CourierPolicy from "./pages/CourierPolicy";
 
 export const authRoutes = [
     {
@@ -69,5 +70,10 @@ export const publicRoutes = [
         path: COOKIE_ROUTE,
         Component: CookiePolicy
     }
+
+    {
+        path: "/courier-policy",
+        Component: CourierPolicy,
+      }
 
 ]
