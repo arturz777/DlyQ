@@ -3,7 +3,17 @@ const { Op } = require("sequelize");
 const fetch = require("node-fetch");
 
 class CourierController {
-  // 🔹 Получение активных заказов (только НЕ назначенные курьеру)
+  async getAllCouriers(req, res) {
+    try {
+      const couriers = await Courier.findAll({
+        attributes: ["id", "name", "currentLat", "currentLng", "status"],
+      });
+      res.json(couriers);
+    } catch (error) {
+      console.error("Ошибка получения курьеров:", error);
+      res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
 
   async getActiveOrders(req, res) {
     try {
@@ -12,18 +22,17 @@ class CourierController {
         return res.status(401).json({ message: "Вы не авторизованы." });
       }
 
-      // ✅ Проверяем, онлайн ли курьер
       const courier = await Courier.findByPk(courierId);
       if (!courier || courier.status !== "online") {
-        return res.json([]); // Если офлайн – отправляем пустой массив
+        return res.json([]);
       }
 
-      // ✅ Получаем активные заказы
       const orders = await Order.findAll({
         where: {
           status: { [Op.or]: ["Waiting for courier", "Ready for pickup"] },
-          courierId: { [Op.is]: null }, // ✅ Безопасный поиск NULL
+          [Op.or]: [{ courierId: null }, { courierId: courierId }],
         },
+
         order: [["createdAt", "DESC"]],
         attributes: [
           "id",
@@ -39,10 +48,9 @@ class CourierController {
         return res.json([]);
       }
 
-      // ✅ Преобразуем `orderDetails`, если это строка (чтобы избежать ошибок)
       const formattedOrders = orders.map((order) => ({
         ...order.toJSON(),
-        orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [], // ✅ Преобразуем JSON
+        orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
       }));
 
       return res.json(formattedOrders);
@@ -61,7 +69,6 @@ class CourierController {
         return res.status(401).json({ message: "Вы не авторизованы." });
       }
 
-      // ✅ Проверяем, существует ли курьер в базе
       let courier = await Courier.findByPk(courierId);
       if (!courier) {
         courier = await Courier.create({
@@ -71,14 +78,12 @@ class CourierController {
         });
       }
 
-      // ✅ Проверяем, существует ли заказ
       const order = await Order.findByPk(id);
 
       if (!order) {
         return res.status(404).json({ message: "Заказ не найден." });
       }
 
-      // ✅ Проверяем, что заказ можно принять (Waiting for courier или Ready for pickup)
       if (
         order.status !== "Waiting for courier" &&
         order.status !== "Ready for pickup"
@@ -120,7 +125,6 @@ class CourierController {
     }
   }
 
-  // 🔹 Изменение статуса курьера (онлайн/оффлайн)
   async toggleCourierStatus(req, res) {
     try {
       const { status } = req.body;
@@ -130,15 +134,16 @@ class CourierController {
         return res.status(401).json({ message: "Вы не авторизованы." });
       }
 
-      // Проверяем, существует ли курьер
       const courier = await Courier.findByPk(courierId);
       if (!courier) {
         return res.status(404).json({ message: "Курьер не найден" });
       }
 
-      // Обновляем статус курьера
       courier.status = status;
       await courier.save();
+
+      const io = req.app.get("io");
+      io.emit("courierStatusUpdate", { courierId, status });
 
       return res.json({ message: `Вы в статусе: ${status}` });
     } catch (error) {
@@ -192,7 +197,6 @@ class CourierController {
     }
   }
 
-  // 📌 Завершение заказа (доставлено)
   async completeDelivery(req, res) {
     try {
       const { id } = req.params;
@@ -202,31 +206,27 @@ class CourierController {
         return res.status(401).json({ message: "Вы не авторизованы." });
       }
 
-      // ✅ Проверяем, существует ли заказ
       const order = await Order.findByPk(id);
       if (!order) {
         return res.status(404).json({ message: "Заказ не найден." });
       }
 
-      // ✅ Проверяем, что заказ принадлежит этому курьеру
       if (order.courierId !== courierId) {
         return res
           .status(403)
           .json({ message: "Этот заказ вам не принадлежит." });
       }
 
-      // ✅ Обновляем статус заказа
       order.status = "Delivered";
       order.estimatedTime = null;
 
       await order.save();
 
-      // ✅ Отправляем обновленный статус всем клиентам
       const io = req.app.get("io");
       io.emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
-        estimatedTime: null, // Время исчезает у клиента
+        estimatedTime: null,
       });
 
       return res.json(order);
@@ -254,12 +254,10 @@ class CourierController {
         return res.status(404).json({ message: "Курьер не найден." });
       }
 
-      // ✅ Обновляем координаты курьера
       courier.currentLat = lat;
       courier.currentLng = lng;
       await courier.save();
 
-      // 🔥 Отправляем обновление через WebSocket
       const io = req.app.get("io");
       io.emit("courierLocationUpdate", { courierId, lat, lng });
 
@@ -273,16 +271,15 @@ class CourierController {
 
 async function calculateRouteTime(order) {
   if (!order.deliveryLat || !order.deliveryLng) {
-    return 15 * 60; // ❗ Возвращаем заглушку 15 минут
+    return 15 * 60;
   }
 
-  // ✅ Получаем данные о курьере
   const courier = await Courier.findByPk(order.courierId);
   if (!courier || !courier.currentLat || !courier.currentLng) {
     return 15 * 60;
   }
 
-  const API_KEY = "5b3ce3597851110001cf624889e39f2834a84a62aaca04f731838a64"; // 🔥 Замени на свой ключ
+  const API_KEY = "5b3ce3597851110001cf624889e39f2834a84a62aaca04f731838a64";
   const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${API_KEY}&start=${courier.currentLng},${courier.currentLat}&end=${order.deliveryLng},${order.deliveryLat}`;
 
   try {
@@ -293,16 +290,16 @@ async function calculateRouteTime(order) {
       const realTime = Math.round(
         data.features[0].properties.segments[0].duration
       );
-      return realTime; // ✅ Настоящее время в пути (секунды)
+      return realTime;
     } else {
       console.warn(
         "⚠️ Не удалось получить данные маршрута, оставляем 15 минут."
       );
-      return 15 * 60; // ❗ Если API не дал ответ – ставим заглушку
+      return 15 * 60;
     }
   } catch (error) {
     console.error("❌ Ошибка получения маршрута:", error);
-    return 15 * 60; // ❗ Ошибка – ставим заглушку
+    return 15 * 60;
   }
 }
 
