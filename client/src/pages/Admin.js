@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useContext } from "react";
 import { Context } from "../index";
+import { fetchAllCouriers } from "../http/courierAPI";
 import CreateBrand from "../components/modals/CreateBrand";
 import CreateDevice from "../components/modals/CreateDevice";
 import CreateType from "../components/modals/CreateType";
 import CreateSubType from "../components/modals/CreateSubType";
+import CourierMap from "../components/CourierMap";
+import { assignCourierToOrder } from "../http/orderAPI";
+import { fetchTranslations, updateTranslation } from "../http/translationAPI";
 import {
   fetchTypes,
   fetchSubtypes,
@@ -14,10 +18,15 @@ import {
   deleteBrand,
   deleteDevice,
 } from "../http/deviceAPI";
+import {
+  fetchAllOrdersForAdmin,
+  adminUpdateOrderStatus,
+} from "../http/orderAPI";
+import { io } from "socket.io-client";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
 import "react-tabs/style/react-tabs.css";
 import Image from "react-bootstrap/Image";
-import { fetchTranslations, updateTranslation } from "../http/translationAPI";
+
 import styles from "./Admin.module.css";
 
 const Admin = () => {
@@ -51,6 +60,32 @@ const Admin = () => {
   const [newKey, setNewKey] = useState("");
   const [newLang, setNewLang] = useState("en");
   const [newText, setNewText] = useState("");
+  const [allOrders, setAllOrders] = useState([]);
+  const [couriers, setCouriers] = useState([]);
+
+  useEffect(() => {
+    const socket = io("http://localhost:5000");
+  
+    socket.on("courierLocationUpdate", ({ courierId, lat, lng }) => {
+      setCouriers((prev) =>
+        prev.map((c) =>
+          c.id === courierId ? { ...c, currentLat: lat, currentLng: lng } : c
+        )
+      );
+    });
+  
+    // 🔥 Добавляем обновление статуса (online/offline)
+    socket.on("courierStatusUpdate", ({ courierId, status }) => {
+      setCouriers((prev) =>
+        prev.map((c) =>
+          c.id === courierId ? { ...c, status } : c
+        )
+      );
+    });
+  
+    return () => socket.disconnect();
+  }, []);
+  
 
   useEffect(() => {
     fetchTypes().then(setTypes);
@@ -58,6 +93,33 @@ const Admin = () => {
     fetchBrands().then(setBrands);
     fetchDevices().then((data) => setDevices(data.rows || []));
     fetchTranslations().then(setTranslations);
+  }, []);
+
+  useEffect(() => {
+    fetchAllOrdersForAdmin().then(setAllOrders);
+  }, []);
+
+  const handleStatusChange = async (
+    orderId,
+    status,
+    processingTime,
+    estimatedTime
+  ) => {
+    try {
+      await adminUpdateOrderStatus(
+        orderId,
+        status,
+        processingTime,
+        estimatedTime
+      );
+      console.log("✅ Статус/время обновлены");
+    } catch (err) {
+      console.error("Ошибка при обновлении:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllCouriers().then(setCouriers).catch(console.error);
   }, []);
 
   const handleLoadMore = () => {
@@ -104,6 +166,25 @@ const Admin = () => {
     setVisibleDevices(filteredDevices.slice(0, limit));
     setCurrentOffset(0);
   }, [filteredDevices]);
+
+  const handleAssignCourier = async (orderId, courierId) => {
+    if (!courierId) {
+      // Просто сбрасываем локально, но НЕ отправляем на сервер
+      setAllOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, courierId: null } : o))
+      );
+      return;
+    }
+
+    try {
+      await assignCourierToOrder(orderId, courierId);
+      setAllOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, courierId } : o))
+      );
+    } catch (err) {
+      console.error("Ошибка при назначении курьера:", err);
+    }
+  };
 
   const handleDeleteType = async (id) => {
     await deleteType(id);
@@ -167,7 +248,7 @@ const Admin = () => {
       return;
     }
 
-    const response = await fetch(`${process.env.REACT_APP_API_URL}/translations`, {
+    const response = await fetch("http://localhost:5000/api/translations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: newKey, lang: newLang, text: newText }),
@@ -197,6 +278,7 @@ const Admin = () => {
           <Tab>Подтипы</Tab>
           <Tab>Бренды</Tab>
           <Tab>Переводы</Tab>
+          <Tab>Заказы</Tab>
         </TabList>
 
         <TabPanel>
@@ -594,6 +676,163 @@ const Admin = () => {
               ))}
             </tbody>
           </table>
+        </TabPanel>
+
+        <TabPanel>
+        <h3>Курьеры на карте</h3>
+<CourierMap couriers={couriers} />
+
+          <h2>Все заказы</h2>
+          <div className={styles.ordersTable}>
+            {allOrders.length === 0 ? (
+              <p>Нет заказов</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Пользователь</th>
+                    <th>Статус</th>
+                    <th>Время готовки</th>
+                    <th>Время доставки</th>
+                    <th>Адрес</th>
+                    <th>Сумма</th>
+                    <th>Дата</th>
+                    <th>Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allOrders.map((order) => (
+                    <tr key={order.id}>
+                      <td>{order.id}</td>
+                      <td>
+                        <select
+                          value={order.courierId || ""}
+                          onChange={(e) =>
+                            handleAssignCourier(order.id, e.target.value)
+                          }
+                        >
+                          <option value="">Не назначен</option>
+                          {couriers.map((courier) => (
+                            <option key={courier.id} value={courier.id}>
+                              {courier.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+
+                      <td>
+                        <select
+                          value={order.status}
+                          onChange={(e) =>
+                            setAllOrders((prev) =>
+                              prev.map((o) =>
+                                o.id === order.id
+                                  ? { ...o, status: e.target.value }
+                                  : o
+                              )
+                            )
+                          }
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Waiting for courier">
+                            Waiting for courier
+                          </option>
+                          <option value="Ready for pickup">
+                            Ready for pickup
+                          </option>
+                          <option value="Picked up">Picked up</option>
+                          <option value="Arrived at destination">
+                            Arrived at destination
+                          </option>
+                          <option value="Delivered">Delivered</option>
+                          <option value="Completed">Completed</option>
+                          <option value="Cancelled">Cancelled</option>
+                        </select>
+                      </td>
+                      <td>
+                        {order.status === "Waiting for courier" && (
+                          <select
+                            value={order.processingTime || ""}
+                            onChange={(e) =>
+                              setAllOrders((prev) =>
+                                prev.map((o) =>
+                                  o.id === order.id
+                                    ? { ...o, processingTime: e.target.value }
+                                    : o
+                                )
+                              )
+                            }
+                            style={{ width: "120px" }}
+                          >
+                            <option value="">-- выберите --</option>
+                            <option value="5 минут">5 минут</option>
+                            <option value="10 минут">10 минут</option>
+                            <option value="15 минут">15 минут</option>
+                            <option value="20 минут">20 минут</option>
+                            <option value="30 минут">30 минут</option>
+                            <option value="60 минут">60 минут</option>
+                            <option value="720 минут">1 день</option>
+                          </select>
+                        )}
+                      </td>
+                      <td>
+                        {order.status === "Picked up" && (
+                          <select
+                            value={order.estimatedTime || ""}
+                            onChange={(e) =>
+                              setAllOrders((prev) =>
+                                prev.map((o) =>
+                                  o.id === order.id
+                                    ? {
+                                        ...o,
+                                        estimatedTime: parseInt(
+                                          e.target.value,
+                                          10
+                                        ),
+                                      }
+                                    : o
+                                )
+                              )
+                            }
+                            style={{ width: "120px" }}
+                          >
+                            <option value="">-- выберите --</option>
+                            <option value="300">5 минут</option>
+                            <option value="600">10 минут</option>
+                            <option value="900">15 минут</option>
+                            <option value="1200">20 минут</option>
+                            <option value="1800">30 минут</option>
+                            <option value="3600">1 час</option>
+                          </select>
+                        )}
+                      </td>
+                      <td>{order.deliveryAddress}</td>
+                      <td>{order.totalPrice} €</td>
+                      <td>
+                        {new Date(order.createdAt).toLocaleString("ru-RU")}
+                      </td>
+                      <td style={{ display: "flex", gap: "5px" }}>
+                        <button
+                          className={styles.saveButton}
+                          onClick={() =>
+                            handleStatusChange(
+                              order.id,
+                              order.status,
+                              order.processingTime,
+                              order.estimatedTime
+                            )
+                          }
+                        >
+                          💾
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </TabPanel>
       </Tabs>
 
