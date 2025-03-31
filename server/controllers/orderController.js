@@ -1,8 +1,8 @@
 const sendEmail = require("../services/emailService");
-const { Order, Device, Translation } = require("../models/models");
+const { Order, Device, Translation, Courier } = require("../models/models");
 const { Op } = require("sequelize");
 const getDistanceFromWarehouse = require("../utils/distance");
-const { supabase } = require("../config/supabaseClient"); 
+const { supabase } = require("../config/supabaseClient");
 const uuid = require("uuid");
 
 const calculateDeliveryCost = (totalPrice, distance) => {
@@ -82,11 +82,9 @@ const createOrder = async (req, res) => {
         }
 
         if (device.quantity < item.count && !item.isPreorder) {
-          return res
-            .status(400)
-            .json({
-              message: `Недостаточно товара: ${item.name}. Осталось ${device.quantity} шт.`,
-            });
+          return res.status(400).json({
+            message: `Недостаточно товара: ${item.name}. Осталось ${device.quantity} шт.`,
+          });
         }
 
         // 🔥 **Уменьшаем количество товара в базе**
@@ -105,7 +103,7 @@ const createOrder = async (req, res) => {
         }
 
         if (device.quantity < item.count) {
-          isPreorder = true; 
+          isPreorder = true;
         } else {
           await device.update({ quantity: device.quantity - item.count });
         }
@@ -143,13 +141,14 @@ const createOrder = async (req, res) => {
 
     // **Разделяем товары правильно:**
     const preorderAvailable = orderDetails.filter(
-  (item) => item.isPreorder && item.desiredDeliveryDate && item.count > 0
-);
+      (item) => item.isPreorder && item.desiredDeliveryDate && item.count > 0
+    );
 
     const preorderOutOfStock = orderDetails.filter(
-      (item) => item.isPreorder && (!item.desiredDeliveryDate || item.count === 0)
+      (item) =>
+        item.isPreorder && (!item.desiredDeliveryDate || item.count === 0)
     );
-    
+
     const regularItems = orderDetails.filter((item) => !item.isPreorder);
 
     const generateTableRows = (items) => {
@@ -177,10 +176,12 @@ const createOrder = async (req, res) => {
         .join("");
     };
 
-   const emailHTML = `
+    const emailHTML = `
   <div style="font-family:Arial, sans-serif; color:#333; max-width:600px; padding:20px; border:1px solid #ddd; border-radius:8px;">
 
-    ${regularItems.length > 0 ? `
+    ${
+      regularItems.length > 0
+        ? `
       <h3>📦 Обычные товары:</h3>
       <table style="width:100%; border-collapse:collapse;">
         <thead>
@@ -190,9 +191,13 @@ const createOrder = async (req, res) => {
         </thead>
         <tbody>${generateTableRows(regularItems)}</tbody>
       </table>
-    ` : ""}
+    `
+        : ""
+    }
 
-    ${preorderAvailable.length > 0 ? `
+    ${
+      preorderAvailable.length > 0
+        ? `
       <h3>⏳ Предзаказ (товар есть, доставка позже):</h3>
       <table style="width:100%; border-collapse:collapse;">
         <thead>
@@ -207,9 +212,13 @@ const createOrder = async (req, res) => {
           ? new Date(desiredDeliveryDate).toLocaleDateString("ru-RU")
           : "Ожидается подтверждение"
       }</p>
-    ` : ""}
+    `
+        : ""
+    }
 
-    ${preorderOutOfStock.length > 0 ? `
+    ${
+      preorderOutOfStock.length > 0
+        ? `
       <h3>🏭 Предзаказ (товар отсутствует, ждет поступления):</h3>
       <table style="width:100%; border-collapse:collapse;">
         <thead>
@@ -219,7 +228,9 @@ const createOrder = async (req, res) => {
         </thead>
         <tbody>${generateTableRows(preorderOutOfStock)}</tbody>
       </table>
-    ` : ""}
+    `
+        : ""
+    }
 
     <h3>🚚 Доставка:</h3>
     <p><strong>Адрес:</strong> ${address}, квартира ${apartment || "-"}</p>
@@ -236,7 +247,6 @@ const createOrder = async (req, res) => {
     <p style="margin-top:20px;">Спасибо за ваш заказ! 🚀</p>
   </div>
 `;
-
 
     // Отправляем письмо клиенту
     await sendEmail(email, "🛒 Заказ!", emailHTML, true);
@@ -287,19 +297,16 @@ const getUserOrders = async (req, res) => {
   try {
     const userId = req.user.id;
 
-   
     const orders = await Order.findAll({
       where: { userId },
       order: [["createdAt", "DESC"]],
     });
 
-   
     const deviceIds = orders.flatMap((order) =>
       JSON.parse(order.orderDetails || "[]").map((d) => d.deviceId)
     );
 
     if (deviceIds.length > 0) {
-     
       const translations = await Translation.findAll({
         where: {
           key: {
@@ -314,23 +321,22 @@ const getUserOrders = async (req, res) => {
         if (!translationMap[deviceId]) translationMap[deviceId] = {};
         translationMap[deviceId][t.lang] = t.text;
       });
-      
+
       orders.forEach((order) => {
         const orderDetails = JSON.parse(order.orderDetails || "[]");
-      
+
         orderDetails.forEach((detail) => {
           const translations = translationMap[detail.deviceId] || {};
           detail.translations = { name: translations };
-      
+
           const lang = "ru"; // Можно менять на req.locale или заголовок запроса
           if (translations[lang]) {
             detail.name = translations[lang]; // Подставляем перевод
           }
         });
-      
+
         order.orderDetails = orderDetails;
       });
-      
     }
 
     res.json(orders);
@@ -340,7 +346,6 @@ const getUserOrders = async (req, res) => {
   }
 };
 
-
 const getActiveOrder = async (req, res) => {
   try {
     const userId = req.user ? req.user.id : null;
@@ -349,12 +354,18 @@ const getActiveOrder = async (req, res) => {
       where: {
         userId,
         status: {
-          [Op.in]: ["Pending", "Waiting for courier", "Ready for pickup", "Picked up", "Arrived at destination", "Delivered"],
+          [Op.in]: [
+            "Pending",
+            "Waiting for courier",
+            "Ready for pickup",
+            "Picked up",
+            "Arrived at destination",
+            "Delivered",
+          ],
         },
       },
       order: [["createdAt", "DESC"]],
     });
-    
 
     if (!order) {
       return res.json(null);
@@ -363,7 +374,7 @@ const getActiveOrder = async (req, res) => {
     let orderItems = [];
     try {
       const parsedData = order.formData ? JSON.parse(order.formData) : {};
-      orderItems = parsedData.orderDetails || []; 
+      orderItems = parsedData.orderDetails || [];
     } catch (error) {
       console.error("Ошибка парсинга formData:", error);
     }
@@ -378,10 +389,81 @@ const getActiveOrder = async (req, res) => {
   }
 };
 
+const getAllOrdersForAdmin = async (req, res) => {
+  try {
+    const orders = await Order.findAll({
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.json(orders);
+  } catch (error) {
+    console.error("❌ Ошибка получения заказов админом:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+};
+
+const adminUpdateOrderStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status, processingTime, estimatedTime } = req.body;
+
+  const order = await Order.findByPk(id);
+  if (!order) return res.status(404).json({ message: "Заказ не найден" });
+
+  if (status) order.status = status;
+  if (processingTime !== undefined) order.processingTime = processingTime;
+  if (estimatedTime !== undefined) order.estimatedTime = estimatedTime;
+
+  if (status === "Picked up") {
+    order.pickupStartTime = new Date();
+  }
+
+  await order.save();
+
+  const io = req.app.get("io");
+  io.emit("orderStatusUpdate", order);
+
+  return res.json({ message: "Обновлено", order });
+};
+
+const assignCourier = async (req, res) => {
+  const { id } = req.params;
+  const { courierId } = req.body;
+
+  try {
+    const order = await Order.findByPk(id);
+    if (!order) return res.status(404).json({ message: "Заказ не найден" });
+
+    const courier = await Courier.findByPk(courierId);
+    if (!courier) return res.status(404).json({ message: "Курьер не найден" });
+
+    order.courierId = courierId;
+    await order.save();
+
+    const io = req.app.get("io");
+    io.emit("orderStatusUpdate", {
+      id: order.id,
+      status: order.status,
+      courierId: order.courierId,
+      deliveryLat: order.deliveryLat,
+      deliveryLng: order.deliveryLng,
+      deliveryAddress: order.deliveryAddress,
+      orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
+    });
+
+    res.json({ message: "Курьер назначен", order });
+  } catch (error) {
+    console.error("❌ Ошибка назначения курьера:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+};
+
 module.exports = {
   createOrder,
   getDeliveryCost,
   getUserOrders,
   getActiveOrder,
   updateOrderStatus,
+  getAllOrdersForAdmin,
+  adminUpdateOrderStatus,
+  assignCourier,
 };
