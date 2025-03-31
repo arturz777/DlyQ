@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import DeviceItem from "../components/DeviceItem";
 import styles from "./HomePage.module.css";
 import { Link } from "react-router-dom";
+import OrderSidebar from "../components/OrderSidebar";
 
 const HomePage = () => {
   const [newDevices, setNewDevices] = useState([]);
@@ -17,15 +18,16 @@ const HomePage = () => {
   const [types, setTypes] = useState([]);
   const [showAllTypes, setShowAllTypes] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
-    const { t, i18n } = useTranslation();
-    const currentLang = i18n.language || "en";
+  const { t, i18n } = useTranslation();
+  const currentLang = i18n.language || "en";
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     fetchNewDevices(10)
       .then((devices) => setNewDevices(devices || []))
       .catch((err) => console.error("❌ Ошибка загрузки новых товаров:", err));
 
-      fetchDiscountedDevices(10)
+    fetchDiscountedDevices(10)
       .then((devices) => {
         setDiscountedDevices(devices || []);
       })
@@ -33,7 +35,7 @@ const HomePage = () => {
         console.error("❌ Ошибка загрузки скидок:", err);
         setDiscountedDevices([]);
       });
-  
+
     fetchRecommendedDevices(10)
       .then((devices) => {
         setRecommendedDevices(devices || []);
@@ -56,7 +58,6 @@ const HomePage = () => {
       })
       .catch((err) => console.error("❌ Ошибка загрузки категорий:", err));
   }, []);
-  
 
   useEffect(() => {
     const handleResize = () => {
@@ -70,8 +71,8 @@ const HomePage = () => {
   return (
     <div className={styles.homePage}>
       <div className={styles.banner}>
-        <h1>🔥 Добро пожаловать в наш магазин!</h1>
-        <p>Лучшая техника по отличным ценам</p>
+        <h1>{t("fast delivery", { ns: "homePage" })}</h1>
+        <p>{t("average delivery time: 15–30 minutes", { ns: "homePage" })}</p>
       </div>
 
       <div className={styles.categories}>
@@ -98,7 +99,9 @@ const HomePage = () => {
                 className={`${styles.category} ${styles.moreButton}`}
                 onClick={() => setShowAllTypes(!showAllTypes)}
               >
-                {showAllTypes ? t("hide", { ns: "homePage" }) : t("more", { ns: "homePage" })}
+                {showAllTypes
+                  ? t("hide", { ns: "homePage" })
+                  : t("more", { ns: "homePage" })}
               </div>
 
               {showAllTypes && (
@@ -116,7 +119,7 @@ const HomePage = () => {
                           className={styles.categoryIcon}
                         />
                       )}
-                     {type.translations?.name?.[currentLang] || type.name}
+                      {type.translations?.name?.[currentLang] || type.name}
                     </Link>
                   ))}
                 </div>
@@ -143,6 +146,11 @@ const HomePage = () => {
         )}
       </div>
 
+      <OrderSidebar
+            isSidebarOpen={isSidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+          />
+
       <section className={styles.section}>
         <h2>{t("new", { ns: "homePage" })}</h2>
         <div className={styles.deviceCarousel}>
@@ -159,34 +167,35 @@ const HomePage = () => {
       </section>
 
       <section className={styles.section}>
-  <h2>{t("discounts", { ns: "homePage" })}</h2>
-  <div className={styles.deviceCarousel}>
-    {Array.isArray(discountedDevices) && discountedDevices.length > 0 ? (
-      discountedDevices.map((device) => (
-        <div key={device.id} className={styles.deviceItem}>
-          <DeviceItem device={device} />
+        <h2>{t("discounts", { ns: "homePage" })}</h2>
+        <div className={styles.deviceCarousel}>
+          {Array.isArray(discountedDevices) && discountedDevices.length > 0 ? (
+            discountedDevices.map((device) => (
+              <div key={device.id} className={styles.deviceItem}>
+                <DeviceItem device={device} />
+              </div>
+            ))
+          ) : (
+            <p>{t("loading", { ns: "homePage" })}</p>
+          )}
         </div>
-      ))
-    ) : (
-      <p>{t("loading", { ns: "homePage" })}</p>
-    )}
-  </div>
-</section>
+      </section>
 
-<section className={styles.section}>
-  <h2>{t("recommended", { ns: "homePage" })}</h2>
-  <div className={styles.deviceCarousel}>
-    {Array.isArray(recommendedDevices) && recommendedDevices.length > 0 ? (
-      recommendedDevices.map((device) => (
-        <div key={device.id} className={styles.deviceItem}>
-          <DeviceItem device={device} />
+      <section className={styles.section}>
+        <h2>{t("recommended", { ns: "homePage" })}</h2>
+        <div className={styles.deviceCarousel}>
+          {Array.isArray(recommendedDevices) &&
+          recommendedDevices.length > 0 ? (
+            recommendedDevices.map((device) => (
+              <div key={device.id} className={styles.deviceItem}>
+                <DeviceItem device={device} />
+              </div>
+            ))
+          ) : (
+            <p>{t("loading", { ns: "homePage" })}</p>
+          )}
         </div>
-      ))
-    ) : (
-      <p>{t("loading", { ns: "homePage" })}</p>
-    )}
-  </div>
-</section>
+      </section>
     </div>
   );
 };
