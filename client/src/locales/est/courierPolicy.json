@@ -1,8 +1,18 @@
 {
-	"user Agreement": "Kasutajaleping",
-	"privacy Policy": "Privaatsuspoliitika",
-	"warranty and Returns": "Garantii ja tagastamine",
-	"delivery": "Kohaletoimetamine",
-	"all rights reserved": "Kõik õigused kaitstud.",
-	"about Couriers": "Kulleritest "
-}
+	"couriers": {
+	  "title": "Kullerid",
+	  "text": "Mõistame, kui oluline on usaldus tellimuste kohaletoimetamisel — seetõttu pöörame kullerite valikule erilist tähelepanu ja vastutust.\n\nKõik meie kullerid läbivad taustakontrolli ja kohustusliku koolituse, keskendudes eriti turvalisusele, viisakale kliendisuhtlusele ja seaduse järgimisele. Kuller ei ole meie jaoks lihtsalt pakikandja, vaid teenuse esindaja ja oluline osa meeskonnast.\n\nMeie väärtustame:\n- positiivset suhtumist,\n- viisakust,\n- ausust ja täpsust.\n\nSamas ei jäta me rikkumisi tähelepanuta.\nKui kuller:\n- rikub teenuse reegleid,\n- eirab juhiseid,\n- või käitub ebaviisakalt või sobimatult —\n\nreageerime rangelt. Iga juhtumit käsitletakse individuaalselt. Viime läbi sisejuurdluse, kogume tagasisidet kõikidelt osapooltelt ja vajadusel piirame kulleri ligipääsu platvormile."
+	},
+	"contactless": {
+	  "title": "Kontaktivaba kohaletoimetamine",
+	  "text": "Hindame teie usaldust ja soovime pakkuda maksimaalset mugavust. Kui soovite kontaktivaba kohaletoimetamist, andke sellest tellimuse vormistamisel teada. Kuller jätab teie tellimuse:\n- ukse ette,\n- vastuvõttu,\n- administraatorile\n- või muusse teie määratud turvalisse kohta.\n\n⚠️ Tähtis:\nKui kuller jätab tellimuse kontaktivabalt, läheb vastutus paki turvalisuse eest üle kliendile. Soovitame eelnevalt valida turvaline koht, eriti kui tellimus sisaldab väärtuslikke või riknevaid tooteid.\n\nIdeaalne, kui teil on:\n- videoga uksekell,\n- valvekaamera,\n- või keegi, kes saab tellimuse vastu võtta."
+	},
+	"disputes": {
+	  "title": "Mida teha, kui tellimus on kadunud",
+	  "text": "Sellised juhtumid on haruldased, kuid oleme valmis aitama. Kui te ei leia tellimust määratud kohast, võtke palun ühendust meie klienditoega.\n\nAbiks on, kui saate esitada:\n- kaamerasalvestisi (kui on),\n- vestluse kuvatõmmiseid kulleriga,\n- või teateid kohaletoimetamise kohta.\n\nMida rohkem infot, seda kiiremini ja täpsemalt saame aidata."
+	},
+	"platform": {
+	  "title": "Platvormist",
+	  "text": "Soovime luua keskkonna, kus nii klientidel kui ka kulleritel on:\n- turvaline,\n- mugav,\n- ja inimlik kogemus.\n\nKui teil on ideid, ettepanekuid või tagasisidet — kirjutage meile. Oleme alati avatud suhtluseks 💛"
+	}
+  }
