@@ -64,7 +64,7 @@ const Admin = () => {
   const [couriers, setCouriers] = useState([]);
 
   useEffect(() => {
-    const socket = io("http://localhost:5000");
+    const socket = io(process.env.REACT_APP_API_URL);
   
     socket.on("courierLocationUpdate", ({ courierId, lat, lng }) => {
       setCouriers((prev) =>
