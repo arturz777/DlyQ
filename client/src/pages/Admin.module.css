@@ -189,3 +189,24 @@
   background-color: #f8f9fa;
   text-align: left;
 }
+
+.ordersTable table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.ordersTable th,
+.ordersTable td {
+  border: 1px solid #ccc;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.ordersTable th {
+  background-color: #f5f5f5;
+}
+
+.ordersTable select {
+  padding: 4px 8px;
+}
