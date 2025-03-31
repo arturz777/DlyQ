@@ -15,7 +15,11 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { io } from "socket.io-client";
-import { completeDelivery, updateDeliveryStatus, updateCourierLocation  } from "../http/courierAPI";
+import {
+  completeDelivery,
+  updateDeliveryStatus,
+  updateCourierLocation,
+} from "../http/courierAPI";
 import styles from "./Courier.module.css";
 
 const socket = io(process.env.REACT_APP_API_URL || "https://zang-4.onrender.com");
@@ -246,7 +250,7 @@ const Courier = () => {
     };
 
     sendLocationUpdate();
-    const interval = setInterval(sendLocationUpdate, 10000);
+    const interval = setInterval(sendLocationUpdate, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -255,7 +259,7 @@ const Courier = () => {
       console.warn("❌ Ошибка: Некорректные координаты маршрута!", start, end);
       return;
     }
-    const API_KEY = "5b3ce3597851110001cf624889e39f2834a84a62aaca04f731838a64"; // 🔥 Вставь свой ключ OpenRouteService!
+    const API_KEY = "5b3ce3597851110001cf624889e39f2834a84a62aaca04f731838a64";
     const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${API_KEY}&start=${start.lng},${start.lat}&end=${end.lng},${end.lat}`;
 
     try {
