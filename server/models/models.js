@@ -75,11 +75,13 @@ const Order = sequelize.define(
     totalPrice: { type: DataTypes.NUMERIC(10, 2), allowNull: false },
     status: { type: DataTypes.STRING, defaultValue: "Pending" },
     warehouseStatus: { type: DataTypes.STRING, defaultValue: "pending" },
+    desiredDeliveryDate: { type: DataTypes.DATE, allowNull: true },
     processingTime: { type: DataTypes.STRING, allowNull: true },
     formData: { type: DataTypes.JSON, allowNull: true },
     orderDetails: { type: DataTypes.JSON, allowNull: true },
     courierId: { type: DataTypes.INTEGER, allowNull: true },
     pickupStartTime: { type: DataTypes.DATE, allowNull: true },
+    estimatedTime: { type: DataTypes.INTEGER, allowNull: true },
     deliveryLat: { type: DataTypes.FLOAT, allowNull: true },
     deliveryLng: { type: DataTypes.FLOAT, allowNull: true },
     deliveryAddress: { type: DataTypes.STRING, allowNull: false },
@@ -101,6 +103,8 @@ const Courier = sequelize.define("courier", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   name: { type: DataTypes.STRING, allowNull: false },
   status: { type: DataTypes.STRING, defaultValue: "offline" },
+  currentLat: { type: DataTypes.FLOAT, allowNull: true },
+  currentLng: { type: DataTypes.FLOAT, allowNull: true },
 });
 
 const Warehouse = sequelize.define("warehouse", {
