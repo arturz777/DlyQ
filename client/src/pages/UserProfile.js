@@ -63,14 +63,14 @@ const UserProfile = () => {
     }
   };
 
-  const handleLogOut = () => {
+ const handleLogOut = () => {
     localStorage.removeItem("token");
     user.setUser({});
     user.setIsAuth(false);
     navigate("/login");
   };
 
- const translateStatus = (status) => {
+  const translateStatus = (status) => {
     const statuses = {
       Pending: t("pending", { ns: "userProfile" }),
       Completed: t("completed", { ns: "userProfile" }),
@@ -96,7 +96,6 @@ const UserProfile = () => {
   }, [isAuth, navigate]);
 
   useEffect(() => {
-    // Загружаем данные профиля
     fetchProfile().then((data) => {
       setFirstName(data.firstName || "");
       setLastName(data.lastName || "");
@@ -109,12 +108,14 @@ const UserProfile = () => {
       await updateProfile({ firstName, lastName, phone });
       toast.success(t("updateSuccess", { ns: "userProfile" }));
     } catch (error) {
-      toast.error(error.response?.data?.message || t("updateError", { ns: "userProfile" }));
+      toast.error(
+        error.response?.data?.message || t("updateError", { ns: "userProfile" })
+      );
     }
   };
 
- return (
-   <div className={styles.shopWrapper}>
+  return (
+    <div className={styles.shopWrapper}>
       <div className={styles.mainContent}>
         <div className={styles.buttonsContainer}>
           <button className={styles.backButton} onClick={() => navigate(-1)}>
@@ -122,48 +123,48 @@ const UserProfile = () => {
           </button>
 
           <div className={styles.rightButtons}>
-          <div
-            className={styles.languageSelectorWrapper}
-            onMouseLeave={() => setIsLanguageMenuOpen(false)}
-          >
-            <button
-              onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
-              className={styles.currentLanguageButton}
+            <div
+              className={styles.languageSelectorWrapper}
+              onMouseLeave={() => setIsLanguageMenuOpen(false)}
             >
-              <Flag code={currentFlag?.code} className={styles.flag} />
-            </button>
-            {isLanguageMenuOpen && (
-              <div className={styles.dropdownMenu}>
-                {languages.map((lang) => (
-                  <button
-                    key={lang.language}
-                    onClick={() => changeLanguage(lang.language)}
-                    className={styles.dropdownItem}
-                  >
-                    <Flag code={lang.code} className={styles.flag} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+              <button
+                onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
+                className={styles.currentLanguageButton}
+              >
+                <Flag code={currentFlag?.code} className={styles.flag} />
+              </button>
+              {isLanguageMenuOpen && (
+                <div className={styles.dropdownMenu}>
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.language}
+                      onClick={() => changeLanguage(lang.language)}
+                      className={styles.dropdownItem}
+                    >
+                      <Flag code={lang.code} className={styles.flag} />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          <div
-            className={styles.settingsButton}
-            onClick={() => navigate("/settings")}
-          >
-            <FaCog size={20} />
-          </div>
+            <div
+              className={styles.settingsButton}
+              onClick={() => navigate("/settings")}
+            >
+              <FaCog size={20} />
+            </div>
 
-          <div className={styles.profileButtonLogOut} onClick={handleLogOut}>
-            <FaSignOutAlt size={20} />
-            <span className={styles.navbarLinkTitle}></span>
-          </div>
+            <div className={styles.profileButtonLogOut} onClick={handleLogOut}>
+              <FaSignOutAlt size={20} />
+              <span className={styles.navbarLinkTitle}></span>
+            </div>
 
-          <OrderSidebar
-            isSidebarOpen={isSidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-          />
-        </div>
+            <OrderSidebar
+              isSidebarOpen={isSidebarOpen}
+              setSidebarOpen={setSidebarOpen}
+            />
+          </div>
         </div>
 
         <button
