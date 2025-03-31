@@ -298,3 +298,19 @@
   margin-top: 30px;
 }
 
+.toastTitle {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100px;
+  }
+  
+  .toastSubtitle {
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 350px;
+	font-size: 14px;
+  }
