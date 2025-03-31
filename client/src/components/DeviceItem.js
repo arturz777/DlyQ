@@ -89,7 +89,17 @@ device.discount && device.oldPrice > device.price
 
     basket.addItem({ ...device, selectedOptions: defaultOptions });
     toast.success(
-      `${deviceName} - ${t("Added to cart!", { ns: "devicePage" })}`
+      <>
+        <strong className={styles.toastTitle}>{deviceName}</strong>
+        <span className={styles.toastSubtitle}>
+          {t("Added to cart!", { ns: "devicePage" })}
+        </span>
+      </>,
+      {
+        style: {
+          maxWidth: "400px",
+        },
+      }
     );
 
     setAvailableQuantity((prev) => Math.max(0, prev - 1));
@@ -101,47 +111,50 @@ device.discount && device.oldPrice > device.price
 
   return (
     <div onClick={() => navigate(DEVICE_ROUTE + "/" + device.id)}>
-    <Card className={`${styles.card}`} onClick={(e) => navigate(DEVICE_ROUTE + "/" + device.id)}>
-      {discountPercentage && (
-        <div className={styles.discountBadge}>-{discountPercentage}%</div>
-      )}
-
-      <Image className={styles.image} src={device.img} />
-
-      <div className={styles.info}>
-        <h5 className={styles.name}>{deviceName}</h5>
-
-        {/* Блок цен */}
-        <div className={styles.priceBlock}>
-          {device.discount && device.oldPrice > device.price ? (
-            <>
-              <span className={styles.oldPrice}>{device.oldPrice} €</span>
-              <span className={styles.newPrice}>{device.price} €</span>
-            </>
-          ) : (
-            <span className={styles.regularPrice}>{device.price} €</span>
-          )}
-        </div>
-      </div>
-
-      <Button
-        variant="success"
-        className={styles.button}
-        disabled={availableQuantity <= 0}
-        onClick={handleAddToBasket}
+      <Card
+        className={`${styles.card}`}
+        onClick={(e) => navigate(DEVICE_ROUTE + "/" + device.id)}
       >
-        {availableQuantity <= 0
-          ? t("out_of_stock", { ns: "deviceItem" })
-          : t("add_to_cart", { ns: "deviceItem" })}
-      </Button>
+        {discountPercentage && (
+          <div className={styles.discountBadge}>-{discountPercentage}%</div>
+        )}
 
-      {availableQuantity <= 0 && (
-        <p className={styles.preorderText}>
-          {t("Pre-order available", { ns: "deviceItem" })}
-        </p>
-      )}
-    </Card>
-  </div>
+        <Image className={styles.image} src={device.img} />
+
+        <div className={styles.info}>
+          <h5 className={styles.name}>{deviceName}</h5>
+
+          {/* Блок цен */}
+          <div className={styles.priceBlock}>
+            {device.discount && device.oldPrice > device.price ? (
+              <>
+                <span className={styles.oldPrice}>{device.oldPrice} €</span>
+                <span className={styles.newPrice}>{device.price} €</span>
+              </>
+            ) : (
+              <span className={styles.regularPrice}>{device.price} €</span>
+            )}
+          </div>
+        </div>
+
+        <Button
+          variant="success"
+          className={styles.button}
+          disabled={availableQuantity <= 0}
+          onClick={handleAddToBasket}
+        >
+          {availableQuantity <= 0
+            ? t("out_of_stock", { ns: "deviceItem" })
+            : t("add_to_cart", { ns: "deviceItem" })}
+        </Button>
+
+        {availableQuantity <= 0 && (
+          <p className={styles.preorderText}>
+            {t("Pre-order available", { ns: "deviceItem" })}
+          </p>
+        )}
+      </Card>
+    </div>
   );
 };
 
