@@ -23,6 +23,7 @@ import profileSettingsEst from './est/profileSettings.json';
 import userProfileEst from './est/userProfile.json';
 import mobileNavBarEst from './est/mobileNavBar.json';
 import homePageEst from './est/homePage.json';
+import courierPolicyEst from './est/courierPolicy.json';
 
 import navbarEn from './en/navbar.json';
 import searchbarEn from './en/searchbar.json';
@@ -44,6 +45,7 @@ import profileSettingsEn from './en/profileSettings.json';
 import userProfileEn from './en/userProfile.json';
 import mobileNavBarEn from './en/mobileNavBar.json';
 import homePageEn from './en/homePage.json';
+import courierPolicyEn from './en/courierPolicy.json';
 
 import navbarRu from './ru/navbar.json';
 import searchbarRu from './ru/searchbar.json';
@@ -65,6 +67,7 @@ import profileSettingsRu from './ru/profileSettings.json';
 import userProfileRu from './ru/userProfile.json';
 import mobileNavBarRu from './ru/mobileNavBar.json';
 import homePageRu from './ru/homePage.json';
+import courierPolicyRu from './ru/courierPolicy.json';
 
 
 i18n
@@ -93,6 +96,7 @@ i18n
         userProfile: userProfileEn,
         mobileNavBar: mobileNavBarEn,
         homePage: homePageEn,
+        courierPolicy: courierPolicyEn,
       },
       ru: {
         navbar: navbarRu,
@@ -115,6 +119,7 @@ i18n
         userProfile: userProfileRu,
         mobileNavBar: mobileNavBarRu,
         homePage: homePageRu,
+        courierPolicy: courierPolicyRu,
       },
       est: {
         navbar: navbarEst,
@@ -137,6 +142,7 @@ i18n
         userProfile: userProfileEst,
         mobileNavBar: mobileNavBarEst,
         homePage: homePageEst,
+        courierPolicy: courierPolicyEst,
       },
     },
 
