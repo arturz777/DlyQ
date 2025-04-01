@@ -11,7 +11,7 @@ router.post("/status", authMiddleware, courierController.toggleCourierStatus);
 router.post("/orders/:id/complete", authMiddleware, courierController.completeDelivery);
 router.post("/orders/:id/status", authMiddleware, courierController.updateDeliveryStatus);
 router.post("/update-location", authMiddleware, courierController.updateCourierLocation);
-router.get('/couriers', authMiddleware, checkRole("ADMIN"), courierController.getAllCouriers);
+router.get('/couriers', authMiddleware, courierController.getAllCouriers);
 
 
 
