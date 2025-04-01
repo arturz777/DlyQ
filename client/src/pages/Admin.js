@@ -26,7 +26,6 @@ import { io } from "socket.io-client";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
 import "react-tabs/style/react-tabs.css";
 import Image from "react-bootstrap/Image";
-
 import styles from "./Admin.module.css";
 
 const Admin = () => {
@@ -64,7 +63,7 @@ const Admin = () => {
   const [couriers, setCouriers] = useState([]);
 
   useEffect(() => {
-    const socket = io(process.env.REACT_APP_API_URL);
+    const socket = io("https://zang-4.onrender.com");
   
     socket.on("courierLocationUpdate", ({ courierId, lat, lng }) => {
       setCouriers((prev) =>
