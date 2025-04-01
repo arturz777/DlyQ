@@ -1,6 +1,5 @@
 import { $authHost } from "./index";
 
-// ✅ Получение активных заказов
 export const fetchActiveOrders = async () => {
   try {
     const { data } = await $authHost.get("/couriers/orders");
@@ -11,7 +10,6 @@ export const fetchActiveOrders = async () => {
   }
 };
 
-// ✅ Принятие заказа курьером
 export const acceptOrder = async (orderId) => {
   try {
     const { data } = await $authHost.post(`/couriers/orders/${orderId}/accept`);
@@ -22,7 +20,6 @@ export const acceptOrder = async (orderId) => {
   }
 };
 
-// ✅ Смена статуса курьера (онлайн/офлайн)
 export const toggleCourierStatus = async (status) => {
   try {
     const { data } = await $authHost.post("/couriers/status", { status });
@@ -33,7 +30,6 @@ export const toggleCourierStatus = async (status) => {
   }
 };
 
-// 🔹 Обновление статуса доставки
 export const updateDeliveryStatus = async (orderId, newStatus) => {
   try {
     const { data } = await $authHost.post(`/couriers/orders/${orderId}/status`, { status: newStatus });
@@ -43,7 +39,6 @@ export const updateDeliveryStatus = async (orderId, newStatus) => {
     throw error;
   }
 };
-
 
 export const completeDelivery = async (orderId) => {
   try {
