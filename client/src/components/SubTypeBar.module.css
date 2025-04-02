@@ -1,4 +1,3 @@
-/* Общий контейнер подтипов */
 .subTypeBar {
 	display: flex;
 	flex-wrap: wrap;
@@ -8,7 +7,6 @@
 	border-radius: 10px;
   }
   
-  /* Элемент подтипа */
   .subTypeItem {
 	padding: 8px 15px;
 	border-radius: 8px;
@@ -20,7 +18,7 @@
   }
   
   .subTypeItem:hover {
-	background: #007bff;
+	background: #be3402;
 	color: white;
   }
   
