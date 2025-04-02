@@ -33,14 +33,14 @@
 }
 
 .buttonsContainer {
-  width: 100%; /* Занимает всю ширину */
+  width: 100%; 
   display: flex;
-  justify-content: flex-start; /* Кнопка "Назад" слева */
-  margin-bottom: 20px; /* Отступ снизу */
+  justify-content: flex-start; 
+  margin-bottom: 20px; 
 }
 
 .backButton {
-  background-color: #00a746;
+  background-color: #be3402;
   color: white;
   border: none;
   border-radius: 6px;
@@ -49,7 +49,12 @@
   cursor: pointer;
   transition: background 0.3s ease;
   margin-left: 20px;
+  margin-top: 3px;
   
+}
+
+.backButton:hover {
+  background-color: #8f2600;
 }
 
 @media (max-width: 768px) {
@@ -80,9 +85,9 @@
   padding: 10px;
   border-radius: 8px;
   background-color: #f9f9f9;
-  max-width: 500px; /* Уменьшаем ширину */
+  max-width: 500px;
   margin-left: auto;
-  margin-right: auto; /* Центрируем */
+  margin-right: auto; 
 }
 
 
@@ -93,11 +98,11 @@
   border-radius: 5px;
   flex-grow: 1;
   margin-right: 10px;
-  max-width: 250px; /* Ограничиваем ширину инпутов */
+  max-width: 250px;
 }
 
 .editButton {
-  background-color: #117e03;
+  background-color: #be3402;
   color: white;
   border: none;
   padding: 6px 10px;
@@ -106,7 +111,7 @@
 }
 
 .editButton:hover {
-  background-color: #00ab0b;
+  background-color: #8f2600;
 }
 
 .passwordInputs {
@@ -142,7 +147,6 @@
   margin: 20px auto 0 auto;
 }
 
-/* Контейнер для чекбокса и текста */
 .cookieOption {
   display: flex;
   align-items: center;
@@ -152,12 +156,11 @@
   padding: 8px 0;
 }
 
-/* Чекбокс фиксирован */
 .checkboxWrapper {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px; /* Фиксируем ширину, чтобы текст не двигал чекбокс */
+  min-width: 18px; 
 }
 
 .checkboxWrapper input[type="checkbox"] {
