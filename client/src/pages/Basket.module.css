@@ -12,8 +12,8 @@
 
 .card {
   width: 100%;
-  max-width: 600px; /* Ограничение ширины карточки */
-  margin: 10px auto; /* Общий отступ */
+  max-width: 600px; 
+  margin: 10px auto; 
   padding: 16px;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -22,22 +22,22 @@
 }
 
 .firstCard {
-  margin-top: 70px; /* Отступ сверху для первой карточки */
+  margin-top: 70px; 
 }
 
 .otherCards {
-  margin-top: 10px; /* Отступ сверху для остальных карточек */
+  margin-top: 10px; 
 }
 
 .cardContent {
   display: flex;
-  align-items: center; /* Выравнивание по вертикали */
-  justify-content: space-between; /* Равномерное распределение */
-  gap: 16px; /* Промежутки между элементами */
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px; 
 }
 
 .image {
-  flex-shrink: 0; /* Не сжимать изображение */
+  flex-shrink: 0; 
   width: 60px;
   height: 60px;
   object-fit: cover;
@@ -45,24 +45,32 @@
 }
 
 .title {
-  flex-grow: 1; /* Растягивать, чтобы занимать свободное пространство */
+  flex-grow: 1; 
   font-size: 16px;
   text-align: left;
-  white-space: nowrap; /* Обрезать текст, если он слишком длинный */
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .counter {
-  width: 100px; /* Установи фиксированную ширину */
+  width: 100px;
     display: flex;
-    align-items: center; /* Выравнивание по вертикали */
+    align-items: center; 
     justify-content: space-between;
 }
 
 .buttonPlus {
+  background-color: #ffffff;
+  color: #000000;
+  border-color: #8f2600;
   padding: 6px 12px;
   font-size: 14px;
+}
+
+.buttonPlus:hover {
+  background-color: #8f2600;
+  border-color: #8f2600;
 }
 
 .count {
@@ -104,14 +112,14 @@
   .buttonDelete {
     font-size: 11px;
     text-align: center;
-    width: 100%; /* Растянуть элементы на всю ширину */
-    margin-top: 8px; /* Отступ между строками */
+    width: 100%; 
+    margin-top: 8px; 
   }
 
   .counter {
     display: flex;
     justify-content: space-between;
-    width: 100%; /* Занимать всю ширину */
+    width: 100%; 
   }
 
   .buttonPlus {
