@@ -137,8 +137,7 @@ device.discount && device.oldPrice > device.price
           </div>
         </div>
 
-        <Button
-          variant="success"
+         <button
           className={styles.button}
           disabled={availableQuantity <= 0}
           onClick={handleAddToBasket}
@@ -146,7 +145,7 @@ device.discount && device.oldPrice > device.price
           {availableQuantity <= 0
             ? t("out_of_stock", { ns: "deviceItem" })
             : t("add_to_cart", { ns: "deviceItem" })}
-        </Button>
+        </button>
 
         {availableQuantity <= 0 && (
           <p className={styles.preorderText}>
