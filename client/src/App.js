@@ -1,4 +1,3 @@
-//client/src/App.js
 import React, { useContext, useEffect, useState } from "react";
 import { BrowserRouter } from "react-router-dom";
 import AppRouter from "./components/AppRouter";
@@ -27,15 +26,19 @@ const App = observer(() => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token"); // Проверка наличия токена
+    const token = localStorage.getItem("token"); 
+
+    appStore.setIsLoading(true);
+
     if (!token) {
       setLoading(false);
-      user.setUser({}); // Устанавливаем, что пользователь не авторизован
-      user.setIsAuth(false); // Обновляем состояние авторизации
-      return; // Выходим из useEffect, если токен отсутствует
+      appStore.setIsLoading(false);
+      user.setUser({}); 
+      user.setIsAuth(false); 
+      return; 
     }
 
-    check() // Проверяем авторизацию с использованием токена
+    check() 
       .then((data) => {
         user.setUser(data);
         user.setIsAuth(true);
@@ -45,7 +48,10 @@ const App = observer(() => {
         user.setUser(false);
         user.setIsAuth(false);
       })
-      .finally(() => setLoading(false)); // Завершаем загрузку
+      .finally(() => {
+        setLoading(false);
+        appStore.setIsLoading(false); 
+      });
   }, [user]);
 
   if (loading) {
