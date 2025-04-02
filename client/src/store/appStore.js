@@ -18,8 +18,11 @@ class AppStore {
       this.isLoading = false;
       setTimeout(() => {
         this.showLoader = false;
-      }, 300); // 🔥 Даем 300 мс на плавное исчезновение
-    }, 500); // 🔥 Минимум 500 мс показываем
+      }, 300); 
+    }, 500); 
+  }
+  setIsLoading(value) {
+    this.isLoading = value;
   }
 }
 
