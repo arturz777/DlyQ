@@ -27,7 +27,6 @@ const CatalogPage = observer(() => {
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
-    appStore.startLoading();
 
     Promise.all([
       fetchTypes(),
@@ -59,7 +58,6 @@ const CatalogPage = observer(() => {
           }
         }
       })
-      .finally(() => appStore.stopLoading());
   }, [currentLang]);
 
   useEffect(() => {
