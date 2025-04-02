@@ -485,16 +485,15 @@ const PaymentForm = ({
         </Col>
       </Row>
       <div className="text-center">
-        <Button
+        <button
           className={styles.buttonTPrice}
           type="submit"
           disabled={loading || !stripe}
-          variant="primary"
         >
           {loading
             ? t("processing", { ns: "paymentForm" })
             : `${t("pay", { ns: "paymentForm" })} ${(totalPrice + deliveryCost).toFixed(2)} $`}
-        </Button>
+        </button>
       </div>
     </Form>
   );
