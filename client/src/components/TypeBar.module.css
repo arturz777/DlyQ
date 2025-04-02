@@ -1,9 +1,8 @@
-/* Общий контейнер */
 .typeBar {
 	display: flex;
 	flex-wrap: nowrap;
 	gap: 12px;
-	overflow-x: auto; /* Горизонтальная прокрутка */
+	overflow-x: auto;
 	padding: 10px;
 	background: #ffffff;
   }
@@ -14,8 +13,8 @@
   
   .typeItem {
 	cursor: pointer;
-	width: 180px; /* Фиксированная ширина */
-	height: 150px; /* Фиксированная высота */
+	width: 180px; 
+	height: 150px; 
 	padding: 12px;
 	background: white;
 	border-radius: 10px;
@@ -24,7 +23,7 @@
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center; /* Центрируем содержимое */
+	justify-content: center; 
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
   
@@ -33,11 +32,10 @@
   }
   
   .typeItem.active {
-	background: #007bff;
+	background: #be3402;
 	color: white;
   }
   
-  /* Изображение */
   .typeImage {
 	width: 80px;
 	height: 80px;
@@ -45,38 +43,34 @@
 	margin-bottom: 5px;
   }
   
-  /* Текст */
   .typeName {
 	font-size: 14px;
 	font-weight: 500;
 	color: #333;
   }
   
-  
-  /* Для мобильных устройств: горизонтальная прокрутка */
   @media (max-width: 768px) {
 	.typeBar {
-	  flex-wrap: nowrap; /* Запрещаем перенос на следующую строку */
-	  overflow-x: scroll; /* Горизонтальная прокрутка */
+	  flex-wrap: nowrap; 
+	  overflow-x: scroll; 
 	  padding: 5px;
 	}
   
 	.typeItem {
-	  flex-shrink: 0; /* Предотвращаем сжатие элементов */
+	  flex-shrink: 0; 
 	  margin-right: 10px;
 	}
   
 	.typeItem.active {
-	  background-color: #007bff;
+	  background-color: #be3402;
 	  color: white;
 	  font-weight: bold;
 	}
   }
   
-  /* Для больших экранов: перенос элементов на следующую строку */
   @media (min-width: 769px) {
 	.typeBar {
-	  flex-wrap: wrap; /* Позволяем перенос на следующую строку */
-	  overflow-x: visible; /* Убираем горизонтальную прокрутку */
+	  flex-wrap: wrap; 
+	  overflow-x: visible; 
 	}
   }
