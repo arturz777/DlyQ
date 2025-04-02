@@ -273,7 +273,6 @@ const Basket = observer(() => {
               <div className={styles.counter}>
                 <Button
                   className={styles.buttonPlus}
-                  variant="outline-success"
                   onClick={() => handleDecrement(item.uniqueKey)}
                 >
                   -
@@ -283,7 +282,6 @@ const Basket = observer(() => {
                 </span>
                 <Button
                   className={styles.buttonPlus}
-                  variant="outline-success"
                   onClick={() => handleIncrement(item.uniqueKey)}
                   disabled={
                     basket.getItemCount(item.uniqueKey) >=
