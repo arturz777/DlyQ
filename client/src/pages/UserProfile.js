@@ -5,7 +5,6 @@ import { updateProfile, fetchProfile } from "../http/userAPI";
 import OrderSidebar from "../components/OrderSidebar";
 import { FaCog, FaSignOutAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import Flag from "react-world-flags";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import styles from "./UserProfile.module.css";
@@ -114,7 +113,7 @@ const UserProfile = () => {
     }
   };
 
-  return (
+ return (
     <div className={styles.shopWrapper}>
       <div className={styles.mainContent}>
         <div className={styles.buttonsContainer}>
@@ -131,7 +130,11 @@ const UserProfile = () => {
                 onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
                 className={styles.currentLanguageButton}
               >
-                <Flag code={currentFlag?.code} className={styles.flag} />
+                <img
+                  src={require(`../assets/flags/${currentFlag?.language}.png`)}
+                  alt={currentFlag?.language}
+                  className={styles.flag}
+                />
               </button>
               {isLanguageMenuOpen && (
                 <div className={styles.dropdownMenu}>
@@ -141,7 +144,11 @@ const UserProfile = () => {
                       onClick={() => changeLanguage(lang.language)}
                       className={styles.dropdownItem}
                     >
-                      <Flag code={lang.code} className={styles.flag} />
+                      <img
+                        src={require(`../assets/flags/${lang.language}.png`)}
+                        alt={lang.language}
+                        className={styles.flag}
+                      />
                     </button>
                   ))}
                 </div>
