@@ -4,6 +4,33 @@
   margin-right: auto;
 }
 
-.buttonTPrice {
+  .buttonTPrice {
+	background-color: #be3402;
+	color: white;
+	border: none;
+	padding: 12px 24px;
+	font-size: 16px;
+	font-weight: 500;
+	border-radius: 8px;
+	transition: background-color 0.2s ease, transform 0.1s ease;
+	cursor: pointer;
+	display: inline-block;
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 	margin-top: 30px;
-}
+  }
+  
+  .buttonTPrice:hover {
+	background-color: #8f2600;
+  }
+  
+  .buttonTPrice:active {
+	background-color: #731e00;
+	transform: scale(0.98);
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  
+  .buttonTPrice:disabled {
+	background-color: #ccc;
+	color: #777;
+	cursor: not-allowed;
+  }
