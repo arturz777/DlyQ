@@ -1,35 +1,46 @@
-import React, { useContext } from "react";
+import React, { lazy, Suspense, useContext, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { authRoutes, publicRoutes } from "../routes";
 import { SHOP_ROUTE, ADMIN_ROUTE } from "../utils/consts";
 import { Context } from "../index";
-import Basket from "../pages/Basket";
-import CatalogPage from "../pages/CatalogPage";
-import UserProfile from "../pages/UserProfile";
-import ProfileSettings from "../pages/ProfileSettings";
-import Admin from "../pages/Admin";
-import Courier from "../pages/Courier";
-import Warehouse from "../pages/Warehouse"
+import appStore from "../store/appStore";
+import LoadingBar from "./LoadingBar";
+
+const Basket = lazy(() => import("../pages/Basket"));
+const CatalogPage = lazy(() => import("../pages/CatalogPage"));
+const UserProfile = lazy(() => import("../pages/UserProfile"));
+const ProfileSettings = lazy(() => import("../pages/ProfileSettings"));
+const Admin = lazy(() => import("../pages/Admin"));
+const Courier = lazy(() => import("../pages/Courier"));
+const Warehouse = lazy(() => import("../pages/Warehouse"));
 
 const AppRouter = () => {
   const { user } = useContext(Context);
 
   const location = useLocation();
 
-  // Если обычный пользователь попал в админку → выкидываем его
+  useEffect(() => {
+    appStore.startLoading();
+
+    const timer = setTimeout(() => {
+      appStore.stopLoading(); 
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
+
   if (location.pathname === ADMIN_ROUTE && (!user.isAuth || user.user?.role !== "ADMIN")) {
     return <Navigate to={SHOP_ROUTE} replace />;
   }
 
   return (
+    <Suspense fallback={<LoadingBar />}>
     <Routes>
-      {/* Routers для авторизованных пользователей */}
       {user.isAuth &&
         authRoutes.map(({ path, Component }) => (
           <Route key={path} path={path} element={<Component />} exact />
         ))}
 
-         {/* ✅ Защищаем маршрут админ-панели */}
          <Route path={ADMIN_ROUTE} element={<Admin />} />
          <Route path="/courier" element={<Courier />} />
          <Route path="/warehouse" element={<Warehouse />} />
@@ -37,7 +48,6 @@ const AppRouter = () => {
       <Route path="/profile" element={<UserProfile />} />
       <Route path="/settings" element={<ProfileSettings />} />
 
-      {/* Публичные маршруты */}
       {publicRoutes.map(({ path, Component }) => (
         <Route key={path} path={path} element={<Component />} exact />
       ))}
@@ -47,6 +57,7 @@ const AppRouter = () => {
 
       <Route path="*" element={<Navigate to={SHOP_ROUTE} />} />
     </Routes>
+     </Suspense>
   );
 };
 
