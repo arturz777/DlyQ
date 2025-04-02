@@ -28,12 +28,10 @@
   gap: 20px;
 }
 
-/* Группа заказа */
 .orderGroup {
   margin-bottom: 30px; 
 }
 
-/* Заголовок заказа */
 .orderHeader {
   font-size: 11px;
   margin-bottom: 10px;
@@ -44,7 +42,6 @@
   padding-bottom: 3px;
 }
 
-/* Карточка товара */
 .orderCard {
   display: flex;
   align-items: center;
@@ -56,7 +53,6 @@
   margin-top: 10px;
 }
 
-/* Изображение товара */
 .deviceImage {
   width: 80px;
   height: 80px;
@@ -64,7 +60,6 @@
   border-radius: 8px;
 }
 
-/* Детали товара */
 .orderDetails {
   display: flex;
   flex-direction: column;
@@ -76,7 +71,6 @@
   color: #555;
 }
 
-/* Если нет заказов */
 .NoOrderTitle {
   text-align: center;
   margin-top: 50px;
@@ -87,22 +81,22 @@
 
 @media (max-width: 768px) {
   .orderCard {
-    flex-direction: row; /* Содержимое остается в строке */
-    align-items: center; /* Выравнивание по центру */
+    flex-direction: row;
+    align-items: center; 
   }
 
   .orderDetails {
-    flex-direction: column; /* Вертикальная структура для текста */
-    align-items: flex-start; /* Выравнивание текста по левому краю */
+    flex-direction: column; 
+    align-items: flex-start; 
   }
 
   .orderDetails span:first-child {
-    font-size: 16px; /* Увеличенный размер для верхней строки (название и цена) */
+    font-size: 16px;
     font-weight: bold;
   }
 
   .orderDetails span:last-child {
-    font-size: 12px; /* Уменьшенный размер для остальных строк */
+    font-size: 12px; 
     color: #777;
   }
 }
@@ -117,8 +111,8 @@
   border: none;
   cursor: pointer;
   padding: 0;
-  width: 35px; /* Фиксируем ширину кнопки, чтобы ничего не двигалось */
-  height: 25px; /* Фиксируем высоту кнопки */
+  width: 35px; 
+  height: 25px; 
   display: flex;
   align-items: center;
   justify-content: center;
@@ -138,11 +132,11 @@
 .rightButtons {
   display: flex;
   align-items: center;
-  gap: 10px; /* Расстояние между кнопками справа */
+  gap: 10px;
 }
 
 .backButton {
-  background-color: #00a746;
+  background-color: #be3402;
   color: white;
   border: none;
   border-radius: 6px;
@@ -150,14 +144,15 @@
   font-size: 14px;
   cursor: pointer;
   transition: background 0.3s ease;
+  margin-top: 3px;
 }
 
 .backButton:hover {
-  background-color: #0056b3;
+  background-color: #8f2600;
 }
 
 .openSidebarButton {
-  background-color: #007bff;
+  background-color: #be3402;
   color: white;
   border: none;
   border-radius: 50%;
@@ -173,7 +168,7 @@
 }
 
 .openSidebarButton:hover {
-  background-color: #0056b3;
+  background-color: #8f2600;
   transform: scale(1.1);
 }
 
@@ -251,14 +246,14 @@
 
 .dropdownMenu {
   position: absolute;
-  top: 100%; /* Прямо под кнопкой */
+  top: 100%; 
   left: 0;
   background: rgb(238, 238, 238);
   box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   overflow: hidden;
   z-index: 1000;
-  margin-top: 0px; /* Убираем любые отступы между кнопкой и меню */
+  margin-top: 0px; 
   width: 35px;
 }
 
@@ -266,8 +261,8 @@
   background: none;
   border: none;
   padding: 5px;
-  width: 100%; /* Совпадает с шириной меню */
-  height: 25px; /* Совпадает с высотой кнопки */
+  width: 100%; 
+  height: 25px; 
   cursor: pointer;
   display: flex;
   align-items: center;
