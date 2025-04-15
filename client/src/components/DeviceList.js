@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useMemo } from "react";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import DeviceItem from "./DeviceItem";
@@ -9,54 +9,63 @@ const DeviceList = observer(() => {
   const { device } = useContext(Context);
   const { t, i18n } = useTranslation();
     const currentLang = i18n.language || "en";
-    const deviceName = device.translations?.name?.[currentLang] || device.name;
 
-  const groupedDevices = device.types.reduce((acc, type) => {
-    const typeName = type.translations?.name?.[currentLang] || type.name;
-    acc[type.id] = {
-      typeName,
-      subtypes: {},
-      noSubtypeDevices: [], 
-    };
-
-   
-    device.subtypes
-      .filter((sub) => sub.typeId === type.id)
-      .forEach((sub) => {
-        const subtypeName = sub.translations?.name?.[currentLang] || sub.name; 
-        acc[type.id].subtypes[sub.id] = {
-          devices: [],
-          subtypeName, 
+    const groupedDevices = useMemo(() => {
+      const result = {};
+  
+      device.types.forEach((type) => {
+        const typeName = type.translations?.name?.[currentLang] || type.name;
+        result[type.id] = {
+          typeName,
+          subtypes: {},
+          noSubtypeDevices: [],
         };
-      });
+
+        device.subtypes
+        .filter((sub) => sub.typeId === type.id)
+        .forEach((sub) => {
+          const subtypeName = sub.translations?.name?.[currentLang] || sub.name;
+          result[type.id].subtypes[sub.id] = {
+            devices: [],
+            subtypeName,
+          };
+        });
+    });
 
     device.devices.forEach((dev) => {
-      if (dev.typeId === type.id) {
-        if (dev.subtypeId && acc[type.id].subtypes[dev.subtypeId]) {
-          acc[type.id].subtypes[dev.subtypeId].devices.push(dev);
-        } else if (!dev.subtypeId) {
-          acc[type.id].noSubtypeDevices.push(dev);
+      const typeGroup = result[dev.typeId];
+      if (!typeGroup) return;
+
+      if (dev.subtypeId && typeGroup.subtypes[dev.subtypeId]) {
+        typeGroup.subtypes[dev.subtypeId].devices.push(dev);
+      } else {
+        typeGroup.noSubtypeDevices.push(dev);
+      }
+    });
+
+    Object.values(result).forEach((group) => {
+      for (const [subId, sub] of Object.entries(group.subtypes)) {
+        if (sub.devices.length === 0) {
+          delete group.subtypes[subId];
         }
       }
     });
 
-    Object.keys(acc[type.id].subtypes).forEach((subtypeId) => {
-      if (
-        acc[type.id].subtypes[subtypeId].devices.length === 0 ||
-        acc[type.id].subtypes[subtypeId].subtypeName === t("Unknown subtype")
-      ) {
-        delete acc[type.id].subtypes[subtypeId];
-      }
-    });
+    return result;
+  }, [device.types, device.subtypes, device.devices, currentLang]);
 
-    return acc;
-  }, {});
+  const hasVisibleDevices = useMemo(() => {
+    return Object.values(groupedDevices).some(
+      (group) =>
+        group.noSubtypeDevices.length > 0 ||
+        Object.values(group.subtypes).some((sub) => sub.devices.length > 0)
+    );
+  }, [groupedDevices]);
 
-  const hasVisibleDevices = Object.values(groupedDevices).some(
-    (group) =>
-      Object.values(group.subtypes).some((sub) => sub.devices.length > 0) ||
-      group.noSubtypeDevices.length > 0
-  );
+  if (!hasVisibleDevices) {
+    return <p className={styles.noDevices}>{t("No devices found")}</p>;
+  }
+
 
   return (
     <div>
