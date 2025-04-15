@@ -54,23 +54,37 @@ const DevicePage = () => {
   };
 
   useEffect(() => {
-    fetchOneDevice(id).then((data) => {
-      setDevice(data);
-      setFinalPrice(data.price);
-      setActiveIndex(0);
+    const fetchData = async () => {
+      try {
+        const deviceData = await fetchOneDevice(id);
+        setDevice(deviceData);
+        setFinalPrice(deviceData.price);
+        setActiveIndex(0);
 
-      const itemInBasket = basket.items.find((item) => item.id === data.id);
-      const quantityInBasket = itemInBasket ? itemInBasket.count : 0;
-      setAvailableQuantity(data.quantity - quantityInBasket);
+        const itemInBasket = basket.items.find(
+          (item) => item.id === deviceData.id
+        );
+        const quantityInBasket = itemInBasket ? itemInBasket.count : 0;
+        setAvailableQuantity(deviceData.quantity - quantityInBasket);
 
-      const initialOptions = {};
-      data.options?.forEach((option) => {
-        if (option.values.length > 0) {
-          initialOptions[option.name] = option.values[0];
-        }
-      });
-      setSelectedOptions({});
-    });
+        const initialOptions = {};
+        deviceData.options?.forEach((option) => {
+          if (option.values.length > 0) {
+            initialOptions[option.name] = option.values[0];
+          }
+        });
+
+        setSelectedOptions({});
+
+        const recommended = await fetchRecommendedDevices(deviceData.type);
+        setRecommendedDevices(recommended);
+      } catch (error) {
+        toast.error("❌ Ошибка загрузки устройства");
+        console.error(error);
+      }
+    };
+
+    fetchData();
   }, [id, basket.items]);
 
   useEffect(() => {
@@ -80,8 +94,6 @@ const DevicePage = () => {
     );
     setFinalPrice(device.price + additionalPrice);
   }, [selectedOptions, device.price]);
-
-  if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
   const images = [device.img, ...(device.thumbnails || [])];
 
@@ -136,38 +148,22 @@ const DevicePage = () => {
     };
 
     basket.addItem(newItem);
-     toast.success(
-          <>
-            <strong className={styles.toastTitle}>{deviceName}</strong>
-            <span className={styles.toastSubtitle}>
-              {t("Added to cart!", { ns: "devicePage" })}
-            </span>
-          </>,
-          {
-            style: {
-              maxWidth: "400px",
-            },
-          }
-        );
+    toast.success(
+      <>
+        <strong className={styles.toastTitle}>{deviceName}</strong>
+        <span className={styles.toastSubtitle}>
+          {t("Added to cart!", { ns: "devicePage" })}
+        </span>
+      </>,
+      {
+        style: {
+          maxWidth: "400px",
+        },
+      }
+    );
 
     setAvailableQuantity((prev) => prev - 1);
   };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const deviceData = await fetchOneDevice(id);
-        setDevice(deviceData);
-
-        // Фильтрация рекомендованных товаров по типу устройства
-        const recommendedData = await fetchRecommendedDevices(deviceData.type); // предполагаем, что в API есть поле `type`
-        setRecommendedDevices(recommendedData);
-      } catch (error) {
-        toast.error("❌ Error fetching device data");
-      }
-    };
-    fetchData();
-  }, [id]);
 
   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
