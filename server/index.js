@@ -1,8 +1,7 @@
-// server/index.js
 require("dotenv").config();
 const express = require("express");
-const http = require("http"); // Добавляем HTTP-сервер
-const { Server } = require("socket.io"); // Импортируем WebSocket
+const http = require("http"); 
+const { Server } = require("socket.io"); 
 const sequelize = require("./db");
 const models = require("./models/models");
 const cors = require("cors");
@@ -14,13 +13,14 @@ const setupCleanupTask = require("./tasks");
 const courierRouter = require("./routes/courierRouter");
 const warehouseRouter = require("./routes/warehouseRouter");
 const orderRouter = require("./routes/orderRouter");
+const cookieParser = require('cookie-parser');
 
 setupCleanupTask();
 
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 5000;
 const app = express();
 
-const server = http.createServer(app); // Создаем HTTP-сервер
+const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: 'https://phenomenal-sunburst-78533d.netlify.app',
@@ -28,22 +28,22 @@ const io = new Server(server, {
   }
 });
 
-app.use(cors());
+app.use(cors({
+  origin: 'https://phenomenal-sunburst-78533d.netlify.app',
+  credentials: true           
+}));
 app.use(express.json());
 app.use(express.static(path.resolve(__dirname, "static")));
 app.use(fileUpload({}));
+app.use(cookieParser());
 app.use("/api", router);
 app.use("/api/couriers", courierRouter);
 app.use("/api/warehouse", warehouseRouter);
 app.set("io", io);
 app.use("/api/order", orderRouter);
-app.get("/", (req, res) => {
-  res.send("Сервер работает! 🚀");
-});
 
 server.listen(PORT, () => console.log(`🚀 Сервер запущен на порту ${PORT}`));
 
-// Подключение сокетов
 io.on("connection", (socket) => {
   console.log("🟢 Клиент подключился:", socket.id);
 
@@ -52,12 +52,10 @@ io.on("connection", (socket) => {
   });
 });
 
-// Функция для отправки новых заказов в реальном времени
 const notifyNewOrder = (order) => {
   io.emit("newOrder", order);
 };
 
-// Обработка ошибок, последний Middleware
 app.use(errorHandler);
 
 const start = async () => {
@@ -73,4 +71,3 @@ const start = async () => {
 start();
 
 module.exports = { io, notifyNewOrder };
-// await sequelize.sync({ alter: true });
