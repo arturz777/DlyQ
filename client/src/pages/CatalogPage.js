@@ -27,61 +27,50 @@ const CatalogPage = observer(() => {
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const [typesData, subtypesData, brandsData] = await Promise.all([
+          fetchTypes(),
+          fetchSubtypes(),
+          fetchBrands(),
+        ]);
 
-    Promise.all([
-      fetchTypes(),
-      fetchSubtypes(),
-      fetchBrands(),
-      fetchDevices(null, null, 1, device.limit),
-    ])
-      .then(([typesData, subtypesData, brandsData, devicesData]) => {
-        const translatedTypes = typesData.map((type) => ({
-          ...type,
-          translations: type.translations || {},
-        }));
-        device.setTypes(translatedTypes);
+        device.setTypes(
+          typesData.map((type) => ({
+            ...type,
+            translations: type.translations || {},
+          }))
+        );
 
-        const translatedSubtypes = subtypesData.map((subtype) => ({
-          ...subtype,
-          translations: subtype.translations || {},
-        }));
-        device.setSubtypes(translatedSubtypes);
+        device.setSubtypes(
+          subtypesData.map((subtype) => ({
+            ...subtype,
+            translations: subtype.translations || {},
+          }))
+        );
 
         device.setBrands(brandsData);
-        device.setDevices(devicesData.rows);
-        device.setTotalCount(devicesData.count);
 
         if (typeIdFromUrl) {
-          const selectedType = typesData.find((type) => type.id === Number(typeIdFromUrl));
+          const selectedType = typesData.find(
+            (type) => type.id === Number(typeIdFromUrl)
+          );
           if (selectedType) {
             device.setSelectedType(selectedType);
           }
         }
-      })
-  }, [currentLang]);
+      } catch (error) {
+        console.error("Ошибка загрузки начальных данных:", error);
+      }
+    };
 
-  useEffect(() => {
-    fetchDevices(
-      device.selectedType.id,
-      device.selectedSubType?.id,
-      device.selectedBrand.id,
-      device.page,
-      device.limit
-    ).then((data) => {
-      device.setDevices(data.rows);
-      device.setTotalCount(data.count);
-    });
-  }, [
-    device.page,
-    device.selectedType,
-    device.selectedSubType,
-    device.selectedBrand,
-  ]);
+    loadInitialData();
+  }, [currentLang]);
 
   useEffect(() => {
     const loadDevices = async () => {
       try {
-        const devicesData = await fetchDevices(
+        const data = await fetchDevices(
           device.selectedType?.id || null,
           device.selectedSubType?.id || null,
           device.selectedBrand?.id || null,
@@ -89,18 +78,18 @@ const CatalogPage = observer(() => {
           device.limit
         );
 
-        device.setDevices(devicesData.rows);
-        device.setTotalCount(devicesData.count);
+        device.setDevices(data.rows);
+        device.setTotalCount(data.count);
       } catch (error) {
-        console.error("Ошибка при фильтрации устройств:", error);
+        console.error("Ошибка загрузки девайсов:", error);
       }
     };
 
     loadDevices();
   }, [
     device.selectedType,
-    device.selectedBrand,
     device.selectedSubType,
+    device.selectedBrand,
     device.page,
   ]);
 
@@ -108,18 +97,19 @@ const CatalogPage = observer(() => {
     const loadSubtypes = async () => {
       try {
         let subtypesData;
-        if (device.selectedType.id) {
+        if (device.selectedType?.id) {
           subtypesData = await fetchSubtypesByType(device.selectedType.id);
         } else {
           subtypesData = await fetchSubtypes();
         }
 
-        const translatedSubtypes = subtypesData.map((subtype) => ({
-          ...subtype,
-          translations: subtype.translations || {},
-        }));
+        device.setSubtypes(
+          subtypesData.map((subtype) => ({
+            ...subtype,
+            translations: subtype.translations || {},
+          }))
+        );
 
-        device.setSubtypes(translatedSubtypes);
         device.setSelectedSubType({});
       } catch (error) {
         console.error("Ошибка при загрузке подтипов:", error);
@@ -166,7 +156,6 @@ const CatalogPage = observer(() => {
           </div>
         </div>
 
-        {/* Блок устройств */}
         <div className={catalogStyles.deviceContainer}>
           <DeviceList />
         </div>
