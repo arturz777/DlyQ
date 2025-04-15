@@ -7,9 +7,9 @@ import styles from "./ProfileSettings.module.css";
 
 const ProfileSettings = ({ onBack }) => {
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [editField, setEditField] = useState(null);
-  const [errors, setErrors] = useState({}); // ✅ Добавили useState для ошибок
+  const [errors, setErrors] = useState({});
   const [profile, setProfile] = useState({
     firstName: "",
     lastName: "",
@@ -42,7 +42,7 @@ const ProfileSettings = ({ onBack }) => {
     setErrors({});
   };
 
- const handleSave = async () => {
+  const handleSave = async () => {
     if (editField === "password") {
       await handlePasswordChange();
     } else {
