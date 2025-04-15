@@ -10,7 +10,6 @@ import {
 import { observer } from "mobx-react-lite";
 import { useNavigate } from "react-router-dom";
 import SearchBar from "./SearchBar";
-import styles from "./NavBar.module.css";
 import {
   FaShoppingCart,
   FaCog,
@@ -19,6 +18,16 @@ import {
   FaSignOutAlt,
 } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
+import ruFlag from "../assets/flags/ru.png";
+import enFlag from "../assets/flags/en.png";
+import estFlag from "../assets/flags/est.png";
+import styles from "./NavBar.module.css";
+
+const flags = {
+  ru: ruFlag,
+  en: enFlag,
+  est: estFlag,
+};
 
 const NavBar = observer(() => {
   const [scrollDirection, setScrollDirection] = useState("up");
@@ -95,14 +104,14 @@ const NavBar = observer(() => {
 
         <div
           className={styles.languageSelectorWrapper}
-          onMouseLeave={() => setIsLanguageMenuOpen(false)} 
+          onMouseLeave={() => setIsLanguageMenuOpen(false)}
         >
           <button
             onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
             className={styles.currentLanguageButton}
           >
             <img
-              src={require(`../assets/flags/${currentFlag?.language}.png`)}
+              src={flags[currentFlag?.language] || flags["en"]}
               alt={currentFlag?.language}
               className={styles.flag}
             />
