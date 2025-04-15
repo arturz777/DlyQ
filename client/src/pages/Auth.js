@@ -1,8 +1,4 @@
 import React, { useContext, useState } from "react";
-import { Col, Container, Form } from "react-bootstrap";
-import Card from "react-bootstrap/Card";
-import Button from "react-bootstrap/Button";
-import Row from "react-bootstrap/Row";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LOGIN_ROUTE, REGISTRATION_ROUTE, SHOP_ROUTE } from "../utils/consts";
 import { login, registration } from "../http/userAPI";
@@ -22,7 +18,7 @@ const Auth = observer(() => {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [agreed, setAgreed] = useState(false);
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   const click = async () => {
     try {
@@ -32,7 +28,7 @@ const Auth = observer(() => {
       } else {
         data = await registration(email, password, firstName, lastName, phone);
       }
-      user.setUser(user);
+      user.setUser(data);
       user.setIsAuth(true);
       navigate(SHOP_ROUTE);
     } catch (e) {
