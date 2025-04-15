@@ -1,14 +1,22 @@
-//Server/controllers/userController.js
-
 const ApiError = require("../error/ApiError");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { User, Basket } = require("../models/models");
 
-const generateJwt = (id, email, role) => {
-  return jwt.sign({ id, email, role }, process.env.SECRET_KEY, {
-    expiresIn: "24h",
+const generateTokens = (id, email, role) => {
+  const accessToken = jwt.sign({ id, email, role }, process.env.SECRET_KEY, {
+    expiresIn: "15m", 
   });
+
+  const refreshToken = jwt.sign(
+    { id, email, role },
+    process.env.REFRESH_SECRET_KEY,
+    {
+      expiresIn: "30d",
+    }
+  );
+
+  return { accessToken, refreshToken };
 };
 
 class UserController {
@@ -33,102 +41,170 @@ class UserController {
       phone,
     });
     const basket = await Basket.create({ userId: user.id });
-    const token = generateJwt(user.id, user.email, user.role);
 
-    return res.json({ token });
+    const { accessToken, refreshToken } = generateTokens(
+      user.id,
+      user.email,
+      user.role
+    );
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      path: "/", 
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.json({ accessToken });
   }
+
   async login(req, res, next) {
     const { email, password } = req.body;
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return next(ApiError.internal("Пользователь не найден"));
     }
-    let comparePassword = bcrypt.compareSync(password, user.password);
+    const comparePassword = bcrypt.compareSync(password, user.password);
     if (!comparePassword) {
       return next(ApiError.internal("Указанный пароль не верный"));
     }
-    const token = generateJwt(user.id, user.email, user.role);
-    return res.json({ token });
+    const { accessToken, refreshToken } = generateTokens(
+      user.id,
+      user.email,
+      user.role
+    );
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      path: "/", 
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.json({ accessToken });
   }
+
   async check(req, res, next) {
-    const token = generateJwt(req.user.id, req.user.email, req.user.role);
-    return res.json({ token });
+    if (!req.user) {
+      return res.status(401).json({ message: "Не авторизован" });
+    }
+  
+    const { accessToken } = generateTokens(req.user.id, req.user.email, req.user.role);
+    return res.json({ accessToken });
   }
 
   async updateProfile(req, res, next) {
     try {
-        const { firstName, lastName, phone } = req.body;
-        const userId = req.user.id; // Получаем ID текущего пользователя из токена
 
-        const user = await User.findByPk(userId);
-        if (!user) {
-            return res.status(404).json({ message: "Пользователь не найден" });
-        }
+      if (!req.user) {
+        return res.status(401).json({ message: "Не авторизован" });
+      }      
 
-        // Обновляем данные
-        user.firstName = firstName || user.firstName;
-        user.lastName = lastName || user.lastName;
-        user.phone = phone || user.phone;
-        await user.save();
+      const { firstName, lastName, phone } = req.body;
+      const userId = req.user.id;
 
-        res.json({ message: "Данные успешно обновлены", user });
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Пользователь не найден" });
+      }
+
+      user.firstName = firstName || user.firstName;
+      user.lastName = lastName || user.lastName;
+      user.phone = phone || user.phone;
+      await user.save();
+
+      res.json({ message: "Данные успешно обновлены", user });
     } catch (error) {
-        console.error(error);
-        next(error);
+      console.error(error);
+      next(error);
     }
-}
+  }
 
-async getProfile(req, res, next) {
-  try {
-      const userId = req.user.id; // Получаем ID текущего пользователя из токена
+  async getProfile(req, res, next) {
+    try {
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Не авторизован" });
+      }
+
+      const userId = req.user.id;
       const user = await User.findByPk(userId);
 
       if (!user) {
-          return res.status(404).json({ message: "Пользователь не найден" });
+        return res.status(404).json({ message: "Пользователь не найден" });
       }
 
       res.json({
-          firstName: user.firstName,
-          lastName: user.lastName,
-          phone: user.phone,
-          email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        email: user.email,
       });
-  } catch (error) {
+    } catch (error) {
       console.error(error);
       next(error);
+    }
   }
-}
 
-async changePassword(req, res, next) {
-  try {
+  async changePassword(req, res, next) {
+    try {
       const { currentPassword, newPassword } = req.body;
       const userId = req.user.id;
 
       const user = await User.findByPk(userId);
       if (!user) {
-          return res.status(404).json({ message: "Пользователь не найден" });
+        return res.status(404).json({ message: "Пользователь не найден" });
       }
 
-      // Проверяем текущий пароль
-      const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      const isPasswordValid = await bcrypt.compare(
+        currentPassword,
+        user.password
+      );
       if (!isPasswordValid) {
-          return res.status(400).json({ message: "Текущий пароль неверен" });
+        return res.status(400).json({ message: "Текущий пароль неверен" });
       }
 
-      // Хешируем новый пароль
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       user.password = hashedPassword;
       await user.save();
 
       res.json({ message: "Пароль успешно обновлен" });
-  } catch (error) {
+    } catch (error) {
       console.error(error);
       next(error);
+    }
   }
-}
 
+  async refresh(req, res, next) {
+    try {
+      const token = req.cookies.refreshToken;
 
+      if (!token) {
+        return res.status(401).json({ message: "Нет refresh токена" });
+      }
 
+      const userData = jwt.verify(token, process.env.REFRESH_SECRET_KEY);
+      const { accessToken, refreshToken } = generateTokens(
+        userData.id,
+        userData.email,
+        userData.role
+      );
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        path: "/",
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+      });
+
+      return res.json({ accessToken });
+    } catch (error) {
+      return res.status(401).json({ message: "Невалидный refresh токен" });
+    }
+  }
 }
 
 module.exports = new UserController();
