@@ -16,6 +16,7 @@ const HomePage = () => {
   const [discountedDevices, setDiscountedDevices] = useState([]);
   const [recommendedDevices, setRecommendedDevices] = useState([]);
   const [types, setTypes] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAllTypes, setShowAllTypes] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
   const { t, i18n } = useTranslation();
@@ -23,40 +24,33 @@ const HomePage = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    fetchNewDevices(10)
-      .then((devices) => setNewDevices(devices || []))
-      .catch((err) => console.error("❌ Ошибка загрузки новых товаров:", err));
+    const loadData = async () => {
+      try {
+        const [
+          newDevicesData,
+          discountedData,
+          recommendedData,
+          typesData,
+        ] = await Promise.all([
+          fetchNewDevices(10),
+          fetchDiscountedDevices(10),
+          fetchRecommendedDevices(10),
+          fetchTypes(),
+        ]);
 
-    fetchDiscountedDevices(10)
-      .then((devices) => {
-        setDiscountedDevices(devices || []);
-      })
-      .catch((err) => {
-        console.error("❌ Ошибка загрузки скидок:", err);
-        setDiscountedDevices([]);
-      });
+        setNewDevices(newDevicesData || []);
+        setDiscountedDevices(discountedData || []);
+        setRecommendedDevices(recommendedData || []);
+        setTypes(Array.isArray(typesData) ? typesData : []);
+        
+      } catch (err) {
+        console.error("❌ Ошибка при загрузке данных:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    fetchRecommendedDevices(10)
-      .then((devices) => {
-        setRecommendedDevices(devices || []);
-      })
-      .catch((err) => {
-        console.error("❌ Ошибка загрузки рекомендаций:", err);
-        setRecommendedDevices([]);
-      });
-
-    fetchTypes()
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setTypes(data);
-        } else {
-          console.error(
-            "❌ Ошибка загрузки категорий: Получен неправильный формат данных"
-          );
-          setTypes([]);
-        }
-      })
-      .catch((err) => console.error("❌ Ошибка загрузки категорий:", err));
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -67,6 +61,10 @@ const HomePage = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  if (loading) {
+    return <div className={styles.loading}>{t("loading", { ns: "homePage" })}</div>;
+  }
 
   return (
     <div className={styles.homePage}>
