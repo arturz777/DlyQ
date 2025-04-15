@@ -6,7 +6,7 @@
 }
 
 .mainContent {
-  display: flex; /* Добавляем flexbox */
+  display: flex; 
   flex-direction: column;
   align-items: center;
   width: 100%;
@@ -22,7 +22,7 @@
 .profileContainer {
   margin: auto;
   width: 100%;
-  max-width: 600px; /* Делаем профиль уже */
+  max-width: 600px; 
   background: white;
 }
 
