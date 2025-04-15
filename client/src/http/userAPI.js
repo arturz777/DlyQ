@@ -2,46 +2,51 @@ import {$authHost, $host} from "./index";
 import { jwtDecode } from "jwt-decode";
 
 export const registration = async (email, password, firstName, lastName, phone) => {
-    const {data} = await $host.post('/user/registration', {
-      email, 
-      password,
-      firstName,
-    lastName,
-    phone,
-    })
-    localStorage.setItem('token', data.token)
-    return jwtDecode(data.token);
-}
+  const { data } = await $host.post(
+    "/user/registration",
+    { email, password, firstName, lastName, phone },
+    { withCredentials: true } 
+  );
+
+  localStorage.setItem('token', data.accessToken); 
+  return {
+    user: jwtDecode(data.accessToken),
+    token: data.accessToken
+  };
+};
+
 
 export const login = async (email, password) => {
-  const { data } = await $host.post("/user/login", { email, password });
-  localStorage.setItem("token", data.token);
-  return jwtDecode(data.token);
-}
+  const response = await $host.post(
+    "/user/login",
+    { email, password },
+    { withCredentials: true } 
+  );
+  const accessToken = response.data.accessToken;
 
-// Проверка авторизации
+  localStorage.setItem("token", accessToken);
+  return jwtDecode(accessToken); 
+};
+
 export const check = async () => {
-  const token = localStorage.getItem("token"); // Получаем токен из localStorage
-
-  if (!token) {
-    throw new Error("No token found");
+  try {
+    const { data } = await $authHost.get("/user/auth");
+    localStorage.setItem("token", data.accessToken);
+    return jwtDecode(data.accessToken);
+  } catch (error) {
+    return null;
   }
-
-  // Передаем токен в заголовке Authorization
-  const { data } = await $authHost.get("/user/auth", {
-    headers: {
-      Authorization: `Bearer ${token}`, // Передаем токен в заголовке
-    },
-  });
-
-  localStorage.setItem("token", data.token); // Сохраняем новый токен, если он обновился
-  return jwtDecode(data.token); // Декодируем и возвращаем данные токена
 };
 
 export const fetchProfile = async () => {
-  const { data } = await $authHost.get("/user/profile");
-  return data;
+  try {
+    const { data } = await $authHost.get("/user/profile");
+    return data;
+  } catch (e) {
+    return null; 
+  }
 };
+
 
 export const updateProfile = async (profileData) => {
   const { data } = await $authHost.put("/user/profile", profileData);
