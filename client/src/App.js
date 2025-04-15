@@ -38,20 +38,20 @@ const App = observer(() => {
       return; 
     }
 
-    check() 
-      .then((data) => {
-        user.setUser(data);
-        user.setIsAuth(true);
-      })
-      .catch((error) => {
-        console.error("Ошибка при проверке авторизации:", error.message);
-        user.setUser(false);
-        user.setIsAuth(false);
-      })
-      .finally(() => {
-        setLoading(false);
-        appStore.setIsLoading(false); 
-      });
+    check()
+  .then((data) => {
+    if (data) {
+      user.setUser(data);
+      user.setIsAuth(true);
+    } else {
+      user.setUser({});
+      user.setIsAuth(false);
+    }
+  })
+  .finally(() => {
+    setLoading(false);
+    appStore.setIsLoading(false);
+  });
   }, [user]);
 
   if (loading) {
