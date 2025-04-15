@@ -6,23 +6,25 @@ module.exports = function (req, res, next) {
     }
     try {
         const authorizationHeader = req.headers.authorization;
+
         if (!authorizationHeader) {
-            req.user = null; // Для неавторизованных пользователей
-            return next(); // Позволяем продолжить запрос
+            req.user = null; 
+            return next(); 
         }
 
-        const token = authorizationHeader.split(' ')[1]; // Bearer <token>
+        const token = authorizationHeader.split(' ')[1]; 
+
         if (!token) {
-            req.user = null; // Токен отсутствует
-            return next(); // Позволяем продолжить запрос
+            req.user = null;
+            return next(); 
         }
 
         const decoded = jwt.verify(token, process.env.SECRET_KEY);
-        req.user = decoded; // Данные пользователя из токена
-        next();
+        req.user = decoded;
+        return next();
+
     } catch (error) {
-        console.error('Ошибка авторизации:', error);
-        req.user = null; // Устанавливаем null для некорректного токена
-        next(); // Позволяем продолжить запрос
+        req.user = null; 
+        return next();
     }
 };
