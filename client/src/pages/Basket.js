@@ -1,4 +1,3 @@
-// client/pages/Basket.js
 import React, { useContext, useState, useEffect } from "react";
 import { Context } from "../index";
 import { observer } from "mobx-react-lite";
@@ -69,7 +68,7 @@ const Basket = observer(() => {
           if (response.ok) {
             newQuantities[item.uniqueKey] = data.quantity;
           } else {
-            newQuantities[item.uniqueKey] = 0; // Если ошибка — товара нет
+            newQuantities[item.uniqueKey] = 0; 
           }
         } catch (error) {
           console.error("Ошибка при проверке наличия товара:", error);
@@ -81,7 +80,7 @@ const Basket = observer(() => {
     };
 
     fetchQuantities();
-  }, [basket.items]); // ✅ Обновляем, когда изменяется корзина
+  }, [basket.items]); 
 
   const handleIncrement = async (uniqueKey) => {
     const item = basket.items.find((i) => i.uniqueKey === uniqueKey);
@@ -146,7 +145,7 @@ const Basket = observer(() => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
         },
-        body: JSON.stringify(dataToSend), // Отправляем все данные
+        body: JSON.stringify(dataToSend),
       });
 
       const data = await response.json();
