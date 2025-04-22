@@ -81,6 +81,20 @@
   input[type="checkbox"] {
 	accent-color: #007bff;
   }
+
+ @media (max-width: 600px) {
+  .cookieBanner {
+    transform: scale(0.8) translateX(-50%);
+    transform-origin: bottom center;
+  }
+}
+
+@media (max-width: 480px) {
+	.cookieBanner {
+	  transform: scale(0.7) translateX(-50%);
+	  transform-origin: bottom center;
+	}
+  }
   
   
   
