@@ -95,6 +95,12 @@
 	  transform-origin: bottom center;
 	}
   }
+
+@media (max-width: 303px) {
+	.cookieBanner {
+	  transform: scale(0.4) translateX(-50%);
+	}
+  }
   
   
   
