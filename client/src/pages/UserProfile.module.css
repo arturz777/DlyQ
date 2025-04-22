@@ -33,13 +33,25 @@
 }
 
 .orderHeader {
-  font-size: 11px;
+  font-size: 13px;
   margin-bottom: 10px;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #ddd;
-  padding-bottom: 3px;
+  padding-bottom: 6px;
+  color: #555;
+  gap: 5px;
+}
+
+@media (max-width: 600px) {
+  .orderHeader {
+    font-size: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
 }
 
 .orderCard {
@@ -71,6 +83,16 @@
   color: #555;
 }
 
+.orderDetails span:first-child {
+  font-weight: bold;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  display: block;
+}
+
 .NoOrderTitle {
   text-align: center;
   margin-top: 50px;
@@ -83,16 +105,35 @@
   .orderCard {
     flex-direction: row;
     align-items: center; 
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .deviceImage {
+    width: 60px;
+    height: 60px;
   }
 
   .orderDetails {
-    flex-direction: column; 
-    align-items: flex-start; 
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0; 
+    flex: 1;
+  }
+
+  .orderDetails span {
+    font-size: 13px;
   }
 
   .orderDetails span:first-child {
-    font-size: 16px;
     font-weight: bold;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    display: block;
   }
 
   .orderDetails span:last-child {
