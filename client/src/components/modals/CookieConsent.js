@@ -10,17 +10,17 @@ const CookieConsent = () => {
   const { t, i18n } = useTranslation();
 
 
-  useEffect(() => {
-	localStorage.removeItem("cookieConsent"); // удалить весь юзер после тестировании
-	setIsVisible(true); 
-  }, []);
+  // useEffect(() => {
+	// localStorage.removeItem("cookieConsent"); // удалить весь юзер после тестировании
+	// setIsVisible(true); 
+  // }, []);
 
-//   useEffect(() => {
-//     const consent = localStorage.getItem("cookieConsent");
-//     if (!consent) {  вернуть этот код после тестировании
-//       setIsVisible(true);
-//     }
-//   }, []);
+  useEffect(() => {
+    const consent = localStorage.getItem("cookieConsent");
+    if (!consent) {  // вернуть этот код после тестировании
+      setIsVisible(true);
+    }
+  }, []);
 
   const handleAcceptAll = () => {
     localStorage.setItem("cookieConsent", "accepted");
