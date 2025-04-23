@@ -216,8 +216,9 @@ const Basket = observer(() => {
             }`}
           >
             <div className={styles.cardContent}>
+            <div className={styles.topRow}>
               <Image className={styles.image} src={item.img} />
-
+              <div className={styles.topInfo}>
               <div className={styles.title}>
                 {item.translations?.name?.[i18n.language] || item.name}
               </div>
@@ -226,9 +227,9 @@ const Basket = observer(() => {
                 Object.entries(item.selectedOptions).map(([key, option]) => (
                   <div
                     key={`${item.uniqueKey}-${key}`}
-                    className={styles.optionSelector}
+                    className={styles.optionRow}
                   >
-                    <label>
+                    <label className={styles.optionLabel}>
                       {(item.translations?.options &&
                         Object.values(item.translations.options).find(
                           (opt) => opt.name?.[i18n.language]
@@ -236,19 +237,18 @@ const Basket = observer(() => {
                         key}
                       :
                     </label>
-
                     <select
                       value={option.value}
                       onChange={(e) =>
                         handleOptionChange(item.uniqueKey, key, e.target.value)
                       }
-                       className={`form-select ${
+                      className={`${styles.select} ${
                         option.value === "__UNSELECTED__" || option.value === t("select an option", { ns: "basket" })
                           ? styles.unselectedOption
                           : ""
                       }`}
                     >
-                     <option value="__UNSELECTED__" disabled hidden>
+                      <option value="__UNSELECTED__" disabled hidden>
                         {t("select an option", { ns: "basket" })}
                       </option>
                       {item.options
@@ -268,19 +268,19 @@ const Basket = observer(() => {
                     </select>
                   </div>
                 ))}
-
+                 </div>
+                 </div>
+                 <div className={styles.bottomRow}>
               <div className={styles.counter}>
-                <Button
-                  className={styles.buttonPlus}
+                <button
                   onClick={() => handleDecrement(item.uniqueKey)}
                 >
                   -
-                </Button>
+                </button>
                 <span className={styles.count}>
                   {basket.getItemCount(item.uniqueKey)}
                 </span>
-                <Button
-                  className={styles.buttonPlus}
+                <button
                   onClick={() => handleIncrement(item.uniqueKey)}
                   disabled={
                     basket.getItemCount(item.uniqueKey) >=
@@ -288,7 +288,7 @@ const Basket = observer(() => {
                   }
                 >
                   +
-                </Button>
+                </button>
               </div>
 
               <div className={styles.price}>
@@ -301,13 +301,14 @@ const Basket = observer(() => {
                   item.count}
               </div>
 
-              <Button
+              <button
                 className={styles.buttonDelete}
                 variant="danger"
                 onClick={() => handleRemove(item.uniqueKey)}
               >
                 {t("delete", { ns: "basket" })}
-              </Button>
+              </button>
+            </div>
             </div>
           </Card>
         ))
