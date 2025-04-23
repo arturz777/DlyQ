@@ -165,7 +165,7 @@
 
 .buttonsContainer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-bottom: 20px;
 }
@@ -174,22 +174,6 @@
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.backButton {
-  background-color: #be3402;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.3s ease;
-  margin-top: 3px;
-}
-
-.backButton:hover {
-  background-color: #8f2600;
 }
 
 .openSidebarButton {
@@ -260,7 +244,7 @@
 @media (max-width: 768px) {
   .buttonsContainer {
     flex-wrap: wrap;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 5px;
   }
 
