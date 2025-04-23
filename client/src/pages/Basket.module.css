@@ -1,19 +1,17 @@
+.container {
+  max-width: 600px;
+  margin-top: 150px;
+}
 
 .basketEmpty {
   margin-bottom: 50px;
   text-align: center;
 }
 
-.container {
-  max-width: 600px;
-  margin-top: 150px;
-
-}
-
 .card {
   width: 100%;
-  max-width: 600px; 
-  margin: 10px auto; 
+  max-width: 600px;
+  margin: 10px auto;
   padding: 16px;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -22,81 +20,114 @@
 }
 
 .firstCard {
-  margin-top: 70px; 
+  margin-top: 70px;
 }
 
 .otherCards {
-  margin-top: 10px; 
+  margin-top: 10px;
 }
 
 .cardContent {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px; 
+  flex-direction: column;
+  gap: 12px;
+}
+
+.topRow {
+  display: flex;
+  gap: 12px;
+  align-items: center; 
 }
 
 .image {
-  flex-shrink: 0; 
   width: 60px;
   height: 60px;
   object-fit: cover;
   border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.topInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
 
 .title {
-  flex-grow: 1; 
   font-size: 16px;
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
+  font-weight: bold;
+  white-space: nowrap;  
+  overflow: hidden;          
   text-overflow: ellipsis;
 }
 
-.counter {
-  width: 100px;
-    display: flex;
-    align-items: center; 
-    justify-content: space-between;
-}
-
-.buttonPlus {
-  background-color: #ffffff;
-  color: #000000;
-  border-color: #8f2600;
-  padding: 6px 12px;
+.optionRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   font-size: 14px;
+  flex-wrap: wrap;
 }
 
-.buttonPlus:hover {
-  background-color: #8f2600;
-  border-color: #8f2600;
+.optionLabel {
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.select {
+  flex: 1 1 auto;
+  min-width: 120px;
+  padding: 4px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.unselectedOption {
+  border: 2px solid red;
+  background-color: #ffe6e6;
+}
+
+.bottomRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.counter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .count {
-  margin: 0 10px;
-  font-size: 16px;
+  min-width: 24px;
   text-align: center;
+  font-size: 16px;
 }
 
 .price {
-  width: 90px;
   font-size: 16px;
+  font-weight: 500;
+  min-width: 60px;
+  text-align: right;
 }
 
 .buttonDelete {
-  padding: 6px 12px;
-  font-size: 14px;
-  background-color: #f44336;
-  color: #fff;
+  padding: 6px 10px;
+  font-size: 13px;
+  background-color: #ff4d4f;
+  color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-}
-
-.totalPrice {
-  font-size: 15px;
-  text-align: right;
+  white-space: nowrap;
 }
 
 .totalDeliverPrice {
@@ -104,36 +135,7 @@
   text-align: right;
 }
 
-@media (max-width: 768px) {
-  .cardContent 
-
-  .title,
-  .price,
-  .buttonDelete {
-    font-size: 11px;
-    text-align: center;
-    width: 100%; 
-    margin-top: 8px; 
-  }
-
-  .counter {
-    display: flex;
-    justify-content: space-between;
-    width: 100%; 
-  }
-
-  .buttonPlus {
-    padding: 6px 12px;
-    font-size: 11px;
-  }
-
-  .count {
-    font-size: 11px;
-    text-align: center;
-  }
-}
-
-.unselectedOption {
-  border: 2px solid red;
-  background-color: #ffe6e6;
+.totalPrice {
+  font-size: 15px;
+  text-align: right;
 }
