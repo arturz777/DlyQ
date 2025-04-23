@@ -2,7 +2,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 80px;
+  padding: 90px;
 }
 
 .mainContent {
@@ -39,44 +39,6 @@
   margin-bottom: 20px; 
 }
 
-.backButton {
-  background-color: #be3402;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.3s ease;
-  margin-left: 20px;
-  margin-top: 3px;
-  
-}
-
-.backButton:hover {
-  background-color: #8f2600;
-}
-
-@media (max-width: 768px) {
-  .buttonsContainer {
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 5px;
-    margin-right: 120px;
-  }
-
-  .backButton{
-    font-size: 12px;
-    padding: 6px 12px;
-    border-radius: 5px;
-  }
-
-  .settingsButton svg{
-    width: 16px;
-    height: 16px;
-  }
-}
-
 .profileItem {
   display: flex;
   justify-content: space-between;
@@ -90,6 +52,10 @@
   margin-right: auto; 
 }
 
+.profileItem span:first-child {
+  min-width: 80px;
+  display: inline-block;
+}
 
 
 .profileContainer input {
@@ -171,4 +137,50 @@
 
 .cookieHeaderTitle {
   font-size: 20px;
+}
+
+@media (max-width: 768px) {
+  .buttonsContainer {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 5px;
+    margin-right: 120px;
+  }
+
+  .settingsButton svg{
+    width: 16px;
+    height: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .settingsWrapper {
+    padding: 20px 0;
+    margin-top: 50px;
+  }
+
+  .mainContent {
+    max-width: none;
+    width: 90%;
+    padding: 0;
+  }
+
+  .profileContainer {
+    width: 100%;
+    max-width: none;
+    padding: 0 8px; 
+  }
+
+  .profileItem {
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .passwordInputs,
+  .cookieSettings {
+    width: 100%;
+    max-width: none;
+  }
 }
