@@ -105,15 +105,6 @@ const ProfileSettings = ({ onBack }) => {
           t("passwordUpdateError", { ns: "profileSettings" })
       );
     }
-
-    useEffect(() => {
-      const savedPreferences = JSON.parse(
-        localStorage.getItem("cookiePreferences")
-      );
-      if (savedPreferences) {
-        setCookiePreferences(savedPreferences);
-      }
-    }, []);
   };
 
   const handleCookieChange = (type) => {
@@ -139,12 +130,6 @@ const ProfileSettings = ({ onBack }) => {
   return (
     <div className={styles.settingsWrapper}>
       <div className={styles.mainContent}>
-        <div className={styles.buttonsContainer}>
-          <button className={styles.backButton} onClick={() => navigate(-1)}>
-            {t("back", { ns: "userProfile" })}
-          </button>
-        </div>
-
         <div className={styles.profileContainer}>
           <h1 className={styles.settingsHeader}>
             {t("settingsHeader", { ns: "profileSettings" })}
