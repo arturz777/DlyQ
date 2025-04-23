@@ -21,10 +21,12 @@ jobs:
           mkdir -p backups/$(date +%F)
           for table in devices users orders baskets brands couriers device_info ratings subtypes translations types warehouses type_brands; do
             curl "${{ secrets.SUPABASE_URL }}/rest/v1/$table?select=*" \
-              -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
-              -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
-              -H "Content-Type: application/json" \
-              -o backups/$(date +%F)/$table.json
+             -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+             -H "Content-Type: application/json" \
+             -H "Accept: application/json" \
+             -o backups/$(date +%F)/$table.json
+
           done
 
       - name: Commit backup
