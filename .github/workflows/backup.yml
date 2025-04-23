@@ -1,0 +1,33 @@
+name: Supabase Daily Backup
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  
+  workflow_dispatch:      
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Fetch Supabase Tables
+        run: |
+          mkdir -p backups/$(date +%F)
+          for table in devices users orders baskets brands couriers device_info ratings subtypes translations types warehouses type_brands; do
+            curl "${{ secrets.SUPABASE_URL }}/rest/v1/$table?select=*" \
+              -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+              -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+              -H "Content-Type: application/json" \
+              -o backups/$(date +%F)/$table.json
+          done
+
+      - name: Commit backup
+        run: |
+          git config user.name "Backup Bot"
+          git config user.email "backup@zang.local"
+          git add backups/
+          git commit -m "Daily backup - $(date)"
+          git push
