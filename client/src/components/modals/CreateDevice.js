@@ -42,6 +42,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     if (editableDevice) {
       setName(editableDevice.name);
       setPrice(editableDevice.price);
+      setOldPrice(editableDevice.oldPrice || "");
       setDiscount(editableDevice.discount || false);
       setRecommended(editableDevice.recommended || false);
       setInfo(editableDevice.info || []);
