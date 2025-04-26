@@ -98,8 +98,8 @@ const SearchBar = () => {
                 onClick={() => handleResultClick(device.id)}
                 tabIndex={0}
               >
-                <img
-                  src={process.env.REACT_APP_API_URL + device.img}
+               <img
+                  src={device.img}
                   alt={device.name}
                   className={styles.resultImage}
                 />
