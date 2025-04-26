@@ -481,11 +481,7 @@ class DeviceController {
       if (!device)
         return res.status(404).json({ message: "Устройство не найдено" });
   
-      // ✅ Фикс: парсим options в начале
       options = options ? JSON.parse(options) : [];
-  
-      // ✅ Отладка
-      console.log("✅ options:", options);
   
       if (discount === "true" && !oldPrice) {
         oldPrice = price;
@@ -569,7 +565,6 @@ class DeviceController {
         ];
       }
   
-      // Пересчёт количества, если options есть
       if (options.length > 0) {
         quantity = options.reduce((sum, option) => {
           return (
