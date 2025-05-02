@@ -57,6 +57,34 @@
 	cursor: pointer;
   }
   
+  .formGroup {
+	margin-bottom: 16px;
+	display: flex;
+	flex-direction: column;
+  }
   
+  .label {
+	font-weight: 600;
+	margin-bottom: 8px;
+  }
   
+  .textarea {
+	padding: 10px;
+	font-size: 14px;
+	border: 1px solid #ccc;
+	border-radius: 6px;
+	resize: vertical;
+	min-height: 80px;
+	transition: border-color 0.2s;
+  }
   
+  .textarea:focus {
+	border-color: #007bff;
+	outline: none;
+  }
+  
+  .errorText {
+	margin-top: 5px;
+	color: red;
+	font-size: 13px;
+  }
