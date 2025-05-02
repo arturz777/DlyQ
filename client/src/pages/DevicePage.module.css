@@ -16,7 +16,6 @@
   flex-wrap: wrap;
 }
 
-/* Левая колонка */
 .DevicePageColImg {
   flex: 1;
   min-width: 400px;
@@ -41,7 +40,6 @@
   border-radius: 8px;
 }
 
-/* Миниатюры */
 .DevicePageThumbnailContainer {
   display: flex;
   justify-content: center;
@@ -63,7 +61,6 @@
   border-color: #008b07;
 }
 
-/* Правая колонка */
 .DevicePageDetails {
   flex: 1;
   margin-top: 40px;
@@ -82,7 +79,6 @@
   background-color: #fff;
 }
 
-/* Заголовок и бренд */
 .DevicePageBrand {
   color: #6c757d;
   margin-bottom: 5px;
@@ -93,7 +89,6 @@
   margin-bottom: 15px;
 }
 
-/* Опции */
 .DevicePageOption label {
   font-weight: 500;
   display: block;
@@ -114,7 +109,6 @@
   outline: none;
 }
 
-/* Цена */
 .DevicePagePrice {
   font-size: 1.2rem;
   font-weight: 600;
@@ -163,14 +157,21 @@
   text-align: center;
 }
 
+.DevicePageDescription {
+  margin: 10px 0;
+  font-size: 20px;
+  line-height: 1.5;
+  color: #555;
+}
+
 @media (max-width: 768px) {
   .DevicePageSpecs {
-    margin-top: -200px;
+    margin-top: -100px;
   }
 }
 
 .DevicePageSpecsTitle {
-  font-size: 1.8rem;
+  font-size: 1.4rem;
 }
 
 .DevicePageSpecsCard {
@@ -184,11 +185,11 @@
 }
 
 .DevicePageSpecRow:nth-child(even) {
-  background-color: #ffffff; /* Светло-серый */
+  background-color: #ffffff; 
 }
 
 .DevicePageSpecRow:nth-child(odd) {
-  background-color: #f9f9f9; /* Белый */
+  background-color: #f9f9f9; 
 }
 
 .DevicePageSpecText {
@@ -228,7 +229,6 @@
   object-fit: contain;
 }
 
-/* Кнопки навигации */
 .ArrowButtons {
   position: absolute;
   width: 100%;
@@ -249,7 +249,6 @@
   transition: 0.3s;
 }
 
-/* Миниатюры */
 .DevicePageThumbnailContainer {
   display: flex;
   justify-content: center;
