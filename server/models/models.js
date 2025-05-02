@@ -34,6 +34,7 @@ const Device = sequelize.define("device", {
   isNew: { type: DataTypes.BOOLEAN, defaultValue: false },
   discount: { type: DataTypes.BOOLEAN, defaultValue: false },
   recommended: { type: DataTypes.BOOLEAN, defaultValue: false },
+  description: { type: DataTypes.TEXT, allowNull: true },
 });
 
 const Type = sequelize.define("type", {
