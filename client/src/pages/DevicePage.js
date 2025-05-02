@@ -315,7 +315,6 @@ const DevicePage = () => {
           </p>
         )}
 
-      <div className={styles.DevicePageSpecs}>
         <h3 className={styles.DevicePageSpecsTitle}>
           {t("Specifications", { ns: "devicePage" })}
         </h3>
