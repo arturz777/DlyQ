@@ -24,6 +24,7 @@ class DeviceController {
         subtypeId,
         info,
         quantity,
+        description,
         options,
         translations,
         isNew,
@@ -126,6 +127,7 @@ class DeviceController {
         thumbnails,
         options,
         quantity: quantity || 0,
+        description,
         isNew: isNew === "true",
         discount: discount === "true",
         recommended: recommended === "true",
@@ -236,7 +238,16 @@ class DeviceController {
 
   async getAll(req, res) {
     try {
-      let { brandId, typeId, subtypeId, limit, page, isNew, discount, recommended } = req.query;
+      let {
+        brandId,
+        typeId,
+        subtypeId,
+        limit,
+        page,
+        isNew,
+        discount,
+        recommended,
+      } = req.query;
       page = page || 1;
       limit = limit || 9;
       const offset = page * limit - limit;
@@ -247,7 +258,7 @@ class DeviceController {
       if (subtypeId) where.subtypeId = subtypeId;
       if (isNew !== undefined) where.isNew = isNew === "true";
       if (discount !== undefined) where.discount = discount === "true";
-    if (recommended !== undefined) where.recommended = recommended === "true";
+      if (recommended !== undefined) where.recommended = recommended === "true";
 
       const devices = await Device.findAndCountAll({
         where,
@@ -454,7 +465,7 @@ class DeviceController {
     }
   }
 
- async update(req, res, next) {
+  async update(req, res, next) {
     try {
       const { id } = req.params;
       let {
@@ -467,59 +478,64 @@ class DeviceController {
         info,
         options,
         quantity,
+        description,
         translations,
         isNew,
         discount,
         recommended,
       } = req.body;
-  
+
       let existingImages = req.body.existingImages
         ? JSON.parse(req.body.existingImages)
         : [];
-  
+
       const device = await Device.findOne({ where: { id } });
       if (!device)
         return res.status(404).json({ message: "Устройство не найдено" });
-  
+
+      // ✅ Фикс: парсим options в начале
       options = options ? JSON.parse(options) : [];
-  
+
+      // ✅ Отладка
+      console.log("✅ options:", options);
+
       if (discount === "true" && !oldPrice) {
         oldPrice = price;
       }
-  
+
       if (discount === "false") {
         oldPrice = null;
       }
-  
+
       let fileName = device.img;
       let thumbnails = Array.isArray(device.thumbnails)
         ? [...device.thumbnails]
         : [];
-  
+
       const files = req.files || {};
       const img = files.img || null;
-  
+
       if (img) {
         if (device.img) {
           const oldFileName = device.img.split("/").pop();
           await supabase.storage.from("images").remove([oldFileName]);
         }
-  
+
         const newFileName = `${uuid.v4()}${path.extname(img.name)}`;
         const { error } = await supabase.storage
           .from("images")
           .upload(newFileName, img.data, { contentType: img.mimetype });
-  
+
         if (error) {
           return res.status(500).json({
             message: "Ошибка загрузки нового изображения в Supabase",
             error,
           });
         }
-  
+
         fileName = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${newFileName}`;
       }
-  
+
       if (existingImages.length === 0) {
         const imagesToDelete = thumbnails.map((img) => img.split("/").pop());
         if (imagesToDelete.length > 0) {
@@ -535,12 +551,12 @@ class DeviceController {
         }
         thumbnails = existingImages.filter((img) => img !== fileName);
       }
-  
+
       if (req.files && req.files.thumbnails) {
         const images = Array.isArray(req.files.thumbnails)
           ? req.files.thumbnails
           : [req.files.thumbnails];
-  
+
         const newThumbnails = await Promise.all(
           images.map(async (image) => {
             const thumbFileName = `${uuid.v4()}${path.extname(image.name)}`;
@@ -549,22 +565,23 @@ class DeviceController {
               .upload(thumbFileName, image.data, {
                 contentType: image.mimetype,
               });
-  
+
             if (error) {
               console.error("Ошибка загрузки миниатюры в Supabase:", error);
               return null;
             }
-  
+
             return `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${thumbFileName}`;
           })
         );
-  
+
         thumbnails = [
           ...thumbnails,
           ...newThumbnails.filter((url) => url !== null),
         ];
       }
-  
+
+      // Пересчёт количества, если options есть
       if (options.length > 0) {
         quantity = options.reduce((sum, option) => {
           return (
@@ -576,26 +593,28 @@ class DeviceController {
           );
         }, 0);
       }
-  
+
       await Translation.destroy({
         where: { key: { [Op.like]: `device_${id}.%` } },
       });
-  
+
       let translationEntries = [];
-  
+
       if (translations) {
         const parsedTranslations = JSON.parse(translations);
-  
-        Object.entries(parsedTranslations.name || {}).forEach(([lang, text]) => {
-          if (text) {
-            translationEntries.push({
-              key: `device_${id}.name`,
-              lang,
-              text,
-            });
+
+        Object.entries(parsedTranslations.name || {}).forEach(
+          ([lang, text]) => {
+            if (text) {
+              translationEntries.push({
+                key: `device_${id}.name`,
+                lang,
+                text,
+              });
+            }
           }
-        });
-  
+        );
+
         Object.entries(parsedTranslations.description || {}).forEach(
           ([lang, text]) => {
             if (text) {
@@ -607,7 +626,7 @@ class DeviceController {
             }
           }
         );
-  
+
         if (
           parsedTranslations.options &&
           Array.isArray(parsedTranslations.options)
@@ -622,7 +641,7 @@ class DeviceController {
                 });
               }
             });
-  
+
             if (option.values && Array.isArray(option.values)) {
               option.values.forEach((value, valueIndex) => {
                 Object.entries(value || {}).forEach(([lang, text]) => {
@@ -638,7 +657,7 @@ class DeviceController {
             }
           });
         }
-  
+
         if (parsedTranslations.info && Array.isArray(parsedTranslations.info)) {
           parsedTranslations.info.forEach((info, index) => {
             Object.entries(info.title || {}).forEach(([lang, text]) => {
@@ -662,11 +681,11 @@ class DeviceController {
           });
         }
       }
-  
+
       if (translationEntries.length > 0) {
         await Translation.bulkCreate(translationEntries);
       }
-  
+
       await Device.update(
         {
           name,
@@ -679,13 +698,14 @@ class DeviceController {
           thumbnails,
           options,
           quantity: quantity || 0,
+          description,
           isNew: isNew === "true",
           discount: discount === "true",
           recommended: recommended === "true",
         },
         { where: { id } }
       );
-  
+
       if (info) {
         const parsedInfo = JSON.parse(info);
         await DeviceInfo.destroy({ where: { deviceId: id } });
@@ -693,67 +713,64 @@ class DeviceController {
           parsedInfo.map((i) => DeviceInfo.create({ ...i, deviceId: id }))
         );
       }
-  
+
       const updatedDevice = await Device.findOne({ where: { id } });
       return res.json(updatedDevice);
     } catch (error) {
       console.error("❌ Ошибка в update:", error);
       next(ApiError.badRequest(error.message));
     }
-  }  
+  }
 
   async getNewDevices(req, res) {
-  try {
-    const { limit = 10 } = req.query;
+    try {
+      const { limit = 10 } = req.query;
 
-    // 1. Получаем устройства с isNew: true
-    const devices = await Device.findAll({
-      where: { isNew: true },
-      limit: parseInt(limit),
-      order: [["createdAt", "DESC"]],
-      include: [ // Важно: те же include, что и в getAll
-        { model: SubType, as: "subtype" },
-        { model: Type },
-        { model: DeviceInfo, as: "info" },
-      ],
-    });
+      const devices = await Device.findAll({
+        where: { isNew: true },
+        limit: parseInt(limit),
+        order: [["createdAt", "DESC"]],
+        include: [
+          { model: SubType, as: "subtype" },
+          { model: Type },
+          { model: DeviceInfo, as: "info" },
+        ],
+      });
 
-    if (!devices.length) return res.json([]);
+      if (!devices.length) return res.json([]);
 
-    // 2. Загружаем переводы для этих устройств
-    const deviceIds = devices.map(d => d.id);
-    const translations = await Translation.findAll({
-      where: { 
-        key: { 
-          [Op.or]: deviceIds.map(id => `device_${id}.%`) 
-        } 
-      },
-    });
+      const deviceIds = devices.map((d) => d.id);
+      const translations = await Translation.findAll({
+        where: {
+          key: {
+            [Op.or]: deviceIds.map((id) => `device_${id}.%`),
+          },
+        },
+      });
 
-    // 3. Прикрепляем переводы к устройствам
-    const devicesWithTranslations = devices.map(device => {
-      const deviceTranslations = {};
-      translations
-        .filter(t => t.key.startsWith(`device_${device.id}.`))
-        .forEach(t => {
-          const [_, field] = t.key.split(`device_${device.id}.`);
-          if (!field) return;
-          deviceTranslations[field] = deviceTranslations[field] || {};
-          deviceTranslations[field][t.lang] = t.text;
-        });
+      const devicesWithTranslations = devices.map((device) => {
+        const deviceTranslations = {};
+        translations
+          .filter((t) => t.key.startsWith(`device_${device.id}.`))
+          .forEach((t) => {
+            const [_, field] = t.key.split(`device_${device.id}.`);
+            if (!field) return;
+            deviceTranslations[field] = deviceTranslations[field] || {};
+            deviceTranslations[field][t.lang] = t.text;
+          });
 
-      return {
-        ...device.get({ plain: true }),
-        translations: deviceTranslations,
-      };
-    });
+        return {
+          ...device.get({ plain: true }),
+          translations: deviceTranslations,
+        };
+      });
 
-    res.json(devicesWithTranslations);
-  } catch (error) {
-    console.error("❌ getNewDevices error:", error);
-    res.status(500).json({ message: "Ошибка сервера" });
+      res.json(devicesWithTranslations);
+    } catch (error) {
+      console.error("❌ getNewDevices error:", error);
+      res.status(500).json({ message: "Ошибка сервера" });
+    }
   }
-}
 
   async updateNewStatus(req, res) {
     try {
@@ -807,11 +824,9 @@ class DeviceController {
       return res.json({ count: devices.count, devices: devices.rows });
     } catch (error) {
       console.error("❌ Ошибка загрузки рекомендованных товаров:", error);
-      return res
-        .status(500)
-        .json({
-          message: "Ошибка сервера при загрузке рекомендованных товаров",
-        });
+      return res.status(500).json({
+        message: "Ошибка сервера при загрузке рекомендованных товаров",
+      });
     }
   }
 
