@@ -306,6 +306,15 @@ const DevicePage = () => {
         </div>
       </div>
 
+                      <div className={styles.DevicePageSpecs}>
+        {(device.translations?.description?.[currentLang] ||
+          device.description) && (
+          <p className={styles.DevicePageDescription}>
+            {device.translations?.description?.[currentLang] ||
+              device.description}
+          </p>
+        )}
+
       <div className={styles.DevicePageSpecs}>
         <h3 className={styles.DevicePageSpecsTitle}>
           {t("Specifications", { ns: "devicePage" })}
