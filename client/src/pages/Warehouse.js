@@ -234,7 +234,7 @@ const Warehouse = () => {
                           {time} минут
                         </button>
                       ))}
-                      {[1, 2, 3, 5, 10].map((days) => (
+                      {[1, 2, 3, 5, 10, 14, 18, 20, 25, 30].map((days) => (
                         <button
                           key={days}
                           onClick={() =>
