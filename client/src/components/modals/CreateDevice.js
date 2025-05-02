@@ -26,6 +26,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [existingImages, setExistingImages] = useState([]);
   const [info, setInfo] = useState([]);
   const [options, setOptions] = useState([]);
+  const [description, setDescription] = useState("");
   const [subtypes, setSubtypes] = useState([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [errors, setErrors] = useState({});
@@ -43,6 +44,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       setName(editableDevice.name);
       setPrice(editableDevice.price);
       setOldPrice(editableDevice.oldPrice || "");
+      setDescription(editableDevice.description || "");
       setDiscount(editableDevice.discount || false);
       setRecommended(editableDevice.recommended || false);
       setInfo(editableDevice.info || []);
@@ -54,6 +56,13 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       );
       setTranslations({
         name: editableDevice.translations?.name || { en: "", ru: "", est: "" },
+
+         description: editableDevice.translations?.description || {
+          en: "",
+          ru: "",
+          est: "",
+        },
+        
         options: Array.isArray(editableDevice.translations?.options)
           ? editableDevice.translations.options
           : [],
@@ -216,6 +225,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     formData.append("name", name);
     formData.append("price", price);
     formData.append("quantity", quantity);
+    formData.append("description", description || "");
 
     if (discount) {
       formData.append("oldPrice", oldPrice);
@@ -773,6 +783,79 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
               </Button>
             </div>
           ))}
+
+            <div className={styles.formGroup}>
+            <label className={styles.label}>Описание (RU)</label>
+            <textarea
+              className={styles.textarea}
+              rows={3}
+              value={description || ""}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Введите описание девайса RU (необязательно)"
+            />
+            {isSubmitted && description && description.length < 5 && (
+              <span className={styles.errorText}>
+                Описание должно быть не менее 5 символов
+              </span>
+            )}
+          </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Description (EN)</label>
+            <textarea
+              className={styles.textarea}
+              rows={3}
+              value={translations.description?.en || ""}
+              placeholder="Введите описание девайса EN (необязательно)"
+              onChange={(e) =>
+                setTranslations({
+                  ...translations,
+                  description: {
+                    ...translations.description,
+                    en: e.target.value,
+                  },
+                })
+              }
+            />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Description (RU)</label>
+            <textarea
+              className={styles.textarea}
+              rows={3}
+              value={translations.description?.ru || ""}
+              placeholder="Введите описание девайса RU (необязательно)"
+              onChange={(e) =>
+                setTranslations({
+                  ...translations,
+                  description: {
+                    ...translations.description,
+                    ru: e.target.value,
+                  },
+                })
+              }
+            />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Description (EST)</label>
+            <textarea
+              className={styles.textarea}
+              rows={3}
+              value={translations.description?.est || ""}
+              placeholder="Введите описание девайса EST (необязательно)"
+              onChange={(e) =>
+                setTranslations({
+                  ...translations,
+                  description: {
+                    ...translations.description,
+                    est: e.target.value,
+                  },
+                })
+              }
+            />
+          </div>
 
           <hr />
           <Button variant={"outline-dark"} onClick={addInfo}>
