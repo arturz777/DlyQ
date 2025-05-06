@@ -8,5 +8,8 @@
 	"Added to cart!": "Добавлен в корзину!",
   "Product is out of stock!": "Товара нет в наличии!",
   "Select product options!": "Выберите параметры товара!",
-  "Loading...": "Загрузка..."
+  "Loading...": "Загрузка...",
+  "preferred delivery time text": "Комментарий к предзаказу",
+  "write preferred delivery time": "Например: предпочтительное время получения, особые пожелания и т.д.",
+  "desired delivery datetime": "Желаемая дата получения, если товар придёт раньше"
 }
