@@ -1,9 +1,15 @@
 import React, { useContext, useState, useEffect } from "react";
 import { Context } from "../index";
 import { observer } from "mobx-react-lite";
-import { Container, Row, Col, Button, Image, Card, Form } from "react-bootstrap";
+import {
+  Container,
+  Button,
+  Image,
+  Card,
+  Form,
+} from "react-bootstrap";
 import { toast } from "react-toastify";
-import PaymentForm from "../components/PaymentForm"; // Импортируем форму оплаты
+import PaymentForm from "../components/PaymentForm";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom";
@@ -19,6 +25,7 @@ const Basket = observer(() => {
   const [availableQuantities, setAvailableQuantities] = useState({});
   const [deliveryDate, setDeliveryDate] = useState("");
   const [isPreorder, setIsPreorder] = useState(false);
+  const [preferredTime, setPreferredTime] = useState("");
    const { t, i18n } = useTranslation();
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
@@ -134,6 +141,8 @@ const Basket = observer(() => {
         image: item.img,
         selectedOptions: item.selectedOptions,
         isPreorder: item.isPreorder || false,
+          preferredTime: item.preferredTime || null,
+        deliveryDate: item.deliveryDate || null,
       })),
       desiredDeliveryDate: isPreorder ? deliveryDate : null,
     };
@@ -325,12 +334,23 @@ const Basket = observer(() => {
                 onChange={() => setIsPreorder(!isPreorder)}
               />
               {isPreorder && (
-                <Form.Control
-                  type="datetime-local"
-                  value={deliveryDate || ""}
-                  onChange={(e) => setDeliveryDate(e.target.value)}
-                />
-              )}
+  <>
+    <Form.Control
+      type="datetime-local"
+      value={deliveryDate || ""}
+      onChange={(e) => setDeliveryDate(e.target.value)}
+      className={styles.dateInput}
+    />
+    <Form.Control
+      as="textarea"
+      rows={2}
+      placeholder={t("preferred delivery time comment", { ns: "basket" })}
+      value={preferredTime}
+      onChange={(e) => setPreferredTime(e.target.value)}
+      className={styles.commentInput}
+    />
+  </>
+)}
             </Form.Group>
           )}
 
