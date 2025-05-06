@@ -20,6 +20,8 @@ const DevicePage = () => {
   const [finalPrice, setFinalPrice] = useState(0);
   const { id } = useParams();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [preferredTime, setPreferredTime] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
   const [availableQuantity, setAvailableQuantity] = useState(0);
   const [isPreorder, setIsPreorder] = useState(false);
   const { t, i18n } = useTranslation();
@@ -145,6 +147,8 @@ const DevicePage = () => {
       ...device,
       selectedOptions,
       isPreorder,
+      preferredTime: isPreorder ? preferredTime : null,
+      deliveryDate: isPreorder ? deliveryDate : null,
     };
 
     basket.addItem(newItem);
@@ -167,7 +171,7 @@ const DevicePage = () => {
 
   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
-  return (
+ return (
     <div className={styles.DevicePageContainer}>
       <div className={styles.DevicePageContent}>
         <div className={styles.DevicePageColImg}>
@@ -300,13 +304,50 @@ const DevicePage = () => {
                   />
                   {t("Place a pre-order", { ns: "devicePage" })}
                 </label>
+
+                <AnimatePresence>
+                  {isPreorder && (
+                    <motion.div
+                      className={styles.preorderFields}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <label className={styles.preorderLabel}>
+                        {t("desired delivery datetime", { ns: "devicePage" })}
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={deliveryDate}
+                        onChange={(e) => setDeliveryDate(e.target.value)}
+                        className={styles.preorderInput}
+                      />
+
+                      <label className={styles.preorderLabel}>
+                        {t("preferred delivery time text", {
+                          ns: "devicePage",
+                        })}
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder={t("write preferred delivery time", {
+                          ns: "devicePage",
+                        })}
+                        value={preferredTime}
+                        onChange={(e) => setPreferredTime(e.target.value)}
+                        className={styles.preorderInput}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
           </div>
         </div>
       </div>
 
-                      <div className={styles.DevicePageSpecs}>
+      <div className={styles.DevicePageSpecs}>
         {(device.translations?.description?.[currentLang] ||
           device.description) && (
           <p className={styles.DevicePageDescription}>
@@ -314,7 +355,6 @@ const DevicePage = () => {
               device.description}
           </p>
         )}
-
         <h3 className={styles.DevicePageSpecsTitle}>
           {t("Specifications", { ns: "devicePage" })}
         </h3>
