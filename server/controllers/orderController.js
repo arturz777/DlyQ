@@ -6,17 +6,15 @@ const { supabase } = require("../config/supabaseClient");
 const uuid = require("uuid");
 
 const calculateDeliveryCost = (totalPrice, distance) => {
-  let baseCost = 2; // Базовая цена 2€
-  let distanceCost = distance * 0.5; // 0.5€ за км
+  let baseCost = 2; 
+  let distanceCost = distance * 0.5; 
   let deliveryCost = baseCost + distanceCost;
-  let discount = Math.floor(totalPrice / 30) * 2; // Округляем вниз (каждые 30€ скидка -2€)
+  let discount = Math.floor(totalPrice / 30) * 2; 
 
-  // Ограничение: доставка не может быть меньше 0€
   deliveryCost = Math.max(0, deliveryCost - discount);
-  return parseFloat(deliveryCost.toFixed(2)); // Округляем
+  return parseFloat(deliveryCost.toFixed(2)); 
 };
 
-// Пример создания заказа и отправки уведомлений
 const createOrder = async (req, res) => {
   try {
     const { formData, totalPrice, orderDetails, desiredDeliveryDate } =
@@ -33,6 +31,9 @@ const createOrder = async (req, res) => {
       longitude,
     } = formData;
 
+    const deliveryDateFromFirstItem = orderDetails[0]?.deliveryDate || null;
+    const preferredTimeFromFirstItem = orderDetails[0]?.preferredTime || null;
+
     const distance = getDistanceFromWarehouse(latitude, longitude);
     const deliveryPrice = calculateDeliveryCost(totalPrice, distance);
 
@@ -47,7 +48,7 @@ const createOrder = async (req, res) => {
       orderDetails[0]?.image || "https://example.com/placeholder.png";
 
     if (deviceImageUrl.startsWith("http")) {
-      // Проверяем, что это URL, а не локальный путь
+     
       try {
         const response = await fetch(deviceImageUrl);
         if (!response.ok) throw new Error("Ошибка загрузки изображения с URL");
@@ -87,7 +88,6 @@ const createOrder = async (req, res) => {
           });
         }
 
-        // 🔥 **Уменьшаем количество товара в базе**
         await device.update({ quantity: device.quantity - item.count });
       }
 
@@ -109,14 +109,12 @@ const createOrder = async (req, res) => {
         }
       }
 
-      // Определяем статус заказа
       let status = "Pending";
       if (isPreorder || desiredDeliveryDate) {
         status = "preorder";
       }
     }
 
-    // Создаём заказ с фото устройства
     const order = await Order.create({
       userId,
       totalPrice: totalPrice + deliveryPrice,
@@ -132,14 +130,16 @@ const createOrder = async (req, res) => {
       productName:
         orderDetails.length > 0 ? orderDetails[0].name : "Неизвестный товар",
       orderDetails: JSON.stringify(orderDetails),
-      desiredDeliveryDate: desiredDeliveryDate || null,
+      desiredDeliveryDate: deliveryDateFromFirstItem 
+        ? new Date(deliveryDateFromFirstItem) 
+        : null,
+      preferredDeliveryComment: preferredTimeFromFirstItem,
       formData: JSON.stringify(formData),
     });
 
     const io = req.app.get("io");
     io.emit("newOrder", order);
 
-    // **Разделяем товары правильно:**
     const preorderAvailable = orderDetails.filter(
       (item) => item.isPreorder && item.desiredDeliveryDate && item.count > 0
     );
@@ -232,6 +232,17 @@ const createOrder = async (req, res) => {
         : ""
     }
 
+    ${
+      deliveryDateFromFirstItem
+        ? `<p><strong>Предпочитаемая дата доставки:</strong> ${new Date(deliveryDateFromFirstItem).toLocaleString()}</p>`
+        : ''
+    }
+    ${
+      preferredTimeFromFirstItem
+        ? `<p><strong>Комментарий о времени:</strong> ${preferredTimeFromFirstItem}</p>`
+        : ''
+    }
+
     <h3>🚚 Доставка:</h3>
     <p><strong>Адрес:</strong> ${address}, квартира ${apartment || "-"}</p>
     <p><strong>Стоимость доставки:</strong> ${deliveryPrice.toFixed(2)} €</p>
@@ -248,7 +259,6 @@ const createOrder = async (req, res) => {
   </div>
 `;
 
-    // Отправляем письмо клиенту
     await sendEmail(email, "🛒 Заказ!", emailHTML, true);
     res.status(201).json({ message: "Заказ успешно оформлен" });
   } catch (error) {
@@ -277,13 +287,11 @@ const updateOrderStatus = async (req, res) => {
   try {
     const { orderId, newStatus } = req.body;
 
-    // Ищем заказ
     const order = await Order.findByPk(orderId);
     if (!order) {
       return res.status(404).json({ message: "Заказ не найден." });
     }
 
-    // Обновляем статус
     order.status = newStatus;
     await order.save();
 
@@ -329,9 +337,9 @@ const getUserOrders = async (req, res) => {
           const translations = translationMap[detail.deviceId] || {};
           detail.translations = { name: translations };
 
-          const lang = "ru"; // Можно менять на req.locale или заголовок запроса
+          const lang = "ru"; 
           if (translations[lang]) {
-            detail.name = translations[lang]; // Подставляем перевод
+            detail.name = translations[lang]; 
           }
         });
 
