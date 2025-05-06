@@ -77,6 +77,7 @@ const Order = sequelize.define(
     status: { type: DataTypes.STRING, defaultValue: "Pending" },
     warehouseStatus: { type: DataTypes.STRING, defaultValue: "pending" },
     desiredDeliveryDate: { type: DataTypes.DATE, allowNull: true },
+    preferredDeliveryComment: { type: DataTypes.TEXT, allowNull: true },
     processingTime: { type: DataTypes.STRING, allowNull: true },
     formData: { type: DataTypes.JSON, allowNull: true },
     orderDetails: { type: DataTypes.JSON, allowNull: true },
