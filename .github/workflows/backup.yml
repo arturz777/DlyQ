@@ -19,7 +19,7 @@ jobs:
       - name: Fetch Supabase Tables
         run: |
           mkdir -p backups/$(date +%F)
-          for table in devices users orders baskets brands couriers device_info ratings subtypes translations types warehouses type_brands; do
+          for table in devices users orders baskets brands couriers device_infos ratings subtypes translations types warehouses type_brands; do
             curl "${{ secrets.SUPABASE_URL }}/rest/v1/$table?select=*" \
              -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
              -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
