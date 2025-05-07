@@ -117,7 +117,7 @@
 }
 
 .preorderSection {
-  margin-top: 10px;
+  margin-top: 20px;
 }
 
 .DevicePageAddToCart {
@@ -166,7 +166,7 @@
 
 @media (max-width: 768px) {
   .DevicePageSpecs {
-    margin-top: -50px;
+    margin-top: -100px;
   }
 }
 
@@ -176,13 +176,15 @@
 }
 
 .DevicePageSpecsCard {
+  text-align: left; 
   padding: 15px;
   background-color: #fff;
 }
 
 .DevicePageSpecRow {
-  padding: 10px;
-  margin: 5px 0;
+  display: flex;
+  min-height: 40px;
+  align-items: center;
 }
 
 .DevicePageSpecRow:nth-child(even) {
@@ -194,8 +196,21 @@
 }
 
 .DevicePageSpecText {
+  display: flex;
+   justify-content: center;
+   padding-right: 10px;
+  width: 100%;
   color: #6c757d;
-  font-weight: 500;
+}
+
+.DevicePageSpecText strong {
+  flex: 0 0 30%; 
+  min-width: 150px; 
+  padding-right: 10px;
+}
+
+.DevicePageSpecRowEven {
+  background-color: #f9f9f9;
 }
 
 .preorderFields {
