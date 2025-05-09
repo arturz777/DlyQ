@@ -358,7 +358,7 @@ const DevicePage = () => {
         <h3 className={styles.DevicePageSpecsTitle}>
           {t("Specifications", { ns: "devicePage" })}
         </h3>
-        <div className={styles.DevicePageSpecsCard}>
+       <div className={styles.DevicePageSpecsCard}>
           {device.info.map((info, index) => (
             <div
               key={info.id}
@@ -370,9 +370,10 @@ const DevicePage = () => {
                 <strong>
                   {info.translations?.title?.[currentLang] || info.title}
                 </strong>
-                {": "}
-                {info.translations?.description?.[currentLang] ||
-                  info.description}
+                <span>
+                  {info.translations?.description?.[currentLang] ||
+                    info.description}
+                </span>
               </span>
             </div>
           ))}
