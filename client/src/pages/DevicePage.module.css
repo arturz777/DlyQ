@@ -16,6 +16,12 @@
   flex-wrap: wrap;
 }
 
+@media (max-width: 768px) {
+  .DevicePageContent {
+    flex-direction: column;
+  }
+}
+
 .DevicePageColImg {
   flex: 1;
   min-width: 400px;
@@ -25,17 +31,23 @@
 }
 
 .DevicePageImageWrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  min-height: 400px;
   padding: 1.5rem;
   border-radius: 8px;
   max-width: 400px;
   width: 100%;
-  display: flex;
   align-items: center;
-  justify-content: center;
 }
 
 .DevicePageMainImage {
+  position: absolute;
   width: 100%;
+  height: auto;
+  max-height: 400px;
+  object-fit: contain;
   object-fit: cover;
   border-radius: 8px;
 }
@@ -116,6 +128,12 @@
   margin-top: 10px;
 }
 
+.DevicePagePriceBlock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .preorderSection {
   margin-top: 20px;
 }
@@ -151,10 +169,18 @@
 	cursor: not-allowed;
   }
 
-.DevicePageSpecs {
-  width: 100%;
-  max-width: 1400px;
-  text-align: center;
+  .DevicePageSpecs {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    display: block;
+    text-align: center;
+  }
+
+@media (max-width: 768px) {
+  .DevicePageSpecs {
+    margin-top: -50px;
+  }
 }
 
 .DevicePageDescription {
@@ -164,21 +190,15 @@
   color: #555;
 }
 
-@media (max-width: 768px) {
-  .DevicePageSpecs {
-    margin-top: -50px;
-  }
-}
-
 .DevicePageSpecsTitle {
   font-size: 1.4rem;
   margin-top: 30px;
 }
 
 .DevicePageSpecsCard {
-  text-align: left; 
-  padding: 15px;
-  background-color: #fff;
+  display: inline-block; 
+  text-align: left;
+  max-width: 600px;
 }
 
 .DevicePageSpecRow {
@@ -197,7 +217,7 @@
 
 .DevicePageSpecText {
   display: flex;
-   justify-content: center;
+   align-items: baseline;
    padding-right: 10px;
   width: 100%;
   color: #6c757d;
@@ -233,21 +253,6 @@
   font-size: 14px;
 }
 
-
-@media (max-width: 768px) {
-  .DevicePageContent {
-    flex-direction: column;
-  }
-}
-
-.DevicePageImageWrapper {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 400px;
-}
-
 .ImageContainer {
   position: relative;
   width: 100%;
@@ -256,14 +261,6 @@
   justify-content: center;
   align-items: center;
   overflow: hidden;
-}
-
-.DevicePageMainImage {
-  position: absolute;
-  width: 100%;
-  height: auto;
-  max-height: 400px;
-  object-fit: contain;
 }
 
 .ArrowButtons {
@@ -284,29 +281,6 @@
   cursor: pointer;
   border-radius: 50%;
   transition: 0.3s;
-}
-
-.DevicePageThumbnailContainer {
-  display: flex;
-  justify-content: center;
-  gap: 5px;
-  margin-top: 10px;
-}
-
-.DevicePageThumbnail {
-  width: 60px;
-  height: 60px;
-  object-fit: cover;
-  border-radius: 5px;
-  cursor: pointer;
-  opacity: 0.6;
-  transition: 0.3s;
-}
-
-.DevicePagePriceBlock {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .DevicePageOldPrice {
