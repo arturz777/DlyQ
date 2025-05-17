@@ -6,5 +6,8 @@
 	"Product is out of stock!": "Product is out of stock!",
 	"Pre-order available": "Pre-order available",
 	"Select an option": "Select an option",
-	"the shop is closed. Click again to add to the cart": "The shop is closed. Click again to add to the cart."
+	"the shop is closed. Click again to add to the cart": "The shop is closed. Click again to add to the cart.",
+	"product is out of stock, but has been added to the cart as a pre-order": "Product is out of stock, but has been added to the cart as a pre-order.",
+	"you cannot add a pre-order to the cart with regular items": "You cannot add a pre-order to the cart with regular items!",
+	"you cannot add a regular item to the cart with a pre-order": "You cannot add a regular item to the cart with a pre-order!"
 }
