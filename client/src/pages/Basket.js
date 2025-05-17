@@ -1,13 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import { Context } from "../index";
 import { observer } from "mobx-react-lite";
-import {
-  Container,
-  Button,
-  Image,
-  Card,
-  Form,
-} from "react-bootstrap";
+import { Container, Button, Image, Card, Form } from "react-bootstrap";
 import { toast } from "react-toastify";
 import PaymentForm from "../components/PaymentForm";
 import { loadStripe } from "@stripe/stripe-js";
@@ -28,30 +22,44 @@ const Basket = observer(() => {
   const [preferredTime, setPreferredTime] = useState("");
    const { t, i18n } = useTranslation();
 
+   const hasOnlyPreorders =
+    basket.items.length > 0 && basket.items.every((item) => item.isPreorder);
+  const hasOnlyStockItems =
+    basket.items.length > 0 && basket.items.every((item) => !item.isPreorder);
+  const hasMixedItems =
+    basket.items.some((item) => item.isPreorder) &&
+    basket.items.some((item) => !item.isPreorder);
+
   const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/device/check-stock`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ deviceId, quantity, selectedOptions }),
-        });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/device/check-stock`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ deviceId, quantity, selectedOptions }),
+        }
+      );
 
         const data = await response.json();
 
-        if (data.status === "error") {
-            toast.error(`❌ ${data.message}`);
-            return false;
-        }
-
-        return data.quantity >= quantity;
-    } catch (error) {
-        console.error("Ошибка при проверке наличия товара:", error);
+       if (data.status === "error") {
+        const translatedMessage = t(data.message, {
+          ns: "cart",
+          defaultValue: data.message,
+        });
+        toast.error(`❌ ${translatedMessage}`);
         return false;
-    }
-};
+      }
 
+      return data.quantity >= quantity;
+    } catch (error) {
+      console.error("Ошибка при проверке наличия товара:", error);
+      return false;
+    }
+  };
 
   useEffect(() => {
     const fetchQuantities = async () => {
@@ -89,13 +97,31 @@ const Basket = observer(() => {
     fetchQuantities();
   }, [basket.items]); 
 
+  useEffect(() => {
+    const storeClosed = basket.items.some((item) => item.isStoreClosed);
+    const allPreorders = hasOnlyPreorders;
+    const anyOutOfStock = basket.items.some((item) => item.stockQuantity === 0);
+
+    if (
+      (allPreorders || storeClosed || anyOutOfStock) &&
+      !hasMixedItems &&
+      !isPreorder
+    ) {
+      setIsPreorder(true);
+    }
+  }, [basket.items, hasOnlyPreorders, hasMixedItems, isPreorder]);
+
   const handleIncrement = async (uniqueKey) => {
     const item = basket.items.find((i) => i.uniqueKey === uniqueKey);
     if (!item) return;
 
     const newCount = item.count + 1;
 
-    const isAvailable = await checkStock(item.id, newCount, item.selectedOptions);
+    const isAvailable = await checkStock(
+      item.id,
+      newCount,
+      item.selectedOptions
+    );
 
     if (!isAvailable) {
       toast.error(t("not enough stock", { ns: "basket" }));
@@ -117,36 +143,48 @@ const Basket = observer(() => {
   };
 
   const handlePaymentSuccess = async (paymentMethod, formData) => {
-   const hasUnselectedOptions = basket.items.some(
+    const hasUnselectedOptions = basket.items.some(
       (item) =>
         item.selectedOptions &&
         Object.values(item.selectedOptions).some(
-          (opt) => opt.value === "__UNSELECTED__" || opt.value === t("select an option", { ns: "basket" })
-        ) 
+          (opt) =>
+            opt.value === "__UNSELECTED__" ||
+            opt.value === t("select an option", { ns: "basket" })
+        )
     );
+
+    if (isPreorder) {
+      if (!deliveryDate || !preferredTime.trim()) {
+        toast.error(t("please fill in all delivery fields", { ns: "basket" }));
+        setLoading(false);
+        return;
+      }
+    }
 
     if (hasUnselectedOptions) {
       toast.error(t("select an option before payment", { ns: "basket" }));
       return;
     }
+
     const dataToSend = {
       formData,
       paymentMethodId: paymentMethod.id,
       totalPrice: basket.getTotalPrice(),
-      orderDetails: basket.items.map((item) => ({
+      orderDetails: basket.items.map((item, index) => ({
         name: item.name,
         price: item.price,
         count: item.count,
         deviceId: item.id,
         image: item.img,
         selectedOptions: item.selectedOptions,
-        isPreorder: item.isPreorder || false,
-          preferredTime: item.preferredTime || null,
-        deliveryDate: item.deliveryDate || null,
+        isPreorder: item.isPreorder || isPreorder,
+        preferredTime:
+          index === 0 && (item.isPreorder || isPreorder) ? preferredTime : null,
+        deliveryDate:
+          index === 0 && (item.isPreorder || isPreorder) ? deliveryDate : null,
       })),
-      desiredDeliveryDate: isPreorder ? deliveryDate : null,
     };
-
+    
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/order/create`, {
         method: "POST",
@@ -175,7 +213,7 @@ const Basket = observer(() => {
     }
   };
 
-  const handleOptionChange = async (
+   const handleOptionChange = async (
     itemUniqueKey,
     optionName,
     selectedValue
@@ -195,22 +233,54 @@ const Basket = observer(() => {
       return;
     }
 
-    const isAvailable = await checkStock(item.id, item.count, {
-      ...item.selectedOptions,
-      [optionName]: updatedOption,
-    });
+    const newOptions = {
+    ...item.selectedOptions,
+    [optionName]: updatedOption,
+  };
 
-    if (!isAvailable) {
-      toast.error(
-        `${t("not enough stock for", { ns: "basket" })} ${updatedOption.value}`
-      );
+     const isAvailable = await checkStock(item.id, item.count, newOptions);
+  const isThisPreorder = !isAvailable;
+
+    item.isPreorder = isThisPreorder;
+
+     const otherItems = basket.items.filter((i) => {
+    if (i.uniqueKey === itemUniqueKey) return false;
+    return (
+      i.selectedOptions &&
+      Object.values(i.selectedOptions).every(
+        (opt) => opt.value && opt.value !== "__UNSELECTED__"
+      )
+    );
+  });
+
+  const hasPreorders = otherItems.some((i) => i.isPreorder);
+  const hasStocks = otherItems.some((i) => !i.isPreorder);
+
+    if (hasPreorders && !isThisPreorder) {
+       toast.error(`❌ ${t("you cannot add a regular item to the cart with a pre-order", { ns: "deviceItem" })}`);
+      return;
+    }
+
+    if (hasStocks && isThisPreorder) {
+      toast.error(`❌ ${t("you cannot add a pre-order to the cart with regular items", { ns: "deviceItem" })}`);
       return;
     }
 
     basket.updateSelectedOption(itemUniqueKey, optionName, updatedOption);
+
+    if (!isAvailable) {
+      toast.error(
+        `${t(
+          "product is out of stock, but has been added to the cart as a pre-order",
+          {
+            ns: "basket",
+          }
+        )}`
+      );
+    }
   };
 
-  return (
+ return (
     <Container className={styles.container}>
       {basket.items.length === 0 ? (
         <h2 className={styles.basketEmpty}>
@@ -225,132 +295,177 @@ const Basket = observer(() => {
             }`}
           >
             <div className={styles.cardContent}>
-            <div className={styles.topRow}>
-              <Image className={styles.image} src={item.img} />
-              <div className={styles.topInfo}>
-              <div className={styles.title}>
-                {item.translations?.name?.[i18n.language] || item.name}
-              </div>
-
-              {item.selectedOptions &&
-                Object.entries(item.selectedOptions).map(([key, option]) => (
-                  <div
-                    key={`${item.uniqueKey}-${key}`}
-                    className={styles.optionRow}
-                  >
-                    <label className={styles.optionLabel}>
-                      {(item.translations?.options &&
-                        Object.values(item.translations.options).find(
-                          (opt) => opt.name?.[i18n.language]
-                        )?.name?.[i18n.language]) ||
-                        key}
-                      :
-                    </label>
-                    <select
-                      value={option.value}
-                      onChange={(e) =>
-                        handleOptionChange(item.uniqueKey, key, e.target.value)
-                      }
-                      className={`${styles.select} ${
-                        option.value === "__UNSELECTED__" || option.value === t("select an option", { ns: "basket" })
-                          ? styles.unselectedOption
-                          : ""
-                      }`}
-                    >
-                      <option value="__UNSELECTED__" disabled hidden>
-                        {t("select an option", { ns: "basket" })}
-                      </option>
-                      {item.options
-                        .find((opt) => opt.name === key)
-                        ?.values.map((valueObj) => (
-                          <option
-                            key={`${key}-${valueObj.value}`}
-                            value={valueObj.value}
-                          >
-                            {item.translations?.options?.[
-                              Object.keys(item.translations?.options)[0]
-                            ]?.values?.find((v) => v.ru === valueObj.value)?.[
-                              i18n.language
-                            ] || valueObj.value}
-                          </option>
-                        ))}
-                    </select>
+              <div className={styles.topRow}>
+                <Image className={styles.image} src={item.img} />
+                <div className={styles.topInfo}>
+                  <div className={styles.title}>
+                    {item.translations?.name?.[i18n.language] || item.name}
                   </div>
-                ))}
-                 </div>
-                 </div>
-                 <div className={styles.bottomRow}>
-              <div className={styles.counter}>
+
+                  {item.selectedOptions &&
+                    Object.entries(item.selectedOptions).map(
+                      ([key, option]) => (
+                        <div
+                          key={`${item.uniqueKey}-${key}`}
+                          className={styles.optionRow}
+                        >
+                          <label className={styles.optionLabel}>
+                            {(item.translations?.options &&
+                              Object.values(item.translations.options).find(
+                                (opt) => opt.name?.[i18n.language]
+                              )?.name?.[i18n.language]) ||
+                              key}
+                            :
+                          </label>
+                          <select
+                            value={option.value}
+                            onChange={(e) =>
+                              handleOptionChange(
+                                item.uniqueKey,
+                                key,
+                                e.target.value
+                              )
+                            }
+                            className={`${styles.select} ${
+                              option.value === "__UNSELECTED__" ||
+                              option.value ===
+                                t("select an option", { ns: "basket" })
+                                ? styles.unselectedOption
+                                : ""
+                            }`}
+                          >
+                            <option value="__UNSELECTED__" disabled hidden>
+                              {t("select an option", { ns: "basket" })}
+                            </option>
+                            {item.options
+                              .find((opt) => opt.name === key)
+                              ?.values.map((valueObj) => {
+                                const translated =
+                                  item.translations?.options?.[
+                                    Object.keys(item.translations?.options)[0]
+                                  ]?.values?.find(
+                                    (v) => v.ru === valueObj.value
+                                  )?.[i18n.language] || valueObj.value;
+
+                                const label =
+                                  valueObj.quantity === 0
+                                    ? `${translated} (${t(
+                                        "Not in stock (Pre-order)",
+                                        { ns: "basket" }
+                                      )})`
+                                    : translated;
+
+                                return (
+                                  <option
+                                    key={`${key}-${valueObj.value}`}
+                                    value={valueObj.value}
+                                  >
+                                    {label}
+                                  </option>
+                                );
+                              })}
+                          </select>
+                        </div>
+                      )
+                    )}
+                </div>
+              </div>
+              <div className={styles.bottomRow}>
+                <div className={styles.counter}>
+                  <button onClick={() => handleDecrement(item.uniqueKey)}>
+                    -
+                  </button>
+                  <span className={styles.count}>
+                    {basket.getItemCount(item.uniqueKey)}
+                  </span>
+                  <button
+                    onClick={() => handleIncrement(item.uniqueKey)}
+                    disabled={
+                      basket.getItemCount(item.uniqueKey) >=
+                      (availableQuantities[item.uniqueKey] || 0)
+                    }
+                  >
+                    +
+                  </button>
+                </div>
+
+                <div className={styles.price}>
+                  €
+                  {(item.price +
+                    Object.values(item.selectedOptions || {}).reduce(
+                      (sum, opt) => sum + (opt?.price || 0),
+                      0
+                    )) *
+                    item.count}
+                </div>
+
                 <button
-                  onClick={() => handleDecrement(item.uniqueKey)}
+                  className={styles.buttonDelete}
+                  variant="danger"
+                  onClick={() => handleRemove(item.uniqueKey)}
                 >
-                  -
-                </button>
-                <span className={styles.count}>
-                  {basket.getItemCount(item.uniqueKey)}
-                </span>
-                <button
-                  onClick={() => handleIncrement(item.uniqueKey)}
-                  disabled={
-                    basket.getItemCount(item.uniqueKey) >=
-                    (availableQuantities[item.uniqueKey] || 0)
-                  }
-                >
-                  +
+                  {t("delete", { ns: "basket" })}
                 </button>
               </div>
-
-              <div className={styles.price}>
-                €
-                {(item.price +
-                  Object.values(item.selectedOptions || {}).reduce(
-                    (sum, opt) => sum + (opt?.price || 0),
-                    0
-                  )) *
-                  item.count}
-              </div>
-
-              <button
-                className={styles.buttonDelete}
-                variant="danger"
-                onClick={() => handleRemove(item.uniqueKey)}
-              >
-                {t("delete", { ns: "basket" })}
-              </button>
-            </div>
             </div>
           </Card>
         ))
       )}
 
+      {hasMixedItems && (
+        <div className={styles.warningBox}>
+          <p style={{ color: "red", fontWeight: "bold" }}>
+            ❗{" "}
+            {t("you cannot mix pre-orders and in-stock items in one order", {
+              ns: "basket",
+            })}
+          </p>
+        </div>
+      )}
+
       {basket.items.length > 0 && (
         <>
-          {basket.items.some((item) => !item.isPreorder) && (
+          {(hasOnlyStockItems || hasOnlyPreorders) && !hasMixedItems && (
             <Form.Group className={styles.preorderSection}>
               <Form.Check
                 type="checkbox"
-                label={t("preorder label", { ns: "basket" })}
+                label={t("place order as a pre-order", { ns: "basket" })}
                 checked={isPreorder}
                 onChange={() => setIsPreorder(!isPreorder)}
+                className={styles.preorderCheckbox}
+                disabled={
+                  hasOnlyPreorders ||
+                  basket.items.some(
+                    (item) => item.stockQuantity === 0 || item.isStoreClosed
+                  )
+                }
               />
+
               {isPreorder && (
-  <>
-    <Form.Control
-      type="datetime-local"
-      value={deliveryDate || ""}
-      onChange={(e) => setDeliveryDate(e.target.value)}
-      className={styles.dateInput}
-    />
-    <Form.Control
-      as="textarea"
-      rows={2}
-      placeholder={t("preferred delivery time comment", { ns: "basket" })}
-      value={preferredTime}
-      onChange={(e) => setPreferredTime(e.target.value)}
-      className={styles.commentInput}
-    />
-  </>
-)}
+                <>
+                  <Form.Label>
+                    {t("desired delivery datetime", { ns: "basket" })}
+                  </Form.Label>
+                  <Form.Control
+                    type="datetime-local"
+                    value={deliveryDate || ""}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                    className={styles.dateInput}
+                    required
+                  />
+                  <Form.Label>
+                    {t("preferred delivery time comment", { ns: "basket" })}
+                  </Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={2}
+                    value={preferredTime}
+                    onChange={(e) => setPreferredTime(e.target.value)}
+                    className={styles.commentInput}
+                    required
+                  />
+                </>
+              )}
             </Form.Group>
           )}
 
@@ -363,14 +478,15 @@ const Basket = observer(() => {
           </h3>
         </>
       )}
-
-      <Elements stripe={stripePromise}>
-        <PaymentForm
-          totalPrice={basket.getTotalPrice()}
-          onPaymentSuccess={handlePaymentSuccess}
-          onDeliveryCostChange={setDeliveryCost}
-        />
-      </Elements>
+      {!hasMixedItems && (
+        <Elements stripe={stripePromise}>
+          <PaymentForm
+            totalPrice={basket.getTotalPrice()}
+            onPaymentSuccess={handlePaymentSuccess}
+            onDeliveryCostChange={setDeliveryCost}
+          />
+        </Elements>
+      )}
     </Container>
   );
 });
