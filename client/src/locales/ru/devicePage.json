@@ -11,5 +11,6 @@
   "Loading...": "Загрузка...",
   "preferred delivery time text": "Комментарий к предзаказу",
   "write preferred delivery time": "Например: предпочтительное время получения, особые пожелания и т.д.",
-  "desired delivery datetime": "Желаемая дата получения, если товар придёт раньше"
+  "desired delivery datetime": "Желаемая дата получения, если товар придёт раньше",
+  "out of stock (Pre-order)": "Нету в наличии (Предзаказ)"
 }
