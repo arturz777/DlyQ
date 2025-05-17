@@ -6,6 +6,7 @@ import { DEVICE_ROUTE } from "../utils/consts";
 import { Context } from "../index";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
+import { isShopOpenNow } from "../utils/workHours";
 import styles from "./DeviceItem.module.css";
 
 const DeviceItem = ({ device }) => {
@@ -63,6 +64,16 @@ device.discount && device.oldPrice > device.price
   const handleAddToBasket = async (e) => {
     e.stopPropagation();
 
+    if (!isShopOpenNow() && !isPreorder) {
+      toast.error(
+        t("the shop is closed. Click again to add to the cart", {
+          ns: "deviceItem",
+        })
+      );
+      setIsPreorder(true);
+      return;
+    }
+
     const itemsInBasket = basket.items.filter((item) => item.id === device.id);
     const totalInBasket = itemsInBasket.reduce(
       (sum, item) => sum + (item.count || 0),
@@ -71,10 +82,33 @@ device.discount && device.oldPrice > device.price
     const newCount = totalInBasket + 1;
 
     const isAvailable = await checkStock(device.id, newCount);
+    const isThisPreorder = !isAvailable;
 
-    if (!isAvailable && !isPreorder) {
-      toast.error(`❌ ${t("Product is out of stock!", { ns: "deviceItem" })}`);
+    if (basket.items.some((item) => item.isPreorder) && !isThisPreorder) {
+      toast.error(
+        `❌ ${t("you cannot add a regular item to the cart with a pre-order", {
+          ns: "deviceItem",
+        })}`
+      );
       return;
+    }
+
+    if (basket.items.some((item) => !item.isPreorder) && isThisPreorder) {
+      toast.error(
+        `❌ ${t("you cannot add a pre-order to the cart with regular items", {
+          ns: "deviceItem",
+        })}`
+      );
+      return;
+    }
+
+    if (!isAvailable) {
+      toast.error(
+        `❗ ${t(
+          "product is out of stock, but has been added to the cart as a pre-order",
+          { ns: "deviceItem" }
+        )}`
+      );
     }
 
     let defaultOptions = {};
@@ -87,12 +121,22 @@ device.discount && device.oldPrice > device.price
       });
     }
 
-    basket.addItem({ ...device, selectedOptions: defaultOptions });
+    basket.addItem({
+      ...device,
+      selectedOptions: defaultOptions,
+      isPreorder: isThisPreorder || !isShopOpenNow(),
+      stockQuantity: Math.max(0, device.quantity - totalInBasket),
+    });
     toast.success(
       <>
         <strong className={styles.toastTitle}>{deviceName}</strong>
         <span className={styles.toastSubtitle}>
           {t("Added to cart!", { ns: "devicePage" })}
+          {(!isShopOpenNow() || isPreorder) && (
+            <div style={{ fontSize: "0.8em", marginTop: "5px" }}>
+              {t("Это предзаказ", { ns: "deviceItem" })}
+            </div>
+          )}
         </span>
       </>,
       {
@@ -104,12 +148,11 @@ device.discount && device.oldPrice > device.price
 
     setAvailableQuantity((prev) => Math.max(0, prev - 1));
   };
-
   const handleNavigate = () => {
     navigate(DEVICE_ROUTE + "/" + device.id);
   };
 
-  return (
+ return (
     <div onClick={() => navigate(DEVICE_ROUTE + "/" + device.id)}>
       <Card
         className={`${styles.card}`}
@@ -124,7 +167,6 @@ device.discount && device.oldPrice > device.price
         <div className={styles.info}>
           <h5 className={styles.name}>{deviceName}</h5>
 
-          {/* Блок цен */}
           <div className={styles.priceBlock}>
             {device.discount && device.oldPrice > device.price ? (
               <>
@@ -137,11 +179,7 @@ device.discount && device.oldPrice > device.price
           </div>
         </div>
 
-         <button
-          className={styles.button}
-          disabled={availableQuantity <= 0}
-          onClick={handleAddToBasket}
-        >
+        <button className={styles.button} onClick={handleAddToBasket}>
           {availableQuantity <= 0
             ? t("out_of_stock", { ns: "deviceItem" })
             : t("add_to_cart", { ns: "deviceItem" })}
