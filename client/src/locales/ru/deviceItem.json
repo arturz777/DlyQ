@@ -6,5 +6,8 @@
 	"Product is out of stock!": "Товара нет в наличии!",
 	"Pre-order available": "Доступен предзаказ",
 	 "Select an option": "Выберите опцию",
-	 "the shop is closed. Click again to add to the cart": "Магазин закрыт. Нажмите еще раз, чтобы добавить в корзину."
+	 "the shop is closed. Click again to add to the cart": "Магазин закрыт. Нажмите еще раз, чтобы добавить в корзину.",
+	"product is out of stock, but has been added to the cart as a pre-order": "Товара нет в наличии, но он добавлен в корзину как предзаказ.",
+	"you cannot add a pre-order to the cart with regular items": "Нельзя добавить предзаказ в корзину с обычными товарами!",
+	"you cannot add a regular item to the cart with a pre-order": "Нельзя добавить обычный товар в корзину с предзаказом!"
 }
