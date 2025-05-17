@@ -51,18 +51,21 @@ const LocationPicker = ({ setFormData }) => {
         longitude: e.latlng.lng,
       }));
 
-      
-      fetch(
+        fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}`
       )
         .then((res) => res.json())
         .then((data) => {
           setFormData((prev) => ({
             ...prev,
-            address: data.display_name || t("address not found", { ns: "paymentForm" }),
+            address:
+              data.display_name ||
+              t("address not found", { ns: "paymentForm" }),
           }));
         })
-        .catch((err) => console.error(t("address not found", { ns: "paymentForm" }), err));
+        .catch((err) =>
+          console.error(t("address not found", { ns: "paymentForm" }), err)
+        );
 
       toast.info(t("address selected", { ns: "paymentForm" }));
     },
@@ -251,56 +254,52 @@ const PaymentForm = ({
     });
   };
   
-  
-
   const handleSaveDataChange = (e) => {
     setSaveData(e.target.checked);
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-  
+
     if (!stripe || !elements) {
       toast.error(t("payment initialization error", { ns: "paymentForm" }));
       return;
     }
-  
+
     const card = elements.getElement(CardNumberElement);
     if (!card) {
       toast.error(t("card element not found", { ns: "paymentForm" }));
       return;
     }
-  
+
     setLoading(true);
-  
+
     try {
       const { error, paymentMethod } = await stripe.createPaymentMethod({
         type: "card",
         card: card,
       });
-  
+
       if (error) {
         toast.error(error.message);
+        setLoading(false);
       } else {
-        toast.success(t("payment success", { ns: "paymentForm" }));
-  
         if (!user.isAuth && saveData) {
           localStorage.setItem("userFormData", JSON.stringify(formData));
         } else if (user.isAuth) {
-        
-          const savedData = JSON.parse(localStorage.getItem("userFormData")) || {};
+          const savedData =
+            JSON.parse(localStorage.getItem("userFormData")) || {};
           savedData.apartment = formData.apartment;
           savedData.comment = formData.comment;
           localStorage.setItem("userFormData", JSON.stringify(savedData));
         } else {
           localStorage.removeItem("userFormData");
         }
-  
-        onPaymentSuccess(paymentMethod, formData);
+
+       await onPaymentSuccess(paymentMethod, formData);
       }
     } catch (err) {
       toast.error(t("payment processing error", { ns: "paymentForm" }));
-    } finally {
       setLoading(false);
     }
   };
