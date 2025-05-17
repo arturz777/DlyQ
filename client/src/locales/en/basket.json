@@ -14,5 +14,12 @@
 	"Товар не найден": "❌ Product not found!",
   "Опция не найдена": "❌ Option not found!",
   "Ошибка сервера при проверке наличия товара.": "❌ Server error during stock check.",
-  "Товар в наличии": "✅ Product in stock"
+  "Товар в наличии": "✅ Product in stock",
+  "you cannot mix pre-orders and in-stock items in one order": "You cannot mix pre-orders and in-stock items in one order",
+  "please fill in all delivery fields": "Please fill in all delivery fields.",
+	"product is out of stock, but has been added to the cart as a pre-order": "Product is out of stock, but has been added to the cart as a pre-order.",
+	"place order as a pre-order": "Place order as a pre-order",
+	"desired delivery datetime": "Desired delivery datetime",
+	"preferred delivery time comment": "Preferred delivery time comment"
   }
+  
