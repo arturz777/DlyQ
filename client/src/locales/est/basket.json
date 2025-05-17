@@ -14,5 +14,12 @@
 	"Товар не найден": "❌ Toodet ei leitud!",
 	"Опция не найдена": "❌ Valik ei leitud!",
 	"Ошибка сервера при проверке наличия товара.": "❌ Serveri viga laoseisu kontrollimisel.",
-	"Товар в наличии": "✅ Toode on laos"
+	"Товар в наличии": "✅ Toode on laos",
+	"you cannot mix pre-orders and in-stock items in one order": "Eeltellimusi ja laos olevaid tooteid ei saa samas tellimuses kombineerida",
+  "please fill in all delivery fields": "Palun täitke kõik kohaletoimetamise väljad.",
+	"product is out of stock, but has been added to the cart as a pre-order": "Toodet ei ole laos, kuid see lisati ostukorvi eeltellimusena.",
+	"place order as a pre-order": "Esita tellimus kui eeltellimus",
+	"desired delivery datetime": "Soovitud tarnekuupäev ja -aeg",
+	"preferred delivery time comment": "Soovituslik tarneaja kommentaar"
   }
+  
