@@ -5,8 +5,9 @@ import { Context } from "../index";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import styles from "./DevicePage.module.css";
 import DeviceItem from "../components/DeviceItem";
+import { isShopOpenNow } from "../utils/workHours";
+import styles from "./DevicePage.module.css";
 
 const DevicePage = () => {
   const { basket } = useContext(Context);
@@ -20,13 +21,12 @@ const DevicePage = () => {
   const [finalPrice, setFinalPrice] = useState(0);
   const { id } = useParams();
   const [activeIndex, setActiveIndex] = useState(0);
-  const [preferredTime, setPreferredTime] = useState("");
-  const [deliveryDate, setDeliveryDate] = useState("");
   const [availableQuantity, setAvailableQuantity] = useState(0);
   const [isPreorder, setIsPreorder] = useState(false);
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
   const deviceName = device.translations?.name?.[currentLang] || device.name;
+  const isStoreClosed = !isShopOpenNow();
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
@@ -120,6 +120,16 @@ const DevicePage = () => {
   }));
 
   const handleAddToBasket = async () => {
+    if (!isShopOpenNow() && !isPreorder) {
+      toast.error(
+        t("the shop is closed. Click again to add to the cart", {
+          ns: "deviceItem",
+        })
+      );
+      setIsPreorder(true);
+      return;
+    }
+
     const existingItem = basket.items.find(
       (item) =>
         item.id === device.id &&
@@ -136,19 +146,33 @@ const DevicePage = () => {
     }
 
     const isAvailable = await checkStock(device.id, newCount, selectedOptions);
+    const isThisPreorder = !isAvailable;
 
-    if (!isAvailable && !isPreorder) {
-      toast.error(`❌ ${t("Product is out of stock!", { ns: "devicePage" })}`);
-
+    if (basket.items.some((item) => item.isPreorder) && !isThisPreorder) {
+      toast.error(`❌ ${t("you cannot add a regular item to the cart with a pre-order", { ns: "deviceItem" })}`);
       return;
+    }
+
+    if (basket.items.some((item) => !item.isPreorder) && isThisPreorder) {
+      toast.error(`❌ ${t("you cannot add a pre-order to the cart with regular items", { ns: "deviceItem" })}`);
+      return;
+    }
+
+    if (!isAvailable) {
+      toast.error(
+        `❗ ${t(
+          "product is out of stock, but has been added to the cart as a pre-order",
+          { ns: "deviceItem" }
+        )}`
+      );
     }
 
     const newItem = {
       ...device,
       selectedOptions,
-      isPreorder,
-      preferredTime: isPreorder ? preferredTime : null,
-      deliveryDate: isPreorder ? deliveryDate : null,
+      isPreorder: isThisPreorder,
+      stockQuantity: device.quantity,
+      isStoreClosed,
     };
 
     basket.addItem(newItem);
@@ -171,7 +195,7 @@ const DevicePage = () => {
 
   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
- return (
+return (
     <div className={styles.DevicePageContainer}>
       <div className={styles.DevicePageContent}>
         <div className={styles.DevicePageColImg}>
@@ -255,14 +279,15 @@ const DevicePage = () => {
                     {option.translations?.name?.[currentLang] || option.name}
                   </option>
                   {option.values.map((valueObj, valueIndex) => (
-                    <option
-                      key={valueIndex}
-                      value={valueObj.value}
-                      disabled={valueObj.quantity <= 0}
-                    >
+                    <option key={valueIndex} value={valueObj.value}>
                       {option.translations?.values?.[valueIndex]?.[
                         currentLang
                       ] || valueObj.value}
+                      {valueObj.quantity <= 0
+                        ? ` (${t("out of stock (Pre-order)", {
+                            ns: "devicePage",
+                          })}`
+                        : ""}
                     </option>
                   ))}
                 </select>
@@ -288,61 +313,11 @@ const DevicePage = () => {
             <button
               className={styles.DevicePageAddToCart}
               onClick={handleAddToBasket}
-              disabled={!isPreorder && availableQuantity <= 0}
             >
               {availableQuantity <= 0
                 ? t("out_of_stock", { ns: "devicePage" })
                 : t("add_to_cart", { ns: "devicePage" })}
             </button>
-            {availableQuantity <= 0 && (
-              <div className={styles.preorderSection}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={isPreorder}
-                    onChange={() => setIsPreorder(!isPreorder)}
-                  />
-                  {t("Place a pre-order", { ns: "devicePage" })}
-                </label>
-
-                <AnimatePresence>
-                  {isPreorder && (
-                    <motion.div
-                      className={styles.preorderFields}
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <label className={styles.preorderLabel}>
-                        {t("desired delivery datetime", { ns: "devicePage" })}
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={deliveryDate}
-                        onChange={(e) => setDeliveryDate(e.target.value)}
-                        className={styles.preorderInput}
-                      />
-
-                      <label className={styles.preorderLabel}>
-                        {t("preferred delivery time text", {
-                          ns: "devicePage",
-                        })}
-                      </label>
-                      <textarea
-                        rows={2}
-                        placeholder={t("write preferred delivery time", {
-                          ns: "devicePage",
-                        })}
-                        value={preferredTime}
-                        onChange={(e) => setPreferredTime(e.target.value)}
-                        className={styles.preorderInput}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -358,7 +333,8 @@ const DevicePage = () => {
         <h3 className={styles.DevicePageSpecsTitle}>
           {t("Specifications", { ns: "devicePage" })}
         </h3>
-       <div className={styles.DevicePageSpecsCard}>
+
+        <div className={styles.DevicePageSpecsCard}>
           {device.info.map((info, index) => (
             <div
               key={info.id}
