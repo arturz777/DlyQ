@@ -1,0 +1,9 @@
+[{"id":2,"title":"Тип товара","description":"Адаптер питания","createdAt":"2025-03-26T23:06:25.316+00:00","updatedAt":"2025-05-06T13:07:13.831+00:00","deviceId":12}, 
+ {"id":3,"title":"Тип вилки","description":"EU","createdAt":"2025-03-26T23:06:25.317+00:00","updatedAt":"2025-05-06T13:07:13.831+00:00","deviceId":12}, 
+ {"id":4,"title":"Модель","description":"19в 4.74A 5.5*2.5MM","createdAt":"2025-03-26T23:06:25.317+00:00","updatedAt":"2025-05-06T13:07:13.831+00:00","deviceId":12}, 
+ {"id":7,"title":"Выходной ток","description":"4.74A","createdAt":"2025-03-26T23:06:25.317+00:00","updatedAt":"2025-05-06T13:07:13.831+00:00","deviceId":12}, 
+ {"id":9,"title":"Происхождение","description":"Китай","createdAt":"2025-03-26T23:06:25.317+00:00","updatedAt":"2025-05-06T13:07:13.831+00:00","deviceId":12}, 
+ {"id":8,"title":"Бренд","description":"TORLINSE","createdAt":"2025-03-26T23:06:25.317+00:00","updatedAt":"2025-05-06T13:07:13.831+00:00","deviceId":12}, 
+ {"id":1,"title":"Память","description":"12ГБ","createdAt":"2025-03-11T23:40:40.357+00:00","updatedAt":"2025-03-13T21:57:18.913+00:00","deviceId":null}, 
+ {"id":6,"title":"Выходное напряжение ","description":"19в","createdAt":"2025-03-26T23:06:25.317+00:00","updatedAt":"2025-05-06T13:07:13.831+00:00","deviceId":12}, 
+ {"id":5,"title":"Совместимые бренды","description":"Acer, ASUS, Lenovo, универсальный","createdAt":"2025-03-26T23:06:25.317+00:00","updatedAt":"2025-05-06T13:07:13.831+00:00","deviceId":12}]
