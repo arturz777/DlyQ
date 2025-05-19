@@ -201,6 +201,12 @@
   max-width: 600px;
 }
 
+@media (max-width: 768px) {
+  .DevicePageSpecsCard {
+    margin-left: 10px;
+  }
+}
+
 .DevicePageSpecRow {
   display: flex;
   min-height: 40px;
