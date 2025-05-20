@@ -30,6 +30,16 @@
   align-items: center;
 }
 
+.ImageContainer {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
 .DevicePageImageWrapper {
   position: relative;
   display: flex;
@@ -37,7 +47,7 @@
   min-height: 400px;
   padding: 1.5rem;
   border-radius: 8px;
-  max-width: 400px;
+  max-width: 300px;
   width: 100%;
   align-items: center;
 }
@@ -98,13 +108,17 @@
 
 .DevicePageTitle {
   font-size: 2rem;
-  margin-bottom: 15px;
+  margin-bottom: 30px;
+   word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .DevicePageOption label {
   font-weight: 500;
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
 }
 
 .DevicePageSelect {
@@ -132,6 +146,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-top: 10px;
 }
 
 .preorderSection {
@@ -139,48 +154,47 @@
 }
 
 .DevicePageAddToCart {
-	background-color: #be3402;
-	color: white;
-	border: none;
-	padding: 12px 24px;
-	font-size: 16px;
-	font-weight: 500;
-	border-radius: 8px;
-	transition: background-color 0.2s ease, transform 0.1s ease;
-	cursor: pointer;
-	display: inline-block;
-	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-	margin-top: 30px;
-  }
-  
-  .DevicePageAddToCart:hover {
-	background-color: #8f2600;
-  }
-  
-  .DevicePageAddToCart:active {
-	background-color: #731e00;
-	transform: scale(0.98);
-	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-  
-  .DevicePageAddToCart:disabled {
-	background-color: #ccc;
-	color: #777;
-	cursor: not-allowed;
-  }
+  background-color: #be3402;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  cursor: pointer;
+  display: inline-block;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  margin-top: 30px;
+}
 
-  .DevicePageSpecs {
-    width: 100%;
-    max-width: 1400px;
-    margin: 0 auto;
-    display: block;
-    text-align: center;
-  }
+.DevicePageAddToCart:hover {
+  background-color: #8f2600;
+}
+
+.DevicePageAddToCart:active {
+  background-color: #731e00;
+  transform: scale(0.98);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.DevicePageAddToCart:disabled {
+  background-color: #ccc;
+  color: #777;
+  cursor: not-allowed;
+}
+
+.DevicePageSpecs {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  display: block;
+  text-align: center;
+}
 
 @media (max-width: 768px) {
   .DevicePageSpecs {
     margin-top: -50px;
-    margin-left: 30px;
   }
 }
 
@@ -193,11 +207,11 @@
 
 .DevicePageSpecsTitle {
   font-size: 1.4rem;
-  margin-top: 30px;
+  margin-top: 50px;
 }
 
 .DevicePageSpecsCard {
-  display: inline-block; 
+  display: inline-block;
   text-align: left;
   max-width: 600px;
 }
@@ -215,24 +229,24 @@
 }
 
 .DevicePageSpecRow:nth-child(even) {
-  background-color: #ffffff; 
+  background-color: #ffffff;
 }
 
 .DevicePageSpecRow:nth-child(odd) {
-  background-color: #f9f9f9; 
+  background-color: #f9f9f9;
 }
 
 .DevicePageSpecText {
   display: flex;
-   align-items: baseline;
-   padding-right: 10px;
+  align-items: baseline;
+  padding-right: 10px;
   width: 100%;
   color: #6c757d;
 }
 
 .DevicePageSpecText strong {
-  flex: 0 0 30%; 
-  min-width: 150px; 
+  flex: 0 0 30%;
+  min-width: 150px;
   padding-right: 10px;
 }
 
@@ -258,16 +272,6 @@
   border: 1px solid #ccc;
   border-radius: 6px;
   font-size: 14px;
-}
-
-.ImageContainer {
-  position: relative;
-  width: 100%;
-  height: 400px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
 }
 
 .ArrowButtons {
@@ -330,18 +334,18 @@
 }
 
 .toastTitle {
-	display: block;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	max-width: 100px;
-  }
-  
-  .toastSubtitle {
-	display: block;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	max-width: 350px;
-	font-size: 14px;
-  }
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100px;
+}
+
+.toastSubtitle {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 350px;
+  font-size: 14px;
+}
