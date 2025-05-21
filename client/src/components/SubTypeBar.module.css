@@ -1,28 +1,48 @@
 .subTypeBar {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10px;
-	padding: 10px;
-	background: #ffffff;
-	border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px;
+  background: #ffffff;
+  border-radius: 10px;
+}
+
+.subTypeItem {
+  padding: 8px 15px;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.subTypeItem:hover {
+  background: #be3402;
+  color: white;
+}
+
+.subTypeItem.active {
+  background: #0056b3;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .subTypeBar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100vw;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
-  
+
+  .subTypeBar::-webkit-scrollbar {
+    display: none;
+  }
+
   .subTypeItem {
-	padding: 8px 15px;
-	border-radius: 8px;
-	background: #ffffff;
-	font-size: 14px;
-	cursor: pointer;
-	transition: all 0.2s ease-in-out;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
-  
-  .subTypeItem:hover {
-	background: #be3402;
-	color: white;
-  }
-  
-  .subTypeItem.active {
-	background: #0056b3;
-	color: white;
-  }
+}
