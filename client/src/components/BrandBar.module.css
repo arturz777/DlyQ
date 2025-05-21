@@ -1,48 +1,51 @@
 .brandBar {
-	display: flex;
+  display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  align-items: center; 
-	gap: 12px;
-	padding: 10px;
-	background: #ffffff;
+  gap: 12px;
+  padding: 10px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.brandItem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+}
+
+.brandItem:hover {
+  transform: scale(1.05);
+}
+
+.brandItem.active {
+  background: #be3402;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .brandBar {
+    flex-wrap: nowrap;
+    justify-content: flex-start; 
+    overflow-x: auto;
+    max-width: 100vw;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
-  
+
+  .brandBar::-webkit-scrollbar {
+    display: none;
+  }
+
   .brandItem {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 10px;
-	border-radius: 8px;
-	background: white;
-	cursor: pointer;
-	transition: all 0.2s ease-in-out;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    flex: 0 0 auto;
   }
-  
-  .brandItem:hover {
-	transform: scale(1.1);
-  }
-  
-  .brandItem.active {
-	background: #be3402;
-	color: white;
-  }
-  
-  .brandImage {
-	width: 60px;
-	height: auto;
-	object-fit: contain;
-  }
-  
-  @media (max-width: 768px) {
-	.brandBar {
-	  flex-wrap: nowrap;
-	  gap: 5px;
-	}
-  
-	.brandItem {
-	  flex-shrink: 0;
-	  font-size: 14px;
-	  padding: 8px 16px;
-	}
-  }
+}
