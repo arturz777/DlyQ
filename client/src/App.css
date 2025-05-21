@@ -2,3 +2,12 @@ body.courier-page .NavBar,
 body.courier-page .MobileNavBar {
   display: none !important;
 }
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
