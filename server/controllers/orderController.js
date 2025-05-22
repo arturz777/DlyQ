@@ -6,13 +6,13 @@ const { supabase } = require("../config/supabaseClient");
 const uuid = require("uuid");
 
 const calculateDeliveryCost = (totalPrice, distance) => {
-  let baseCost = 2; 
-  let distanceCost = distance * 0.5; 
+  let baseCost = 2;
+  let distanceCost = distance * 0.5;
   let deliveryCost = baseCost + distanceCost;
-  let discount = Math.floor(totalPrice / 30) * 2; 
+  let discount = Math.floor(totalPrice / 30) * 2;
 
   deliveryCost = Math.max(0, deliveryCost - discount);
-  return parseFloat(deliveryCost.toFixed(2)); 
+  return parseFloat(deliveryCost.toFixed(2));
 };
 
 const createOrder = async (req, res) => {
@@ -48,7 +48,6 @@ const createOrder = async (req, res) => {
       orderDetails[0]?.image || "https://example.com/placeholder.png";
 
     if (deviceImageUrl.startsWith("http")) {
-     
       try {
         const response = await fetch(deviceImageUrl);
         if (!response.ok) throw new Error("Ошибка загрузки изображения с URL");
@@ -73,6 +72,8 @@ const createOrder = async (req, res) => {
         console.error("❌ Ошибка обработки изображения:", error);
       }
 
+      let isPreorder = false;
+
       for (const item of orderDetails) {
         const device = await Device.findByPk(item.deviceId);
 
@@ -88,24 +89,10 @@ const createOrder = async (req, res) => {
           });
         }
 
-        await device.update({ quantity: device.quantity - item.count });
-      }
-
-      let isPreorder = false;
-
-      for (const item of orderDetails) {
-        const device = await Device.findByPk(item.deviceId);
-
-        if (!device) {
-          return res
-            .status(400)
-            .json({ message: `Товар "${item.name}" не найден.` });
-        }
-
-        if (device.quantity < item.count) {
-          isPreorder = true;
-        } else {
+        if (device.quantity >= item.count && !item.isPreorder) {
           await device.update({ quantity: device.quantity - item.count });
+        } else {
+          isPreorder = true;
         }
       }
 
@@ -130,8 +117,8 @@ const createOrder = async (req, res) => {
       productName:
         orderDetails.length > 0 ? orderDetails[0].name : "Неизвестный товар",
       orderDetails: JSON.stringify(orderDetails),
-      desiredDeliveryDate: deliveryDateFromFirstItem 
-        ? new Date(deliveryDateFromFirstItem) 
+      desiredDeliveryDate: deliveryDateFromFirstItem
+        ? new Date(deliveryDateFromFirstItem)
         : null,
       preferredDeliveryComment: preferredTimeFromFirstItem,
       formData: JSON.stringify(formData),
@@ -234,13 +221,15 @@ const createOrder = async (req, res) => {
 
     ${
       deliveryDateFromFirstItem
-        ? `<p><strong>Предпочитаемая дата доставки:</strong> ${new Date(deliveryDateFromFirstItem).toLocaleString()}</p>`
-        : ''
+        ? `<p><strong>Предпочитаемая дата доставки:</strong> ${new Date(
+            deliveryDateFromFirstItem
+          ).toLocaleString()}</p>`
+        : ""
     }
     ${
       preferredTimeFromFirstItem
         ? `<p><strong>Комментарий о времени:</strong> ${preferredTimeFromFirstItem}</p>`
-        : ''
+        : ""
     }
 
     <h3>🚚 Доставка:</h3>
@@ -337,9 +326,9 @@ const getUserOrders = async (req, res) => {
           const translations = translationMap[detail.deviceId] || {};
           detail.translations = { name: translations };
 
-          const lang = "ru"; 
+          const lang = "ru";
           if (translations[lang]) {
-            detail.name = translations[lang]; 
+            detail.name = translations[lang];
           }
         });
 
