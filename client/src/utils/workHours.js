@@ -1,7 +1,7 @@
 export const WORK_HOURS = {
-  weekdays: { start: 10, end: 5 },  // Пн-Пт 9:00-22:00
-  saturday: { start: 10, end: 5 }, // Сб 10:00-22:00
-  sunday: { start: 10, end: 5 },   // Вс 10:00-22:00
+  weekdays: { start: 10, end: 6 },  // Пн-Пт 9:00-22:00
+  saturday: { start: 10, end: 6 }, // Сб 10:00-22:00
+  sunday: { start: 10, end: 6 },   // Вс 10:00-22:00
 };
 
 let forceClosed = false;
