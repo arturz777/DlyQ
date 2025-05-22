@@ -1,466 +1,455 @@
-const sendEmail = require("../services/emailService");
-const { Order, Device, Translation, Courier } = require("../models/models");
-const { Op } = require("sequelize");
-const getDistanceFromWarehouse = require("../utils/distance");
-const { supabase } = require("../config/supabaseClient");
-const uuid = require("uuid");
+import React, { useState, useEffect } from "react";
+import { fetchActiveOrder, updateOrderStatus } from "../http/orderAPI";
+import { useNavigate } from "react-router-dom";
+import { useRef } from "react";
+import { useMap } from "react-leaflet";
+import { io } from "socket.io-client";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Polyline,
+  Popup,
+} from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import { useTranslation } from "react-i18next";
+import styles from "./OrderSidebar.module.css";
 
-const calculateDeliveryCost = (totalPrice, distance) => {
-  let baseCost = 2;
-  let distanceCost = distance * 0.5;
-  let deliveryCost = baseCost + distanceCost;
-  let discount = Math.floor(totalPrice / 30) * 2;
+const socket = io("http://localhost:5000");
 
-  deliveryCost = Math.max(0, deliveryCost - discount);
-  return parseFloat(deliveryCost.toFixed(2));
-};
+const WAREHOUSE_LOCATION = { lat: 59.51372, lng: 24.828888 };
 
-const createOrder = async (req, res) => {
-  try {
-    const { formData, totalPrice, orderDetails, desiredDeliveryDate } =
-      req.body;
-    const {
-      firstName,
-      lastName,
-      email,
-      phone,
-      address,
-      apartment,
-      comment,
-      latitude,
-      longitude,
-    } = formData;
+const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
+  const [order, setOrder] = useState(null);
+  const [showIcon, setShowIcon] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(null);
+  const [courierLocation, setCourierLocation] = useState(null);
+  const [isAccepted, setIsAccepted] = useState(false);
+  const [route, setRoute] = useState([]);
+  const [routeTime, setRouteTime] = useState(null);
+  const [isPreorder, setIsPreorder] = useState(false);
+  const [preorderDate, setPreorderDate] = useState(null);
+  const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+  const courierMarkerRef = useRef(null);
 
-    const deliveryDateFromFirstItem = orderDetails[0]?.deliveryDate || null;
-    const preferredTimeFromFirstItem = orderDetails[0]?.preferredTime || null;
+  const courierIcon = new L.Icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png", // 🚗 машинка
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40],
+  });
 
-    const distance = getDistanceFromWarehouse(latitude, longitude);
-    const deliveryPrice = calculateDeliveryCost(totalPrice, distance);
-
-    if (!orderDetails || orderDetails.length === 0) {
-      throw new Error("orderDetails не может быть пустым");
+  useEffect(() => {
+    if (courierMarkerRef.current && courierLocation) {
+      courierMarkerRef.current.setLatLng([
+        courierLocation.lat,
+        courierLocation.lng,
+      ]);
     }
+  }, [courierLocation]);
 
-    const userId = req.user ? req.user.id : null;
-    let warehouseId = userId;
+  const AutoPanToCourier = ({ position }) => {
+    const map = useMap();
+    useEffect(() => {
+      if (position) {
+        map.panTo(position);
+      }
+    }, [position]);
+    return null;
+  };
 
-    let deviceImageUrl =
-      orderDetails[0]?.image || "https://example.com/placeholder.png";
+  const loadOrder = async () => {
+    try {
+      const activeOrder = await fetchActiveOrder();
 
-    if (deviceImageUrl.startsWith("http")) {
-      try {
-        const response = await fetch(deviceImageUrl);
-        if (!response.ok) throw new Error("Ошибка загрузки изображения с URL");
+      if (activeOrder) {
+        setOrder(activeOrder);
+        setShowIcon(true);
 
-        const buffer = await response.arrayBuffer();
-        const fileName = `orders/${uuid.v4()}${deviceImageUrl.substring(
-          deviceImageUrl.lastIndexOf(".")
-        )}`;
-
-        const { data, error } = await supabase.storage
-          .from("images")
-          .upload(fileName, Buffer.from(buffer), {
-            contentType: "image/jpeg",
-          });
-
-        if (error) {
-          console.error("❌ Ошибка загрузки изображения в Supabase:", error);
+        if (activeOrder.desiredDeliveryDate) {
+          setIsPreorder(true);
+          setPreorderDate(activeOrder.desiredDeliveryDate);
         } else {
-          deviceImageUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
-        }
-      } catch (error) {
-        console.error("❌ Ошибка обработки изображения:", error);
-      }
-
-      let isPreorder = false;
-
-      for (const item of orderDetails) {
-        const device = await Device.findByPk(item.deviceId);
-
-        if (!device) {
-          return res
-            .status(400)
-            .json({ message: `Товар "${item.name}" не найден.` });
+          setIsPreorder(false);
+          setPreorderDate(null);
         }
 
-        if (device.quantity < item.count && !item.isPreorder) {
-          return res.status(400).json({
-            message: `Недостаточно товара: ${item.name}. Осталось ${device.quantity} шт.`,
+        if (
+          activeOrder.status === "Waiting for courier" &&
+          activeOrder.processingTime &&
+          activeOrder.updatedAt
+        ) {
+          const [value, unit] = activeOrder.processingTime.split(" ");
+          let totalSeconds = 0;
+
+          if (unit.includes("мин")) totalSeconds = parseInt(value, 10) * 60;
+          else if (unit.includes("дн"))
+            totalSeconds = parseInt(value, 10) * 24 * 60 * 60;
+
+          const started = new Date(activeOrder.updatedAt).getTime();
+          const now = Date.now();
+          const elapsed = Math.floor((now - started) / 1000);
+          const remaining = Math.max(totalSeconds - elapsed, 0);
+
+          setTimeLeft(remaining);
+        } else if (
+          activeOrder.status === "Picked up" &&
+          activeOrder.estimatedTime &&
+          activeOrder.pickupStartTime
+        ) {
+          const started = new Date(activeOrder.pickupStartTime).getTime();
+          const now = Date.now();
+          const elapsed = Math.floor((now - started) / 1000);
+          const remaining = Math.max(activeOrder.estimatedTime - elapsed, 0);
+
+          setTimeLeft(remaining);
+        }
+
+        if (activeOrder.courierLocation) {
+          setCourierLocation(activeOrder.courierLocation);
+        }
+
+        if (
+          activeOrder.deliveryLat &&
+          activeOrder.deliveryLng &&
+          activeOrder.courierLocation
+        ) {
+          fetchRoute(activeOrder.courierLocation, {
+            lat: activeOrder.deliveryLat,
+            lng: activeOrder.deliveryLng,
           });
         }
-
-        if (device.quantity >= item.count && !item.isPreorder) {
-          await device.update({ quantity: device.quantity - item.count });
-        } else {
-          isPreorder = true;
-        }
+      } else {
+        setOrder(null);
+        setShowIcon(false);
       }
-
-      let status = "Pending";
-      if (isPreorder || desiredDeliveryDate) {
-        status = "preorder";
-      }
+    } catch (error) {
+      console.warn("Нет активного заказа:", error);
+      setOrder(null);
+      setShowIcon(false);
     }
+  };
 
-    const order = await Order.create({
-      userId,
-      totalPrice: totalPrice + deliveryPrice,
-      deliveryPrice,
-      status: "Pending",
-      warehouseStatus: "pending",
-      warehouseId,
-      courierId: null,
-      deliveryLat: latitude,
-      deliveryLng: longitude,
-      deliveryAddress: address,
-      deviceImage: deviceImageUrl,
-      productName:
-        orderDetails.length > 0 ? orderDetails[0].name : "Неизвестный товар",
-      orderDetails: JSON.stringify(orderDetails),
-      desiredDeliveryDate: deliveryDateFromFirstItem
-        ? new Date(deliveryDateFromFirstItem)
-        : null,
-      preferredDeliveryComment: preferredTimeFromFirstItem,
-      formData: JSON.stringify(formData),
-    });
+  useEffect(() => {
+    loadOrder();
 
-    const io = req.app.get("io");
-    io.emit("newOrder", order);
+    const handleOrderUpdate = (updatedOrder) => {
+      if (updatedOrder && updatedOrder.id) {
+        setOrder((prevOrder) =>
+          prevOrder && prevOrder.id === updatedOrder.id
+            ? { ...prevOrder, ...updatedOrder }
+            : prevOrder
+        );
+        setShowIcon(true);
 
-    const preorderAvailable = orderDetails.filter(
-      (item) => item.isPreorder && item.desiredDeliveryDate && item.count > 0
-    );
-
-    const preorderOutOfStock = orderDetails.filter(
-      (item) =>
-        item.isPreorder && (!item.desiredDeliveryDate || item.count === 0)
-    );
-
-    const regularItems = orderDetails.filter((item) => !item.isPreorder);
-
-    const generateTableRows = (items) => {
-      return items
-        .map(
-          (item) => `
-      <tr>
-        <td><img src="${
-          item.image
-        }" width="50" height="50" style="border-radius:5px;"></td>
-        <td>${item.name}</td>
-        <td>${item.count} шт.</td>
-        <td>${item.price} €</td>
-        <td>${
-          item.selectedOptions
-            ? Object.entries(item.selectedOptions)
-                .map(([key, value]) => `${key}: ${value.value}`)
-                .join(", ")
-            : "Нет опций"
+        if (updatedOrder.accepted === true) {
+          setIsAccepted(true);
+          if (updatedOrder.courierLocation) {
+            setCourierLocation(updatedOrder.courierLocation);
+          }
         }
-        </td>
-      </tr>
-    `
-        )
-        .join("");
+
+        if (updatedOrder.desiredDeliveryDate) {
+          setIsPreorder(true);
+          setPreorderDate(updatedOrder.desiredDeliveryDate);
+        } else {
+          setIsPreorder(false);
+          setPreorderDate(null);
+        }
+
+        if (
+          updatedOrder.status === "Waiting for courier" &&
+          updatedOrder.processingTime
+        ) {
+          const [value, unit] = updatedOrder.processingTime.split(" "); // Разделяем число и единицу измерения
+          let timeInSeconds = 0;
+
+          if (unit.includes(`${t("minutes", { ns: "orderSidebar" })}`)) {
+            timeInSeconds = parseInt(value, 10) * 60; // Минуты → секунды
+          } else if (unit.includes(`${t("days", { ns: "orderSidebar" })}`)) {
+            timeInSeconds = parseInt(value, 10) * 24 * 60 * 60; // Дни → секунды
+          }
+
+          setTimeLeft(timeInSeconds);
+        } else if (
+          updatedOrder.status === "Picked up" &&
+          updatedOrder.estimatedTime &&
+          updatedOrder.pickupStartTime
+        ) {
+          const started = new Date(updatedOrder.pickupStartTime).getTime();
+          const now = Date.now();
+          const elapsed = Math.floor((now - started) / 1000);
+          const remaining = Math.max(updatedOrder.estimatedTime - elapsed, 0);
+
+          setTimeLeft(remaining);
+        } else if (
+          updatedOrder.status === "Arrived at destination" ||
+          updatedOrder.status === "Delivered"
+        ) {
+          setTimeLeft(null);
+        }
+
+        if (updatedOrder.courierLocation && updatedOrder.accepted === true) {
+          setCourierLocation(updatedOrder.courierLocation);
+        }
+
+        if (
+          updatedOrder.deliveryLat &&
+          updatedOrder.deliveryLng &&
+          updatedOrder.courierLocation
+        ) {
+          fetchRoute(updatedOrder.courierLocation, {
+            lat: updatedOrder.deliveryLat,
+            lng: updatedOrder.deliveryLng,
+          });
+        }
+      }
     };
 
-    const emailHTML = `
-  <div style="font-family:Arial, sans-serif; color:#333; max-width:600px; padding:20px; border:1px solid #ddd; border-radius:8px;">
-
-    ${
-      regularItems.length > 0
-        ? `
-      <h3>📦 Обычные товары:</h3>
-      <table style="width:100%; border-collapse:collapse;">
-        <thead>
-          <tr style="background:#f8f8f8;">
-            <th>Фото</th><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Опции</th>
-          </tr>
-        </thead>
-        <tbody>${generateTableRows(regularItems)}</tbody>
-      </table>
-    `
-        : ""
-    }
-
-    ${
-      preorderAvailable.length > 0
-        ? `
-      <h3>⏳ Предзаказ (товар есть, доставка позже):</h3>
-      <table style="width:100%; border-collapse:collapse;">
-        <thead>
-          <tr style="background:#f8f8f8;">
-            <th>Фото</th><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Опции</th>
-          </tr>
-        </thead>
-        <tbody>${generateTableRows(preorderAvailable)}</tbody>
-      </table>
-      <p><strong>Дата доставки:</strong> ${
-        desiredDeliveryDate
-          ? new Date(desiredDeliveryDate).toLocaleDateString("ru-RU")
-          : "Ожидается подтверждение"
-      }</p>
-    `
-        : ""
-    }
-
-    ${
-      preorderOutOfStock.length > 0
-        ? `
-      <h3>🏭 Предзаказ (товар отсутствует, ждет поступления):</h3>
-      <table style="width:100%; border-collapse:collapse;">
-        <thead>
-          <tr style="background:#f8f8f8;">
-            <th>Фото</th><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Опции</th>
-          </tr>
-        </thead>
-        <tbody>${generateTableRows(preorderOutOfStock)}</tbody>
-      </table>
-    `
-        : ""
-    }
-
-    ${
-      deliveryDateFromFirstItem
-        ? `<p><strong>Предпочитаемая дата доставки:</strong> ${new Date(
-            deliveryDateFromFirstItem
-          ).toLocaleString()}</p>`
-        : ""
-    }
-    ${
-      preferredTimeFromFirstItem
-        ? `<p><strong>Комментарий о времени:</strong> ${preferredTimeFromFirstItem}</p>`
-        : ""
-    }
-
-    <h3>🚚 Доставка:</h3>
-    <p><strong>Адрес:</strong> ${address}, квартира ${apartment || "-"}</p>
-    <p><strong>Стоимость доставки:</strong> ${deliveryPrice.toFixed(2)} €</p>
-
-    <h3>💳 Итоговая сумма:</h3>
-    <p><strong>${(totalPrice + deliveryPrice).toFixed(2)} €</strong></p>
-
-    <hr>
-    <p>📞 Контактные данные:</p>
-    <p><strong>Телефон:</strong> ${phone}</p>
-    <p><strong>Email:</strong> ${email}</p>
-
-    <p style="margin-top:20px;">Спасибо за ваш заказ! 🚀</p>
-  </div>
-`;
-
-    await sendEmail(email, "🛒 Заказ!", emailHTML, true);
-    res.status(201).json({ message: "Заказ успешно оформлен" });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Ошибка при оформлении заказа", error: error.message });
-  }
-};
-
-const getDeliveryCost = (req, res) => {
-  const { totalPrice, lat, lon } = req.query;
-
-  if (!totalPrice || !lat || !lon) {
-    return res
-      .status(400)
-      .json({ message: "Нужно указать totalPrice, lat и lon" });
-  }
-
-  const distance = getDistanceFromWarehouse(parseFloat(lat), parseFloat(lon));
-  const deliveryCost = calculateDeliveryCost(parseFloat(totalPrice), distance);
-
-  res.json({ deliveryCost });
-};
-
-const updateOrderStatus = async (req, res) => {
-  try {
-    const { orderId, newStatus } = req.body;
-
-    const order = await Order.findByPk(orderId);
-    if (!order) {
-      return res.status(404).json({ message: "Заказ не найден." });
-    }
-
-    order.status = newStatus;
-    await order.save();
-
-    res.json({ message: "Статус заказа обновлён!", order });
-  } catch (error) {
-    res.status(500).json({ message: "Ошибка сервера" });
-  }
-};
-
-const getUserOrders = async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const orders = await Order.findAll({
-      where: { userId },
-      order: [["createdAt", "DESC"]],
-    });
-
-    const deviceIds = orders.flatMap((order) =>
-      JSON.parse(order.orderDetails || "[]").map((d) => d.deviceId)
-    );
-
-    if (deviceIds.length > 0) {
-      const translations = await Translation.findAll({
-        where: {
-          key: {
-            [Op.or]: deviceIds.map((id) => `device_${id}.name`),
-          },
-        },
-      });
-
-      const translationMap = {};
-      translations.forEach((t) => {
-        const deviceId = t.key.replace("device_", "").replace(".name", "");
-        if (!translationMap[deviceId]) translationMap[deviceId] = {};
-        translationMap[deviceId][t.lang] = t.text;
-      });
-
-      orders.forEach((order) => {
-        const orderDetails = JSON.parse(order.orderDetails || "[]");
-
-        orderDetails.forEach((detail) => {
-          const translations = translationMap[detail.deviceId] || {};
-          detail.translations = { name: translations };
-
-          const lang = "ru";
-          if (translations[lang]) {
-            detail.name = translations[lang];
-          }
+    socket.on("orderStatusUpdate", handleOrderUpdate);
+    socket.on("courierLocationUpdate", (location) => {
+      setCourierLocation(location);
+      if (order && order.deliveryLat && order.deliveryLng) {
+        fetchRoute(location, {
+          lat: order.deliveryLat,
+          lng: order.deliveryLng,
         });
-
-        order.orderDetails = orderDetails;
-      });
-    }
-
-    res.json(orders);
-  } catch (error) {
-    console.error("❌ Ошибка получения заказов:", error);
-    res.status(500).json({ message: "Ошибка получения заказов" });
-  }
-};
-
-const getActiveOrder = async (req, res) => {
-  try {
-    const userId = req.user ? req.user.id : null;
-
-    const order = await Order.findOne({
-      where: {
-        userId,
-        status: {
-          [Op.in]: [
-            "Pending",
-            "Waiting for courier",
-            "Ready for pickup",
-            "Picked up",
-            "Arrived at destination",
-            "Delivered",
-          ],
-        },
-      },
-      order: [["createdAt", "DESC"]],
+      }
     });
 
-    if (!order) {
-      return res.json(null);
-    }
+    window.addEventListener("orderUpdated", loadOrder);
 
-    let orderItems = [];
+    return () => {
+      socket.off("orderStatusUpdate", handleOrderUpdate);
+      socket.off("courierLocationUpdate");
+      window.removeEventListener("orderUpdated", loadOrder);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (timeLeft === null) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prevTime) => (prevTime !== null ? prevTime - 1 : null));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft]);
+
+  const formatTime = (seconds) => {
+    if (seconds <= 0) return `${t("zero seconds", { ns: "orderSidebar" })}`; // Если время вышло
+
+    const days = Math.floor(seconds / (24 * 60 * 60)); // Количество дней
+    const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60)); // Оставшиеся часы
+    const mins = Math.floor((seconds % (60 * 60)) / 60); // Оставшиеся минуты
+    const secs = seconds % 60; // Оставшиеся секунды
+
+    let result = "";
+    if (days > 0) result += `${days} ${t("days", { ns: "orderSidebar" })} `;
+    if (hours > 0) result += `${hours} ${t("hours", { ns: "orderSidebar" })} `;
+    if (mins > 0) result += `${mins} ${t("minutes", { ns: "orderSidebar" })} `;
+    if (secs > 0 && days === 0 && hours === 0)
+      result += `${secs} ${t("seconds", { ns: "orderSidebar" })} `;
+
+    return result.trim(); 
+  };
+
+  const fetchRoute = async (start, end) => {
+    if (!start || !end) return;
+
+    const API_KEY = "5b3ce3597851110001cf624889e39f2834a84a62aaca04f731838a64";
+    const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${API_KEY}&start=${start.lng},${start.lat}&end=${end.lng},${end.lat}`;
+
     try {
-      const parsedData = order.formData ? JSON.parse(order.formData) : {};
-      orderItems = parsedData.orderDetails || [];
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.features && data.features.length > 0) {
+        const coordinates = data.features[0].geometry.coordinates.map(
+          (coord) => [coord[1], coord[0]]
+        );
+        setRoute(coordinates);
+
+        const durationInSeconds =
+          data.features[0].properties.segments[0].duration;
+        setRouteTime(Math.round(durationInSeconds));
+      }
     } catch (error) {
-      console.error("Ошибка парсинга formData:", error);
+      console.error("Ошибка получения маршрута:", error);
     }
+  };
 
-    res.json({
-      ...order.toJSON(),
-      order_items: orderItems,
+  const handleToggleSidebar = () => {
+    setSidebarOpen((prevState) => {
+      const newState = !prevState;
+      localStorage.setItem("orderSidebarOpen", newState);
+      return newState;
     });
-  } catch (error) {
-    console.error("Ошибка получения активного заказа:", error);
-    res.status(500).json({ message: "Ошибка сервера при получении заказа." });
-  }
+  };
+
+  const handleCompleteOrder = async () => {
+    if (!order) return;
+    try {
+      await updateOrderStatus(order.id, "Completed");
+      setOrder(null);
+      setShowIcon(false);
+      window.dispatchEvent(new Event("orderUpdated"));
+    } catch (error) {
+      console.error("Ошибка завершения заказа:", error);
+    }
+  };
+
+  return (
+    <>
+      {showIcon && setSidebarOpen && (
+        <div
+          className={styles.floatingIcon}
+          onClick={() => setSidebarOpen(true)}
+        >
+          📦
+        </div>
+      )}
+      <div className={`${styles.sidebar} ${isSidebarOpen ? styles.open : ""}`}>
+        <div className={styles.header}>
+          <h3>{t("delivery status", { ns: "orderSidebar" })}</h3>
+          <button onClick={() => setSidebarOpen(false)}>×</button>
+        </div>
+
+        {order ? (
+          <div>
+            {isPreorder ? (
+              <p className={styles.preorderInfo}>
+                <strong>{t("preorder", { ns: "orderSidebar" })}</strong>
+                {t("scheduled delivery", { ns: "orderSidebar" })}{" "}
+                <span className={styles.preorderDate}>
+                  {new Date(preorderDate).toLocaleString("ru-RU", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </p>
+            ) : (
+              <p>
+                <strong>{t("status", { ns: "orderSidebar" })}</strong>
+                <span className={styles.statusText}>
+                  {!order?.status ||
+                    (order?.status === "Pending" &&
+                      `${t("waiting for order confirmation", {
+                        ns: "orderSidebar",
+                      })}`)}
+                  {order?.status === "Waiting for courier" &&
+                    `${t("order accepted", { ns: "orderSidebar" })}`}
+                  {order?.status === "Ready for pickup" &&
+                    `${t("order is ready waiting for the courier", {
+                      ns: "orderSidebar",
+                    })}`}
+                  {order?.status === "Picked up" &&
+                    `${t("courier is on the way", { ns: "orderSidebar" })}`}
+                  {order?.status === "Arrived at destination" &&
+                    `${t("courier has arrived", { ns: "orderSidebar" })}`}
+                  {order?.status === "Delivered" &&
+                    `${t("order delivered", { ns: "orderSidebar" })}`}
+                </span>
+              </p>
+            )}
+            {!order.preorderDate &&
+              order?.status === "Waiting for courier" &&
+              timeLeft !== null && (
+                <p>
+                  <strong>
+                    {t("preparation time", { ns: "orderSidebar" })}
+                  </strong>{" "}
+                  ⏳ {formatTime(timeLeft)}
+                </p>
+              )}
+
+            {order?.status === "Picked up" && timeLeft !== null && (
+              <p>
+                <strong>{t("time in transit", { ns: "orderSidebar" })}</strong>{" "}
+                🚗 {formatTime(timeLeft)}
+              </p>
+            )}
+            <div className={styles.mapContainer}>
+              <MapContainer
+                center={[order.deliveryLat, order.deliveryLng]}
+                zoom={13}
+                style={{ height: "300px", width: "100%" }}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution="&copy; OpenStreetMap"
+                />
+                {courierLocation && (
+                  <AutoPanToCourier
+                    position={[courierLocation.lat, courierLocation.lng]}
+                  />
+                )}
+                <Marker
+                  position={[order.deliveryLat, order.deliveryLng]}
+                  icon={
+                    new L.Icon({
+                      iconUrl:
+                        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+                      iconSize: [25, 41],
+                    })
+                  }
+                />
+                {courierLocation &&
+                  (isAccepted ||
+                    ["Picked up", "Arrived at destination"].includes(
+                      order?.status
+                    )) && (
+                    <Marker
+                      position={[courierLocation.lat, courierLocation.lng]}
+                      icon={courierIcon}
+                      ref={courierMarkerRef}
+                    >
+                      <Popup>🚗 Курьер</Popup>
+                    </Marker>
+                  )}
+
+                {route.length > 0 && (
+                  <Polyline positions={route} color="blue" />
+                )}
+                <Marker
+                  position={[WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng]}
+                  icon={
+                    new L.Icon({
+                      iconUrl:
+                        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+                      iconSize: [25, 41],
+                    })
+                  }
+                >
+                  <Popup>📦 Склад</Popup>
+                </Marker>
+              </MapContainer>
+            </div>
+            {(order.status === "Delivered" || order.status === "Completed") && (
+              <button
+                className={styles.completeButton}
+                onClick={handleCompleteOrder}
+              >
+                {t("confirm delivery", { ns: "orderSidebar" })}
+              </button>
+            )}
+            <button
+              className={styles.orderHistoryButton}
+              onClick={() => navigate("/profile")}
+            >
+              {t("my orders", { ns: "orderSidebar" })}
+            </button>
+          </div>
+        ) : (
+          <p>{t("no active orders", { ns: "orderSidebar" })}</p>
+        )}
+      </div>
+    </>
+  );
 };
 
-const getAllOrdersForAdmin = async (req, res) => {
-  try {
-    const orders = await Order.findAll({
-      order: [["createdAt", "DESC"]],
-    });
-
-    res.json(orders);
-  } catch (error) {
-    console.error("❌ Ошибка получения заказов админом:", error);
-    res.status(500).json({ message: "Ошибка сервера" });
-  }
-};
-
-const adminUpdateOrderStatus = async (req, res) => {
-  const { id } = req.params;
-  const { status, processingTime, estimatedTime } = req.body;
-
-  const order = await Order.findByPk(id);
-  if (!order) return res.status(404).json({ message: "Заказ не найден" });
-
-  if (status) order.status = status;
-  if (processingTime !== undefined) order.processingTime = processingTime;
-  if (estimatedTime !== undefined) order.estimatedTime = estimatedTime;
-
-  if (status === "Picked up") {
-    order.pickupStartTime = new Date();
-  }
-
-  await order.save();
-
-  const io = req.app.get("io");
-  io.emit("orderStatusUpdate", order);
-
-  return res.json({ message: "Обновлено", order });
-};
-
-const assignCourier = async (req, res) => {
-  const { id } = req.params;
-  const { courierId } = req.body;
-
-  try {
-    const order = await Order.findByPk(id);
-    if (!order) return res.status(404).json({ message: "Заказ не найден" });
-
-    const courier = await Courier.findByPk(courierId);
-    if (!courier) return res.status(404).json({ message: "Курьер не найден" });
-
-    order.courierId = courierId;
-    await order.save();
-
-    const io = req.app.get("io");
-    io.emit("orderStatusUpdate", {
-      id: order.id,
-      status: order.status,
-      courierId: order.courierId,
-      deliveryLat: order.deliveryLat,
-      deliveryLng: order.deliveryLng,
-      deliveryAddress: order.deliveryAddress,
-      orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
-    });
-
-    res.json({ message: "Курьер назначен", order });
-  } catch (error) {
-    console.error("❌ Ошибка назначения курьера:", error);
-    res.status(500).json({ message: "Ошибка сервера" });
-  }
-};
-
-module.exports = {
-  createOrder,
-  getDeliveryCost,
-  getUserOrders,
-  getActiveOrder,
-  updateOrderStatus,
-  getAllOrdersForAdmin,
-  adminUpdateOrderStatus,
-  assignCourier,
-};
+export default OrderSidebar;
