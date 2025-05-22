@@ -16,7 +16,7 @@ import L from "leaflet";
 import { useTranslation } from "react-i18next";
 import styles from "./OrderSidebar.module.css";
 
-const socket = io("http://localhost:5000");
+const socket = io("https://zang-4.onrender.com");
 
 const WAREHOUSE_LOCATION = { lat: 59.51372, lng: 24.828888 };
 
