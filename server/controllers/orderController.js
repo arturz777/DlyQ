@@ -31,18 +31,46 @@ const createOrder = async (req, res) => {
       longitude,
     } = formData;
 
-    const deliveryDateFromFirstItem = orderDetails[0]?.deliveryDate || null;
-    const preferredTimeFromFirstItem = orderDetails[0]?.preferredTime || null;
-
-    const distance = getDistanceFromWarehouse(latitude, longitude);
-    const deliveryPrice = calculateDeliveryCost(totalPrice, distance);
-
     if (!orderDetails || orderDetails.length === 0) {
       throw new Error("orderDetails не может быть пустым");
     }
 
     const userId = req.user ? req.user.id : null;
     let warehouseId = userId;
+
+    const deliveryDateFromFirstItem = orderDetails[0]?.deliveryDate || null;
+    const preferredTimeFromFirstItem = orderDetails[0]?.preferredTime || null;
+    const distance = getDistanceFromWarehouse(latitude, longitude);
+    const deliveryPrice = calculateDeliveryCost(totalPrice, distance);
+
+     let isPreorder = false;
+    const devicesToUpdate = [];
+
+    for (const item of orderDetails) {
+      const device = await Device.findByPk(item.deviceId);
+      if (!device) {
+        return res.status(400).json({ message: `Товар "${item.name}" не найден.` });
+      }
+
+      if (device.quantity < item.count && !item.isPreorder) {
+        return res.status(400).json({
+          message: `Недостаточно товара: ${item.name}. Осталось ${device.quantity} шт.`,
+        });
+      }
+
+      if (device.quantity < item.count) {
+        isPreorder = true;
+      }
+
+      if (device.quantity >= item.count && !item.isPreorder) {
+        devicesToUpdate.push({ device, count: item.count });
+      }
+    }
+
+    let status = "Pending";
+    if (isPreorder || desiredDeliveryDate) {
+      status = "preorder";
+    }
 
     let deviceImageUrl =
       orderDetails[0]?.image || "https://example.com/placeholder.png";
@@ -51,7 +79,6 @@ const createOrder = async (req, res) => {
       try {
         const response = await fetch(deviceImageUrl);
         if (!response.ok) throw new Error("Ошибка загрузки изображения с URL");
-
         const buffer = await response.arrayBuffer();
         const fileName = `orders/${uuid.v4()}${deviceImageUrl.substring(
           deviceImageUrl.lastIndexOf(".")
@@ -70,35 +97,6 @@ const createOrder = async (req, res) => {
         }
       } catch (error) {
         console.error("❌ Ошибка обработки изображения:", error);
-      }
-
-      let isPreorder = false;
-
-      for (const item of orderDetails) {
-        const device = await Device.findByPk(item.deviceId);
-
-        if (!device) {
-          return res
-            .status(400)
-            .json({ message: `Товар "${item.name}" не найден.` });
-        }
-
-        if (device.quantity < item.count && !item.isPreorder) {
-          return res.status(400).json({
-            message: `Недостаточно товара: ${item.name}. Осталось ${device.quantity} шт.`,
-          });
-        }
-
-        if (device.quantity >= item.count && !item.isPreorder) {
-          await device.update({ quantity: device.quantity - item.count });
-        } else {
-          isPreorder = true;
-        }
-      }
-
-      let status = "Pending";
-      if (isPreorder || desiredDeliveryDate) {
-        status = "preorder";
       }
     }
 
@@ -123,6 +121,10 @@ const createOrder = async (req, res) => {
       preferredDeliveryComment: preferredTimeFromFirstItem,
       formData: JSON.stringify(formData),
     });
+
+    for (const { device, count } of devicesToUpdate) {
+      await device.update({ quantity: device.quantity - count });
+    }
 
     const io = req.app.get("io");
     io.emit("newOrder", order);
