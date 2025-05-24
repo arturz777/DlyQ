@@ -16,7 +16,10 @@ const calculateDeliveryCost = (totalPrice, distance) => {
 };
 
 const createOrder = async (req, res) => {
+  console.log("🟡 [createOrder] ➜ Запрос на создание заказа получен");
   try {
+    console.log("📥 Тело запроса (req.body):", JSON.stringify(req.body, null, 2));
+    console.log("🔑 Авторизация: userId =", req.user ? req.user.id : "неавторизован");
     const { formData, totalPrice, orderDetails, desiredDeliveryDate } =
       req.body;
     const {
@@ -31,8 +34,14 @@ const createOrder = async (req, res) => {
       longitude,
     } = formData;
 
-    if (!orderDetails || orderDetails.length === 0) {
-      throw new Error("orderDetails не может быть пустым");
+    if (!formData || typeof formData !== "object") {
+      console.error("❌ formData отсутствует или неверного формата");
+      return res.status(400).json({ message: "Некорректные данные доставки (formData)" });
+    }
+
+    if (!orderDetails || !Array.isArray(orderDetails) || orderDetails.length === 0) {
+      console.error("❌ orderDetails пустой или не массив");
+      return res.status(400).json({ message: "Корзина пуста или повреждена" });
     }
 
     const userId = req.user ? req.user.id : null;
