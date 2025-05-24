@@ -62,9 +62,9 @@ const createOrder = async (req, res) => {
         isPreorder = true;
       }
 
-      if (device.quantity >= item.count && !item.isPreorder) {
-        devicesToUpdate.push({ device, count: item.count });
-      }
+       if (device.quantity >= item.count) {
+  devicesToUpdate.push({ device, count: item.count });
+}
     }
 
     let status = "Pending";
