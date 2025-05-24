@@ -253,7 +253,6 @@ const createOrder = async (req, res) => {
     await sendEmail(email, "🛒 Заказ!", emailHTML, true);
     res.status(201).json({ message: "Заказ успешно оформлен" });
   } catch (error) {
-    console.error("❌ Ошибка при оформлении заказа:", error);
     res
       .status(500)
       .json({ message: "Ошибка при оформлении заказа", error: error.message });
