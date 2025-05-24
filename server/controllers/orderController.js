@@ -52,24 +52,11 @@ const createOrder = async (req, res) => {
         return res.status(400).json({ message: `Товар "${item.name}" не найден.` });
       }
 
-        console.log(`🔍 Проверка товара: ${item.name}`);
-  console.log(`📦 Остаток: ${device.quantity}`);
-  console.log(`🛒 Заказано: ${item.count}`);
-  console.log(`📌 isPreorder: ${item.isPreorder}`);
-
-  if (device.quantity < item.count && !item.isPreorder) {
-    console.error(`❌ Недостаточно товара: ${item.name}. Осталось ${device.quantity}, заказано ${item.count}.`);
-    return res.status(400).json({
-      message: `Недостаточно товара: ${item.name}. Осталось ${device.quantity} шт.`,
-      debug: {
-        name: item.name,
-        deviceId: item.deviceId,
-        stock: device.quantity,
-        requested: item.count,
-        isPreorder: item.isPreorder,
+        if (device.quantity < item.count && !item.isPreorder) {
+        return res.status(400).json({
+          message: `Недостаточно товара: ${item.name}. Осталось ${device.quantity} шт.`,
+        });
       }
-    });
-  }
 
       if (device.quantity < item.count) {
         isPreorder = true;
