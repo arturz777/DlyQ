@@ -5,7 +5,16 @@ import { login, registration } from "../http/userAPI";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import { useTranslation } from "react-i18next";
+import ruFlag from "../assets/flags/ru.png";
+import enFlag from "../assets/flags/en.png";
+import estFlag from "../assets/flags/est.png";
 import styles from "./Auth.module.css";
+
+const flags = {
+  ru: ruFlag,
+  en: enFlag,
+  est: estFlag,
+};
 
 const Auth = observer(() => {
   const { user } = useContext(Context);
@@ -18,7 +27,25 @@ const Auth = observer(() => {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [agreed, setAgreed] = useState(false);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+   const currentLang = i18n.language;
+    const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
+
+   const languages = [
+    { code: "GB", language: "en" },
+    { code: "RU", language: "ru" },
+    { code: "EE", language: "est" },
+  ];
+
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+    setIsLanguageMenuOpen(false);
+  };
+
+   const currentLanguage = i18n.language;
+  const currentFlag = languages.find(
+    (lang) => lang.language === currentLanguage
+  );
 
   const click = async () => {
     try {
@@ -39,6 +66,40 @@ const Auth = observer(() => {
   return (
     <div className={styles.authWrapper}>
       <div className={styles.authContainer}>
+
+                      <div
+              className={styles.languageSelectorWrapper}
+              onMouseLeave={() => setIsLanguageMenuOpen(false)}
+            >
+              <button
+                onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
+                className={styles.currentLanguageButton}
+              >
+               <img
+                 src={flags[currentFlag?.language] || flags["en"]}
+                 alt={currentFlag?.language}
+                 className={styles.flag}
+               />
+              </button>
+              {isLanguageMenuOpen && (
+                <div className={styles.dropdownMenu}>
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.language}
+                      onClick={() => changeLanguage(lang.language)}
+                      className={styles.dropdownItem}
+                    >
+                      <img
+                        src={require(`../assets/flags/${lang.language}.png`)}
+                        alt={lang.language}
+                        className={styles.flag}
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+                      
         <h2 className={styles.authTitle}>
           {isLogin
             ? t("authorization", { ns: "auth" })
