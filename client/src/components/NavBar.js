@@ -17,6 +17,7 @@ import {
   FaUser,
   FaSignOutAlt,
 } from "react-icons/fa";
+import { io } from "socket.io-client";
 import { useTranslation } from "react-i18next";
 import ruFlag from "../assets/flags/ru.png";
 import enFlag from "../assets/flags/en.png";
@@ -34,6 +35,7 @@ const NavBar = observer(() => {
   const [lastScroll, setLastScroll] = useState(0);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const { user, basket } = useContext(Context);
+  const [unreadChats, setUnreadChats] = useState(new Set());
   const navigate = useNavigate();
   const location = useLocation();
   const { t, i18n } = useTranslation();
@@ -73,6 +75,55 @@ const NavBar = observer(() => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScroll]);
+
+  useEffect(() => {
+    if (!user?.user?.id) return;
+
+    fetch(`http://localhost:5000/api/chat/user/${user.user.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const unread = new Set();
+        data.forEach((chat) => {
+          const hasUnread = chat.messages?.some(
+            (msg) => !msg.isRead && msg.senderId !== user.user.id
+          );
+          if (hasUnread) unread.add(chat.id);
+        });
+
+        setUnreadChats(unread);
+      })
+      .catch(console.error);
+  }, [user?.user?.id]);
+
+  useEffect(() => {
+    const socket = io("http://localhost:5000");
+
+    if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
+      socket.emit("joinAdminNotifications");
+
+      socket.on("newChatMessage", (msg) => {
+        setUnreadChats((prev) => {
+          const updated = new Set(prev);
+          updated.add(msg.chatId);
+          return updated;
+        });
+      });
+
+      socket.on("readMessages", ({ chatId, userId: readerId }) => {
+        if (readerId === user.user.id) {
+          setUnreadChats((prev) => {
+            const updated = new Set(prev);
+            updated.delete(chatId);
+            return updated;
+          });
+        }
+      });
+    }
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [user]);
 
   const navbarStyle = {
     position: "fixed",
@@ -138,8 +189,23 @@ const NavBar = observer(() => {
           <div
             className={styles.navbarLink}
             onClick={() => navigate(ADMIN_ROUTE)}
+            style={{ position: "relative" }}
           >
             <FaCog />
+            {unreadChats.size > 0 && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  color: "red",
+                  fontSize: "1.4rem",
+                  lineHeight: 1,
+                }}
+              >
+                ●
+              </span>
+            )}
             <span className={styles.navbarLinkTitle}>
               {t("adminPanel", { ns: "navbar" })}
             </span>
@@ -151,7 +217,6 @@ const NavBar = observer(() => {
             {t("cart")} ({basket.totalItems})
           </span>
         </div>
-        {/* Авторизация */}
         {user.isAuth ? (
           location.pathname === "/profile" ? (
             <div className={styles.navbarLink} onClick={handleLogOut}>
