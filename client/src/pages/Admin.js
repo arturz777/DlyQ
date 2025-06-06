@@ -30,7 +30,7 @@ import Image from "react-bootstrap/Image";
 import styles from "./Admin.module.css";
 
 const Admin = () => {
-  const { device } = useContext(Context);
+  const { device, user } = useContext(Context);
   const [types, setTypes] = useState([]);
   const [subtypes, setSubtypes] = useState([]);
   const [brands, setBrands] = useState([]);
