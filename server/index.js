@@ -13,6 +13,7 @@ const setupCleanupTask = require("./tasks");
 const courierRouter = require("./routes/courierRouter");
 const warehouseRouter = require("./routes/warehouseRouter");
 const orderRouter = require("./routes/orderRouter");
+const chatRouter = require("./routes/chatRouter");
 const cookieParser = require('cookie-parser');
 
 setupCleanupTask();
@@ -41,6 +42,7 @@ app.use("/api/couriers", courierRouter);
 app.use("/api/warehouse", warehouseRouter);
 app.set("io", io);
 app.use("/api/order", orderRouter);
+app.use("/api/chat", chatRouter);
 
 server.listen(PORT, () => console.log(`🚀 Сервер запущен на порту ${PORT}`));
 
