@@ -124,6 +124,48 @@ const Translation = sequelize.define("translation", {
   indexes: [{ unique: true, fields: ["key", "lang"] }]
 });
 
+const Chat = sequelize.define("chat", {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  type: {
+    type: DataTypes.ENUM("support", "delivery"),
+    allowNull: false,
+  },
+  orderId: { type: DataTypes.INTEGER, allowNull: true },
+});
+
+const ChatParticipant = sequelize.define("chat_participant", {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  userId: { type: DataTypes.INTEGER, allowNull: false },
+  role: {
+    type: DataTypes.ENUM("client", "courier", "admin", "warehouse"),
+    allowNull: false,
+  },
+});
+
+const ChatMessage = sequelize.define("chat_message", {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  senderId: { type: DataTypes.INTEGER, allowNull: false },
+  senderRole: {
+    type: DataTypes.ENUM("client", "courier", "admin", "warehouse"),
+    allowNull: false,
+  },
+  text: { type: DataTypes.TEXT, allowNull: false },
+  isRead: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
+});
+
+Chat.hasMany(ChatParticipant, { as: "participants" });
+ChatParticipant.belongsTo(Chat);
+
+Chat.hasMany(ChatMessage, { as: "messages" });
+ChatMessage.belongsTo(Chat);
+
+User.hasMany(ChatParticipant, { foreignKey: "userId" });
+ChatParticipant.belongsTo(User, { foreignKey: "userId", as: "user" });
+
 Warehouse.hasMany(Order);
 Order.belongsTo(Warehouse);
 
