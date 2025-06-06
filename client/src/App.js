@@ -15,19 +15,37 @@ import Footer from "./components/Footer";
 import appStore from "./store/appStore";
 import CookieConsent from "./components/modals/CookieConsent";
 import LoadingBar from "./components/LoadingBar";
+import ChatModal from "./components/modals/ChatModal";
+import { ChatContext } from "./context/ChatContext";
 import './locales/i18n';
 import "./App.css"; 
-
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
 
 const App = observer(() => {
   const { user } = useContext(Context);
   const [loading, setLoading] = useState(true);
+  const [supportChatVisible, setSupportChatVisible] = useState(false);
+  const [supportChatId, setSupportChatId] = useState(1); 
+
+  const fetchSupportChat = async (userId) => {
+  const res = await fetch("http://localhost:5000/api/chat/support-chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }),
+  });
+  return await res.json();
+};
+
+const openSupportChat = () => {
+  setSupportChatId(null); 
+  setSupportChatVisible(true);
+};
+
+  const closeSupportChat = () => setSupportChatVisible(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token"); 
-
     appStore.setIsLoading(true);
 
     if (!token) {
@@ -59,6 +77,12 @@ const App = observer(() => {
   }
   
   return (
+    <ChatContext.Provider value={{
+      supportChatVisible,
+      supportChatId,
+      openSupportChat,
+      closeSupportChat
+    }}>
     <BrowserRouter>
      <Elements stripe={stripePromise}>
      <LoadingBar />
@@ -69,8 +93,10 @@ const App = observer(() => {
       </Elements>
       <MobileNavBar />
       <CookieConsent />
+      <ChatModal />
       <Footer />
-    </BrowserRouter>
+     </BrowserRouter>
+     </ChatContext.Provider>
   );
 });
 
