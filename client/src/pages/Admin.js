@@ -62,6 +62,7 @@ const Admin = () => {
   const [newText, setNewText] = useState("");
   const [allOrders, setAllOrders] = useState([]);
   const [couriers, setCouriers] = useState([]);
+  const [unreadChats, setUnreadChats] = useState(new Set());
 
   useEffect(() => {
     const socket = io("https://zang-4.onrender.com");
@@ -74,19 +75,15 @@ const Admin = () => {
       );
     });
   
-    // 🔥 Добавляем обновление статуса (online/offline)
     socket.on("courierStatusUpdate", ({ courierId, status }) => {
       setCouriers((prev) =>
-        prev.map((c) =>
-          c.id === courierId ? { ...c, status } : c
-        )
+        prev.map((c) => (c.id === courierId ? { ...c, status } : c))
       );
     });
   
     return () => socket.disconnect();
   }, []);
   
-
   useEffect(() => {
     fetchTypes().then(setTypes);
     fetchSubtypes().then(setSubtypes);
@@ -169,7 +166,6 @@ const Admin = () => {
 
   const handleAssignCourier = async (orderId, courierId) => {
     if (!courierId) {
-      // Просто сбрасываем локально, но НЕ отправляем на сервер
       setAllOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, courierId: null } : o))
       );
@@ -185,6 +181,38 @@ const Admin = () => {
       console.error("Ошибка при назначении курьера:", err);
     }
   };
+
+   useEffect(() => {
+    if (!user?.user?.id) return;
+
+    fetch(`https://zang-4.onrender.com/api/chat/user/${user.user.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const unread = new Set();
+        data.forEach((chat) => {
+          const hasUnread = chat.messages?.some(
+            (msg) => !msg.isRead && msg.senderId !== user.user.id
+          );
+          if (hasUnread) unread.add(chat.id);
+        });
+
+        setUnreadChats(unread);
+      })
+      .catch(console.error);
+  }, [user?.user?.id]);
+
+  useEffect(() => {
+    const socket = io(`https://zang-4.onrender.com`);
+
+    if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
+      socket.emit("joinAdminNotifications");
+      console.log("🔔 Админ подключен к admin_notifications");
+    }
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [user]);
 
   const handleDeleteType = async (id) => {
     await deleteType(id);
@@ -247,8 +275,7 @@ const Admin = () => {
       alert("Заполните все поля!");
       return;
     }
-
-    const response = await fetch("http://localhost:5000/api/translations", {
+    const response = await fetch(`zang-4.onrender.com/api/translations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: newKey, lang: newLang, text: newText }),
@@ -279,6 +306,10 @@ const Admin = () => {
           <Tab>Бренды</Tab>
           <Tab>Переводы</Tab>
           <Tab>Заказы</Tab>
+          <Tab>
+            Чат поддержки{" "}
+            {unreadChats.size > 0 && <span style={{ color: "red" }}>●</span>}
+          </Tab>
         </TabList>
 
         <TabPanel>
@@ -833,6 +864,15 @@ const Admin = () => {
               </table>
             )}
           </div>
+        </TabPanel>
+
+              <TabPanel>
+          <h2>Чат с клиентами</h2>
+          <ChatBox
+            userId={user.user.id}
+            userRole="admin"
+            onUnreadChange={(set) => setUnreadChats(set)}
+          />
         </TabPanel>
       </Tabs>
 
