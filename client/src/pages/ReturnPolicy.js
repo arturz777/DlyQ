@@ -1,9 +1,12 @@
 import React from "react";
+import { useContext } from "react";
+import { ChatContext } from "../context/ChatContext";
+import { Trans, useTranslation } from "react-i18next";
 import styles from "./ReturnPolicy.module.css";
-import { useTranslation } from "react-i18next";
 
 const ReturnPolicy = () => {
   const { t } = useTranslation("returnPolicy");
+  const { openSupportChat } = useContext(ChatContext);
 
   return (
     <div className={styles.container}>
@@ -18,9 +21,11 @@ const ReturnPolicy = () => {
       <section>
         <h2>{t("how_to_return.title")}</h2>
         <ul>
-          {(t("how_to_return.steps", { returnObjects: true }) || []).map((step, index) => (
-            <li key={index}>{step}</li>
-          ))}
+          {(t("how_to_return.steps", { returnObjects: true }) || []).map(
+            (step, index) => (
+              <li key={index}>{step}</li>
+            )
+          )}
         </ul>
       </section>
 
@@ -28,9 +33,11 @@ const ReturnPolicy = () => {
         <h2>{t("exceptions.title")}</h2>
         <p>{t("exceptions.text")}</p>
         <ul>
-          {(t("exceptions.list", { returnObjects: true }) || []).map((item, index) => (
-            <li key={index}>{item}</li>
-          ))}
+          {(t("exceptions.list", { returnObjects: true }) || []).map(
+            (item, index) => (
+              <li key={index}>{item}</li>
+            )
+          )}
         </ul>
       </section>
 
@@ -38,9 +45,11 @@ const ReturnPolicy = () => {
         <h2>{t("refunds.title")}</h2>
         <p>{t("refunds.text")}</p>
         <ul>
-          {(t("refunds.details", { returnObjects: true }) || []).map((detail, index) => (
-            <li key={index}>{detail}</li>
-          ))}
+          {(t("refunds.details", { returnObjects: true }) || []).map(
+            (detail, index) => (
+              <li key={index}>{detail}</li>
+            )
+          )}
         </ul>
       </section>
 
@@ -51,7 +60,20 @@ const ReturnPolicy = () => {
 
       <section>
         <h2>{t("contact.title")}</h2>
-        <p>{t("contact.text")}</p>
+        <p>
+          {t("contact.text")}{" "}
+          <span
+            style={{
+              color: "blue",
+              textDecoration: "underline",
+              cursor: "pointer",
+            }}
+            onClick={openSupportChat}
+          >
+            Support
+          </span>
+          .
+        </p>
       </section>
     </div>
   );
