@@ -7,7 +7,16 @@ import { FaCog, FaSignOutAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
+import ruFlag from "../assets/flags/ru.png";
+import enFlag from "../assets/flags/en.png";
+import estFlag from "../assets/flags/est.png";
 import styles from "./UserProfile.module.css";
+
+const flags = {
+  ru: ruFlag,
+  en: enFlag,
+  est: estFlag,
+};
 
 const UserProfile = () => {
   const [orders, setOrders] = useState([]);
@@ -127,7 +136,7 @@ const UserProfile = () => {
                 className={styles.currentLanguageButton}
               >
                 <img
-                  src={require(`../assets/flags/${currentFlag?.language}.png`)}
+                  src={flags[currentFlag?.language] || flags["en"]}
                   alt={currentFlag?.language}
                   className={styles.flag}
                 />
