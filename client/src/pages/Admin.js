@@ -6,6 +6,7 @@ import CreateDevice from "../components/modals/CreateDevice";
 import CreateType from "../components/modals/CreateType";
 import CreateSubType from "../components/modals/CreateSubType";
 import CourierMap from "../components/CourierMap";
+import ChatBox from "../components/ChatBox";
 import { assignCourierToOrder } from "../http/orderAPI";
 import { fetchTranslations, updateTranslation } from "../http/translationAPI";
 import {
