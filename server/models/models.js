@@ -223,4 +223,7 @@ module.exports = {
   Courier,
   Warehouse,
   Translation,
+  Chat,
+  ChatParticipant,
+  ChatMessage,
 };
