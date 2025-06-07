@@ -79,7 +79,7 @@ const NavBar = observer(() => {
   useEffect(() => {
     if (!user?.user?.id) return;
 
-    fetch(`http://localhost:5000/api/chat/user/${user.user.id}`)
+    fetch(`https://zang-4.onrender.com/api/chat/user/${user.user.id}`)
       .then((res) => res.json())
       .then((data) => {
         const unread = new Set();
@@ -96,7 +96,7 @@ const NavBar = observer(() => {
   }, [user?.user?.id]);
 
   useEffect(() => {
-    const socket = io("http://localhost:5000");
+    const socket = io(`https://zang-4.onrender.com`);
 
     if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
       socket.emit("joinAdminNotifications");
