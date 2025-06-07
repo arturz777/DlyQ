@@ -31,7 +31,7 @@ const ChatBox = ({
 
   useEffect(() => {
     const loadChats = () => {
-      fetch(`https://zang-4.onrender.com/api/chat/user/${userId}`)
+      fetch(`${process.env.REACT_APP_API_URL}/chat/user/${userId}`)
         .then((res) => res.json())
         .then((data) => {
           setChats(data);
@@ -65,7 +65,7 @@ const ChatBox = ({
       if (!chatExists) {
         try {
           const res = await fetch(
-            `https://zang-4.onrender.com/api/chat/${msg.chatId}`
+            `${process.env.REACT_APP_API_URL}/chat/${msg.chatId}`
           );
           const newChat = await res.json();
           setChats((prev) => [newChat, ...prev]);
@@ -97,7 +97,7 @@ const ChatBox = ({
 
     socket.on("receiveMessage", handleMessage);
 
-    fetch(`https://zang-4.onrender.com/api/chat/${activeChatId}/messages`)
+    fetch(`${process.env.REACT_APP_API_URL}/chat/${activeChatId}/messages`)
       .then((res) => res.json())
       .then(setMessages)
       .catch(console.error);
@@ -118,7 +118,7 @@ const ChatBox = ({
       if (!exists) {
         try {
           const res = await fetch(
-            `https://zang-4.onrender.com/api/chat/${msg.chatId}`
+            `${process.env.REACT_APP_API_URL}/chat/${msg.chatId}`
           );
           const newChat = await res.json();
 
@@ -170,7 +170,7 @@ const ChatBox = ({
     });
     setView("chat");
 
-    await fetch(`https://zang-4.onrender.com/api/chat/${id}/mark-read`, {
+    await fetch(`${process.env.REACT_APP_API_URL}/chat/${id}/mark-read`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId }),
@@ -191,7 +191,7 @@ const ChatBox = ({
       : "client";
 
     if (!chatId) {
-      const res = await fetch(`https://zang-4.onrender.com/api/chat`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
