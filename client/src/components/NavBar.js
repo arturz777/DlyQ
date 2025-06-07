@@ -96,7 +96,11 @@ const NavBar = observer(() => {
   }, [user?.user?.id]);
 
   useEffect(() => {
-    const socket = io(`https://zang-4.onrender.com`);
+    const socket = io("https://zang-4.onrender.com", {
+  withCredentials: true,
+  transports: ["websocket", "polling"]
+});
+
 
     if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
       socket.emit("joinAdminNotifications");
