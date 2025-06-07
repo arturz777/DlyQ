@@ -79,7 +79,7 @@ const NavBar = observer(() => {
   useEffect(() => {
     if (!user?.user?.id) return;
 
-    fetch(`https://zang-4.onrender.com/api/chat/user/${user.user.id}`)
+    fetch(`${process.env.REACT_APP_API_URL}/chat/user/${user.user.id}`)
       .then((res) => res.json())
       .then((data) => {
         const unread = new Set();
