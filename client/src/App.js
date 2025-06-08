@@ -29,7 +29,7 @@ const App = observer(() => {
   const [supportChatId, setSupportChatId] = useState(1); 
 
   const fetchSupportChat = async (userId) => {
-  const res = await fetch("http://localhost:5000/api/chat/support-chat", {
+  const res = await fetch(`https://zang-4.onrender.com/api/chat/support-chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId }),
