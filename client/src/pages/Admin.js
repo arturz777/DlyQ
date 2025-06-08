@@ -65,7 +65,7 @@ const Admin = () => {
   const [unreadChats, setUnreadChats] = useState(new Set());
 
   useEffect(() => {
-    const socket = io("https://zang-4.onrender.com");
+    const socket = io(`https://zang-4.onrender.com`);
   
     socket.on("courierLocationUpdate", ({ courierId, lat, lng }) => {
       setCouriers((prev) =>
