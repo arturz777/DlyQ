@@ -25,9 +25,11 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: 'https://phenomenal-sunburst-78533d.netlify.app',
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
+
 
 app.use(cors({
   origin: 'https://phenomenal-sunburst-78533d.netlify.app',
