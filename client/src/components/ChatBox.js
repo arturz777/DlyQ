@@ -223,6 +223,8 @@ const ChatBox = ({
       isRead: false,
     };
 
+    console.log("📤 Отправка через сокет:", newMessage);
+
     socket.emit("sendMessage", newMessage);
     setText("");
   };
