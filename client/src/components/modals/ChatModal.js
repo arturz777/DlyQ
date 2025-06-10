@@ -8,7 +8,7 @@ const ChatModal = () => {
   const { supportChatVisible, supportChatId, closeSupportChat } = useContext(ChatContext);
   const { user } = useContext(Context);
 
-  if (!supportChatVisible || !user.user) return null;
+ if (!supportChatVisible || !user.user?.id || !user.user?.role) return null;
 
   return (
     <div className={styles.modalWrapper}>
