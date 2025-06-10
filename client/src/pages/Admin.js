@@ -185,7 +185,7 @@ const Admin = () => {
    useEffect(() => {
     if (!user?.user?.id) return;
 
-    fetch(`${process.env.REACT_APP_API_URL}/chat/user/${user.user.id}`)
+    fetch(`https://zang-4.onrender.com/chat/user/${user.user.id}`)
       .then((res) => res.json())
       .then((data) => {
         const unread = new Set();
@@ -275,7 +275,7 @@ const Admin = () => {
       alert("Заполните все поля!");
       return;
     }
-    const response = await fetch(`${process.env.REACT_APP_API_URL}/translations`, {
+    const response = await fetch(`https://zang-4.onrender.com/translations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: newKey, lang: newLang, text: newText }),
