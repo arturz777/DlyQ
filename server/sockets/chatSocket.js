@@ -15,6 +15,7 @@ module.exports = function (io) {
     });
 
     socket.on("sendMessage", async (data) => {
+      console.log("📥 Сервер получил сообщение:", data); 
       const { chatId, senderId, senderRole, text } = data;
 
       try {
