@@ -4,10 +4,7 @@ import { normalizeChatRole } from "../utils/chatRoles";
 import { io } from "socket.io-client";
 import styles from "./ChatBox.module.css";
 
-const socket = io("https://zang-4.onrender.com", {
-  withCredentials: true,
-  transports: ["websocket", "polling"]
-});
+const socket = io("https://zang-4.onrender.com");
 
 const ChatBox = ({
   userId,
