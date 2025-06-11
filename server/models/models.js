@@ -156,6 +156,8 @@ const ChatMessage = sequelize.define("chatMessage", {
     allowNull: false,
     defaultValue: false,
   },
+  }, {
+  tableName: "chatMessages"
 });
 
 Chat.hasMany(ChatParticipant, { as: "participants" });
