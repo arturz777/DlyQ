@@ -16,6 +16,7 @@ module.exports = function (io) {
 
     socket.on("sendMessage", async (data) => {
       const { chatId, senderId, senderRole, text } = data;
+      console.log("📨 Пришло сообщение от клиента:", data);
 
       try {
         const newMessage = await ChatMessage.create({
@@ -25,6 +26,8 @@ module.exports = function (io) {
           text,
           isRead: false,
         });
+
+         console.log("✅ Сохранили сообщение в БД:", newMessage); 
 
         io.to(`chat_${chatId}`).emit("receiveMessage", newMessage);
         io.to("admin_notifications").emit("newChatMessage", newMessage);
