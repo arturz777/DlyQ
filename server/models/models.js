@@ -133,7 +133,7 @@ const Chat = sequelize.define("chat", {
   orderId: { type: DataTypes.INTEGER, allowNull: true },
 });
 
-const ChatParticipant = sequelize.define("chat_participant", {
+const ChatParticipant = sequelize.define("chatParticipant", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   userId: { type: DataTypes.INTEGER, allowNull: false },
   role: {
@@ -142,8 +142,9 @@ const ChatParticipant = sequelize.define("chat_participant", {
   },
 });
 
-const ChatMessage = sequelize.define("chat_message", {
+const ChatMessage = sequelize.define("chatMessage", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  chatId: { type: DataTypes.INTEGER, allowNull: false },
   senderId: { type: DataTypes.INTEGER, allowNull: false },
   senderRole: {
     type: DataTypes.ENUM("client", "courier", "admin", "warehouse"),
