@@ -27,7 +27,9 @@ const io = new Server(server, {
     origin: 'https://phenomenal-sunburst-78533d.netlify.app',
     methods: ["GET", "POST"],
     credentials: true
-  }
+  },
+  path: "/socket.io", 
+  transports: ["websocket"], 
 });
 
 
