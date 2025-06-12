@@ -56,6 +56,9 @@ io.on("connection", (socket) => {
   });
 });
 
+const chatSocket = require("./sockets/chatSocket");
+chatSocket(io);
+
 const notifyNewOrder = (order) => {
   io.emit("newOrder", order);
 };
