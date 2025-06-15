@@ -171,6 +171,66 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     }
   }, [device.selectedType]);
 
+  useEffect(() => {
+  if (
+    isEditMode &&
+    editableDevice?.subtypeId &&
+    device.subtypes.length > 0
+  ) {
+    const matchedSubtype = device.subtypes.find(
+      (st) => String(st.id) === String(editableDevice.subtypeId)
+    );
+
+    if (matchedSubtype) {
+      device.setSelectedSubType(matchedSubtype);
+    }
+  }
+}, [device.subtypes, editableDevice?.subtypeId, isEditMode]);
+
+useEffect(() => {
+  const ready =
+    editableDevice &&
+    device.types.length > 0 &&
+    device.brands.length > 0 &&
+    (!device.selectedType?.id || device.subtypes.length > 0);
+
+  if (ready) {
+    if (editableDevice.brandId && !device.selectedBrand?.id) {
+      const selectedBrand = device.brands.find(
+        (b) => b.id === editableDevice.brandId
+      );
+      if (selectedBrand) device.setSelectedBrand(selectedBrand);
+    }
+
+    if (editableDevice.typeId && !device.selectedType?.id) {
+      const selectedType = device.types.find(
+        (t) => t.id === editableDevice.typeId
+      );
+      if (selectedType) device.setSelectedType(selectedType);
+    }
+
+    if (
+      editableDevice.subtypeId &&
+      device.selectedType?.id &&
+      device.subtypes.length > 0 &&
+      !device.selectedSubType?.id
+    ) {
+      const selectedSubType = device.subtypes.find(
+        (st) => st.id === editableDevice.subtypeId
+      );
+      if (selectedSubType) device.setSelectedSubType(selectedSubType);
+    }
+  }
+}, [
+  editableDevice,
+  device.types,
+  device.brands,
+  device.subtypes,
+  device.selectedType?.id,
+  device.selectedBrand?.id,
+  device.selectedSubType?.id,
+]);
+
   const validateDevice = () => {
     const errors = {};
     if (!device.selectedBrand?.id) errors.brand = "Выберите бренд";
