@@ -22,7 +22,7 @@ const CreateType = ({ show, onHide, editableType, onTypeSaved }) => {
       setValue(editableType.name);
       setExistingImage(editableType.img);
       setFile(null);
-      setTranslations(editableType.translations || { en: "", ru: "", est: "" });
+      setTranslations(editableType.translations?.name || { en: "", ru: "", est: "" });
     } else {
       resetFields();
     }
