@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { ChatContext } from "../context/ChatContext";
 import { normalizeChatRole } from "../utils/chatRoles";
 import { io } from "socket.io-client";
@@ -20,6 +20,7 @@ const ChatBox = ({
   const [view, setView] = useState("chat");
   const { closeSupportChat } = useContext(ChatContext);
   const [unreadChats, setUnreadChats] = useState(new Set());
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     if (chatId) {
@@ -224,6 +225,10 @@ const ChatBox = ({
     setText("");
   };
 
+  useEffect(() => {
+  messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+}, [messages]);
+
   return (
     <div className={styles.chatWrapper}>
       <div className={styles.chatHeader}>
@@ -289,6 +294,7 @@ const ChatBox = ({
                 <div className={styles.text}>{msg.text}</div>
               </div>
             ))}
+               <div ref={messagesEndRef} />
           </div>
           <div className={styles.inputArea}>
             <input
