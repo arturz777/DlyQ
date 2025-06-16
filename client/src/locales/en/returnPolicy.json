@@ -2,41 +2,43 @@
 	"title": "Warranty and Returns",
 	"last_updated": "Last updated: February 16, 2025",
 	"return_conditions": {
-	  "title": "1. Return Conditions",
-	  "text": "We accept returns within **14 days** from the date of receipt. To be eligible for a return, the item must be in its original condition, without signs of use."
+		"title": "1. Return Conditions",
+		"text": "We accept returns within **14 days** from the date of receipt. To be eligible for a return, the item must be in its original condition, without signs of use."
 	},
 	"how_to_return": {
-	  "title": "2. How to Process a Return?",
-	  "steps": [
-		"Contact us via email: **support@mycompany.com**",
-		"Provide your order number and reason for return",
-		"Send the item to our warehouse (address will be provided by the operator)"
-	  ]
+		"title": "2. How to Process a Return?",
+		"steps": [
+			"Contact us: support@",
+			"Provide your order number and reason for return",
+			"Send the item to our warehouse (address will be provided by the operator)"
+		],
+		"contact_text": "Contact us:",
+		"chat_link": "Open support chat"
 	},
 	"exceptions": {
-	  "title": "3. Exceptions to the Return Policy",
-	  "text": "Some items **cannot be returned** if:",
-	  "list": [
-		"They have been used and show signs of wear",
-		"They belong to the 'personal hygiene' category (e.g., headphones, razors)",
-		"They were purchased under a special promotion without the right of return"
-	  ]
+		"title": "3. Exceptions to the Return Policy",
+		"text": "Some items **cannot be returned** if:",
+		"list": [
+			"They have been used and show signs of wear",
+			"They belong to the 'personal hygiene' category (e.g., headphones, razors)",
+			"They were purchased under a special promotion without the right of return"
+		]
 	},
 	"refunds": {
-	  "title": "4. Refunds",
-	  "text": "After the item has been inspected, we will process the refund within **5-10 business days**. The funds will be returned via the same payment method used for the order.",
-	  "details": [
-		"Refunds are only issued for the product itself.",
-		"**Shipping costs are NOT refunded** if the return is initiated by the customer (e.g., wrong color, size, change of mind).",
-		"**Shipping costs are refunded ONLY if the item is defective or does not match the order.**"
-	  ]
+		"title": "4. Refunds",
+		"text": "After the item has been inspected, we will process the refund within **5-10 business days**. The funds will be returned via the same payment method used for the order.",
+		"details": [
+			"Refunds are only issued for the product itself.",
+			"**Shipping costs are NOT refunded** if the return is initiated by the customer (e.g., wrong color, size, change of mind).",
+			"**Shipping costs are refunded ONLY if the item is defective or does not match the order.**"
+		]
 	},
 	"warranty": {
-	  "title": "5. Warranty",
-	  "text": "The warranty applies only to items covered by the manufacturer's warranty. If the manufacturer provides a warranty, the customer can contact an official service center or the seller. The warranty does not cover normal wear and tear, consumables, or damage caused by improper use."
+		"title": "5. Warranty",
+		"text": "The warranty applies only to items covered by the manufacturer's warranty. If the manufacturer provides a warranty, the customer can contact an official service center or the seller. The warranty does not cover normal wear and tear, consumables, or damage caused by improper use."
 	},
 	"contact": {
-	  "title": "6. Contact Information",
-	  "text": "If you have any questions about returns or warranty, contact us:"
+		"title": "6. Contact Information",
+		"text": "If you have any questions about returns or warranty, contact us:"
 	}
-  }
+}
