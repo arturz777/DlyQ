@@ -15,51 +15,70 @@ const TermsOfService = () => {
 
       <section>
         <h2>{t("general.title")}</h2>
-        <p>{t("general.text")}</p>
+        <ul>
+          {(t("general.text", { returnObjects: true }) || []).map((item, i) => (
+            <li key={i}>{item}.</li>
+          ))}
+        </ul>
       </section>
 
       <section>
         <h2>{t("account.title")}</h2>
-        <p>{t("account.text")}</p>
+        <ul>
+          {(t("account.text", { returnObjects: true }) || []).map((item, i) => (
+            <li key={i}>{item}.</li>
+          ))}
+        </ul>
       </section>
 
       <section>
         <h2>{t("orders.title")}</h2>
-        <p>{t("orders.text")}</p>
+        <ul>
+          {(t("orders.text", { returnObjects: true }) || []).map((item, i) => (
+            <li key={i}>{item}.</li>
+          ))}
+        </ul>
       </section>
 
       <section>
         <h2>{t("payment.title")}</h2>
-        <p>{t("payment.text")}</p>
+        <ul>
+          {(t("payment.text", { returnObjects: true }) || []).map((item, i) => (
+            <li key={i}>{item}.</li>
+          ))}
+        </ul>
       </section>
 
       <section>
         <h2>{t("liability.title")}</h2>
-        <p>{t("liability.text")}</p>
+        <ul>
+          {(t("liability.text", { returnObjects: true }) || []).map((item, i) => (
+            <li key={i}>{item}.</li>
+          ))}
+        </ul>
       </section>
 
       <section>
         <h2>{t("changes.title")}</h2>
-        <p>{t("changes.text")}</p>
+        <ul>
+          {(t("changes.text", { returnObjects: true }) || []).map((item, i) => (
+            <li key={i}>{item}.</li>
+          ))}
+        </ul>
       </section>
 
-       <section>
-        <h2>{t("contact.title")}</h2>
-        <p>
-          {t("contact.text")}{" "}
-          <span
-            style={{
-              color: "blue",
-              textDecoration: "underline",
-              cursor: "pointer",
-            }}
-            onClick={openSupportChat}
-          >
-            {t("contact.open_chat")}
-          </span>
-          .
-        </p>
-      </section>
+<section>
+  <h2>{t("contact.title")}</h2>
+  <ul>
+    <li>
+      {t("contact.text") }{" "}
+      <span className={styles.chatLink} onClick={openSupportChat}>
+        {t("contact.open_chat")}
+      </span>
+    </li>
+  </ul>
+</section>
+
     </div>
   );
 };
