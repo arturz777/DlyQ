@@ -28,4 +28,10 @@
   section {
 	margin-bottom: 20px;
   }
+
+.chatLink {
+  color: blue;
+  text-decoration: underline;
+  cursor: pointer;
+}
   
