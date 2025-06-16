@@ -2,31 +2,32 @@
 	"title": "Terms of Service",
 	"last_updated": "Last updated: February 16, 2025",
 	"general": {
-	  "title": "1. General Provisions",
-	  "text": "This agreement governs the use of the MyCompany online store. By using the website, you agree to these terms."
+		"title": "1. General Provisions",
+		"text": "This agreement governs the use of the MyCompany online store. By using the website, you agree to these terms."
 	},
 	"account": {
-	  "title": "2. Registration and Account",
-	  "text": "To make purchases, registration may be required. You are responsible for the security of your account."
+		"title": "2. Registration and Account",
+		"text": "To make purchases, registration may be required. You are responsible for the security of your account."
 	},
 	"orders": {
-	  "title": "3. Order Processing",
-	  "text": "An order is considered placed once confirmed. We reserve the right to cancel orders in case of pricing errors or stock issues."
+		"title": "3. Order Processing",
+		"text": "An order is considered placed once confirmed. We reserve the right to cancel orders in case of pricing errors or stock issues."
 	},
 	"payment": {
-	  "title": "4. Payment and Refunds",
-	  "text": "Payment is made online. Refunds are possible according to our return policy."
+		"title": "4. Payment and Refunds",
+		"text": "Payment is made online. Refunds are possible according to our return policy."
 	},
 	"liability": {
-	  "title": "5. Limitation of Liability",
-	  "text": "We are not responsible for any damages caused by improper use of products or technical failures of the website."
+		"title": "5. Limitation of Liability",
+		"text": "We are not responsible for any damages caused by improper use of products or technical failures of the website."
 	},
 	"changes": {
-	  "title": "6. Changes to Terms",
-	  "text": "We reserve the right to change the terms of the agreement. Updated terms take effect upon publication."
+		"title": "6. Changes to Terms",
+		"text": "We reserve the right to change the terms of the agreement. Updated terms take effect upon publication."
 	},
 	"contact": {
-	  "title": "7. Contact Information",
-	  "text": "For any questions regarding the use of the website, please contact us at support@mycompany.com."
+		"title": "7. Contact Information",
+		"text": "For any questions regarding the use of the website, please contact us:",
+		"open_chat": "Open support chat"
 	}
-  }
+}
