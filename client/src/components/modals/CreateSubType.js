@@ -25,7 +25,7 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
     if (editableSubtype) {
       setValue(editableSubtype.name || "");
       setTypeId(editableSubtype.typeId || "");
-      setTranslations(editableSubtype.translations || { en: "", ru: "", est: "" });
+      setTranslations(editableSubtype.translations?.name || { en: "", ru: "", est: "" });
     } else {
       setValue("");
       setTypeId("");
