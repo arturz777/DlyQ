@@ -2,31 +2,32 @@
 	"title": "Kasutustingimused",
 	"last_updated": "Viimati uuendatud: 16. veebruar 2025",
 	"general": {
-	  "title": "1. Üldtingimused",
-	  "text": "See leping reguleerib MyCompany veebipoe kasutamist. Veebisaiti kasutades nõustute nende tingimustega."
+		"title": "1. Üldtingimused",
+		"text": "See leping reguleerib MyCompany veebipoe kasutamist. Veebisaiti kasutades nõustute nende tingimustega."
 	},
 	"account": {
-	  "title": "2. Registreerimine ja konto",
-	  "text": "Ostude sooritamiseks võib olla vajalik registreerimine. Vastutate oma konto turvalisuse eest."
+		"title": "2. Registreerimine ja konto",
+		"text": "Ostude sooritamiseks võib olla vajalik registreerimine. Vastutate oma konto turvalisuse eest."
 	},
 	"orders": {
-	  "title": "3. Tellimuse vormistamine",
-	  "text": "Tellimus loetakse esitatuks pärast kinnituse saamist. Jätame endale õiguse tellimusi tühistada hindade või laoseisu vigade korral."
+		"title": "3. Tellimuse vormistamine",
+		"text": "Tellimus loetakse esitatuks pärast kinnituse saamist. Jätame endale õiguse tellimusi tühistada hindade või laoseisu vigade korral."
 	},
 	"payment": {
-	  "title": "4. Makse ja tagasimaksed",
-	  "text": "Makse tehakse veebis. Tagasimaksed on võimalikud vastavalt meie tagastuspoliitikale."
+		"title": "4. Makse ja tagasimaksed",
+		"text": "Makse tehakse veebis. Tagasimaksed on võimalikud vastavalt meie tagastuspoliitikale."
 	},
 	"liability": {
-	  "title": "5. Vastutuse piirang",
-	  "text": "Me ei vastuta kahjude eest, mis on põhjustatud toodete väärkasutusest või veebisaidi tehnilistest riketest."
+		"title": "5. Vastutuse piirang",
+		"text": "Me ei vastuta kahjude eest, mis on põhjustatud toodete väärkasutusest või veebisaidi tehnilistest riketest."
 	},
 	"changes": {
-	  "title": "6. Tingimuste muutmine",
-	  "text": "Jätame endale õiguse muuta lepingu tingimusi. Uuendatud tingimused jõustuvad nende avaldamisel."
+		"title": "6. Tingimuste muutmine",
+		"text": "Jätame endale õiguse muuta lepingu tingimusi. Uuendatud tingimused jõustuvad nende avaldamisel."
 	},
 	"contact": {
-	  "title": "7. Kontaktandmed",
-	  "text": "Küsimuste korral veebisaidi kasutamise kohta võtke meiega ühendust: support@mycompany.com."
+		"title": "7. Kontaktandmed",
+		"text": "Küsimuste korral veebisaidi kasutamise kohta võtke meiega:",
+		"open_chat": "Ava vestlus toega"
 	}
-  }
+}
