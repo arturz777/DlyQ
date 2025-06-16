@@ -1,9 +1,12 @@
 import React from "react";
 import styles from "./TermsOfService.module.css";
 import { useTranslation } from "react-i18next";
+import { useContext } from "react";
+import { ChatContext } from "../context/ChatContext";
 
 const TermsOfService = () => {
   const { t } = useTranslation("termsOfService");
+  const { openSupportChat } = useContext(ChatContext);
 
   return (
     <div className={styles.container}>
@@ -40,9 +43,22 @@ const TermsOfService = () => {
         <p>{t("changes.text")}</p>
       </section>
 
-      <section>
+       <section>
         <h2>{t("contact.title")}</h2>
-        <p>{t("contact.text")}</p>
+        <p>
+          {t("contact.text")}{" "}
+          <span
+            style={{
+              color: "blue",
+              textDecoration: "underline",
+              cursor: "pointer",
+            }}
+            onClick={openSupportChat}
+          >
+            {t("contact.open_chat")}
+          </span>
+          .
+        </p>
       </section>
     </div>
   );
