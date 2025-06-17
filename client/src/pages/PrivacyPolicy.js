@@ -1,9 +1,12 @@
 import React from "react";
 import styles from "./PrivacyPolicy.module.css";
 import { useTranslation } from "react-i18next";
+import { useContext } from "react";
+import { ChatContext } from "../context/ChatContext";
 
 const PrivacyPolicy = () => {
   const { t } = useTranslation("privacyPolicy");
+    const { openSupportChat } = useContext(ChatContext);
 
   return (
     <div className={styles.container}>
@@ -12,12 +15,16 @@ const PrivacyPolicy = () => {
 
       <section>
         <h2>{t("introduction.title")}</h2>
-        <p>{t("introduction.text")}</p>
+        <ul>
+          {(t("introduction.text", { returnObjects: true }) || []).map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
       </section>
 
       <section>
         <h2>{t("data_collection.title")}</h2>
-        <p>{t("data_collection.text")}</p>
+        <ul>{t("data_collection.text")}</ul>
         <ul>
           {(t("data_collection.list", { returnObjects: true }) || []).map((item, index) => (
             <li key={index}>{item}</li>
@@ -27,7 +34,7 @@ const PrivacyPolicy = () => {
 
       <section>
         <h2>{t("data_usage.title")}</h2>
-        <p>{t("data_usage.text")}</p>
+        <ul>{t("data_usage.text")}</ul>
         <ul>
           {(t("data_usage.list", { returnObjects: true }) || []).map((item, index) => (
             <li key={index}>{item}</li>
@@ -37,7 +44,7 @@ const PrivacyPolicy = () => {
 
       <section>
         <h2>{t("third_parties.title")}</h2>
-        <p>{t("third_parties.text")}</p>
+        <ul>{t("third_parties.text")}</ul>
         <ul>
           {(t("third_parties.list", { returnObjects: true }) || []).map((item, index) => (
             <li key={index}>{item}</li>
@@ -47,12 +54,16 @@ const PrivacyPolicy = () => {
 
       <section>
         <h2>{t("security.title")}</h2>
-        <p>{t("security.text")}</p>
+         <ul>
+          {(t("security.text", { returnObjects: true }) || []).map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
       </section>
 
       <section>
         <h2>{t("user_rights.title")}</h2>
-        <p>{t("user_rights.text")}</p>
+        <ul>{t("user_rights.text")}</ul>
         <ul>
           {(t("user_rights.list", { returnObjects: true }) || []).map((item, index) => (
             <li key={index}>{item}</li>
@@ -60,10 +71,17 @@ const PrivacyPolicy = () => {
         </ul>
       </section>
 
-      <section>
-        <h2>{t("contact.title")}</h2>
-        <p>{t("contact.text")}</p>
-      </section>
+     <section>
+       <h2>{t("contact.title")}</h2>
+       <ul>
+         <li>
+           {t("contact.text") }{" "}
+           <span className={styles.chatLink} onClick={openSupportChat}>
+             {t("contact.open_chat")}
+           </span>
+         </li>
+       </ul>
+     </section>
     </div>
   );
 };
