@@ -3,7 +3,9 @@
 	"last_updated": "Last updated: February 16, 2025",
 	"introduction": {
 		"title": "1. Introduction",
-		"text": "This Privacy Policy explains what data we collect, how we use it, and what rights users have regarding their personal data."
+		"text": [
+			"This Privacy Policy explains what data we collect, how we use it, and what rights users have regarding their personal data."
+		]
 	},
 	"data_collection": {
 		"title": "2. What data do we collect?",
@@ -36,7 +38,9 @@
 	},
 	"security": {
 		"title": "5. Data security",
-		"text": "We take measures to protect your data but cannot guarantee 100% security on the internet."
+		"text": [
+			"We take measures to protect your data but cannot guarantee 100% security on the internet."
+		]
 	},
 	"user_rights": {
 		"title": "6. Your rights",
@@ -50,6 +54,7 @@
 	},
 	"contact": {
 		"title": "7. Contact information",
-		"text": "If you have any questions, contact us at: support@mycompany.com."
+		"text": "If you have any questions, contact us at:",
+		"open_chat": "Open support chat"
 	}
 }
