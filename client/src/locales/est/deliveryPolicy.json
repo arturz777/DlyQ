@@ -2,36 +2,46 @@
 	"title": "Kohaletoimetamine",
 	"last_updated": "Viimati uuendatud: 16. veebruar 2025",
 	"delivery_time": {
-	  "title": "1. Kohaletoimetamise aeg",
-	  "text": "Pakume kiiret kohaletoimetamist! Keskmine kohaletoimetamise aeg on 15–60 minutit pärast tellimuse kinnitamist. Aeg võib varieeruda sõltuvalt kullerite saadavusest ja teeoludest."
+		"title": "1. Kohaletoimetamise aeg",
+		"text": [
+			"Pakume kiiret kohaletoimetamist! Keskmine kohaletoimetamise aeg on 15–60 minutit pärast tellimuse kinnitamist. Aeg võib varieeruda sõltuvalt kullerite saadavusest ja teeoludest."
+		]
 	},
 	"delivery_methods": {
-	  "title": "2. Kohaletoimetamise meetodid",
-	  "text": "Pakume ainult kullerteenust. Meie kullerid toimetavad teie tellimuse kiiresti määratud aadressile."
+		"title": "2. Kohaletoimetamise meetodid",
+		"text": [
+			"Pakume ainult kullerteenust. Meie kullerid toimetavad teie tellimuse kiiresti määratud aadressile."
+		]
 	},
 	"delivery_cost": {
-	  "title": "3. Kohaletoimetamise hind",
-	  "text": "Kohaletoimetamise hind arvutatakse automaatselt tellimuse vormistamisel ja sõltub:",
-	  "details": [
-		"Tellimuse kogusummast",
-		"Sihtkoha kaugusest",
-		"Võimalikest lisatingimustest (nt kohaletoimetamine kaugematesse piirkondadesse)"
-	  ]
+		"title": "3. Kohaletoimetamise hind",
+		"text": "Kohaletoimetamise hind arvutatakse automaatselt tellimuse vormistamisel ja sõltub:",
+		"details": [
+			"Tellimuse kogusummast",
+			"Sihtkoha kaugusest",
+			"Võimalikest lisatingimustest (nt kohaletoimetamine kaugematesse piirkondadesse)"
+		]
 	},
 	"tracking": {
-	  "title": "4. Tellimuse jälgimine",
-	  "text": "Saate oma tellimuse olekut jälgida isiklikus kontos ('Minu tellimused') või jälgimislingi kaudu, mis saadetakse pärast tellimuse kinnitamist."
+		"title": "4. Tellimuse jälgimine",
+		"text": [
+			"Saate oma tellimuse olekut jälgida isiklikus kontos ('Minu tellimused') või jälgimislingi kaudu, mis saadetakse pärast tellimuse kinnitamist."
+		]
 	},
 	"delays": {
-	  "title": "5. Mida teha, kui kohaletoimetamine viibib?",
-	  "text": "Kui teie tellimus ei ole eeldatava aja jooksul kohale jõudnud, võtke ühendust meie klienditoega: support@mycompany.com."
+		"title": "5. Mida teha, kui kohaletoimetamine viibib?",
+		"text": "Kui teie tellimus ei ole eeldatava aja jooksul kohale jõudnud, võtke ühendust meie klienditoega: support@mycompany.com.",
+		"open_chat": "Ava vestlus toega"
 	},
 	"damaged_items": {
-	  "title": "6. Kahjustatud või kaotatud tooted",
-	  "text": "Kui teie toode saabub kahjustatuna, tehke foto ja saatke see meile e-posti teel. Me vaatame teie juhtumi läbi ja pakume asendust või tagasimakset."
+		"title": "6. Kahjustatud või kaotatud tooted",
+		"text": [
+			"Kui teie toode saabub kahjustatuna, tehke foto ja saatke see meile e-posti teel. Me vaatame teie juhtumi läbi ja pakume asendust või tagasimakset."
+		]
 	},
 	"contact": {
-	  "title": "7. Kontaktandmed",
-	  "text": "Kui teil on kohaletoimetamise kohta küsimusi, võtke meiega ühendust: support@mycompany.com."
+		"title": "7. Kontaktandmed",
+		"text": "Kui teil on kohaletoimetamise kohta küsimusi, võtke meiega ühendust: support@mycompany.com.",
+		"open_chat": "Ava vestlus toega"
 	}
-  }
+}
