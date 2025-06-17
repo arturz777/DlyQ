@@ -1,9 +1,12 @@
 import React from "react";
 import styles from "./DeliveryPolicy.module.css";
 import { useTranslation } from "react-i18next";
+import { useContext } from "react";
+import { ChatContext } from "../context/ChatContext";
 
 const DeliveryPolicy = () => {
   const { t } = useTranslation("deliveryPolicy");
+  const { openSupportChat } = useContext(ChatContext);
 
   return (
     <div className={styles.container}>
@@ -12,42 +15,82 @@ const DeliveryPolicy = () => {
 
       <section>
         <h2>{t("delivery_time.title")}</h2>
-        <p>{t("delivery_time.text")}</p>
+        <ul>
+          {(t("delivery_time.text", { returnObjects: true }) || []).map(
+            (item, i) => (
+              <li key={i}>{item}.</li>
+            )
+          )}
+        </ul>
       </section>
 
       <section>
         <h2>{t("delivery_methods.title")}</h2>
-        <p>{t("delivery_methods.text")}</p>
+        <ul>
+          {(t("delivery_methods.text", { returnObjects: true }) || []).map(
+            (item, i) => (
+              <li key={i}>{item}.</li>
+            )
+          )}
+        </ul>
       </section>
 
       <section>
         <h2>{t("delivery_cost.title")}</h2>
         <p>{t("delivery_cost.text")}</p>
         <ul>
-          {(t("delivery_cost.details", { returnObjects: true }) || []).map((item, index) => (
-            <li key={index}>{item}</li>
-          ))}
+          {(t("delivery_cost.details", { returnObjects: true }) || []).map(
+            (item, index) => (
+              <li key={index}>{item}</li>
+            )
+          )}
         </ul>
       </section>
 
       <section>
         <h2>{t("tracking.title")}</h2>
-        <p>{t("tracking.text")}</p>
+        <ul>
+          {(t("tracking.text", { returnObjects: true }) || []).map(
+            (item, index) => (
+              <li key={index}>{item}</li>
+            )
+          )}
+        </ul>
       </section>
 
       <section>
         <h2>{t("delays.title")}</h2>
-        <p>{t("delays.text")}</p>
+        <ul>
+          <li>
+            {t("delays.text")}{" "}
+            <span className={styles.chatLink} onClick={openSupportChat}>
+              {t("contact.open_chat")}
+            </span>
+          </li>
+        </ul>
       </section>
 
       <section>
         <h2>{t("damaged_items.title")}</h2>
-        <p>{t("damaged_items.text")}</p>
+        <ul>
+          {(t("damaged_items.text", { returnObjects: true }) || []).map(
+            (item, index) => (
+              <li key={index}>{item}</li>
+            )
+          )}
+        </ul>
       </section>
 
       <section>
         <h2>{t("contact.title")}</h2>
-        <p>{t("contact.text")}</p>
+        <ul>
+          <li>
+            {t("contact.text")}{" "}
+            <span className={styles.chatLink} onClick={openSupportChat}>
+              {t("contact.open_chat")}
+            </span>
+          </li>
+        </ul>
       </section>
     </div>
   );
