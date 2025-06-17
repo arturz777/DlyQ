@@ -2,36 +2,46 @@
 	"title": "Delivery",
 	"last_updated": "Last updated: February 16, 2025",
 	"delivery_time": {
-	  "title": "1. Delivery Time",
-	  "text": "We offer instant delivery! The average delivery time is between 15 to 60 minutes after order confirmation. The time may vary depending on courier availability and road conditions."
+		"title": "1. Delivery Time",
+		"text": [
+			"We offer instant delivery! The average delivery time is between 15 to 60 minutes after order confirmation. The time may vary depending on courier availability and road conditions."
+		]
 	},
 	"delivery_methods": {
-	  "title": "2. Delivery Methods",
-	  "text": "We offer only courier delivery. Our couriers will promptly deliver your order to the specified address."
+		"title": "2. Delivery Methods",
+		"text": [
+			"We offer only courier delivery. Our couriers will promptly deliver your order to the specified address."
+		]
 	},
 	"delivery_cost": {
-	  "title": "3. Delivery Cost",
-	  "text": "Delivery cost is calculated automatically at checkout and depends on:",
-	  "details": [
-		"Total order amount",
-		"Distance to the destination",
-		"Possible additional conditions (e.g., delivery to remote areas)"
-	  ]
+		"title": "3. Delivery Cost",
+		"text": "Delivery cost is calculated automatically at checkout and depends on:",
+		"details": [
+			"Total order amount",
+			"Distance to the destination",
+			"Possible additional conditions (e.g., delivery to remote areas)"
+		]
 	},
 	"tracking": {
-	  "title": "4. Order Tracking",
-	  "text": "You can track your order status in your personal account ('My Orders' section) or via the tracking link sent after order confirmation."
+		"title": "4. Order Tracking",
+		"text": [
+			"You can track your order status in your personal account ('My Orders' section) or via the tracking link sent after order confirmation."
+		]
 	},
 	"delays": {
-	  "title": "5. What to do if delivery is delayed?",
-	  "text": "If your order has not arrived within the estimated time, please contact our support team: support@mycompany.com."
+		"title": "5. What to do if delivery is delayed?",
+		"text": "If your order has not arrived within the estimated time, please contact our support team: support@mycompany.com.",
+		"open_chat": "Open support chat"
 	},
 	"damaged_items": {
-	  "title": "6. Damaged or Lost Items",
-	  "text": "If your item arrives damaged, take a photo and send it to us via email. We will review your case and offer a replacement or refund."
+		"title": "6. Damaged or Lost Items",
+		"text": [
+			"If your item arrives damaged, take a photo and send it to us via email. We will review your case and offer a replacement or refund."
+		]
 	},
 	"contact": {
-	  "title": "7. Contact Information",
-	  "text": "If you have any questions about delivery, contact us: support@mycompany.com."
+		"title": "7. Contact Information",
+		"text": "If you have any questions about delivery, contact us: support@mycompany.com.",
+		"open_chat": "Open support chat"
 	}
-  }
+}
