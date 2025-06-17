@@ -28,6 +28,12 @@
   ul {
 	padding-left: 20px;
   }
+
+.chatLink {
+  color: blue;
+  text-decoration: underline;
+  cursor: pointer;
+}
   
   ul li {
 	margin-bottom: 10px;
