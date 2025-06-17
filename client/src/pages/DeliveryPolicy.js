@@ -37,7 +37,7 @@ const DeliveryPolicy = () => {
 
       <section>
         <h2>{t("delivery_cost.title")}</h2>
-        <p>{t("delivery_cost.text")}</p>
+        <ul>{t("delivery_cost.text")}</ul>
         <ul>
           {(t("delivery_cost.details", { returnObjects: true }) || []).map(
             (item, index) => (
