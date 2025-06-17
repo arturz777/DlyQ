@@ -26,7 +26,7 @@ const CookiePolicy = () => {
 
       <section>
         <h2>{t("types_of_cookies.title")}</h2>
-        <p>{t("types_of_cookies.text")}</p>
+        <ul>{t("types_of_cookies.text")}</ul>
         <ul>
           {t("types_of_cookies.list", { returnObjects: true }).map(
             (item, index) => (
