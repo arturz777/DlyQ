@@ -1,58 +1,58 @@
 {
-	"title": "Политика конфиденциальности",
-	"last_updated": "Последнее обновление: 16 февраля 2025",
+	"title": "Privaatsuspoliitika",
+	"last_updated": "Viimati uuendatud: 16. veebruar 2025",
 	"introduction": {
-		"title": "1. Введение",
-		"text": ["Настоящая Политика конфиденциальности объясняет, какие данные мы собираем, как их используем и какие права имеют пользователи."
+		"title": "1. Sissejuhatus",
+		"text": ["See privaatsuspoliitika selgitab, milliseid andmeid me kogume, kuidas neid kasutame ja millised on kasutajate õigused isikuandmete osas."
 	]
 	},
 	"data_collection": {
-		"title": "2. Какие данные мы собираем?",
-		"text": "Мы можем собирать следующие данные:",
+		"title": "2. Milliseid andmeid me kogume?",
+		"text": "Võime koguda järgmisi andmeid:",
 		"list": [
-			"Имя, фамилия, email",
-			"Информация о заказах и платежах",
-			"IP-адрес, данные о посещении сайта",
-			"Cookies и данные аналитики"
+			"Nimi, perekonnanimi, e-post",
+			"Tellimuste ja maksete teave",
+			"IP-aadress, veebisaidi külastusandmed",
+			"Küpsised ja analüütika andmed"
 		]
 	},
 	"data_usage": {
-		"title": "3. Как мы используем данные?",
-		"text": "Мы используем данные для:",
+		"title": "3. Kuidas me andmeid kasutame?",
+		"text": "Me kasutame isikuandmeid:",
 		"list": [
-			"Обработки заказов и предоставления услуг",
-			"Поддержки пользователей",
-			"Маркетинговых рассылок (можно отказаться)",
-			"Аналитики и улучшения работы сайта"
+			"Tellimuste töötlemiseks ja teenuste pakkumiseks",
+			"Kasutajatoe jaoks",
+			"Turunduslike e-kirjade saatmiseks (võimalik loobuda)",
+			"Veebilehe analüüsiks ja täiustamiseks"
 		]
 	},
 	"third_parties": {
-		"title": "4. Передача данных третьим лицам",
-		"text": "Мы не передаём ваши данные третьим лицам, кроме случаев:",
+		"title": "4. Andmete jagamine kolmandate osapooltega",
+		"text": "Me ei jaga teie andmeid kolmandate osapooltega, välja arvatud järgmistel juhtudel:",
 		"list": [
-			"Обработка платежей (Stripe, PayPal и др.)",
-			"Доставка заказов (курьерские службы)",
-			"По требованию закона"
+			"Makse töötlemine (Stripe, PayPal jne)",
+			"Tellimuste kohaletoimetamine (kullerteenused)",
+			"Õiguslikud nõuded"
 		]
 	},
 	"security": {
-		"title": "5. Безопасность данных",
-		"text": ["Мы принимаем меры для защиты ваших данных, но не можем гарантировать 100% безопасность в интернете."
+		"title": "5. Andmete turvalisus",
+		"text": ["Me võtame meetmeid teie andmete kaitsmiseks, kuid ei saa tagada 100% turvalisust internetis."
 	]
 	},
 	"user_rights": {
-		"title": "6. Ваши права",
-		"text": "Вы имеете право:",
+		"title": "6. Teie õigused",
+		"text": "Teil on õigus:",
 		"list": [
-			"Запросить информацию о ваших данных",
-			"Потребовать их удаления",
-			"Ограничить обработку данных",
-			"Отказаться от маркетинговых рассылок"
+			"Taotleda teavet oma andmete kohta",
+			"Taotleda andmete kustutamist",
+			"Piirata andmete töötlemist",
+			"Loobuda turunduslikest e-kirjadest"
 		]
 	},
 	"contact": {
-		"title": "7. Контакты",
-		"text": "Если у вас есть вопросы, свяжитесь с нами:",
-		"open_chat": "Открыть чат с поддержкой"
+		"title": "7. Kontaktandmed",
+		"text": "Kui teil on küsimusi, võtke meiega:",
+		"open_chat": "Ava vestlus toega"
 	}
 }
