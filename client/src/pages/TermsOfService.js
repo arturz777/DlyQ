@@ -67,17 +67,17 @@ const TermsOfService = () => {
         </ul>
       </section>
 
-<section>
-  <h2>{t("contact.title")}</h2>
-  <ul>
-    <li>
-      {t("contact.text") }{" "}
-      <span className={styles.chatLink} onClick={openSupportChat}>
-        {t("contact.open_chat")}
-      </span>
-    </li>
-  </ul>
-</section>
+ <section>
+        <h2>{t("contact.title")}</h2>
+        <ul>
+          <li>
+            {t("contact.text")}{" "}
+            <button className={styles.chatLinkButton} onClick={openSupportChat}>
+              {t("contact.open_chat")}
+            </button>
+          </li>
+        </ul>
+      </section>
 
     </div>
   );
