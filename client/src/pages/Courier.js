@@ -486,6 +486,27 @@ const Courier = () => {
           )}
         </div>
       )}
+
+         {showSupportChat && (
+        <div
+          className={styles.SupportChatOverlay}
+          onClick={() => setShowSupportChat(false)}
+        >
+          <div
+            className={styles.SupportChatModal}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className={styles.CloseButton}
+              onClick={() => setShowSupportChat(false)}
+            >
+              ×
+            </button>
+            <h3>🛟 Чат поддержки</h3>
+            <ChatBox userId={user.user.id} userRole={user.user.role} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
