@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { Context } from "../index";
 import {
   fetchActiveOrders,
   acceptOrder,
@@ -12,6 +13,7 @@ import {
   useMap,
   Popup,
 } from "react-leaflet";
+import ChatBox from "../components/ChatBox";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { io } from "socket.io-client";
@@ -45,6 +47,7 @@ const MapUpdater = ({ center }) => {
 };
 
 const Courier = () => {
+  const { user } = useContext(Context);
   const [orders, setOrders] = useState([]);
   const [route, setRoute] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -52,9 +55,9 @@ const Courier = () => {
   const [courierStatus, setCourierStatus] = useState(
     localStorage.getItem("courierStatus") || "offline"
   );
-
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [currentOrder, setCurrentOrder] = useState(null);
+  const [showSupportChat, setShowSupportChat] = useState(false);
 
   useEffect(() => {
     document.body.classList.add("courier-page");
@@ -156,13 +159,13 @@ const Courier = () => {
 
     setIsAccepting(true);
     try {
-      const response = await acceptOrder(orderId); // Получаем обновленный заказ
-      setCurrentOrder(response); // 🔥 Обновляем текущий заказ
-      localStorage.setItem("currentOrder", JSON.stringify(response)); // Сохраняем в localStorage
+      const response = await acceptOrder(orderId); 
+      setCurrentOrder(response); 
+      localStorage.setItem("currentOrder", JSON.stringify(response)); 
     } catch (error) {
       console.error("Ошибка принятия заказа:", error);
     } finally {
-      setIsAccepting(false); // 🔄 Выключаем загрузку после обработки
+      setIsAccepting(false); 
     }
   };
 
@@ -201,11 +204,11 @@ const Courier = () => {
 
     try {
       await updateDeliveryStatus(currentOrder.id, newStatus);
-      setCurrentOrder({ ...currentOrder, status: newStatus }); // ✅ Обновляем статус локально
+      setCurrentOrder({ ...currentOrder, status: newStatus }); 
 
       if (newStatus === "Completed") {
-        setCurrentOrder(null); // Убираем заказ после завершения
-        setOrders([]); // Очищаем список заказов
+        setCurrentOrder(null);
+        setOrders([]); 
       }
     } catch (error) {
       console.error("Ошибка обновления статуса доставки:", error);
@@ -218,15 +221,14 @@ const Courier = () => {
     try {
       await completeDelivery(currentOrder.id);
 
-      // 🔥 Отправляем событие WebSocket о завершении заказа
       socket.emit("orderStatusUpdate", {
         id: currentOrder.id,
         status: "Delivered",
       });
 
       localStorage.removeItem("currentOrder");
-      setCurrentOrder(null); // Убираем заказ после завершения
-      setOrders([]); // Очищаем список заказов
+      setCurrentOrder(null); 
+      setOrders([]);
     } catch (error) {
       console.error("Ошибка завершения доставки:", error);
     }
@@ -285,7 +287,6 @@ const Courier = () => {
         ☰
       </div>
 
-      {/* ✅ Модальное меню */}
       {menuOpen && (
         <div className={styles.ModalMenu}>
           <button className={styles.CloseButton} onClick={toggleMenu}>
@@ -295,11 +296,18 @@ const Courier = () => {
             <li>👤 Профиль</li>
             <li>📦 Доставленные заказы</li>
             <li>💰 Финансы</li>
+            <li
+              onClick={() => {
+                setMenuOpen(false);
+                setShowSupportChat(true);
+              }}
+            >
+              🛟 Поддержка
+            </li>
           </ul>
         </div>
       )}
 
-      {/* ✅ Карта на весь экран */}
       <MapContainer
         center={[WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng]}
         zoom={12}
@@ -310,12 +318,10 @@ const Courier = () => {
           attribution="&copy; OpenStreetMap"
         />
 
-        {/* ✅ Обновление центра карты */}
         {orders.length > 0 && (
           <MapUpdater center={[orders[0].deliveryLat, orders[0].deliveryLng]} />
         )}
 
-        {/* ✅ Маркер склада */}
         <Marker
           position={[WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng]}
           icon={customIcon}
@@ -323,19 +329,24 @@ const Courier = () => {
           <Popup>📦 Склад</Popup>
         </Marker>
 
-        {/* ✅ Маркер клиента (если есть заказ) */}
-        {orders.length > 0 &&
+         {currentOrder?.deliveryLat && currentOrder?.deliveryLng ? (
+          <Marker
+            position={[currentOrder.deliveryLat, currentOrder.deliveryLng]}
+            icon={customIcon}
+          >
+            <Popup>🏠 Адрес клиента</Popup>
+          </Marker>
+        ) : orders.length > 0 &&
           orders[0].deliveryLat &&
-          orders[0].deliveryLng && (
-            <Marker
-              position={[orders[0].deliveryLat, orders[0].deliveryLng]}
-              icon={customIcon}
-            >
-              <Popup>🏠 Адрес клиента</Popup>
-            </Marker>
-          )}
+          orders[0].deliveryLng ? (
+          <Marker
+            position={[orders[0].deliveryLat, orders[0].deliveryLng]}
+            icon={customIcon}
+          >
+            <Popup>🏠 Адрес клиента</Popup>
+          </Marker>
+        ) : null}
 
-        {/* ✅ Маршрут от склада до клиента */}
         {route.length > 0 && <Polyline positions={route} color="blue" />}
       </MapContainer>
 
@@ -346,7 +357,7 @@ const Courier = () => {
         {courierStatus === "offline" ? (
           <button onClick={handleToggleStatus}>🟢 Выйти в онлайн</button>
         ) : currentOrder ? (
-          <p>📦 Детали заказа</p> // ✅ Показываем текст вместо кнопки
+          <p>📦 Детали заказа</p>
         ) : orders.length > 0 ? (
           <button
             className={`${styles.AcceptButton} ${styles.Animate}`}
@@ -359,41 +370,6 @@ const Courier = () => {
           <p>🔎 Поиск заказа...</p>
         )}
       </div>
-
-      {/* ✅ Модальное окно заказа */}
-      <MapContainer
-        center={[WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng]}
-        zoom={12}
-        style={{ height: "100%", width: "100%" }}
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap"
-        />
-
-        {/* ✅ Маркер склада */}
-        <Marker
-          position={[WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng]}
-          icon={customIcon}
-        >
-          <Popup>📦 Склад</Popup>
-        </Marker>
-
-        {/* ✅ Маркер клиента (если есть заказ) */}
-        {currentOrder &&
-          currentOrder.deliveryLat &&
-          currentOrder.deliveryLng && (
-            <Marker
-              position={[currentOrder.deliveryLat, currentOrder.deliveryLng]}
-              icon={customIcon}
-            >
-              <Popup>🏠 Адрес клиента</Popup>
-            </Marker>
-          )}
-
-        {/* ✅ Маршрут от склада до клиента */}
-        {route.length > 0 && <Polyline positions={route} color="blue" />}
-      </MapContainer>
 
       <div
         className={styles.FixedBottomBar}
@@ -415,7 +391,6 @@ const Courier = () => {
         )}
       </div>
 
-      {/* ✅ Модальное окно заказа */}
       {showOrderModal && (
         <div
           className={`${styles.OrderModal} ${
@@ -443,7 +418,6 @@ const Courier = () => {
             </div>
           )}
 
-          {/* ✅ Если курьер офлайн */}
           {courierStatus === "offline" && (
             <div className={styles.ModalContent}>
               <p>Вы офлайн. Включите онлайн, чтобы получать заказы.</p>
@@ -469,7 +443,7 @@ const Courier = () => {
               </p>
 
               {currentOrder &&
-                currentOrder.status === "Picked up" && // ✅ Теперь ссылка появляется только после забора заказа!
+                currentOrder.status === "Picked up" && 
                 currentOrder.deliveryLat &&
                 currentOrder.deliveryLng && (
                   <a
@@ -482,8 +456,7 @@ const Courier = () => {
                   </a>
                 )}
 
-              {/* ✅ Кнопка "Забрал заказ" (после принятия) */}
-              {currentOrder.status === "Ready for pickup" && ( // ✅ Теперь кнопка будет только когда заказ готов
+              {currentOrder.status === "Ready for pickup" && ( 
                 <button
                   className={styles.PickedUpButton}
                   onClick={() => handleUpdateStatus("Picked up")}
@@ -492,7 +465,6 @@ const Courier = () => {
                 </button>
               )}
 
-              {/* ✅ Кнопка "Прибыл к клиенту" (после забора) */}
               {currentOrder.status === "Picked up" && (
                 <button
                   className={styles.ArrivedButton}
@@ -502,7 +474,6 @@ const Courier = () => {
                 </button>
               )}
 
-              {/* ✅ Кнопка "Доставлено" (после прибытия к клиенту) */}
               {currentOrder.status === "Arrived at destination" && (
                 <button
                   className={styles.DeliveredButton}
