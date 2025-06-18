@@ -29,9 +29,12 @@
 	margin-bottom: 20px;
   }
 
-.chatLink {
+.chatLinkButton {
+  background: none;
+  border: none;
+  padding: 0;
   color: blue;
-  text-decoration: underline;
+  font-size: 1rem;
   cursor: pointer;
 }
   
