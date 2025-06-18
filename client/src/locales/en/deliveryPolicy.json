@@ -30,7 +30,7 @@
 	},
 	"delays": {
 		"title": "5. What to do if delivery is delayed?",
-		"text": "If your order has not arrived within the estimated time, please contact our support team: support@mycompany.com.",
+		"text": "If your order has not arrived within the estimated time, please contact our support team:",
 		"open_chat": "Open support chat"
 	},
 	"damaged_items": {
@@ -41,7 +41,7 @@
 	},
 	"contact": {
 		"title": "7. Contact Information",
-		"text": "If you have any questions about delivery, contact us: support@mycompany.com.",
+		"text": "If you have any questions about delivery, contact us:",
 		"open_chat": "Open support chat"
 	}
 }
