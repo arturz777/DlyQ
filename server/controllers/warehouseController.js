@@ -2,74 +2,74 @@ const { Order, Warehouse } = require("../models/models");
 const { Op } = require("sequelize");
 
 class WarehouseController {
-	// 📦 Получение заказов для склада
-	async getWarehouseOrders(req, res) {
-	  try {
-		// ✅ Проверяем, есть ли склад у админа (если нет — создаем)
-		let warehouse = await Warehouse.findOne({ where: { id: req.user.id } });
-  
-		if (!warehouse && req.user.role === "ADMIN") {
-		  warehouse = await Warehouse.create({
-			id: req.user.id,
-			name: "Склад Админа",
-			status: "active",
-		  });
-		}
-  
-		if (!warehouse) {
-		  return res.status(404).json({ message: "Склад не найден." });
-		}
-  
-    const orders = await Order.findAll({
-      where: { warehouseStatus: { [Op.not]: "ready" }, warehouseId: warehouse.id },
-      order: [["createdAt", "DESC"]],
-  });
+  async getWarehouseOrders(req, res) {
+    try {
+      let warehouse = await Warehouse.findOne({ where: { id: req.user.id } });
 
-  const formattedOrders = orders.map((order) => ({
-      ...order.toJSON(),
-      orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
-      preorderDate: order.desiredDeliveryDate || null,
-  }));
+      if (!warehouse && req.user.role === "ADMIN") {
+        warehouse = await Warehouse.create({
+          id: req.user.id,
+          name: "Склад Админа",
+          status: "active",
+        });
+      }
 
-  return res.json(formattedOrders);
-} catch (error) {
-  return res.status(500).json({ message: "Ошибка сервера" });
-}
-	}
+      if (!warehouse) {
+        return res.status(404).json({ message: "Склад не найден." });
+      }
+
+      const orders = await Order.findAll({
+        where: {
+          warehouseStatus: { [Op.not]: "ready" },
+          [Op.or]: [{ warehouseId: warehouse.id }, { warehouseId: null }],
+        },
+        order: [["createdAt", "DESC"]],
+      });
+
+      const formattedOrders = orders.map((order) => ({
+        ...order.toJSON(),
+        orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
+        preorderDate: order.desiredDeliveryDate || null,
+      }));
+
+      return res.json(formattedOrders);
+    } catch (error) {
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
 
   async acceptOrder(req, res) {
     try {
       const { id } = req.params;
       const { processingTime } = req.body;
-      const adminId = req.user.id; 
+      const adminId = req.user.id;
 
       let warehouse = await Warehouse.findOne({ where: { id: adminId } });
 
       if (!warehouse) {
         warehouse = await Warehouse.create({
-          id: adminId, 
-          name: "Склад №1", 
+          id: adminId,
+          name: "Склад Админа",
           status: "active",
         });
       }
-	  
-	  const order = await Order.findByPk(id);
+
+      const order = await Order.findByPk(id);
       if (!order) {
         return res.status(404).json({ message: "Заказ не найден" });
       }
 
-      order.warehouseStatus = "processing"; 
-      order.processingTime = processingTime; 
+      order.warehouseStatus = "processing";
+      order.processingTime = processingTime;
       order.processingStartTime = new Date();
-      order.warehouseId = warehouse.id; 
-      order.status = "Waiting for courier"; 
+      order.warehouseId = warehouse.id;
+      order.status = "Waiting for courier";
       await order.save();
 
-      const io = req.app.get("io"); 
+      const io = req.app.get("io");
       io.emit("warehouseOrder", order);
-      io.emit("orderStatusUpdate", order); 
+      io.emit("orderStatusUpdate", order);
 
-      
       return res.json(order);
     } catch (error) {
       console.error("❌ Ошибка обработки заказа складом:", error);
@@ -77,7 +77,6 @@ class WarehouseController {
     }
   }
 
-  // 📌 Завершение обработки и передача курьеру
   async completeOrder(req, res) {
     try {
       const { id } = req.params;
@@ -87,13 +86,13 @@ class WarehouseController {
         return res.status(404).json({ message: "Заказ не найден" });
       }
 
-      order.warehouseStatus = "ready"; // Меняем статус на "готов"
+      order.warehouseStatus = "ready";
       order.status = "Ready for pickup";
       await order.save();
 
-      const io = req.app.get("io"); // 🔥 Получаем WebSocket-сервер
+      const io = req.app.get("io");
       io.emit("orderReady", order);
-      io.emit("orderStatusUpdate", { id: order.id, status: order.status });  
+      io.emit("orderStatusUpdate", { id: order.id, status: order.status });
 
       return res.json(order);
     } catch (error) {
