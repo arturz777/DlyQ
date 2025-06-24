@@ -5,17 +5,26 @@ const { OAuth2Client } = require("google-auth-library");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const { User, Basket } = require("../models/models");
 
-const generateTokens = (id, email, role) => {
-  const accessToken = jwt.sign({ id, email, role }, process.env.SECRET_KEY, {
-    expiresIn: "15m", 
-  });
+const generateTokens = (
+  id,
+  email,
+  role,
+  firstName = null,
+  lastName = null,
+  phone = null
+) => {
+  const accessToken = jwt.sign(
+    { id, email, role, firstName, lastName, phone },
+    process.env.SECRET_KEY,
+    {
+      expiresIn: "15m",
+    }
+  );
 
   const refreshToken = jwt.sign(
-    { id, email, role },
+    { id, email, role, firstName, lastName, phone },
     process.env.REFRESH_SECRET_KEY,
-    {
-      expiresIn: "30d",
-    }
+    { expiresIn: "30d" }
   );
 
   return { accessToken, refreshToken };
@@ -52,9 +61,9 @@ class UserController {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      path: "/", 
+      secure: false,
+      sameSite: "lax",
+      path: "/",
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
@@ -79,9 +88,9 @@ class UserController {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      path: "/", 
+      secure: false,
+      sameSite: "lax",
+      path: "/",
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
@@ -92,17 +101,23 @@ class UserController {
     if (!req.user) {
       return res.status(401).json({ message: "Не авторизован" });
     }
-  
-    const { accessToken } = generateTokens(req.user.id, req.user.email, req.user.role);
+
+    const { accessToken } = generateTokens(
+      req.user.id,
+      req.user.email,
+      req.user.role,
+      req.user.firstName,
+      req.user.lastName,
+      req.user.phone
+    );
     return res.json({ accessToken });
   }
 
   async updateProfile(req, res, next) {
     try {
-
       if (!req.user) {
         return res.status(401).json({ message: "Не авторизован" });
-      }      
+      }
 
       const { firstName, lastName, phone } = req.body;
       const userId = req.user.id;
@@ -126,7 +141,6 @@ class UserController {
 
   async getProfile(req, res, next) {
     try {
-
       if (!req.user) {
         return res.status(401).json({ message: "Не авторизован" });
       }
@@ -189,15 +203,18 @@ class UserController {
 
       const userData = jwt.verify(token, process.env.REFRESH_SECRET_KEY);
       const { accessToken, refreshToken } = generateTokens(
-        userData.id,
-        userData.email,
-        userData.role
+        req.user.id,
+        req.user.email,
+        req.user.role,
+        req.user.firstName,
+        req.user.lastName,
+        req.user.phone
       );
 
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
-        secure: true,
-        sameSite: "none",
+        secure: false,
+        sameSite: "lax",
         path: "/",
         maxAge: 30 * 24 * 60 * 60 * 1000,
       });
@@ -207,43 +224,51 @@ class UserController {
       return res.status(401).json({ message: "Невалидный refresh токен" });
     }
   }
+
   async googleLogin(req, res, next) {
-  try {
-    const { token } = req.body;
-    const ticket = await client.verifyIdToken({
-      idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-    const payload = ticket.getPayload();
-    const { email, given_name, family_name, sub } = payload;
-
-    let user = await User.findOne({ where: { email } });
-
-    if (!user) {
-      user = await User.create({
-        email,
-        firstName: given_name,
-        lastName: family_name,
-        provider: "google",
-        providerId: sub,
+    try {
+      const { token } = req.body;
+      const ticket = await client.verifyIdToken({
+        idToken: token,
+        audience: process.env.GOOGLE_CLIENT_ID,
       });
-      await Basket.create({ userId: user.id });
+      const payload = ticket.getPayload();
+      const { email, given_name, family_name, sub } = payload;
+
+      let user = await User.findOne({ where: { email } });
+
+      if (!user) {
+        user = await User.create({
+          email,
+          firstName: given_name,
+          lastName: family_name,
+          provider: "google",
+          providerId: sub,
+        });
+        await Basket.create({ userId: user.id });
+      }
+
+      const { accessToken, refreshToken } = generateTokens(
+        user.id,
+        user.email,
+        user.role,
+        user.firstName,
+        user.lastName,
+        user.phone
+      );
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+      });
+
+      return res.json({ accessToken });
+    } catch (error) {
+      next(error);
     }
-
-    const { accessToken, refreshToken } = generateTokens(user.id, user.email, user.role);
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
-
-    return res.json({ accessToken });
-  } catch (error) {
-    next(error);
   }
-}
 }
 
 module.exports = new UserController();
