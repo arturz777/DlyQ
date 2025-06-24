@@ -189,7 +189,7 @@ const NavBar = observer(() => {
             </div>
           )}
         </div>
-        {user.isAuth && user?.user?.role === "ADMIN" && (
+        {user.isAuth && user?.user?.role?.toUpperCase() === "ADMIN" && (
           <div
             className={styles.navbarLink}
             onClick={() => navigate(ADMIN_ROUTE)}
