@@ -1,9 +1,11 @@
 import React, { useContext, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
 import { LOGIN_ROUTE, REGISTRATION_ROUTE, SHOP_ROUTE } from "../utils/consts";
 import { login, registration } from "../http/userAPI";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
+import axios from "axios";
 import { useTranslation } from "react-i18next";
 import ruFlag from "../assets/flags/ru.png";
 import enFlag from "../assets/flags/en.png";
@@ -192,6 +194,30 @@ const Auth = observer(() => {
               : t("register", { ns: "auth" })}
           </button>
         </form>
+                        {isLogin && (
+          <div className={styles.googleLoginWrapper}>
+            <GoogleLogin
+              onSuccess={async (credentialResponse) => {
+                try {
+                  const { credential } = credentialResponse;
+                  const res = await axios.post(
+                    `${process.env.REACT_APP_API_URL}/user/google-login`,
+                    { token: credential }
+                  );
+                  user.setUser(res.data);
+                  user.setIsAuth(true);
+                  navigate(SHOP_ROUTE);
+                } catch (e) {
+                  console.error(e);
+                  alert("Ошибка при входе через Google");
+                }
+              }}
+              onError={() => {
+                alert("Не удалось войти через Google");
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
