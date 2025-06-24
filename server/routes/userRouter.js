@@ -10,5 +10,6 @@ router.put('/profile', authMiddleware, userController.updateProfile);
 router.get('/profile', authMiddleware, userController.getProfile);
 router.put("/change-password", authMiddleware, userController.changePassword);
 router.post('/refresh', userController.refresh);
+router.post('/google-login', userController.googleLogin);
 
 module.exports = router
