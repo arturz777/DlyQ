@@ -56,7 +56,10 @@ class UserController {
     const { accessToken, refreshToken } = generateTokens(
       user.id,
       user.email,
-      user.role
+      user.role,
+      user.firstName,
+      user.lastName,
+      user.phone
     );
 
     res.cookie("refreshToken", refreshToken, {
@@ -240,6 +243,7 @@ class UserController {
       if (!user) {
         user = await User.create({
           email,
+          role: "USER",
           firstName: given_name,
           lastName: family_name,
           provider: "google",
