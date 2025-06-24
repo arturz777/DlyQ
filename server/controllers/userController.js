@@ -203,12 +203,12 @@ class UserController {
 
       const userData = jwt.verify(token, process.env.REFRESH_SECRET_KEY);
       const { accessToken, refreshToken } = generateTokens(
-        req.user.id,
-        req.user.email,
-        req.user.role,
-        req.user.firstName,
-        req.user.lastName,
-        req.user.phone
+        userData.id,
+        userData.email,
+        userData.role,
+        userData.firstName,
+        userData.lastName,
+        userData.phone
       );
 
       res.cookie("refreshToken", refreshToken, {
