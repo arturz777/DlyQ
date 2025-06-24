@@ -26,6 +26,7 @@ const ProfileSettings = ({ onBack }) => {
     functional: false,
     personalization: false,
   });
+  const [hasPassword, setHasPassword] = useState(false);
 
   useEffect(() => {
     fetchProfile().then((data) => {
@@ -34,6 +35,7 @@ const ProfileSettings = ({ onBack }) => {
         lastName: data.lastName || "",
         phone: data.phone || "",
       });
+      setHasPassword(data.hasPassword);
     });
   }, []);
 
@@ -173,55 +175,57 @@ const ProfileSettings = ({ onBack }) => {
               </button>
             </div>
           ))}
-
-          <div className={styles.profileItem}>
-            <span>{t("password", { ns: "profileSettings" })}</span>
-            {editField === "password" ? (
-              <div className={styles.passwordInputs}>
-                {["currentPassword", "newPassword", "confirmPassword"].map(
-                  (field, index) => (
-                    <div key={index}>
-                      <input
-                        type="password"
-                        placeholder={
-                          field === "currentPassword"
-                            ? t("currentPassword", { ns: "profileSettings" })
-                            : field === "newPassword"
-                            ? t("newPassword", { ns: "profileSettings" })
-                            : t("confirmPassword", { ns: "profileSettings" })
-                        }
-                        value={passwordData[field]}
-                        onChange={(e) =>
-                          setPasswordData({
-                            ...passwordData,
-                            [field]: e.target.value,
-                          })
-                        }
-                      />
-                      {errors[field] && (
-                        <span className={styles.errorText}>
-                          {errors[field]}
-                        </span>
-                      )}
-                    </div>
-                  )
-                )}
-              </div>
-            ) : (
-              <span>*******</span>
-            )}
-            <button
-              className={styles.editButton}
-              onClick={() =>
-                editField === "password" ? handleSave() : handleEdit("password")
-              }
-            >
-              {editField === "password"
-                ? t("save", { ns: "profileSettings" })
-                : t("edit", { ns: "profileSettings" })}
-            </button>
-          </div>
-
+          {hasPassword && (
+            <div className={styles.profileItem}>
+              <span>{t("password", { ns: "profileSettings" })}</span>
+              {editField === "password" ? (
+                <div className={styles.passwordInputs}>
+                  {["currentPassword", "newPassword", "confirmPassword"].map(
+                    (field, index) => (
+                      <div key={index}>
+                        <input
+                          type="password"
+                          placeholder={
+                            field === "currentPassword"
+                              ? t("currentPassword", { ns: "profileSettings" })
+                              : field === "newPassword"
+                              ? t("newPassword", { ns: "profileSettings" })
+                              : t("confirmPassword", { ns: "profileSettings" })
+                          }
+                          value={passwordData[field]}
+                          onChange={(e) =>
+                            setPasswordData({
+                              ...passwordData,
+                              [field]: e.target.value,
+                            })
+                          }
+                        />
+                        {errors[field] && (
+                          <span className={styles.errorText}>
+                            {errors[field]}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                <span>*******</span>
+              )}
+              <button
+                className={styles.editButton}
+                onClick={() =>
+                  editField === "password"
+                    ? handleSave()
+                    : handleEdit("password")
+                }
+              >
+                {editField === "password"
+                  ? t("save", { ns: "profileSettings" })
+                  : t("edit", { ns: "profileSettings" })}
+              </button>
+            </div>
+          )}
           <div className={styles.cookieSettings}>
             <h3 className={styles.cookieHeaderTitle}>
               {t("cookieHeader", { ns: "profileSettings" })}
