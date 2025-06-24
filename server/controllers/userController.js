@@ -1,6 +1,8 @@
 const ApiError = require("../error/ApiError");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const { User, Basket } = require("../models/models");
 
 const generateTokens = (id, email, role) => {
@@ -205,6 +207,43 @@ class UserController {
       return res.status(401).json({ message: "Невалидный refresh токен" });
     }
   }
+  async googleLogin(req, res, next) {
+  try {
+    const { token } = req.body;
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const { email, given_name, family_name, sub } = payload;
+
+    let user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      user = await User.create({
+        email,
+        firstName: given_name,
+        lastName: family_name,
+        provider: "google",
+        providerId: sub,
+      });
+      await Basket.create({ userId: user.id });
+    }
+
+    const { accessToken, refreshToken } = generateTokens(user.id, user.email, user.role);
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.json({ accessToken });
+  } catch (error) {
+    next(error);
+  }
+}
 }
 
 module.exports = new UserController();
