@@ -33,6 +33,5 @@
   "devDependencies": {
     "nodemon": "^3.1.9",
     "sequelize-cli": "^6.6.2"
-    "source-map-explorer": "^2.5.3"
   }
 }
