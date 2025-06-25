@@ -60,7 +60,7 @@ export const changePassword = async (passwordData) => {
 
 export const googleLogin = async (token) => {
   const { data } = await $host.post(
-    "/user/google-login",
+    "api/user/google-login",
     { token },
     { withCredentials: true }
   );
