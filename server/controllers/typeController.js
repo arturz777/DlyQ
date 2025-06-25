@@ -78,7 +78,6 @@ class TypeController {
       let imgUrl = type.img;
 
       if (req.files && req.files.img) {
-        console.log("📷 Загружаем новое изображение...");
         if (type.img) {
           const oldFileName = type.img.split("/").pop();
           await supabase.storage.from("images").remove([oldFileName]);
