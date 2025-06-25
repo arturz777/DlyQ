@@ -30,6 +30,7 @@ const ProfileSettings = ({ onBack }) => {
 
   useEffect(() => {
     fetchProfile().then((data) => {
+      if (!data) return;
       setProfile({
         firstName: data.firstName || "",
         lastName: data.lastName || "",
