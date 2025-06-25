@@ -261,6 +261,19 @@ const PaymentForm = ({
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+     if (!formData.firstName?.trim()) {
+      toast.error(t("first name is required", { ns: "paymentForm" }));
+      return;
+    }
+    if (!formData.email?.trim()) {
+      toast.error(t("email is required", { ns: "paymentForm" }));
+      return;
+    }
+    if (!formData.phone?.trim()) {
+      toast.error(t("phone is required", { ns: "paymentForm" }));
+      return;
+    }
+
     if (!stripe || !elements) {
       toast.error(t("payment initialization error", { ns: "paymentForm" }));
       return;
@@ -311,7 +324,7 @@ const PaymentForm = ({
       className={styles.form}
       style={{ maxWidth: "600px" }}
     >
-      {!user.isAuth && (
+      {(!user.isAuth || (user.isAuth && !user.user?.phone)) && (
   <>
       <Row className="mb-1">
         <Col md={6}>
