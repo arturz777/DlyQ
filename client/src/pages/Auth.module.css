@@ -1,18 +1,18 @@
 .authWrapper {
-	display: flex;
-	justify-content: center; 
-	align-items: center; 
-	min-height: 100vh; 
-	padding: 20px; 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
 }
 
 .authContainer {
-	width: 100%;
-	max-width: 1400px; 
-	background-color: #fff; 
-	border-radius: 8px;
-	padding: 20px;
-	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); 
+  width: 100%;
+  max-width: 1400px;
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .languageSelectorWrapper {
@@ -25,8 +25,8 @@
   border: none;
   cursor: pointer;
   padding: 0;
-  width: 35px; 
-  height: 25px; 
+  width: 35px;
+  height: 25px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -43,14 +43,14 @@
 
 .dropdownMenu {
   position: absolute;
-  top: 100%; 
+  top: 100%;
   left: 0;
   background: rgb(238, 238, 238);
   box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   overflow: hidden;
   z-index: 1000;
-  margin-top: 0px; 
+  margin-top: 0px;
   width: 35px;
 }
 
@@ -58,8 +58,8 @@
   background: none;
   border: none;
   padding: 5px;
-  width: 100%; 
-  height: 25px; 
+  width: 100%;
+  height: 25px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -77,22 +77,22 @@
 }
 
 .authForm {
-	display: flex; 
-	flex-direction: column;
-	align-items: center;
-	gap: 20px;
-	max-width: 400px;
-	width: 100%;
-	margin: 0 auto;
-	min-height: auto; 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  max-width: 400px;
+  width: 100%;
+  margin: 0 auto;
+  min-height: auto;
 }
 
 .authTitle {
-	text-align: center;
-	font-size: 26px;
-	margin-bottom: 30px;
-	color: #333;
-  }
+  text-align: center;
+  font-size: 26px;
+  margin-bottom: 30px;
+  color: #333;
+}
 
 .inputField {
   width: 100%;
@@ -109,60 +109,60 @@
 }
 
 .checkboxContainer {
-	display: flex;
-	align-items: flex-start;
-	gap: 10px;
-	font-size: 0.95rem;
-	color: #333;
-	cursor: pointer;
-	line-height: 1.5;
-	justify-content: flex-start;
-	max-width: 400px; 
-	margin: 10px auto;
-	user-select: none;
-	flex-wrap: wrap; 
-	white-space: normal; 
-  }
-  
-  .checkboxContainer a {
-	color: #007bff;
-	text-decoration: none;
-	font-weight: 400;
-	margin: 0 3px;
-  }
-  
-  .checkboxContainer a:hover {
-	text-decoration: underline;
-  }
-  
-  .checkboxContainer label {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	max-width: 100%;
-	padding-left: 25px; 
-  }
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.95rem;
+  color: #333;
+  cursor: pointer;
+  line-height: 1.5;
+  justify-content: flex-start;
+  max-width: 400px;
+  margin: 10px auto;
+  user-select: none;
+  flex-wrap: wrap;
+  white-space: normal;
+}
 
-  .checkboxContainer input {
-	width: 16px;
-	height: 16px;
-	margin: 0;
-	margin-right: 20px;
-	vertical-align: middle;
-	position: relative;
-	top: 29px;
-  }
-  
+.checkboxContainer a {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 400;
+  margin: 0 3px;
+}
+
+.checkboxContainer a:hover {
+  text-decoration: underline;
+}
+
+.checkboxContainer label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  max-width: 100%;
+  padding-left: 25px;
+}
+
+.checkboxContainer input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  margin-right: 20px;
+  vertical-align: middle;
+  position: relative;
+  top: 29px;
+}
+
 .authButton {
-	width: 100%;
-	padding: 12px;
-	background: #007bff;
-	color: white;
-	font-size: 1rem;
-	border: none;
-	cursor: pointer;
-	border-radius: 6px;
-	transition: background 0.3s ease;
+  width: 100%;
+  padding: 12px;
+  background: #007bff;
+  color: white;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.3s ease;
 }
 
 .authButton:disabled {
