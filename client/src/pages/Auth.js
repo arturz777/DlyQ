@@ -194,17 +194,14 @@ const Auth = observer(() => {
               : t("register", { ns: "auth" })}
           </button>
         </form>
-                        {isLogin && (
+                       {isLogin && (
           <div className={styles.googleLoginWrapper}>
             <GoogleLogin
               onSuccess={async (credentialResponse) => {
                 try {
                   const { credential } = credentialResponse;
-                  const res = await axios.post(
-                    `${process.env.REACT_APP_API_URL}/user/google-login`,
-                    { token: credential }
-                  );
-                  user.setUser(res.data);
+                  const userData = await googleLogin(credential);
+                  user.setUser(userData);
                   user.setIsAuth(true);
                   navigate(SHOP_ROUTE);
                 } catch (e) {
