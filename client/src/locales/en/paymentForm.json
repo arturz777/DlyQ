@@ -56,6 +56,12 @@
 	"payment success": "✅ Payment successful!",
 	"payment declined": "❌ Payment declined",
 	"payment requires authentication": "⚠️ Payment requires authentication",
+
+	"first name is required": "Please enter your first name",
+        "email is required": "Please enter your email address",
+        "phone is required": "Please enter your phone number",
+
+
   
 	
 	"searching address": "🔍 Searching for address...",
@@ -77,3 +83,4 @@
 	"estimated delivery time": "Estimated Delivery Time",
 	"estimated preparation time": "Estimated Preparation Time"
   }
+  
