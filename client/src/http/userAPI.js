@@ -57,3 +57,14 @@ export const changePassword = async (passwordData) => {
   const { data } = await $authHost.put("/user/change-password", passwordData);
   return data;
 };
+
+export const googleLogin = async (token) => {
+  const { data } = await $host.post(
+    "api/user/google-login",
+    { token },
+    { withCredentials: true }
+  );
+
+  localStorage.setItem("token", data.accessToken);
+  return jwtDecode(data.accessToken);
+};
