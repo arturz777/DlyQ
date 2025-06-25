@@ -54,7 +54,10 @@
 	"payment success": "✅ Makse edukalt sooritatud!",
 	"payment declined": "❌ Makse tagasi lükatud",
 	"payment requires authentication": "⚠️ Makse nõuab autentimist",
-  
+
+	"first name is required": "Palun sisestage eesnimi",
+       "email is required": "Palun sisestage e-posti aadress",
+       "phone is required": "Palun sisestage telefoninumber",
 	
 	"searching address": "🔍 Otsitakse aadressi...",
 	"error searching address": "Aadressi otsimisel ilmnes viga",
