@@ -31,6 +31,10 @@
 	"comment": "Комментарий",
 	"add comment": "Добавьте комментарий",
 	"save address and comment": "Сохранить адрес и комментарий",
+
+	"first name is required": "Пожалуйста, введите имя",
+    "email is required": "Пожалуйста, введите адрес электронной почты",
+    "phone is required": "Пожалуйста, введите номер телефона",
   
 	"no active order": "Нет активного заказа",
 	"order total": "Итого",
