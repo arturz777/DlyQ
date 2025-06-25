@@ -69,7 +69,6 @@ const Auth = observer(() => {
   return (
     <div className={styles.authWrapper}>
       <div className={styles.authContainer}>
-
                       <div
               className={styles.languageSelectorWrapper}
               onMouseLeave={() => setIsLanguageMenuOpen(false)}
