@@ -156,11 +156,11 @@ class UserController {
       }
 
       res.json({
-         firstName: user.firstName,
-  lastName: user.lastName,
-  phone: user.phone,
-  email: user.email,
-  hasPassword: !!user.password,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        email: user.email,
+        hasPassword: !!user.password,
       });
     } catch (error) {
       console.error(error);
