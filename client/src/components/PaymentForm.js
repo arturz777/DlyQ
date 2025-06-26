@@ -17,7 +17,7 @@ import {
 } from "@stripe/react-stripe-js";
 import { Button, Form, Row, Col } from "react-bootstrap";
 import { toast } from "react-toastify";
-import { fetchProfile } from "../http/userAPI";
+import { fetchProfile, updateProfile } from "../http/userAPI";
 import { Context } from "../index";
 import { fetchDeliveryCost } from "../utils/deliveryCost";
 import { useTranslation } from "react-i18next";
@@ -307,6 +307,29 @@ const PaymentForm = ({
           localStorage.setItem("userFormData", JSON.stringify(savedData));
         } else {
           localStorage.removeItem("userFormData");
+        }
+
+        if (!user.user?.phone && formData.phone) {
+          try {
+            await updateProfile({ phone: formData.phone });
+
+            const updatedProfile = await fetchProfile();
+            user.setUser({
+              ...user.user,
+              phone: updatedProfile.phone,
+              firstName: updatedProfile.firstName,
+              lastName: updatedProfile.lastName,
+              email: updatedProfile.email,
+            });
+          } catch (err) {
+            console.error(
+              "Ошибка обновления профиля после сохранения телефона:",
+              err
+            );
+            toast.error("Не удалось сохранить номер телефона");
+            setLoading(false);
+            return;
+          }
         }
 
        await onPaymentSuccess(paymentMethod, formData);
