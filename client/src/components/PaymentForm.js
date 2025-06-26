@@ -105,7 +105,6 @@ const PaymentForm = ({
         longitude,
       }));
 
-   
       fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
       )
@@ -113,10 +112,14 @@ const PaymentForm = ({
         .then((data) => {
           setFormData((prev) => ({
             ...prev,
-            address: data.display_name || t("address not found", { ns: "paymentForm" }),
+           address:
+              data.display_name ||
+              t("address not found", { ns: "paymentForm" }),
           }));
         })
-        .catch((err) => console.error(t("fetching address error", { ns: "paymentForm" }), err));
+        .catch((err) =>
+          console.error(t("fetching address error", { ns: "paymentForm" }), err)
+        );
     };
 
     if (navigator.geolocation) {
@@ -127,7 +130,6 @@ const PaymentForm = ({
         async (error) => {
           console.warn(t("geolocation disabled", { ns: "paymentForm" }));
 
-     
           try {
             const res = await fetch(
               "https://ipinfo.io/json?token=e66bf7a246010e"
@@ -135,9 +137,12 @@ const PaymentForm = ({
             const data = await res.json();
             const [lat, lon] = data.loc.split(",");
 
-            updateLocation(parseFloat(lat), parseFloat(lon));
+              updateLocation(parseFloat(lat), parseFloat(lon));
           } catch (err) {
-            console.error(t("ip geolocation error", { ns: "paymentForm" }), err);
+            console.error(
+              t("ip geolocation error", { ns: "paymentForm" }),
+              err
+            );
           }
         },
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
@@ -241,12 +246,10 @@ const PaymentForm = ({
     loadUserData();
   }, [user.isAuth]);
   
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => {
       const updatedData = { ...prev, [name]: value };
-  
   
       localStorage.setItem("userFormData", JSON.stringify(updatedData));
   
@@ -340,7 +343,6 @@ const PaymentForm = ({
     }
   };
   
-
   return (
     <Form
       onSubmit={handleSubmit}
@@ -350,17 +352,19 @@ const PaymentForm = ({
       {(!user.isAuth || (user.isAuth && !user.user?.phone)) && (
   <>
       <Row className="mb-1">
-        <Col md={6}>
-          <Form.Group controlId="firstName">
-            <Form.Label>{t("first name", { ns: "paymentForm" })}</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder={t("enter first name", { ns: "paymentForm" })}
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              disabled={user.isAuth}
-            />
+            <Col md={6}>
+              <Form.Group controlId="firstName">
+                <Form.Label>
+                  {t("first name", { ns: "paymentForm" })}
+                </Form.Label>
+                <Form.Control
+                  type="text"
+                  placeholder={t("enter first name", { ns: "paymentForm" })}
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  disabled={user.isAuth}
+                />
           </Form.Group>
         </Col>
         <Col md={6}>
@@ -409,7 +413,6 @@ const PaymentForm = ({
       )}
 
       <Row className="mb-1">
-
         <Form.Group className="mb-1" controlId="address">
           <Form.Label>{t("address", { ns: "paymentForm" })}</Form.Label>
           <div className="d-flex">
@@ -450,7 +453,6 @@ const PaymentForm = ({
               latitude={formData.latitude}
               longitude={formData.longitude}
             />{" "}
-         
             <LocationPicker setFormData={setFormData} />
             <Marker
               position={[formData.latitude, formData.longitude]}
@@ -493,8 +495,10 @@ const PaymentForm = ({
           checked={saveData}
           onChange={handleSaveDataChange}
         />
-      </Form.Group>
-      <h4 className="mb-1 text-center">{t("card details", { ns: "paymentForm" })}</h4>
+       </Form.Group>
+      <h4 className="mb-1 text-center">
+        {t("card details", { ns: "paymentForm" })}
+      </h4>
       <Form.Group className="mb-3">
         <Form.Label>{t("card number", { ns: "paymentForm" })}</Form.Label>
         <div className="border rounded p-2">
@@ -527,7 +531,9 @@ const PaymentForm = ({
         >
           {loading
             ? t("processing", { ns: "paymentForm" })
-            : `${t("pay", { ns: "paymentForm" })} ${(totalPrice + deliveryCost).toFixed(2)} $`}
+            : `${t("pay", { ns: "paymentForm" })} ${(
+                totalPrice + deliveryCost
+              ).toFixed(2)} $`}
         </button>
       </div>
     </Form>
