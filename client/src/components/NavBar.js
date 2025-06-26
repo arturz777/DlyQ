@@ -147,7 +147,7 @@ const NavBar = observer(() => {
     <div className={`${styles.navbar} NavBar`} style={navbarStyle}>
       <div className={styles.navbarContainer}>
         <NavLink to="/" className={styles.navbarLogo}>
-          Zang
+          DlyQ
         </NavLink>
 
         <NavLink to="/catalog" className={styles.navbarLink}>
