@@ -36,7 +36,7 @@ const createOrder = async (req, res) => {
     }
 
     const userId = req.user ? req.user.id : null;
-    let warehouseId = userId;
+    let warehouseId = 1;
 
     const deliveryDateFromFirstItem = orderDetails[0]?.deliveryDate || null;
     const preferredTimeFromFirstItem = orderDetails[0]?.preferredTime || null;
