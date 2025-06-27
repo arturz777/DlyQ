@@ -41,9 +41,9 @@ const NavBar = observer(() => {
   const { t, i18n } = useTranslation();
 
   const languages = [
+    { code: "EE", language: "est" },
     { code: "GB", language: "en" },
     { code: "RU", language: "ru" },
-    { code: "EE", language: "est" },
   ];
 
   const changeLanguage = (lng) => {
