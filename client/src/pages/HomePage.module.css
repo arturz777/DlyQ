@@ -7,7 +7,7 @@
 
 .banner {
   text-align: center;
-  background: linear-gradient(135deg, #ff8c00, #ff0080);
+  background: linear-gradient(135deg, #0072ce, #ff0080);
   color: white;
   padding: 30px 15px;
   font-size: 18px;
@@ -43,7 +43,7 @@
 }
 
 .category:hover {
-  background: #ddd;
+  background: #0072CE;
 }
 
 .category:hover .categoryIcon {
@@ -59,7 +59,7 @@
 }
 
 .moreButton:hover {
-  background: #e07c00;
+  background: #0072CE;
 }
 
 .noTypes {
@@ -102,24 +102,24 @@
     width: 100%;
     overflow: hidden;
     overflow: visible;
-  }  
+  }
 
   .category,
-.moreButton {
-  flex: 1 1 0; /* <<< Все делят место поровну! */
-  min-width: 120px; /* Минимальная ширина, чтобы текст влезал */
-  max-width: none; /* Можно поставить, если хочешь чтобы не растягивались сильно */
-  padding: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: center;
-  background: white;
-  border-radius: 6px;
-  font-size: 16px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-}
+  .moreButton {
+    flex: 1 1 0;
+    min-width: 120px;
+    max-width: none;
+    padding: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    background: white;
+    border-radius: 6px;
+    font-size: 16px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+  }
 
   .section {
     max-width: 1200px;
@@ -157,7 +157,7 @@
   }
 
   .dropdownItem:hover {
-    background: #ddd;
+    background: #0072CE;
   }
 
   .deviceCarousel {
@@ -170,3 +170,4 @@
     min-width: auto;
   }
 }
+
