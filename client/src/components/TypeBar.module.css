@@ -29,10 +29,11 @@
   
   .typeItem:hover {
 	transform: scale(1.05);
+	background: #0072CE;
   }
   
   .typeItem.active {
-	background: #be3402;
+	background: #0072CE;
 	color: white;
   }
   
@@ -62,7 +63,7 @@
 	}
   
 	.typeItem.active {
-	  background-color: #be3402;
+	  background-color: #0072CE;
 	  color: white;
 	  font-weight: bold;
 	}
@@ -74,3 +75,7 @@
 	  overflow-x: visible; 
 	}
   }
+
+  
+  
+  
