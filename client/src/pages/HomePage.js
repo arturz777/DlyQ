@@ -62,12 +62,9 @@ const HomePage = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  if (loading) {
-    return <div className={styles.loading}>{t("loading", { ns: "homePage" })}</div>;
-  }
-
   return (
     <div className={styles.homePage}>
+    {loading && <div className={styles.loadingOverlay}>{t("loading", { ns: "homePage" })}</div>}
       <div className={styles.banner}>
         <h1>{t("fast delivery", { ns: "homePage" })}</h1>
         <p>{t("average delivery time: 15–30 minutes", { ns: "homePage" })}</p>
