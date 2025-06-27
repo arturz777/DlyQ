@@ -146,7 +146,7 @@ i18n
       },
     },
 
-    fallbackLng: "ru", // Язык по умолчанию
+    fallbackLng: "est", // Язык по умолчанию
     defaultNS: "navbar",
     debug: false, // Включить отладку
     interpolation: {
