@@ -72,7 +72,7 @@
   }
   
   .button {
-	background-color: #be3402;
+	background-color: #0072CE;
 	color: white;
 	border: none;
 	padding: 12px 24px;
@@ -87,11 +87,11 @@
   }
   
   .button:hover {
-	background-color: #8f2600;
+	background-color: #015396;
   }
   
   .button:active {
-	background-color: #731e00;
+	background-color: #015396;
 	transform: scale(0.98);
 	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
   }
@@ -105,7 +105,7 @@
   .preorderText {
 	margin-top: 5px;
 	text-align: center;
-	color: red;
+	color: #0072CE;
   }
 
   .toastTitle {
@@ -124,3 +124,9 @@
 	max-width: 350px;
 	font-size: 14px;
   }
+  
+  
+  
+  
+
+  
