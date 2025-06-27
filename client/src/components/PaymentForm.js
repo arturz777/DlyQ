@@ -5,9 +5,9 @@ import {
   Marker,
   useMapEvents,
   useMap,
-} from "react-leaflet"; 
+} from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import L from "leaflet"; 
+import L from "leaflet";
 import {
   useStripe,
   useElements,
@@ -51,7 +51,7 @@ const LocationPicker = ({ setFormData }) => {
         longitude: e.latlng.lng,
       }));
 
-        fetch(
+      fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}`
       )
         .then((res) => res.json())
@@ -82,7 +82,7 @@ const PaymentForm = ({
   const [loading, setLoading] = useState(false);
   const stripe = useStripe();
   const elements = useElements();
-  const [deliveryCost, setDeliveryCost] = useState(0); 
+  const [deliveryCost, setDeliveryCost] = useState(0);
   const { t } = useTranslation("paymentForm");
 
   const [formData, setFormData] = useState({
@@ -93,7 +93,7 @@ const PaymentForm = ({
     address: "",
     apartment: "",
     comment: "",
-    latitude: 59.437, 
+    latitude: 59.437,
     longitude: 24.753,
   });
 
@@ -108,11 +108,11 @@ const PaymentForm = ({
       fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
       )
-       .then((res) => res.json())
+        .then((res) => res.json())
         .then((data) => {
           setFormData((prev) => ({
             ...prev,
-           address:
+            address:
               data.display_name ||
               t("address not found", { ns: "paymentForm" }),
           }));
@@ -137,7 +137,7 @@ const PaymentForm = ({
             const data = await res.json();
             const [lat, lon] = data.loc.split(",");
 
-              updateLocation(parseFloat(lat), parseFloat(lon));
+            updateLocation(parseFloat(lat), parseFloat(lon));
           } catch (err) {
             console.error(
               t("ip geolocation error", { ns: "paymentForm" }),
@@ -152,7 +152,7 @@ const PaymentForm = ({
 
   useEffect(() => {
     const updateDeliveryCost = async () => {
-      if (!formData.latitude || !formData.longitude) return; 
+      if (!formData.latitude || !formData.longitude) return;
 
       const newDeliveryCost = await fetchDeliveryCost(
         totalPrice,
@@ -203,16 +203,16 @@ const PaymentForm = ({
           const profile = await fetchProfile();
           const savedData = localStorage.getItem("userFormData");
           let parsedData = savedData ? JSON.parse(savedData) : {};
-  
+
           setFormData((prev) => ({
             ...prev,
             firstName: profile.firstName || "",
             lastName: profile.lastName || "",
             email: profile.email || "",
             phone: profile.phone || "",
-            apartment: parsedData.apartment || prev.apartment, 
-            comment: parsedData.comment || prev.comment,  
-            address: parsedData.address || prev.address,  
+            apartment: parsedData.apartment || prev.apartment,
+            comment: parsedData.comment || prev.comment,
+            address: parsedData.address || prev.address,
             latitude: parsedData.latitude || prev.latitude,
             longitude: parsedData.longitude || prev.longitude,
           }));
@@ -242,21 +242,21 @@ const PaymentForm = ({
         }
       }
     };
-  
+
     loadUserData();
   }, [user.isAuth]);
-  
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => {
       const updatedData = { ...prev, [name]: value };
-  
+
       localStorage.setItem("userFormData", JSON.stringify(updatedData));
-  
+
       return updatedData;
     });
   };
-  
+
   const handleSaveDataChange = (e) => {
     setSaveData(e.target.checked);
   };
@@ -264,7 +264,7 @@ const PaymentForm = ({
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-     if (!formData.firstName?.trim()) {
+    if (!formData.firstName?.trim()) {
       toast.error(t("first name is required", { ns: "paymentForm" }));
       return;
     }
@@ -335,14 +335,14 @@ const PaymentForm = ({
           }
         }
 
-       await onPaymentSuccess(paymentMethod, formData);
+        await onPaymentSuccess(paymentMethod, formData);
       }
     } catch (err) {
       toast.error(t("payment processing error", { ns: "paymentForm" }));
       setLoading(false);
     }
   };
-  
+
   return (
     <Form
       onSubmit={handleSubmit}
@@ -350,8 +350,8 @@ const PaymentForm = ({
       style={{ maxWidth: "600px" }}
     >
       {(!user.isAuth || (user.isAuth && !user.user?.phone)) && (
-  <>
-      <Row className="mb-1">
+        <>
+          <Row className="mb-1">
             <Col md={6}>
               <Form.Group controlId="firstName">
                 <Form.Label>
@@ -365,51 +365,51 @@ const PaymentForm = ({
                   onChange={handleChange}
                   disabled={user.isAuth}
                 />
-          </Form.Group>
-        </Col>
-        <Col md={6}>
-          <Form.Group controlId="lastName">
-            <Form.Label>{t("last name", { ns: "paymentForm" })}</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder={t("enter last name", { ns: "paymentForm" })}
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              disabled={user.isAuth}
-            />
-          </Form.Group>
-        </Col>
-      </Row>
-      <Row className="mb-1">
-        <Col md={6}>
-          <Form.Group controlId="email">
-            <Form.Label>{t("email", { ns: "paymentForm" })}</Form.Label>
-            <Form.Control
-              type="email"
-              placeholder={t("enter email", { ns: "paymentForm" })}
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              disabled={user.isAuth}
-            />
-          </Form.Group>
-        </Col>
-        <Col md={6}>
-          <Form.Group controlId="phone">
-            <Form.Label>{t("phone", { ns: "paymentForm" })}</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder={t("enter phone", { ns: "paymentForm" })}
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              disabled={user.isAuth}
-            />
-          </Form.Group>
-        </Col>
-      </Row>
-       </>
+              </Form.Group>
+            </Col>
+            <Col md={6}>
+              <Form.Group controlId="lastName">
+                <Form.Label>{t("last name", { ns: "paymentForm" })}</Form.Label>
+                <Form.Control
+                  type="text"
+                  placeholder={t("enter last name", { ns: "paymentForm" })}
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  disabled={user.isAuth}
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+          <Row className="mb-1">
+            <Col md={6}>
+              <Form.Group controlId="email">
+                <Form.Label>{t("email", { ns: "paymentForm" })}</Form.Label>
+                <Form.Control
+                  type="email"
+                  placeholder={t("enter email", { ns: "paymentForm" })}
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  disabled={user.isAuth}
+                />
+              </Form.Group>
+            </Col>
+            <Col md={6}>
+              <Form.Group controlId="phone">
+                <Form.Label>{t("phone", { ns: "paymentForm" })}</Form.Label>
+                <Form.Control
+                  type="text"
+                  placeholder={t("enter phone", { ns: "paymentForm" })}
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  disabled={user.isAuth && user.user?.phone}
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+        </>
       )}
 
       <Row className="mb-1">
@@ -495,7 +495,7 @@ const PaymentForm = ({
           checked={saveData}
           onChange={handleSaveDataChange}
         />
-       </Form.Group>
+      </Form.Group>
       <h4 className="mb-1 text-center">
         {t("card details", { ns: "paymentForm" })}
       </h4>
