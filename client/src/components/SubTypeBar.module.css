@@ -18,12 +18,12 @@
 }
 
 .subTypeItem:hover {
-  background: #be3402;
+  background: #0072CE;
   color: white;
 }
 
 .subTypeItem.active {
-  background: #0056b3;
+  background: #0072CE;
   color: white;
 }
 
@@ -46,3 +46,6 @@
     white-space: nowrap;
   }
 }
+
+  
+  
