@@ -53,7 +53,7 @@ const CookieConsent = () => {
           {t("cookies_info", { ns: "cookieConsent" })}
             <a href="/cookie-policy"> {t("cookies_policy", { ns: "cookieConsent" })}</a>.
           </p>
-          <div className={styles.buttons}>
+          <div className={styles.cookieContentButtons}>
             <button onClick={handleAcceptAll} className={styles.accept}>{t("Accept all", { ns: "cookieConsent" })}</button>
             <button onClick={() => setShowSettings(true)} className={styles.settings}>{t("customize", { ns: "cookieConsent" })}</button>
             <button onClick={handleNecessaryOnly} className={styles.reject}>{t("only_necessary", { ns: "cookieConsent" })}</button>
