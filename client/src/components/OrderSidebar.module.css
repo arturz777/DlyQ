@@ -1,69 +1,68 @@
 .floatingIcon {
-	position: fixed;
-	right: 20px;
-	top: 20%;
-	transform: translateY(-50%);
-	width: 50px;
-	height: 50px;
-	background-color: #007bff;
-	color: white;
-	border-radius: 50%;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	font-size: 14px;
-	cursor: pointer;
-	box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
-	transition: background-color 0.3s ease;
-  }
-  
-  .floatingIcon:hover {
-	background-color: #0056b3;
-  }
-  
-  .sidebar {
-	position: fixed;
-	top: 0;
-	right: -110%; 
-	width: 100vw; 
-	height: 100vh; 
-	background-color: white;
-	box-shadow: -4px 0 10px rgba(0, 0, 0, 0.1);
-	transition: right 0.3s ease-in-out;
-	padding: 20px;
-	z-index: 1000;
+  position: fixed;
+  right: 20px;
+  top: 20%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 50px;
+  background-color: #0072CE;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease;
+}
+
+.floatingIcon:hover {
+  background-color: #015396;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  right: -110%;
+  width: 100vw;
+  height: 100vh;
+  background-color: white;
+  box-shadow: -4px 0 10px rgba(0, 0, 0, 0.1);
+  transition: right 0.3s ease-in-out;
+  padding: 20px;
+  z-index: 1000;
 }
 
 .sidebar.open {
-	right: 0;
+  right: 0;
 }
 
-  
-  .header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 10px;
-  }
-  
-  .closeButton {
-	background: none;
-	border: none;
-	font-size: 20px;
-	cursor: pointer;
-  }
-  
-  .orderContent {
-	font-size: 14px;
-  }
-  
-  .emptyMessage {
-	color: gray;
-	text-align: center;
-	margin-top: 20px;
-  }
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
 
-  .completeButton,
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.orderContent {
+  font-size: 14px;
+}
+
+.emptyMessage {
+  color: gray;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.completeButton,
 .orderHistoryButton {
   width: 100%;
   padding: 12px 20px;
@@ -86,17 +85,17 @@
 }
 
 .orderHistoryButton {
-  background-color: #007bff;
+  background-color: #0072CE;
   color: white;
 }
 
 .orderHistoryButton:hover {
-  background-color: #0056b3;
+  background-color: #015396;
 }
 
 .mapContainer {
-	margin-top: 20px;
-	border-radius: 12px;
-	overflow: hidden;
-	box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  }
+  margin-top: 20px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
