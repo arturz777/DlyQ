@@ -211,7 +211,7 @@
 }
 
 .openSidebarButton {
-  background-color: #be3402;
+  background-color: #0072CE;
   color: white;
   border: none;
   border-radius: 50%;
@@ -227,7 +227,7 @@
 }
 
 .openSidebarButton:hover {
-  background-color: #8f2600;
+  background-color: #015396;
   transform: scale(1.1);
 }
 
