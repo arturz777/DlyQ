@@ -24,10 +24,11 @@
 
 .brandItem:hover {
   transform: scale(1.05);
+  background: #0072CE;
 }
 
 .brandItem.active {
-  background: #be3402;
+  background: #0072CE;
   color: white;
 }
 
@@ -49,3 +50,5 @@
     flex: 0 0 auto;
   }
 }
+
+  
