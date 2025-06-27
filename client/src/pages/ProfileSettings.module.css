@@ -68,7 +68,7 @@
 }
 
 .editButton {
-  background-color: #be3402;
+  background-color: #0072CE;
   color: white;
   border: none;
   padding: 6px 10px;
@@ -77,7 +77,7 @@
 }
 
 .editButton:hover {
-  background-color: #8f2600;
+  background-color: #015396;
 }
 
 .passwordInputs {
