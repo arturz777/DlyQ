@@ -1,7 +1,7 @@
 .loadingBar {
 	height: 4px;
 	width: 100%;
-	background: linear-gradient(to right, #f27121, #e94057);
+	background: linear-gradient(to right, #0072CE, #ff0080);
 	animation: pulse 1s ease-in-out infinite;
   }
   
