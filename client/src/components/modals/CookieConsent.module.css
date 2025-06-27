@@ -48,27 +48,6 @@
 	margin-top: 10px;
   }
   
-  button {
-	padding: 8px 14px;
-	border: 1px solid #ccc;
-	background: #f8f8f8;
-	color: #333;
-	font-size: 0.70rem;
-	cursor: pointer;
-	border-radius: 6px;
-	transition: background 0.3s ease, border-color 0.3s ease;
-  }
-  
-  button:hover {
-	background: #e6e6e6;
-	border-color: #bbb;
-  }
-  
-  button:focus {
-	outline: none;
-  }
-  
-  /* Чекбоксы */
   label {
 	display: flex;
 	align-items: center;
@@ -82,7 +61,7 @@
 	accent-color: #007bff;
   }
 
- @media (max-width: 600px) {
+  @media (max-width: 600px) {
   .cookieBanner {
     transform: scale(0.8) translateX(-50%);
     transform-origin: bottom center;
@@ -96,11 +75,15 @@
 	}
   }
 
-@media (max-width: 303px) {
+  @media (max-width: 303px) {
 	.cookieBanner {
 	  transform: scale(0.4) translateX(-50%);
 	}
   }
+  
+
+
+
   
   
   
