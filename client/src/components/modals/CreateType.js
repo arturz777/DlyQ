@@ -3,7 +3,8 @@ import Modal from "react-bootstrap/Modal";
 import { Form, Button } from "react-bootstrap";
 import { createType, updateType } from "../../http/deviceAPI";
 
-const CreateType = ({ show, onHide, editableType, onTypeSaved }) => {
+const CreateType = ({ show, onHide, editableType, onTypeSaved, types }) => {
+  const [displayOrder, setDisplayOrder] = useState(0);
   const [value, setValue] = useState("");
   const [file, setFile] = useState(null);
   const [existingImage, setExistingImage] = useState(null);
@@ -22,11 +23,19 @@ const CreateType = ({ show, onHide, editableType, onTypeSaved }) => {
       setValue(editableType.name);
       setExistingImage(editableType.img);
       setFile(null);
-      setTranslations(editableType.translations?.name || { en: "", ru: "", est: "" });
+      setTranslations(
+        editableType.translations?.name || { en: "", ru: "", est: "" }
+      );
+      setDisplayOrder(editableType.displayOrder?.toString() || "");
     } else {
       resetFields();
+      const maxOrder =
+        types.length > 0
+          ? Math.max(...types.map((t) => t.displayOrder || 0))
+          : 0;
+      setDisplayOrder((maxOrder + 1).toString());
     }
-  }, [editableType]);
+  }, [editableType, types]);
 
   const resetFields = () => {
     setValue("");
@@ -50,10 +59,12 @@ const CreateType = ({ show, onHide, editableType, onTypeSaved }) => {
     }
 
     const formData = new FormData();
+    formData.append("displayOrder", displayOrder);
+
     formData.append("name", value);
 
     formData.append("translations", JSON.stringify({ name: translations }));
-    
+
     if (file) {
       formData.append("img", file);
     }
@@ -97,12 +108,12 @@ const CreateType = ({ show, onHide, editableType, onTypeSaved }) => {
               Введите название типа
             </span>
           )}
-          
+
           <h5 className="mt-3">Переводы:</h5>
           <Form.Group>
             <Form.Label>Английский (EN)</Form.Label>
             <Form.Control
-               value={translations.en || ""}
+              value={translations.en || ""}
               onChange={(e) =>
                 setTranslations((prev) => ({ ...prev, en: e.target.value }))
               }
@@ -135,27 +146,44 @@ const CreateType = ({ show, onHide, editableType, onTypeSaved }) => {
           <Form.Control type="file" onChange={selectFile} />
           {existingImage && !file && (
             <div className="mt-2">
-               <img
-                  src={existingImage}
-                  alt="Текущее изображение"
-                  style={{
-                    width: "100px",
-                    borderRadius: "5px",
-                    objectFit: "cover",
-                    border: "1px solid #ddd",
-                    padding: "5px",
-                  }}
-                />
+              <img
+                src={existingImage}
+                alt="Текущее изображение"
+                style={{
+                  width: "100px",
+                  borderRadius: "5px",
+                  objectFit: "cover",
+                  border: "1px solid #ddd",
+                  padding: "5px",
+                }}
+              />
             </div>
           )}
-         {isSubmitted && !file && !isEditMode && (
-  <span style={{ color: "red", display: "block", marginTop: "5px" }}>
-    Загрузите изображение
-  </span>
-)}
-
+          {isSubmitted && !file && !isEditMode && (
+            <span style={{ color: "red", display: "block", marginTop: "5px" }}>
+              Загрузите изображение
+            </span>
+          )}
         </Form>
       </Modal.Body>
+
+      <Form.Group className="mt-3">
+        <Form.Label>Порядок отображения</Form.Label>
+        <Form.Control
+          type="text"
+          value={displayOrder}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (/^\d*$/.test(val)) {
+              setDisplayOrder(val);
+            }
+          }}
+          placeholder="Например: 1, 2, 3"
+          inputMode="numeric"
+          autoComplete="off"
+        />
+      </Form.Group>
+
       <Modal.Footer>
         <Button variant="outline-danger" onClick={onHide}>
           Закрыть
