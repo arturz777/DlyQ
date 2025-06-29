@@ -7,7 +7,7 @@ const uuid = require("uuid");
 class TypeController {
   async create(req, res, next) {
     try {
-      const { name, img, translations } = req.body;
+      const { name, img, translations, displayOrder } = req.body;
 
       if (!name) {
         return res.status(400).json({ message: "Поле 'name' обязательно" });
@@ -31,7 +31,11 @@ class TypeController {
         imgUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
       }
 
-      const type = await Type.create({ name, img: imgUrl });
+      const type = await Type.create({
+        name,
+        img: imgUrl,
+        displayOrder: parseInt(displayOrder) || 0,
+      });
 
       if (translations) {
         const parsedTranslations = JSON.parse(translations);
@@ -64,7 +68,7 @@ class TypeController {
   async update(req, res, next) {
     try {
       const { id } = req.params;
-      let { name, translations } = req.body;
+      let { name, translations, displayOrder } = req.body;
 
       const type = await Type.findOne({ where: { id } });
       if (!type) {
@@ -99,7 +103,11 @@ class TypeController {
         imgUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${newFileName}`;
       }
 
-      await type.update({ name, img: imgUrl });
+      await type.update({
+        name,
+        img: imgUrl,
+        displayOrder: parseInt(displayOrder) || 0,
+      });
 
       if (translations) {
         let parsedTranslations = translations;
@@ -143,7 +151,9 @@ class TypeController {
 
   async getAll(req, res) {
     try {
-      const types = await Type.findAll();
+      const types = await Type.findAll({
+        order: [["displayOrder", "ASC"]],
+      });
 
       const typeIds = types.map((t) => t.id);
 
@@ -164,7 +174,6 @@ class TypeController {
 
       const typesWithTranslations = types.map((type) => {
         const translations = translationMap[type.id] || { name: {} };
-        console.log(`Type ID: ${type.id}, Translations:`, translations); // 🔥 Дебаг
         return {
           ...type.toJSON(),
           translations,
