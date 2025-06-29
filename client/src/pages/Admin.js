@@ -109,7 +109,6 @@ const Admin = () => {
         processingTime,
         estimatedTime
       );
-      console.log("✅ Статус/время обновлены");
     } catch (err) {
       console.error("Ошибка при обновлении:", err);
     }
@@ -213,6 +212,14 @@ const Admin = () => {
       socket.disconnect();
     };
   }, [user]);
+
+  const openCreateTypeModal = () => {
+    fetchTypes().then((fetchedTypes) => {
+      setTypes(fetchedTypes);
+      setEditableType(null);
+      setTypeVisible(true);
+    });
+  };
 
   const handleDeleteType = async (id) => {
     await deleteType(id);
@@ -405,7 +412,14 @@ const Admin = () => {
                             </button>
                             <button
                               className={styles.deleteButton}
-                              onClick={() => handleDeleteDevice(device.id)}
+                              onClick={() => {
+                                const confirmed = window.confirm(
+                                  "Вы уверены, что хотите удалить этот тип?"
+                                );
+                                if (confirmed) {
+                                  handleDeleteDevice(device.id);
+                                }
+                              }}
                             >
                               Удалить
                             </button>
@@ -465,7 +479,14 @@ const Admin = () => {
                                 </button>
                                 <button
                                   className={styles.deleteButton}
-                                  onClick={() => handleDeleteDevice(device.id)}
+                                  onClick={() => {
+                                    const confirmed = window.confirm(
+                                      "Вы уверены, что хотите удалить этот тип?"
+                                    );
+                                    if (confirmed) {
+                                      handleDeleteDevice(device.id);
+                                    }
+                                  }}
                                 >
                                   Удалить
                                 </button>
@@ -503,7 +524,7 @@ const Admin = () => {
         <TabPanel>
           <div className={styles.actionButtons}>
             <button
-              onClick={() => setTypeVisible(true)}
+              onClick={openCreateTypeModal}
               className={styles.actionButton}
             >
               Добавить тип
@@ -531,7 +552,14 @@ const Admin = () => {
                   </button>
                   <button
                     className={styles.deleteButton}
-                    onClick={() => handleDeleteType(type.id)}
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        "Вы уверены, что хотите удалить этот тип?"
+                      );
+                      if (confirmed) {
+                        handleDeleteType(type.id);
+                      }
+                    }}
                   >
                     Удалить
                   </button>
@@ -567,7 +595,14 @@ const Admin = () => {
                   </button>
                   <button
                     className={styles.deleteButton}
-                    onClick={() => handleDeleteSubtype(subtype.id)}
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        "Вы уверены, что хотите удалить этот тип?"
+                      );
+                      if (confirmed) {
+                        handleDeleteSubtype(subtype.id);
+                      }
+                    }}
                   >
                     Удалить
                   </button>
@@ -601,7 +636,14 @@ const Admin = () => {
                   </button>
                   <button
                     className={styles.deleteButton}
-                    onClick={() => handleDeleteBrand(brand.id)}
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        "Вы уверены, что хотите удалить этот тип?"
+                      );
+                      if (confirmed) {
+                        handleDeleteBrand(brand.id);
+                      }
+                    }}
                   >
                     Удалить
                   </button>
@@ -710,8 +752,8 @@ const Admin = () => {
         </TabPanel>
 
         <TabPanel>
-        <h3>Курьеры на карте</h3>
-<CourierMap couriers={couriers} />
+          <h3>Курьеры на карте</h3>
+          <CourierMap couriers={couriers} />
 
           <h2>Все заказы</h2>
           <div className={styles.ordersTable}>
@@ -866,7 +908,7 @@ const Admin = () => {
           </div>
         </TabPanel>
 
-              <TabPanel>
+        <TabPanel>
           <h2>Чат с клиентами</h2>
           <ChatBox
             userId={user.user.id}
@@ -898,10 +940,13 @@ const Admin = () => {
         onHide={() => {
           setTypeVisible(false);
           setEditableType(null);
-          fetchTypes().then(setTypes);
         }}
         editableType={editableType}
-        onTypeSaved={() => setEditableType(null)}
+        onTypeSaved={() => {
+          setEditableType(null);
+          fetchTypes().then(setTypes);
+        }}
+        types={types}
       />
       <CreateSubType
         show={subtypeVisible}
