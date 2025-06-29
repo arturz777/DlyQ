@@ -101,7 +101,7 @@ const HomePage = () => {
 
               {showAllTypes && (
                 <div className={styles.dropdownMenu}>
-                  {types.slice(6).map((type) => (
+                  {types.slice(5).map((type) => (
                     <Link
                       key={type.id}
                       to={`/catalog?typeId=${type.id}`}
