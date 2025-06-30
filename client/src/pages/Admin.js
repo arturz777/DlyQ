@@ -414,7 +414,7 @@ const Admin = () => {
                               className={styles.deleteButton}
                               onClick={() => {
                                 const confirmed = window.confirm(
-                                  "Вы уверены, что хотите удалить этот тип?"
+                                  "Вы уверены, что хотите удалить этот товар?"
                                 );
                                 if (confirmed) {
                                   handleDeleteDevice(device.id);
@@ -481,7 +481,7 @@ const Admin = () => {
                                   className={styles.deleteButton}
                                   onClick={() => {
                                     const confirmed = window.confirm(
-                                      "Вы уверены, что хотите удалить этот тип?"
+                                      "Вы уверены, что хотите удалить этот товар?"
                                     );
                                     if (confirmed) {
                                       handleDeleteDevice(device.id);
@@ -597,7 +597,7 @@ const Admin = () => {
                     className={styles.deleteButton}
                     onClick={() => {
                       const confirmed = window.confirm(
-                        "Вы уверены, что хотите удалить этот тип?"
+                        "Вы уверены, что хотите удалить этот подтип?"
                       );
                       if (confirmed) {
                         handleDeleteSubtype(subtype.id);
@@ -638,7 +638,7 @@ const Admin = () => {
                     className={styles.deleteButton}
                     onClick={() => {
                       const confirmed = window.confirm(
-                        "Вы уверены, что хотите удалить этот тип?"
+                        "Вы уверены, что хотите удалить этот бренд?"
                       );
                       if (confirmed) {
                         handleDeleteBrand(brand.id);
