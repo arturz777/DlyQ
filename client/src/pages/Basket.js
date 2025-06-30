@@ -261,10 +261,19 @@ const Basket = observer(() => {
       return;
     }
 
+
+
+
+
+     
     if (hasStocks && isThisPreorder) {
       toast.error(`❌ ${t("you cannot add a pre-order to the cart with regular items", { ns: "deviceItem" })}`);
       return;
     }
+
+
+
+
 
     basket.updateSelectedOption(itemUniqueKey, optionName, updatedOption);
 
@@ -402,7 +411,14 @@ const Basket = observer(() => {
                 <button
                   className={styles.buttonDelete}
                   variant="danger"
-                  onClick={() => handleRemove(item.uniqueKey)}
+                   onClick={() => {
+                    const confirmed = window.confirm(
+                      "Вы уверены, что хотите удалить этот товар?"
+                    );
+                    if (confirmed) {
+                      handleRemove(item.uniqueKey);
+                    }
+                  }}
                 >
                   {t("delete", { ns: "basket" })}
                 </button>
