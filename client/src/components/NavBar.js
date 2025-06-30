@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import { Context } from "../index";
 import { NavLink, useLocation } from "react-router-dom";
+import { ShoppingCart, Settings, List, UserCircle, LogOut } from "lucide-react";
 import {
   ADMIN_ROUTE,
   LOGIN_ROUTE,
@@ -10,13 +11,6 @@ import {
 import { observer } from "mobx-react-lite";
 import { useNavigate } from "react-router-dom";
 import SearchBar from "./SearchBar";
-import {
-  FaShoppingCart,
-  FaCog,
-  FaListAlt,
-  FaUser,
-  FaSignOutAlt,
-} from "react-icons/fa";
 import { io } from "socket.io-client";
 import { useTranslation } from "react-i18next";
 import ruFlag from "../assets/flags/ru.png";
@@ -101,7 +95,6 @@ const NavBar = observer(() => {
   transports: ["websocket", "polling"]
 });
 
-
     if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
       socket.emit("joinAdminNotifications");
 
@@ -151,7 +144,7 @@ const NavBar = observer(() => {
         </NavLink>
 
         <NavLink to="/catalog" className={styles.navbarLink}>
-          <FaListAlt />
+          <List />
           <span className={styles.navbarLinkTitle}>{t("catalog")}</span>
         </NavLink>
 
@@ -195,7 +188,7 @@ const NavBar = observer(() => {
             onClick={() => navigate(ADMIN_ROUTE)}
             style={{ position: "relative" }}
           >
-            <FaCog />
+            <Settings />
             {unreadChats.size > 0 && (
               <span
                 style={{
@@ -216,7 +209,7 @@ const NavBar = observer(() => {
           </div>
         )}
         <div className={styles.navbarLink} onClick={() => navigate("/basket")}>
-          <FaShoppingCart />
+          <ShoppingCart />
           <span className={styles.navbarLinkTitle}>
             {t("cart")} ({basket.totalItems})
           </span>
@@ -224,7 +217,7 @@ const NavBar = observer(() => {
         {user.isAuth ? (
           location.pathname === "/profile" ? (
             <div className={styles.navbarLink} onClick={handleLogOut}>
-              <FaSignOutAlt />
+              <LogOut />
               <span className={styles.navbarLinkTitle}>{t("logOut")}</span>
             </div>
           ) : (
@@ -232,13 +225,13 @@ const NavBar = observer(() => {
               className={styles.navbarLink}
               onClick={() => navigate("/profile")}
             >
-              <FaUser />
+              <UserCircle />
               <span className={styles.navbarLinkTitle}>{t("profile")}</span>
             </div>
           )
         ) : (
           <div className={styles.navbarLink} onClick={() => navigate("/login")}>
-            <FaUser />
+            <UserCircle />
             <span className={styles.navbarLinkTitle}>{t("profile")}</span>
           </div>
         )}
