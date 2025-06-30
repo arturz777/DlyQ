@@ -1,0 +1,44 @@
+.mobileNavBar {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background-color: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobileNavBar {
+    display: block;
+    z-index: 1000;
+  }
+}
+
+.navItems {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 0;
+}
+
+.navItem {
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+}
+
+.navText {
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+.cartBadge {
+  position: absolute;
+  top: -2px;
+  right: -8px;
+  background-color: #dc3545;
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  padding: 2px 5px;
+  line-height: 1;
+}
