@@ -3,7 +3,7 @@ import { Context } from "../index";
 import { fetchUserOrders } from "../http/orderAPI";
 import { updateProfile, fetchProfile } from "../http/userAPI";
 import OrderSidebar from "../components/OrderSidebar";
-import { FaCog, FaSignOutAlt } from "react-icons/fa";
+import { Settings, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
@@ -164,11 +164,11 @@ const UserProfile = () => {
               className={styles.settingsButton}
               onClick={() => navigate("/settings")}
             >
-              <FaCog size={20} />
+              <Settings size={20} />
             </div>
 
             <div className={styles.profileButtonLogOut} onClick={handleLogOut}>
-              <FaSignOutAlt size={20} />
+              <LogOut size={20} />
               <span className={styles.navbarLinkTitle}></span>
             </div>
 
