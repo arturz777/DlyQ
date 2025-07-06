@@ -327,18 +327,16 @@ const createOrder = async (req, res) => {
     📞 Контакты: info@dlyq.ee
   </p>
   <p style="margin-top:20px;">
-<a href="https://zang-4.onrender.com/order/${
-      order.id
-    }/receipt?token=${downloadToken}" target="_blank">
+<a href="https://zang-4.onrender.com/api/order/${order.id}/receipt?token=${downloadToken}" target="_blank">
   Скачать квитанцию (PDF)
 </a>
 </div>
 `;
 
     const tempDir = path.join(__dirname, "../temp");
-if (!fs.existsSync(tempDir)) {
-  fs.mkdirSync(tempDir);
-}
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir);
+    }
 
     const receiptPath = path.join(__dirname, `../temp/receipt-${order.id}.pdf`);
     await generatePDFReceipt(emailHTML, receiptPath);
