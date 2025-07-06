@@ -335,6 +335,11 @@ const createOrder = async (req, res) => {
 </div>
 `;
 
+    const tempDir = path.join(__dirname, "../temp");
+if (!fs.existsSync(tempDir)) {
+  fs.mkdirSync(tempDir);
+}
+
     const receiptPath = path.join(__dirname, `../temp/receipt-${order.id}.pdf`);
     await generatePDFReceipt(emailHTML, receiptPath);
 
