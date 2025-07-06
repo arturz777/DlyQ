@@ -327,7 +327,7 @@ const createOrder = async (req, res) => {
     📞 Контакты: info@dlyq.ee
   </p>
   <p style="margin-top:20px;">
-<a href="https://phenomenal-sunburst-78533d.netlify.app/order/${
+<a href="https://zang-4.onrender.com/order/${
       order.id
     }/receipt?token=${downloadToken}" target="_blank">
   Скачать квитанцию (PDF)
