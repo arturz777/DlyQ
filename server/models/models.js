@@ -94,6 +94,10 @@ const Order = sequelize.define(
       defaultValue: "https://example.com/placeholder.png",
     },
     productName: { type: DataTypes.STRING, allowNull: false },
+    receiptUrl: {
+  type: DataTypes.STRING,
+  allowNull: true,
+},
     downloadToken: {
       type: DataTypes.STRING,
       allowNull: true,
