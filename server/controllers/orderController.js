@@ -2,6 +2,7 @@ const sendEmail = require("../services/emailService");
 const { Order, Device, Translation, Courier } = require("../models/models");
 const { Op } = require("sequelize");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const pdfPath = path.join(__dirname, "../temp/receipt.pdf");
 const getDistanceFromWarehouse = require("../utils/distance");
@@ -333,13 +334,26 @@ const createOrder = async (req, res) => {
 </div>
 `;
 
-    const tempDir = path.join(__dirname, "../temp");
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir);
-    }
+const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
+await generatePDFReceipt(emailHTML, tempPath);
 
-    const receiptPath = path.join(__dirname, `../temp/receipt-${order.id}.pdf`);
-    await generatePDFReceipt(emailHTML, receiptPath);
+const fileName = `receipts/receipt-${order.id}-${uuid.v4()}.pdf`;
+const fileBuffer = fs.readFileSync(tempPath);
+
+const { data, error } = await supabase.storage
+  .from("receipts")
+  .upload(fileName, fileBuffer, {
+    contentType: "application/pdf",
+  });
+
+fs.unlinkSync(tempPath);
+
+let receiptUrl = null;
+if (data && !error) {
+  receiptUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/receipts/${fileName}`;
+  order.receiptUrl = receiptUrl;
+  await order.save();
+}
 
     await Promise.all([
       sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
