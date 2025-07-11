@@ -147,6 +147,7 @@ i18n
     },
 
     fallbackLng: "est", // Язык по умолчанию
+    lng: "est", // 👉 язык по умолчанию
     defaultNS: "navbar",
     debug: false, // Включить отладку
     interpolation: {
