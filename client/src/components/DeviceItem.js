@@ -134,7 +134,6 @@ device.discount && device.oldPrice > device.price
           {t("Added to cart!", { ns: "devicePage" })}
           {(!isShopOpenNow() || isPreorder) && (
             <div style={{ fontSize: "0.8em", marginTop: "5px" }}>
-              {t("Это предзаказ", { ns: "deviceItem" })}
             </div>
           )}
         </span>
