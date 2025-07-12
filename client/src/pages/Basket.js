@@ -267,8 +267,7 @@ const Basket = observer(() => {
 
 
 
-     
-    if (hasStocks && isThisPreorder) {
+      if (hasStocks && isThisPreorder) {
       toast.error(`❌ ${t("you cannot add a pre-order to the cart with regular items", { ns: "deviceItem" })}`);
       return;
     }
