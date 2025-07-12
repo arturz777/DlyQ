@@ -166,17 +166,19 @@ const Basket = observer(() => {
       return;
     }
 
-    const dataToSend = {
+   const dataToSend = {
       formData,
       paymentMethodId: paymentMethod.id,
       totalPrice: basket.getTotalPrice(),
+       language: i18n.language, 
       orderDetails: basket.items.map((item, index) => ({
+        translations: item.translations,
         name: item.name,
         price: item.price,
         count: item.count,
         deviceId: item.id,
         image: item.img,
-        selectedOptions: item.selectedOptions,
+       selectedOptions: item.selectedOptions || {},
         isPreorder: item.isPreorder || isPreorder,
         preferredTime:
           index === 0 && (item.isPreorder || isPreorder) ? preferredTime : null,
