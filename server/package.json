@@ -7,6 +7,9 @@
     "start": "node index.js",
     "postinstall": "npx puppeteer browsers install chrome"
   },
+  "puppeteer": {
+    "default_browser": "chrome"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
