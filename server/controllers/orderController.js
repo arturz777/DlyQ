@@ -451,8 +451,6 @@ try {
   console.error("❌ Ошибка генерации PDF-файла:", err.message);
   throw new Error("Не удалось сгенерировать PDF.");
 }
-    console.log("✅ PDF должен быть сгенерирован по пути:", tempPath);
-console.log("✅ Существует ли файл?", fs.existsSync(tempPath));
 
 let fileBuffer;
 try {
@@ -463,7 +461,6 @@ try {
   throw new Error("Не удалось прочитать сгенерированный чек.");
 }
 const supabaseFileName = `receipts/receipt-${order.id}.pdf`;
-console.log("📤 Загружаем файл в Supabase...");
 const { data, error } = await supabase.storage
   .from("documents") 
   .upload(supabaseFileName, fileBuffer, {
@@ -477,7 +474,6 @@ if (error) {
   console.error("❌ Ошибка загрузки PDF в Supabase:", error);
   throw new Error("Не удалось сохранить чек.");
 }
-console.log("✅ Загружено в Supabase:", data);
 const supabaseUrl = "https://ujsitjkochexlcqrwxan.supabase.co";
 receiptUrl = `${supabaseUrl}/storage/v1/object/public/documents/${supabaseFileName}`;
 order.receiptUrl = receiptUrl;
