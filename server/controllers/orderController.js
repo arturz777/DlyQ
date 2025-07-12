@@ -445,9 +445,23 @@ const createOrder = async (req, res) => {
 `;
 
   const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
-await generatePDFReceipt(receiptHTML, tempPath);
+try {
+  await generatePDFReceipt(receiptHTML, tempPath);
+} catch (err) {
+  console.error("❌ Ошибка генерации PDF-файла:", err.message);
+  throw new Error("Не удалось сгенерировать PDF.");
+}
+    console.log("✅ PDF должен быть сгенерирован по пути:", tempPath);
+console.log("✅ Существует ли файл?", fs.existsSync(tempPath));
 
-const fileBuffer = fs.readFileSync(tempPath);
+let fileBuffer;
+try {
+  fileBuffer = fs.readFileSync(tempPath);
+  console.log("✅ Прочитали файл, размер:", fileBuffer.length);
+} catch (err) {
+  console.error("❌ Не удалось прочитать PDF-файл:", err.message);
+  throw new Error("Не удалось прочитать сгенерированный чек.");
+}
 const supabaseFileName = `receipts/receipt-${order.id}.pdf`;
 console.log("📤 Загружаем файл в Supabase...");
 const { data, error } = await supabase.storage
