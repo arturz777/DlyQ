@@ -449,7 +449,7 @@ await generatePDFReceipt(receiptHTML, tempPath);
 
 const fileBuffer = fs.readFileSync(tempPath);
 const supabaseFileName = `receipts/receipt-${order.id}.pdf`;
-
+console.log("📤 Загружаем файл в Supabase...");
 const { data, error } = await supabase.storage
   .from("documents") 
   .upload(supabaseFileName, fileBuffer, {
@@ -463,7 +463,7 @@ if (error) {
   console.error("❌ Ошибка загрузки PDF в Supabase:", error);
   throw new Error("Не удалось сохранить чек.");
 }
-
+console.log("✅ Загружено в Supabase:", data);
 const supabaseUrl = "https://ujsitjkochexlcqrwxan.supabase.co";
 receiptUrl = `${supabaseUrl}/storage/v1/object/public/documents/${supabaseFileName}`;
 order.receiptUrl = receiptUrl;
