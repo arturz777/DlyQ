@@ -447,26 +447,24 @@ const createOrder = async (req, res) => {
   const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
 await generatePDFReceipt(receiptHTML, tempPath);
 
-// Загружаем PDF в Supabase
 const fileBuffer = fs.readFileSync(tempPath);
 const supabaseFileName = `receipts/receipt-${order.id}.pdf`;
 
 const { data, error } = await supabase.storage
-  .from("documents") // убедись, что bucket называется "documents"
+  .from("documents") 
   .upload(supabaseFileName, fileBuffer, {
     contentType: "application/pdf",
     upsert: true,
   });
 
-fs.unlinkSync(tempPath); // Удаляем временный файл
+fs.unlinkSync(tempPath);
 
 if (error) {
   console.error("❌ Ошибка загрузки PDF в Supabase:", error);
   throw new Error("Не удалось сохранить чек.");
 }
 
-// Сохраняем Supabase-ссылку в заказ
-const supabaseUrl = "https://ujsitjkochexlcqrwxan.supabase.co"; // ← не забудь, это твой адрес Supabase
+const supabaseUrl = "https://ujsitjkochexlcqrwxan.supabase.co";
 receiptUrl = `${supabaseUrl}/storage/v1/object/public/documents/${supabaseFileName}`;
 order.receiptUrl = receiptUrl;
 await order.save();
@@ -479,7 +477,7 @@ await order.save();
       sendEmail(email, subject, emailHTML, [
         {
           filename: "receipt.pdf",
-          path: finalPath,
+          path: receiptUrl,
         },
       ]),
     ]);
