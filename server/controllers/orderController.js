@@ -444,41 +444,26 @@ const createOrder = async (req, res) => {
 </div>
 `;
 
-  const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
-try {
-  await generatePDFReceipt(receiptHTML, tempPath);
-} catch (err) {
-  console.error("❌ Ошибка генерации PDF-файла:", err.message);
-  throw new Error("Не удалось сгенерировать PDF.");
-}
+    const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
+    await generatePDFReceipt(receiptHTML, tempPath);
 
-let fileBuffer;
-try {
-  fileBuffer = fs.readFileSync(tempPath);
-  console.log("✅ Прочитали файл, размер:", fileBuffer.length);
-} catch (err) {
-  console.error("❌ Не удалось прочитать PDF-файл:", err.message);
-  throw new Error("Не удалось прочитать сгенерированный чек.");
-}
-const supabaseFileName = `receipts/receipt-${order.id}.pdf`;
-const { data, error } = await supabase.storage
-  .from("documents") 
-  .upload(supabaseFileName, fileBuffer, {
-    contentType: "application/pdf",
-    upsert: true,
-  });
+    const buffer = fs.readFileSync(tempPath);
+    const fileName = `receipts/receipt-${order.id}.pdf`;
 
-fs.unlinkSync(tempPath);
+    const { data, error } = await supabase.storage
+      .from("receipts")
+      .upload(fileName, buffer, {
+        contentType: "application/pdf",
+        upsert: true,
+      });
 
-if (error) {
-  console.error("❌ Ошибка загрузки PDF в Supabase:", error);
-  throw new Error("Не удалось сохранить чек.");
-}
-const supabaseUrl = "https://ujsitjkochexlcqrwxan.supabase.co";
-receiptUrl = `${supabaseUrl}/storage/v1/object/public/documents/${supabaseFileName}`;
-order.receiptUrl = receiptUrl;
-await order.save();
-
+    if (error) {
+      console.error("❌ Ошибка загрузки PDF в Supabase:", error);
+    } else {
+      receiptUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/receipts/${fileName}`;
+      order.receiptUrl = receiptUrl;
+      await order.save();
+    }
 
     const subject = t("greetings", language);
 
@@ -487,7 +472,7 @@ await order.save();
       sendEmail(email, subject, emailHTML, [
         {
           filename: "receipt.pdf",
-          path: finalPath,
+          path: tempPath,
         },
       ]),
     ]);
