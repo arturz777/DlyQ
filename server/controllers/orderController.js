@@ -333,7 +333,7 @@ const createOrder = async (req, res) => {
         .join("");
     };
 
-    const localReceiptUrl = `http://localhost:5000/static/receipts/receipt-${order.id}.pdf`;
+    const localReceiptUrl = `https://zang-4.onrender.com/static/receipts/receipt-${order.id}.pdf`;
     receiptUrl = localReceiptUrl;
     order.receiptUrl = receiptUrl;
     await order.save();
