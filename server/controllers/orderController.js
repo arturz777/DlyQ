@@ -487,7 +487,7 @@ await order.save();
       sendEmail(email, subject, emailHTML, [
         {
           filename: "receipt.pdf",
-          path: receiptUrl,
+          path: finalPath,
         },
       ]),
     ]);
