@@ -445,53 +445,73 @@ const createOrder = async (req, res) => {
 `;
 
     try {
-  const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
-  await generatePDFReceipt(receiptHTML, tempPath);
+      const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
+      console.log("📄 Генерация PDF по пути:", tempPath);
 
-  // Проверим, что файл существует
-  if (!fs.existsSync(tempPath)) {
-    throw new Error("PDF-файл не был создан.");
-  }
+      try {
+        await generatePDFReceipt(receiptHTML, tempPath);
+        if (!fs.existsSync(tempPath)) {
+          throw new Error("PDF-файл не был создан.");
+        }
+        console.log("✅ PDF-файл успешно создан:", tempPath);
+      } catch (pdfError) {
+        console.error("❌ Ошибка генерации PDF:", pdfError.message);
+      }
 
-  const buffer = fs.readFileSync(tempPath);
-  const fileName = `receipts/receipt-${order.id}.pdf`;
+      const buffer = fs.readFileSync(tempPath);
+      const fileName = `receipts/receipt-${order.id}.pdf`;
+      console.log("📤 Загрузка файла в Supabase:", fileName);
 
-  const { data, error } = await supabase.storage
-    .from("receipts")
-    .upload(fileName, buffer, {
-      contentType: "application/pdf",
-      upsert: true,
-    });
+      const { data, error } = await supabase.storage
+        .from("receipts")
+        .upload(fileName, buffer, {
+          contentType: "application/pdf",
+          upsert: true,
+        });
 
-  if (error) {
-    console.error("❌ Ошибка загрузки PDF в Supabase:", error.message);
-  } else {
-    receiptUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/receipts/${fileName}`;
-    order.receiptUrl = receiptUrl;
-    await order.save();
-  }
-} catch (pdfError) {
-  console.error("❌ Ошибка при генерации или загрузке PDF:", pdfError.message);
-}
-
+      if (error) {
+        console.error("❌ Ошибка загрузки PDF в Supabase:", error.message);
+      } else {
+        receiptUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/receipts/${fileName}`;
+        order.receiptUrl = receiptUrl;
+        await order.save();
+         console.log("✅ Ссылка на PDF сохранена в заказе:", receiptUrl);
+      }
+    } catch (pdfError) {
+      console.error(
+        "❌ Ошибка при генерации или загрузке PDF:",
+        pdfError.message
+      );
+    }
 
     const subject = t("greetings", language);
+    const attachments = fs.existsSync(tempPath)
+      ? [{ filename: "receipt.pdf", path: tempPath }]
+      : [];
 
-    await Promise.all([
-      sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
-      sendEmail(email, subject, emailHTML, [
-        {
-          filename: "receipt.pdf",
-          path: tempPath,
-        },
-      ]),
-    ]);
+    try {
+      console.log("📧 Отправка писем...");
 
-    res.status(201).json({ message: "Заказ успешно оформлен" });
+      await Promise.all([
+        sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
+        sendEmail(email, subject, emailHTML, attachments),
+      ]);
+
+      console.log("✅ Письма успешно отправлены.");
+    } catch (emailError) {
+      console.error("❌ Ошибка при отправке писем:", emailError.message);
+    }
+
+    res.status(201).json({
+      message: "Заказ успешно оформлен",
+      receipt: receiptUrl || null,
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Ошибка при оформлении заказа", error: error.message });
+    console.error("❌ Ошибка на этапе оформления заказа:", error.message);
+    res.status(500).json({
+      message: "Ошибка при оформлении заказа",
+      error: error.message,
+    });
   }
 };
 
