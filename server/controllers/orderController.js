@@ -467,19 +467,15 @@ const createOrder = async (req, res) => {
 
     const subject = t("greetings", language);
 
-    try {
-  await Promise.all([
-    sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
-    sendEmail(email, subject, emailHTML, [
-      {
-        filename: "receipt.pdf",
-        path: tempPath,
-      },
-    ]),
-  ]);
-} catch (emailError) {
-  console.error("❌ Ошибка при отправке письма:", emailError);
-}
+    await Promise.all([
+      sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
+      sendEmail(email, subject, emailHTML, [
+        {
+          filename: "receipt.pdf",
+          path: tempPath,
+        },
+      ]),
+    ]);
 
     res.status(201).json({ message: "Заказ успешно оформлен" });
   } catch (error) {
