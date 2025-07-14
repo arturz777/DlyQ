@@ -444,45 +444,45 @@ const createOrder = async (req, res) => {
 </div>
 `;
 
-    try {
-      const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
-      console.log("📄 Генерация PDF по пути:", tempPath);
+    const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
+console.log("📄 Генерация PDF по пути:", tempPath);
 
-      try {
-        await generatePDFReceipt(receiptHTML, tempPath);
-        if (!fs.existsSync(tempPath)) {
-          throw new Error("PDF-файл не был создан.");
-        }
-        console.log("✅ PDF-файл успешно создан:", tempPath);
-      } catch (pdfError) {
-        console.error("❌ Ошибка генерации PDF:", pdfError.message);
-      }
+try {
+  await generatePDFReceipt(receiptHTML, tempPath);
+  if (!fs.existsSync(tempPath)) {
+    throw new Error("PDF-файл не был создан.");
+  }
+  console.log("✅ PDF-файл успешно создан:", tempPath);
+} catch (pdfError) {
+  console.error("❌ Ошибка генерации PDF:", pdfError.message);
+}
 
-      const buffer = fs.readFileSync(tempPath);
-      const fileName = `receipts/receipt-${order.id}.pdf`;
-      console.log("📤 Загрузка файла в Supabase:", fileName);
+try {
+  if (fs.existsSync(tempPath)) {
+    const buffer = fs.readFileSync(tempPath);
+    const fileName = `receipts/receipt-${order.id}.pdf`;
+    console.log("📤 Загрузка файла в Supabase:", fileName);
 
-      const { data, error } = await supabase.storage
-        .from("receipts")
-        .upload(fileName, buffer, {
-          contentType: "application/pdf",
-          upsert: true,
-        });
+    const { data, error } = await supabase.storage
+      .from("receipts")
+      .upload(fileName, buffer, {
+        contentType: "application/pdf",
+        upsert: true,
+      });
 
-      if (error) {
-        console.error("❌ Ошибка загрузки PDF в Supabase:", error.message);
-      } else {
-        receiptUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/receipts/${fileName}`;
-        order.receiptUrl = receiptUrl;
-        await order.save();
-         console.log("✅ Ссылка на PDF сохранена в заказе:", receiptUrl);
-      }
-    } catch (pdfError) {
-      console.error(
-        "❌ Ошибка при генерации или загрузке PDF:",
-        pdfError.message
-      );
+    if (error) {
+      console.error("❌ Ошибка загрузки PDF в Supabase:", error.message);
+    } else {
+      receiptUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/receipts/${fileName}`;
+      order.receiptUrl = receiptUrl;
+      await order.save();
+      console.log("✅ Ссылка на PDF сохранена в заказе:", receiptUrl);
     }
+  }
+} catch (uploadError) {
+  console.error("❌ Ошибка при загрузке PDF в Supabase:", uploadError.message);
+}
+
 
     const subject = t("greetings", language);
     const attachments = fs.existsSync(tempPath)
