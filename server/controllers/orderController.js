@@ -313,12 +313,10 @@ const createOrder = async (req, res) => {
     const generateSummaryItems = (items) => {
       return items
         .map((item) => {
-          const options =
-            item.selectedOptions && Object.keys(item.selectedOptions).length > 0
-              ? Object.entries(item.selectedOptions)
-                  .map(([key, value]) => `${key}: ${value}`)
-                  .join(", ")
-              : "Без опций";
+         const options =
+      item.selectedOptions && Object.keys(item.selectedOptions).length > 0
+        ? Object.entries(item.selectedOptions).map(([k, v]) => `${k}: ${v}`).join(", ")
+        : "Без опций";
 
           return `
         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
@@ -333,10 +331,89 @@ const createOrder = async (req, res) => {
         .join("");
     };
 
-    const localReceiptUrl = `https://zang-4.onrender.com/static/receipts/receipt-${order.id}.pdf`;
-    receiptUrl = localReceiptUrl;
+  const subtotal = parseFloat(totalPrice) || 0;
+const totalWithVAT = subtotal + deliveryPrice;
+const vatRate = 0.22;
+const priceWithoutVAT = totalWithVAT / (1 + vatRate);
+const vatAmount = totalWithVAT - priceWithoutVAT;
+
+    const receiptHTML = `
+  <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
+
+  <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">Kviitung DlyQ</h2>
+
+  <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
+    <div style="width:48%;">
+      <strong>Ostja:</strong><br>
+      ${formData.firstName || ""} ${formData.lastName || ""}<br>
+      ${formData.email || ""}<br>
+      ${formData.phone || ""}<br>
+      Aadress: ${formData.address || ""}, ${formData.apartment || ""}
+    </div>
+    <div style="width:48%; text-align:right;">
+      <strong>Müüja:</strong><br>
+      DLYQ OÜ<br>
+      Kviitungi number: #${order.id}<br>
+      Kuupäev: ${new Date(order.createdAt).toLocaleString("et-EE")}<br>
+      Tallinn, Eesti<br>
+      Registrikood: <strong>17268052</strong><br>
+      KMKR:<strong>EE102873957</strong><br>
+      info@dlyq.ee<br>
+      dlyq.ee
+    </div>
+  </div>
+
+  <div style="border-top:1px solid #ccc; padding-top:15px; margin-top:15px;">
+    ${generateSummaryItems(localizedOrderDetails)}
+  </div>
+
+  <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
+    <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
+    <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
+    <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
+    <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(2)} €</p>
+  </div>
+
+  <div style="margin-top:30px; font-size:0.85em; color:#666;">
+    See dokument tõendab makset ja on automaatselt koostatud.
+  </div>
+
+</div>
+`;
+
+    const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
+    let receiptUrl = null;
+
+    try {
+      await generatePDFReceipt(receiptHTML, tempPath);
+      if (!fs.existsSync(tempPath)) {
+        throw new Error("PDF-файл не был создан.");
+      }
+    } catch (pdfError) {
+      console.error("❌ Ошибка генерации PDF:", pdfError.message);
+    }
+
+   try {
+  const buffer = fs.readFileSync(tempPath);
+  const fileName = `receipts/receipt-${order.id}.pdf`;
+
+  const { data, error } = await supabase.storage
+    .from("receipts")
+    .upload(fileName, buffer, {
+      contentType: "application/pdf",
+      upsert: true,
+    });
+
+  if (error) {
+    console.error("❌ Ошибка загрузки PDF в Supabase:", error.message);
+  } else {
+    receiptUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/receipts/${fileName}`;
     order.receiptUrl = receiptUrl;
     await order.save();
+  }
+} catch (uploadError) {
+  console.error("❌ Ошибка при загрузке PDF:", uploadError.message);
+}
 
     const emailHTML = `
 <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; padding:20px; border:1px solid #e0e0e0; border-radius:10px; background:#fff;">
@@ -394,113 +471,20 @@ const createOrder = async (req, res) => {
 </div>
 `;
 
-    const subtotal = parseFloat(totalPrice) || 0;
-    const totalWithVAT = subtotal + deliveryPrice;
-    const vatRate = 0.22;
-    const priceWithoutVAT = totalWithVAT / (1 + vatRate);
-    const vatAmount = totalWithVAT - priceWithoutVAT;
-
-    const receiptHTML = `
-  <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
-
-  <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">Kviitung DlyQ</h2>
-
-  <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
-    <div style="width:48%;">
-      <strong>Ostja:</strong><br>
-      ${formData.firstName || ""} ${formData.lastName || ""}<br>
-      ${formData.email || ""}<br>
-      ${formData.phone || ""}<br>
-      Aadress: ${formData.address || ""}, ${formData.apartment || ""}
-    </div>
-    <div style="width:48%; text-align:right;">
-      <strong>Müüja:</strong><br>
-      DLYQ OÜ<br>
-      Kviitungi number: #${order.id}<br>
-      Kuupäev: ${new Date(order.createdAt).toLocaleString("et-EE")}<br>
-      Tallinn, Eesti<br>
-      Registrikood: <strong>17268052</strong><br>
-      KMKR:<strong>EE102873957</strong><br>
-      info@dlyq.ee<br>
-      dlyq.ee
-    </div>
-  </div>
-
-  <div style="border-top:1px solid #ccc; padding-top:15px; margin-top:15px;">
-    ${generateSummaryItems(localizedOrderDetails)}
-  </div>
-
-  <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
-    <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
-    <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
-    <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
-    <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(2)} €</p>
-  </div>
-
-  <div style="margin-top:30px; font-size:0.85em; color:#666;">
-    See dokument tõendab makset ja on automaatselt koostatud.
-  </div>
-
-</div>
-`;
-
-    const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
-console.log("📄 Генерация PDF по пути:", tempPath);
-
-try {
-  await generatePDFReceipt(receiptHTML, tempPath);
-  if (!fs.existsSync(tempPath)) {
-    throw new Error("PDF-файл не был создан.");
-  }
-  console.log("✅ PDF-файл успешно создан:", tempPath);
-} catch (pdfError) {
-  console.error("❌ Ошибка генерации PDF:", pdfError.message);
-}
-
-try {
-  if (fs.existsSync(tempPath)) {
-    const buffer = fs.readFileSync(tempPath);
-    const fileName = `receipts/receipt-${order.id}.pdf`;
-    console.log("📤 Загрузка файла в Supabase:", fileName);
-
-    const { data, error } = await supabase.storage
-      .from("receipts")
-      .upload(fileName, buffer, {
-        contentType: "application/pdf",
-        upsert: true,
-      });
-
-    if (error) {
-      console.error("❌ Ошибка загрузки PDF в Supabase:", error.message);
-    } else {
-      receiptUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/receipts/${fileName}`;
-      order.receiptUrl = receiptUrl;
-      await order.save();
-      console.log("✅ Ссылка на PDF сохранена в заказе:", receiptUrl);
-    }
-  }
-} catch (uploadError) {
-  console.error("❌ Ошибка при загрузке PDF в Supabase:", uploadError.message);
-}
-
-
     const subject = t("greetings", language);
-    const attachments = fs.existsSync(tempPath)
-      ? [{ filename: "receipt.pdf", path: tempPath }]
-      : [];
+const attachments = fs.existsSync(tempPath)
+  ? [{ filename: "receipt.pdf", path: tempPath }]
+  : [];
 
-    try {
-      console.log("📧 Отправка писем...");
-
-      await Promise.all([
-        sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
-        sendEmail(email, subject, emailHTML, attachments),
-      ]);
-
-      console.log("✅ Письма успешно отправлены.");
-    } catch (emailError) {
-      console.error("❌ Ошибка при отправке писем:", emailError.message);
-    }
+   try {
+  await Promise.all([
+    sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
+    sendEmail(email, subject, emailHTML, attachments),
+  ]);
+  console.log("✅ Письма успешно отправлены.");
+} catch (emailError) {
+  console.error("❌ Ошибка при отправке писем:", emailError.message);
+}
 
     res.status(201).json({
       message: "Заказ успешно оформлен",
