@@ -3,10 +3,11 @@ const os = require("os");
 const path = require("path");
 const puppeteer = require("puppeteer");
 
-const browser = await puppeteer.launch({
-  headless: true,
-  args: ['--no-sandbox', '--disable-setuid-sandbox']
-});
+const generatePDFReceipt = async (htmlContent, outputPath) => {
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
 
 
   const page = await browser.newPage();
