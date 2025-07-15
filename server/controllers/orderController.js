@@ -309,15 +309,17 @@ const createOrder = async (req, res) => {
 
     const regularItems = orderDetails.filter((item) => !item.isPreorder);
 
-    const generateSummaryItems = (items) => {
-      return items
-        .map((item) => {
-         const options =
-      item.selectedOptions && Object.keys(item.selectedOptions).length > 0
-        ? Object.entries(item.selectedOptions).map(([k, v]) => `${k}: ${v}`).join(", ")
-        : "Без опций";
+   const generateSummaryItems = (items) => {
+  return items
+    .map((item) => {
+      const options =
+        item.selectedOptions && Object.keys(item.selectedOptions).length > 0
+          ? Object.entries(item.selectedOptions)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(", ")
+          : "Без опций";
 
-          return `
+      return `
         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
           <div>
             ${item.name}
@@ -326,77 +328,74 @@ const createOrder = async (req, res) => {
           <div><strong>${item.price} €</strong></div>
         </div>
       `;
-        })
-        .join("");
-    };
+    })
+    .join("");
+};
 
-  const subtotal = parseFloat(totalPrice) || 0;
+const subtotal = parseFloat(totalPrice) || 0;
 const totalWithVAT = subtotal + deliveryPrice;
 const vatRate = 0.22;
 const priceWithoutVAT = totalWithVAT / (1 + vatRate);
 const vatAmount = totalWithVAT - priceWithoutVAT;
 
-    const receiptHTML = `
+// 🧾 1. Генерация receiptHTML
+const receiptHTML = `
   <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
-
-  <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">Kviitung DlyQ</h2>
-
-  <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
-    <div style="width:48%;">
-      <strong>Ostja:</strong><br>
-      ${formData.firstName || ""} ${formData.lastName || ""}<br>
-      ${formData.email || ""}<br>
-      ${formData.phone || ""}<br>
-      Aadress: ${formData.address || ""}, ${formData.apartment || ""}
+    <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">Kviitung DlyQ</h2>
+    <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
+      <div style="width:48%;">
+        <strong>Ostja:</strong><br>
+        ${formData.firstName || ""} ${formData.lastName || ""}<br>
+        ${formData.email || ""}<br>
+        ${formData.phone || ""}<br>
+        Aadress: ${formData.address || ""}, ${formData.apartment || ""}
+      </div>
+      <div style="width:48%; text-align:right;">
+        <strong>Müüja:</strong><br>
+        DLYQ OÜ<br>
+        Kviitungi number: #${order.id}<br>
+        Kuupäev: ${new Date(order.createdAt).toLocaleString("et-EE")}<br>
+        Tallinn, Eesti<br>
+        Registrikood: <strong>17268052</strong><br>
+        KMKR:<strong>EE102873957</strong><br>
+        info@dlyq.ee<br>
+        dlyq.ee
+      </div>
     </div>
-    <div style="width:48%; text-align:right;">
-      <strong>Müüja:</strong><br>
-      DLYQ OÜ<br>
-      Kviitungi number: #${order.id}<br>
-      Kuupäev: ${new Date(order.createdAt).toLocaleString("et-EE")}<br>
-      Tallinn, Eesti<br>
-      Registrikood: <strong>17268052</strong><br>
-      KMKR:<strong>EE102873957</strong><br>
-      info@dlyq.ee<br>
-      dlyq.ee
+    <div style="border-top:1px solid #ccc; padding-top:15px;">
+      ${generateSummaryItems(localizedOrderDetails)}
+    </div>
+    <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
+      <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
+      <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
+      <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
+      <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(2)} €</p>
+    </div>
+    <div style="margin-top:30px; font-size:0.85em; color:#666;">
+      See dokument tõendab makset ja on automaatselt koostatud.
     </div>
   </div>
-
-  <div style="border-top:1px solid #ccc; padding-top:15px; margin-top:15px;">
-    ${generateSummaryItems(localizedOrderDetails)}
-  </div>
-
-  <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
-    <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
-    <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
-    <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
-    <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(2)} €</p>
-  </div>
-
-  <div style="margin-top:30px; font-size:0.85em; color:#666;">
-    See dokument tõendab makset ja on automaatselt koostatud.
-  </div>
-
-</div>
 `;
 
-    const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
-    let receiptUrl = null;
+// 📄 2. Генерация PDF
+const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
+let receiptUrl = null;
 
-    try {
-      await generatePDFReceipt(receiptHTML, tempPath);
-      if (!fs.existsSync(tempPath)) {
-        throw new Error("PDF-файл не был создан.");
-      }
-    } catch (pdfError) {
-      console.error("❌ Ошибка генерации PDF:", pdfError.message);
-    }
+try {
+  await generatePDFReceipt(receiptHTML, tempPath);
+  if (!fs.existsSync(tempPath)) {
+    throw new Error("PDF-файл не был создан.");
+  }
+} catch (pdfError) {
+  console.error("❌ Ошибка генерации PDF:", pdfError.message);
+}
 
-   try {
+// ☁️ 3. Загрузка в Supabase
+try {
   const buffer = fs.readFileSync(tempPath);
   const fileName = `receipts/receipt-${order.id}.pdf`;
 
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from("receipts")
     .upload(fileName, buffer, {
       contentType: "application/pdf",
@@ -414,68 +413,48 @@ const vatAmount = totalWithVAT - priceWithoutVAT;
   console.error("❌ Ошибка при загрузке PDF:", uploadError.message);
 }
 
-    const emailHTML = `
-<div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; padding:20px; border:1px solid #e0e0e0; border-radius:10px; background:#fff;">
-  <div style="background:#f2f2f2; padding:15px 20px; border-radius:8px; display:flex; align-items:center;">
-    <div style="flex:1;">
-      <h2 style="margin:0; font-size:1.4em;">${t("hello", language)}, ${
-      firstName || ""
-    } ${lastName || ""}!</h2>
-      <p style="margin:0; color:#777;">${t(
-        "this_is_your_receipt",
-        language
-      )}</p>
+// 💌 4. Email с receiptUrl
+const emailHTML = `
+  <div style="max-width:600px; margin:0 auto; font-family:Arial,sans-serif; padding:20px; border:1px solid #e0e0e0; border-radius:10px; background:#fff;">
+    <div style="background:#f2f2f2; padding:15px 20px; border-radius:8px; display:flex; align-items:center;">
+      <div style="flex:1;">
+        <h2 style="margin:0; font-size:1.4em;">${t("hello", language)}, ${firstName || ""} ${lastName || ""}!</h2>
+        <p style="margin:0; color:#777;">${t("this_is_your_receipt", language)}</p>
+      </div>
     </div>
-  </div>
-
-  <div style="padding:20px 0;">
-    <h3 style="margin:5px 0;">DlyQ</h3>
-    <p style="margin:0; font-size:0.9em; color:#888;">${
-      formData.address || ""
-    }, ${formData.apartment || ""}</p>
-    
-  <strong>${t("buyer", language)}</strong><br>
+    <div style="padding:20px 0;">
+      <h3 style="margin:5px 0;">DlyQ</h3>
+      <p style="margin:0; font-size:0.9em; color:#888;">
+        ${formData.address || ""}, ${formData.apartment || ""}
+      </p>
+      <strong>${t("buyer", language)}</strong><br>
       ${formData.firstName || ""} ${formData.lastName || ""}<br>
       ${formData.email || ""}<br>
       ${formData.phone || ""}<br>
-      ${t("address", language)} ${formData.address || ""}, ${
-      formData.apartment || ""
-    }
-
+      ${t("address", language)} ${formData.address || ""}, ${formData.apartment || ""}
+    </div>
+    <div style="border-top:1px solid #eee; padding-top:15px;">
+      ${generateSummaryItems(localizedOrderDetails)}
+    </div>
+    <div style="border-top:1px solid #eee; margin-top:20px; padding-top:15px;">
+      <p style="margin:5px 0; font-size:1em;"><strong>${t("total_charged", language)}</strong></p>
+      <p style="font-size:1.2em;"><strong>${totalWithVAT.toFixed(2)} €</strong></p>
+    </div>
+    <hr style="margin-top:30px;">
+    <p style="font-size:0.85em; color:#666; line-height:1.6;">
+      💼 DLYQ OÜ<br>
+      ${t("download_invoice", language)}: <a href="${receiptUrl}" target="_blank">PDF</a>
+    </p>
   </div>
-
-  <div style="border-top:1px solid #eee; padding-top:15px; margin-top:15px;">
-    ${generateSummaryItems(localizedOrderDetails)}
-  </div>
-
-  <div style="border-top:1px solid #eee; margin-top:20px; padding-top:15px;">
-    <p style="margin:5px 0; font-size:1em;"><strong>${t(
-      "total_charged",
-      language
-    )}</strong></p>
-    <p style="font-size:1.2em;"><strong>${(totalPrice + deliveryPrice).toFixed(
-      2
-    )} €</strong></p>
-  </div>
-
-  <hr style="margin-top:30px;">
-  <p style="font-size:0.85em; color:#666; line-height:1.6;"
-    💼 DLYQ OÜ<br>
-    ${t("download_invoice", language)} info@dlyq.ee
-  </p>
-  <p style="margin-top:20px;">
-<a href="${receiptUrl}" target="_blank">
-  ${t("contacts", language)}
-</a>
-</div>
 `;
 
-    const subject = t("greetings", language);
+// ✉️ 5. Отправка писем
+const subject = t("greetings", language);
 const attachments = fs.existsSync(tempPath)
   ? [{ filename: "receipt.pdf", path: tempPath }]
   : [];
 
-   try {
+try {
   await Promise.all([
     sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
     sendEmail(email, subject, emailHTML, attachments),
@@ -485,10 +464,13 @@ const attachments = fs.existsSync(tempPath)
   console.error("❌ Ошибка при отправке писем:", emailError.message);
 }
 
-    res.status(201).json({
-      message: "Заказ успешно оформлен",
-      receipt: receiptUrl || null,
-    });
+// ✅ 6. Ответ клиенту
+res.status(201).json({
+  message: "Заказ успешно оформлен",
+  receipt: receiptUrl || null,
+});
+
+
   } catch (error) {
     console.error("❌ Ошибка на этапе оформления заказа:", error.message);
     res.status(500).json({
