@@ -338,7 +338,6 @@ const vatRate = 0.22;
 const priceWithoutVAT = totalWithVAT / (1 + vatRate);
 const vatAmount = totalWithVAT - priceWithoutVAT;
 
-// 🧾 1. Генерация receiptHTML
 const receiptHTML = `
   <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
     <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">Kviitung DlyQ</h2>
@@ -377,7 +376,6 @@ const receiptHTML = `
   </div>
 `;
 
-// 📄 2. Генерация PDF
 const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
 let receiptUrl = null;
 
@@ -390,7 +388,6 @@ try {
   console.error("❌ Ошибка генерации PDF:", pdfError.message);
 }
 
-// ☁️ 3. Загрузка в Supabase
 try {
   const buffer = fs.readFileSync(tempPath);
   const fileName = `receipts/receipt-${order.id}.pdf`;
@@ -413,7 +410,6 @@ try {
   console.error("❌ Ошибка при загрузке PDF:", uploadError.message);
 }
 
-// 💌 4. Email с receiptUrl
 const emailHTML = `
   <div style="max-width:600px; margin:0 auto; font-family:Arial,sans-serif; padding:20px; border:1px solid #e0e0e0; border-radius:10px; background:#fff;">
     <div style="background:#f2f2f2; padding:15px 20px; border-radius:8px; display:flex; align-items:center;">
