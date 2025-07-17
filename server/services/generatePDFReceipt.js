@@ -1,34 +1,37 @@
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
-const chromium = require("chrome-aws-lambda");
 const puppeteer = require("puppeteer-core");
+const chrome = require("chrome-aws-lambda");
+const fs = require("fs/promises");
 
-const generatePDFReceipt = async (htmlContent, outputPath) => {
-  console.log("🧭 Запуск Puppeteer (aws-lambda)");
+async function generatePDFReceipt(html, outputPath) {
+  try {
+    console.log("🧭 Запуск Puppeteer (aws-lambda)");
 
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    executablePath: await chromium.executablePath,
-    headless: chromium.headless,
-  });
+    const browser = await puppeteer.launch({
+      args: chrome.args,
+      executablePath: await chrome.executablePath || "/usr/bin/chromium-browser",
+      headless: chrome.headless,
+      ignoreHTTPSErrors: true,
+    });
 
-  const page = await browser.newPage();
-  await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
 
-  await page.pdf({
-    path: outputPath,
-    format: "A4",
-    printBackground: true,
-    margin: { top: "20px", bottom: "30px", left: "20px", right: "20px" },
-  });
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+    });
 
-  await browser.close();
-  console.log(`✅ PDF сохранён как ${outputPath}`);
-};
+    await fs.writeFile(outputPath, pdfBuffer);
+    await browser.close();
+
+    console.log("✅ PDF успешно сгенерирован:", outputPath);
+  } catch (error) {
+    console.error("❌ Ошибка генерации PDF:", error.message);
+    throw error;
+  }
+}
 
 module.exports = generatePDFReceipt;
-
 
 
 
