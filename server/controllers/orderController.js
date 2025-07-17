@@ -444,7 +444,6 @@ const emailHTML = `
   </div>
 `;
 
-// ✉️ 5. Отправка писем
 const subject = t("greetings", language);
 const attachments = fs.existsSync(tempPath)
   ? [{ filename: "receipt.pdf", path: tempPath }]
@@ -460,7 +459,6 @@ try {
   console.error("❌ Ошибка при отправке писем:", emailError.message);
 }
 
-// ✅ 6. Ответ клиенту
 res.status(201).json({
   message: "Заказ успешно оформлен",
   receipt: receiptUrl || null,
