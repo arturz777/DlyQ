@@ -8,7 +8,7 @@ async function generatePDFReceipt(html, outputPath) {
 
     const browser = await puppeteer.launch({
       args: chrome.args,
-      executablePath: await chrome.executablePath || "/usr/bin/chromium-browser",
+      executablePath: (await chrome.executablePath) || "/usr/bin/chromium-browser",
       headless: chrome.headless,
       ignoreHTTPSErrors: true,
     });
