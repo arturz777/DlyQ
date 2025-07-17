@@ -1,16 +1,14 @@
-const puppeteer = require("puppeteer-core");
-const chrome = require("chrome-aws-lambda");
+const puppeteer = require("puppeteer");
 const fs = require("fs/promises");
+const path = require("path");
 
 async function generatePDFReceipt(html, outputPath) {
   try {
-    console.log("🧭 Запуск Puppeteer (aws-lambda)");
+    console.log("🧭 Запуск Puppeteer");
 
     const browser = await puppeteer.launch({
-      args: chrome.args,
-      executablePath: (await chrome.executablePath) || "/usr/bin/chromium-browser",
-      headless: chrome.headless,
-      ignoreHTTPSErrors: true,
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
 
     const page = await browser.newPage();
@@ -32,6 +30,7 @@ async function generatePDFReceipt(html, outputPath) {
 }
 
 module.exports = generatePDFReceipt;
+
 
 
 
