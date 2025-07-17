@@ -30,8 +30,8 @@
     "nodemailer": "^6.9.16",
     "pg": "^8.13.1",
     "pg-hstore": "^2.3.4",
-    "puppeteer-core": "^24.11.2",
-"chrome-aws-lambda": "^10.1.0",
+    "puppeteer-core": "^10.2.0",
+  "chrome-aws-lambda": "^10.1.0",
     "sequelize": "^6.37.5",
     "socket.io": "^4.8.1",
     "uuid": "^11.0.3"
