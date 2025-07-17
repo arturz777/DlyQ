@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "postinstall": "npx puppeteer browsers install chrome"
+     "postinstall": "echo '📦 Начинаем установку Chrome...' && npx puppeteer browsers install chrome && echo '✅ Chrome установлен' && ls -R /opt/render/.cache/puppeteer || echo '❌ Папка не найдена'"
   },
   "puppeteer": {
     "default_browser": "chrome"
