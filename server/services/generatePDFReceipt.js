@@ -5,7 +5,6 @@ const generatePDFReceipt = async (htmlContent, outputPath) => {
 
   const browser = await puppeteer.launch({
     headless: true,
-    executablePath: "/usr/bin/google-chrome", // 💥 указываем системный Chrome
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
@@ -24,6 +23,7 @@ const generatePDFReceipt = async (htmlContent, outputPath) => {
 };
 
 module.exports = generatePDFReceipt;
+
 
 
 
