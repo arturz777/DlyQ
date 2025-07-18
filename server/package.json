@@ -27,13 +27,14 @@
     "nodemailer": "^6.9.16",
     "pg": "^8.13.1",
     "pg-hstore": "^2.3.4",
+   "puppeteer": "^21.3.8",
     "sequelize": "^6.37.5",
     "socket.io": "^4.8.1",
-    "uuid": "^11.0.3",
-    "puppeteer": "^21.3.8"
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.9",
-    "sequelize-cli": "^6.6.2"
+    "sequelize-cli": "^6.6.2",
+    "source-map-explorer": "^2.5.3"
   }
 }
