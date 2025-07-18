@@ -6,9 +6,6 @@
     "dev": "nodemon index.js",
     "start": "node index.js"
   },
-  "puppeteer": {
-    "default_browser": "chrome"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",
