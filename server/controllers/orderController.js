@@ -58,6 +58,8 @@ const downloadReceipt = async (req, res) => {
         .join("");
     };
 
+    const deliveryPrice = parseFloat(order.deliveryPrice) || 0;
+
     const receiptHTML = `
       <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
   <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">kviitung DlyQ</h2>
