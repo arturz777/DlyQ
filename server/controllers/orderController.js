@@ -107,7 +107,6 @@ const downloadReceipt = async (req, res) => {
   </div>
 
 </div>
- </div>
 </body>
 </html>
 `;
