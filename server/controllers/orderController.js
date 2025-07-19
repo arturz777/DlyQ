@@ -60,8 +60,6 @@ const downloadReceipt = async (req, res) => {
 
     const deliveryPrice = parseFloat(order.deliveryPrice) || 0;
 
-    console.log("📦 Итоговый HTML для PDFShift:\n", receiptHTML);
-
     const receiptHTML = `
     <!DOCTYPE html>
   <html>
