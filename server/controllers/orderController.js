@@ -1,10 +1,6 @@
 const sendEmail = require("../services/emailService");
 const { Order, Device, Translation, Courier } = require("../models/models");
 const { Op } = require("sequelize");
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
-const pdfPath = path.join(__dirname, "../temp/receipt.pdf");
 const { t } = require("../utils/translations");
 const getDistanceFromWarehouse = require("../utils/distance");
 const { supabase } = require("../config/supabaseClient");
@@ -87,11 +83,11 @@ const downloadReceipt = async (req, res) => {
   </div>
 
   <div style="border-top:1px solid #ccc; padding-top:15px; margin-top:15px;">
-    ${generateSummaryItems(localizedOrderDetails)}
+    ${generateSummaryItems(orderDetails)}
   </div>
 
   <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
-    <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
+    <p><strong>Tarne maksumus:</strong> ${order.deliveryPrice.toFixed(2)} €</p>
     <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
     <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
     <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(2)} €</p>
@@ -331,46 +327,6 @@ const createOrder = async (req, res) => {
     const priceWithoutVAT = totalWithVAT / (1 + vatRate);
     const vatAmount = totalWithVAT - priceWithoutVAT;
 
-    const receiptHTML = `
-  <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
-    <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">Kviitung DlyQ</h2>
-    <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
-      <div style="width:48%;">
-        <strong>Ostja:</strong><br>
-        ${formData.firstName || ""} ${formData.lastName || ""}<br>
-        ${formData.email || ""}<br>
-        ${formData.phone || ""}<br>
-        Aadress: ${formData.address || ""}, ${formData.apartment || ""}
-      </div>
-      <div style="width:48%; text-align:right;">
-        <strong>Müüja:</strong><br>
-        DLYQ OÜ<br>
-        Kviitungi number: #${order.id}<br>
-        Kuupäev: ${new Date(order.createdAt).toLocaleString("et-EE")}<br>
-        Tallinn, Eesti<br>
-        Registrikood: <strong>17268052</strong><br>
-        KMKR:<strong>EE102873957</strong><br>
-        info@dlyq.ee<br>
-        dlyq.ee
-      </div>
-    </div>
-    <div style="border-top:1px solid #ccc; padding-top:15px;">
-      ${generateSummaryItems(localizedOrderDetails)}
-    </div>
-    <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
-      <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
-      <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
-      <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
-      <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(
-        2
-      )} €</p>
-    </div>
-    <div style="margin-top:30px; font-size:0.85em; color:#666;">
-      See dokument tõendab makset ja on automaatselt koostatud.
-    </div>
-  </div>
-`;
-
     const downloadLink = `https://zang-4.onrender.com/api/order/${order.id}/receipt?token=${downloadToken}`;
 
     const emailHTML = `
@@ -400,7 +356,7 @@ const createOrder = async (req, res) => {
     }
     </div>
     <div style="border-top:1px solid #eee; padding-top:15px;">
-      ${generateSummaryItems(localizedOrderDetails)}
+      ${generateSummaryItems(orderDetails)}
     </div>
     <div style="border-top:1px solid #eee; margin-top:20px; padding-top:15px;">
       <p style="margin:5px 0; font-size:1em;"><strong>${t(
