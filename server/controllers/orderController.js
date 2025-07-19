@@ -61,6 +61,13 @@ const downloadReceipt = async (req, res) => {
     const deliveryPrice = parseFloat(order.deliveryPrice) || 0;
 
     const receiptHTML = `
+    <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Receipt</title>
+  </head>
+  <body>
       <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
   <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">kviitung DlyQ</h2>
   <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
@@ -100,6 +107,9 @@ const downloadReceipt = async (req, res) => {
   </div>
 
 </div>
+ </div>
+</body>
+</html>
 `;
 
     const buffer = await generatePDFShiftBuffer(receiptHTML);
