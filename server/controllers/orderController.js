@@ -89,7 +89,7 @@ const downloadReceipt = async (req, res) => {
   </div>
 
   <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
-    <p><strong>Tarne maksumus:</strong> ${order.deliveryPrice.toFixed(2)} €</p>
+    <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
     <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
     <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
     <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(2)} €</p>
