@@ -35,7 +35,7 @@ const downloadReceipt = async (req, res) => {
     const priceWithoutVAT = totalWithVAT / (1 + vatRate);
     const vatAmount = totalWithVAT - priceWithoutVAT;
 
-    const generateSummaryItems = (items, orderDetails, language) => {
+    const generateSummaryItems = (items) => {
       return items
         .map((item) => {
           const options =
