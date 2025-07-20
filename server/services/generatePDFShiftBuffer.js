@@ -1,31 +1,23 @@
 const axios = require("axios");
 
 const generatePDFShiftBuffer = async (html) => {
-  try {
-    const response = await axios.post(
-      "https://api.pdfshift.io/v3/convert/pdf",
-      { source: html },
-      {
-        auth: {
-          username: process.env.PDFSHIFT_API_KEY,
-        },
-        headers: {
-          "Content-Type": "application/json",
-        },
-        responseType: "arraybuffer",
-      }
-    );
-    return response.data;
-  } catch (err) {
-    console.error("❌ Ошибка PDFShift:", err.message);
-    if (err.response) {
-      console.error("📄 Ответ PDFShift:", err.response.data.toString());
+  const response = await axios.post(
+    "https://api.pdfshift.io/v3/convert/pdf",
+    { source: html },
+    {
+      headers: {
+        "X-API-Key": process.env.PDFSHIFT_API_KEY,
+        "Content-Type": "application/json",
+      },
+      responseType: "arraybuffer",
     }
-    throw err;
-  }
+  );
+
+  return response.data;
 };
 
 module.exports = generatePDFShiftBuffer;
+
 
 
 
