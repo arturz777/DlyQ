@@ -414,7 +414,7 @@ const Basket = observer(() => {
                   variant="danger"
                    onClick={() => {
                     const confirmed = window.confirm(
-                      "Вы уверены, что хотите удалить этот товар?"
+                      t("are you sure you want to delete this item", { ns: "basket" })
                     );
                     if (confirmed) {
                       handleRemove(item.uniqueKey);
