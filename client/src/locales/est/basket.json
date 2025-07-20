@@ -20,6 +20,7 @@
 	"product is out of stock, but has been added to the cart as a pre-order": "Toodet ei ole laos, kuid see lisati ostukorvi eeltellimusena.",
 	"place order as a pre-order": "Esita tellimus kui eeltellimus",
 	"desired delivery datetime": "Soovitud tarnekuupäev ja -aeg",
-	"preferred delivery time comment": "Soovituslik tarneaja kommentaar"
+	"preferred delivery time comment": "Soovituslik tarneaja kommentaar",
+	"are you sure you want to delete this item": "Kas olete kindel, et soovite selle toote kustutada?"
   }
   
