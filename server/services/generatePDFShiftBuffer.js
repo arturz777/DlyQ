@@ -1,6 +1,7 @@
 const axios = require("axios");
 
 const generatePDFShiftBuffer = async (html) => {
+  console.log("🔑 PDFSHIFT_API_KEY:", process.env.PDFSHIFT_API_KEY);
   try {
     const response = await axios.post(
        "https://api.pdfshift.io/v3/convert/pdf",
