@@ -110,7 +110,6 @@ const downloadReceipt = async (req, res) => {
 </body>
 </html>
 `;
-     console.log("📦 Итоговый HTML для PDFShift:\n", receiptHTML);
 
     const buffer = await generatePDFShiftBuffer(receiptHTML);
 
