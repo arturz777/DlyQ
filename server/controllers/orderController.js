@@ -48,8 +48,8 @@ const downloadReceipt = async (req, res) => {
           return `
             <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
               <div>
-                ${item.name}
-                <div style="font-size:0.85em; color:#777;">${options}</div>
+              ${item.name}
+              ${options && `<div style="font-size:0.85em; color:#777;">${options}</div>`}
               </div>
                 <div style="white-space:nowrap;"><strong>${item.price} €</strong></div>
             </div>
@@ -322,8 +322,8 @@ const createOrder = async (req, res) => {
           return `
         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
           <div>
-            ${item.name}
-            <div style="font-size:0.85em; color:#777;">${options}</div>
+          ${item.name}
+          ${options && `<div style="font-size:0.85em; color:#777;">${options}</div>`}
           </div>
           <div><strong>${item.price} €</strong></div>
         </div>
