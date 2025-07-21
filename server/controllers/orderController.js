@@ -43,7 +43,7 @@ const downloadReceipt = async (req, res) => {
               ? Object.entries(item.selectedOptions)
                   .map(([key, value]) => `${key}: ${value}`)
                   .join(", ")
-              : "Без опций";
+              : null;
 
           return `
             <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
@@ -317,7 +317,7 @@ const createOrder = async (req, res) => {
               ? Object.entries(item.selectedOptions)
                   .map(([k, v]) => `${k}: ${v}`)
                   .join(", ")
-              : "Без опций";
+              : null;
 
           return `
         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
