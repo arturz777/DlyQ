@@ -1,4 +1,4 @@
-const sendEmail = require("../services/emailService");
+ const sendEmail = require("../services/emailService");
 const { Order, Device, Translation, Courier } = require("../models/models");
 const { Op } = require("sequelize");
 const { t } = require("../utils/translations");
@@ -43,7 +43,7 @@ const downloadReceipt = async (req, res) => {
               ? Object.entries(item.selectedOptions)
                   .map(([key, value]) => `${key}: ${value}`)
                   .join(", ")
-              : null;
+              : "";
 
           return `
             <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
@@ -317,7 +317,7 @@ const createOrder = async (req, res) => {
               ? Object.entries(item.selectedOptions)
                   .map(([k, v]) => `${k}: ${v}`)
                   .join(", ")
-              : null;
+              : "";
 
           return `
         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
