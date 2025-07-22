@@ -51,9 +51,7 @@ const LocationPicker = ({ setFormData }) => {
         longitude: e.latlng.lng,
       }));
 
-      fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}`
-      )
+      fetch(`/api/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
         .then((res) => res.json())
         .then((data) => {
           setFormData((prev) => ({
@@ -105,9 +103,7 @@ const PaymentForm = ({
         longitude,
       }));
 
-      fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-      )
+      fetch(`https://zang-4.onrender.com/api/geo/reverse?lat=${latitude}&lon=${longitude}`)
         .then((res) => res.json())
         .then((data) => {
           setFormData((prev) => ({
@@ -173,9 +169,7 @@ const PaymentForm = ({
     if (!formData.address) return;
 
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${formData.address}`
-      );
+       const res = await fetch(`/api/geo/search?q=${formData.address}`);
       const data = await res.json();
 
       if (data.length > 0) {
