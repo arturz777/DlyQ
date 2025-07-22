@@ -50,7 +50,7 @@ const LocationPicker = ({ setFormData }) => {
         latitude: e.latlng.lat,
         longitude: e.latlng.lng,
       }));
-console.log("🔧 API URL:", process.env.REACT_APP_API_URL);
+      
       fetch(` ${process.env.REACT_APP_API_URL}/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
         .then((res) => res.json())
         .then((data) => {
