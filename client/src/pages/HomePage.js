@@ -79,13 +79,6 @@ const HomePage = () => {
                 to={`/catalog?typeId=${type.id}`}
                 className={styles.category}
               >
-                {type.img && (
-                  <img
-                    src={type.img}
-                    alt={type.translations?.name?.[currentLang] || type.name}
-                    className={styles.categoryIcon}
-                  />
-                )}
                 {type.translations?.name?.[currentLang] || type.name}
               </Link>
             ))}
@@ -107,13 +100,6 @@ const HomePage = () => {
                       to={`/catalog?typeId=${type.id}`}
                       className={styles.dropdownItem}
                     >
-                      {type.img && (
-                        <img
-                          src={type.img}
-                          alt={type.name}
-                          className={styles.categoryIcon}
-                        />
-                      )}
                       {type.translations?.name?.[currentLang] || type.name}
                     </Link>
                   ))}
@@ -128,13 +114,6 @@ const HomePage = () => {
               to={`/catalog?typeId=${type.id}`}
               className={styles.category}
             >
-              {type.img && (
-                <img
-                  src={type.img}
-                  alt={type.name}
-                  className={styles.categoryIcon}
-                />
-              )}
               {type.translations?.name?.[currentLang] || type.name}
             </Link>
           ))
