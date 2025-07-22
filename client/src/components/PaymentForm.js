@@ -121,9 +121,11 @@ const PaymentForm = ({
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          console.log("📍 Геолокация разрешена:", position);
           updateLocation(position.coords.latitude, position.coords.longitude);
         },
         async (error) => {
+          console.warn("❌ Ошибка геолокации:", error);
           console.warn(t("geolocation disabled", { ns: "paymentForm" }));
 
           try {
