@@ -51,7 +51,7 @@ const LocationPicker = ({ setFormData }) => {
         longitude: e.latlng.lng,
       }));
 console.log("🔧 API URL:", process.env.REACT_APP_API_URL);
-      fetch(` ${process.env.REACT_APP_API_URL}/api/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
+      fetch(` ${process.env.REACT_APP_API_URL}/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
         .then((res) => res.json())
         .then((data) => {
           setFormData((prev) => ({
@@ -169,7 +169,7 @@ const PaymentForm = ({
     if (!formData.address) return;
 
     try {
-       const res = await fetch(` ${process.env.REACT_APP_API_URL}/api/geo/search?q=${formData.address}`);
+       const res = await fetch(` ${process.env.REACT_APP_API_URL}/geo/search?q=${formData.address}`);
       const data = await res.json();
 
       if (data.length > 0) {
