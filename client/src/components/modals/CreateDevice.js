@@ -233,7 +233,6 @@ useEffect(() => {
 
   const validateDevice = () => {
     const errors = {};
-    if (!device.selectedBrand?.id) errors.brand = "Выберите бренд";
     if (!device.selectedType?.id) errors.type = "Выберите тип";
     if (!price || isNaN(price)) errors.price = "Введите цену";
     if (discount && (!oldPrice || isNaN(oldPrice))) {
@@ -305,10 +304,10 @@ useEffect(() => {
 
     formData.append("existingImages", JSON.stringify(existingImages));
 
-    formData.append(
-      "brandId",
-      device.selectedBrand.id || editableDevice?.brandId
-    );
+   formData.append(
+  "brandId",
+  device.selectedBrand?.id || editableDevice?.brandId || ""
+);
     formData.append("typeId", device.selectedType.id || editableDevice?.typeId);
 
     if (device.selectedSubType?.id) {
