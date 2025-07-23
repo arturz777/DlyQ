@@ -32,12 +32,12 @@ class DeviceController {
         recommended,
       } = req.body;
 
-      if (!name || !price || !brandId || !typeId) {
-        return res.status(400).json({
-          message:
-            "Обязательные поля (name, price, brandId, typeId) должны быть заполнены.",
-        });
-      }
+      if (!name || !price || !typeId) {
+  return res.status(400).json({
+    message:
+      "Обязательные поля (name, price, typeId) должны быть заполнены.",
+  });
+}
 
       if (!req.files || !req.files.img) {
         return res
@@ -120,7 +120,7 @@ class DeviceController {
         name,
         price,
         oldPrice: oldPrice || null,
-        brandId,
+        brandId: brandId || null,
         typeId,
         subtypeId: subtypeId || null,
         img: publicURL,
@@ -493,11 +493,7 @@ class DeviceController {
       if (!device)
         return res.status(404).json({ message: "Устройство не найдено" });
 
-      // ✅ Фикс: парсим options в начале
       options = options ? JSON.parse(options) : [];
-
-      // ✅ Отладка
-      console.log("✅ options:", options);
 
       if (discount === "true" && !oldPrice) {
         oldPrice = price;
@@ -691,7 +687,7 @@ class DeviceController {
           name,
           price,
           oldPrice,
-          brandId,
+          brandId: brandId || null,
           typeId,
           subtypeId: subtypeId || null,
           img: fileName,
