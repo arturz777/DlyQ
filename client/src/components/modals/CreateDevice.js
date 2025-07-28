@@ -38,6 +38,18 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     options: [],
     info: [],
   });
+  const [openSections, setOpenSections] = useState({
+    basic: true,
+    price: false,
+    images: false,
+    options: false,
+    description: false,
+    info: false,
+  });
+
+  const toggleSection = (key) => {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   useEffect(() => {
     if (editableDevice) {
