@@ -475,7 +475,7 @@ useEffect(() => {
     setOptions(options.filter((_, i) => i !== index));
   };
 
-  return (
+ return (
     <Modal show={show} onHide={onHide} centered>
       <Modal.Header closeButton>
         <Modal.Title>
@@ -485,6 +485,7 @@ useEffect(() => {
 
       <Form.Group controlId="formIsNew">
         <Form.Check
+          className={styles.newProduct}
           type="checkbox"
           label="Новый товар"
           checked={isNew}
@@ -494,6 +495,7 @@ useEffect(() => {
 
       <Form.Group controlId="formRecommended">
         <Form.Check
+          className={styles.recommendProduct}
           type="checkbox"
           label="Рекомендованный товар"
           checked={recommended}
@@ -503,202 +505,259 @@ useEffect(() => {
 
       <Modal.Body>
         <Form>
-          <Dropdown className="mt-2 mb-2">
-            <Dropdown.Toggle>
-              {device.selectedType.name || "Выберите тип"}
-            </Dropdown.Toggle>
-            {isSubmitted && !device.selectedType?.id && (
-              <span
-                style={{ color: "red", display: "block", marginTop: "5px" }}
-              >
-                {errors.type}
-              </span>
-            )}
-            <Dropdown.Menu>
-              {device.types.map((type) => (
-                <Dropdown.Item
-                  onClick={() => {
-                    device.setSelectedType(type);
-                    fetchSubtypesByType(type.id).then((data) =>
-                      device.setSubtypes(data)
-                    );
-                  }}
-                  key={type.id}
-                >
-                  {type.name}
-                </Dropdown.Item>
-              ))}
-            </Dropdown.Menu>
-          </Dropdown>
+          <div className="mb-4">
+            <h5
+              onClick={() => toggleSection("basic")}
+              style={{ cursor: "pointer" }}
+            >
+              🧾 Основная информация {openSections.basic ? "▲" : "▼"}
+            </h5>
+            {openSections.basic && (
+              <>
+                <Dropdown className="mt-2 mb-2">
+                  <Dropdown.Toggle>
+                    {device.selectedType.name || "Выберите тип"}
+                  </Dropdown.Toggle>
+                  {isSubmitted && !device.selectedType?.id && (
+                    <span
+                      style={{
+                        color: "red",
+                        display: "block",
+                        marginTop: "5px",
+                      }}
+                    >
+                      {errors.type}
+                    </span>
+                  )}
+                  <Dropdown.Menu>
+                    {device.types.map((type) => (
+                      <Dropdown.Item
+                        onClick={() => {
+                          device.setSelectedType(type);
+                          fetchSubtypesByType(type.id).then((data) =>
+                            device.setSubtypes(data)
+                          );
+                        }}
+                        key={type.id}
+                      >
+                        {type.name}
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
 
-          <Dropdown className="mt-2 mb-2">
-            <Dropdown.Toggle>
-              {device.selectedSubType?.name ||
-                "Выберите подтип (необязательно)"}
-            </Dropdown.Toggle>
-            <Dropdown.Menu>
-              <Dropdown.Item onClick={() => device.setSelectedSubType(null)}>
-                Не выбирать подтип
-              </Dropdown.Item>
-              {device.subtypes.map((subtype) => (
-                <Dropdown.Item
-                  onClick={() => device.setSelectedSubType(subtype)}
-                  key={subtype.id}
-                >
-                  {subtype.name}
-                </Dropdown.Item>
-              ))}
-            </Dropdown.Menu>
-          </Dropdown>
+                <Dropdown className="mt-2 mb-2">
+                  <Dropdown.Toggle>
+                    {device.selectedSubType?.name ||
+                      "Выберите подтип (необязательно)"}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu>
+                    <Dropdown.Item
+                      onClick={() => device.setSelectedSubType(null)}
+                    >
+                      Не выбирать подтип
+                    </Dropdown.Item>
+                    {device.subtypes.map((subtype) => (
+                      <Dropdown.Item
+                        onClick={() => device.setSelectedSubType(subtype)}
+                        key={subtype.id}
+                      >
+                        {subtype.name}
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
 
-          <Dropdown className="mt-2 mb-2">
-            <Dropdown.Toggle>
-              {device.selectedBrand.name || "Выберите бренд"}
-            </Dropdown.Toggle>
-            {isSubmitted && !device.selectedBrand?.id && (
-              <span
-                style={{ color: "red", display: "block", marginTop: "5px" }}
-              >
-                {errors.brand}
-              </span>
-            )}
-            <Dropdown.Menu>
-              {device.brands.map((brand) => (
-                <Dropdown.Item
-                  onClick={() => device.setSelectedBrand(brand)}
-                  key={brand.id}
-                >
-                  {brand.name}
-                </Dropdown.Item>
-              ))}
-            </Dropdown.Menu>
-          </Dropdown>
+                <Dropdown className="mt-2 mb-2">
+                  <Dropdown.Toggle>
+                    {device.selectedBrand.name || "Выберите бренд"}
+                  </Dropdown.Toggle>
+                  {isSubmitted && !device.selectedBrand?.id && (
+                    <span
+                      style={{
+                        color: "red",
+                        display: "block",
+                        marginTop: "5px",
+                      }}
+                    >
+                      {errors.brand}
+                    </span>
+                  )}
+                  <Dropdown.Menu>
+                    {device.brands.map((brand) => (
+                      <Dropdown.Item
+                        onClick={() => device.setSelectedBrand(brand)}
+                        key={brand.id}
+                      >
+                        {brand.name}
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
 
-          <Form.Control
-            value={name || ""}
-            onChange={(e) => setName(e.target.value)}
-            className="option-container border p-3 rounded mb-3"
-            placeholder="Введите название устройства"
-          />
-
-          {isSubmitted && !name && (
-            <span style={{ color: "red", display: "block", marginTop: "5px" }}>
-              {errors.name}
-            </span>
-          )}
-
-          <Form.Label>Перевод названия</Form.Label>
-          {["en", "ru", "est"].map((lang) => (
-            <Form.Control
-              key={lang}
-              value={translations.name[lang] || ""}
-              onChange={(e) =>
-                setTranslations((prev) => ({
-                  ...prev,
-                  name: { ...prev.name, [lang]: e.target.value },
-                }))
-              }
-              placeholder={`Название (${lang.toUpperCase()})`}
-              className="mt-2"
-            />
-          ))}
-
-          {isSubmitted && !name && (
-            <span style={{ color: "red", display: "block", marginTop: "5px" }}>
-              {errors.name}
-            </span>
-          )}
-
-          <Form.Group className="mt-3">
-            <Form.Check
-              type="checkbox"
-              label="💰 Цена со скидкой"
-              checked={discount}
-              onChange={(e) => {
-                setDiscount(e.target.checked);
-                if (!e.target.checked) {
-                  setOldPrice("");
-                  setPrice("");
-                }
-              }}
-            />
-          </Form.Group>
-
-          {discount && (
-            <Form.Group className="mt-3">
-              <Form.Label>Старая цена (до скидки)</Form.Label>
-              <Form.Control
-                type="number"
-                value={oldPrice}
-                onChange={(e) => setOldPrice(e.target.value)}
-                placeholder="Старая цена (до скидки)"
-              />
-              {isSubmitted && discount && (!oldPrice || isNaN(oldPrice)) && (
-                <span
-                  style={{ color: "red", display: "block", marginTop: "5px" }}
-                >
-                  {errors.oldPrice}
-                </span>
-              )}
-            </Form.Group>
-          )}
-
-          <Form.Group className="mt-3">
-            <Form.Label>Новая цена (со скидкой)</Form.Label>
-            <Form.Control
-              type="number"
-              value={price || ""}
-              onChange={(e) => setPrice(Number(e.target.value))}
-              placeholder="Новая цена (со скидкой)"
-            />
-            {((isSubmitted && !price) || isNaN(price)) && (
-              <span
-                style={{ color: "red", display: "block", marginTop: "5px" }}
-              >
-                {errors.price}
-              </span>
-            )}
-          </Form.Group>
-
-          <div className={styles.ImageGrid}>
-            {images.map((img, index) => (
-              <div
-                key={index}
-                className={styles.ImageCell}
-                onClick={() =>
-                  document.getElementById(`file-input-${index}`).click()
-                }
-              >
-                {img ? (
-                  <img
-                    src={
-                      typeof img === "string" ? img : URL.createObjectURL(img)
-                    }
-                    alt={`img-${index}`}
-                    className={styles.UploadedImage}
-                  />
-                ) : (
-                  <div className={styles.EmptyCell}>+</div>
-                )}
-                <input
-                  type="file"
-                  id={`file-input-${index}`}
-                  onChange={(e) => handleImageChange(index, e)}
-                  hidden
+                <Form.Control
+                  value={name || ""}
+                  onChange={(e) => setName(e.target.value)}
+                  className="option-container border p-3 rounded mb-3"
+                  placeholder="Введите название устройства"
                 />
-                {img && (
-                  <button
-                    className={styles.DeleteButton}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeImage(index);
-                    }}
+
+                {isSubmitted && !name && (
+                  <span
+                    style={{ color: "red", display: "block", marginTop: "5px" }}
                   >
-                    ✖
-                  </button>
+                    {errors.name}
+                  </span>
                 )}
+
+                <Form.Label>Перевод названия</Form.Label>
+                {["en", "ru", "est"].map((lang) => (
+                  <Form.Control
+                    key={lang}
+                    value={translations.name[lang] || ""}
+                    onChange={(e) =>
+                      setTranslations((prev) => ({
+                        ...prev,
+                        name: { ...prev.name, [lang]: e.target.value },
+                      }))
+                    }
+                    placeholder={`Название (${lang.toUpperCase()})`}
+                    className="mt-2"
+                  />
+                ))}
+              </>
+            )}
+          </div>
+
+          {isSubmitted && !name && (
+            <span style={{ color: "red", display: "block", marginTop: "5px" }}>
+              {errors.name}
+            </span>
+          )}
+
+          <div className="mb-4">
+            <h5
+              onClick={() => toggleSection("price")}
+              style={{ cursor: "pointer" }}
+            >
+              💰 Цены и скидки {openSections.price ? "▲" : "▼"}
+            </h5>
+            {openSections.price && (
+              <>
+                <Form.Group className="mt-3">
+                  <Form.Check
+                    type="checkbox"
+                    label="💰 Цена со скидкой"
+                    checked={discount}
+                    onChange={(e) => {
+                      setDiscount(e.target.checked);
+                      if (!e.target.checked) {
+                        setOldPrice("");
+                        setPrice("");
+                      }
+                    }}
+                  />
+                </Form.Group>
+
+                {discount && (
+                  <Form.Group className="mt-3">
+                    <Form.Label>Старая цена (до скидки)</Form.Label>
+                    <Form.Control
+                      type="number"
+                      value={oldPrice}
+                      onChange={(e) => setOldPrice(e.target.value)}
+                      placeholder="Старая цена (до скидки)"
+                    />
+                    {isSubmitted &&
+                      discount &&
+                      (!oldPrice || isNaN(oldPrice)) && (
+                        <span
+                          style={{
+                            color: "red",
+                            display: "block",
+                            marginTop: "5px",
+                          }}
+                        >
+                          {errors.oldPrice}
+                        </span>
+                      )}
+                  </Form.Group>
+                )}
+
+                <Form.Group className="mt-3">
+                  <Form.Label>Новая цена (со скидкой)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    value={price || ""}
+                    onChange={(e) => setPrice(Number(e.target.value))}
+                    placeholder="Новая цена (со скидкой)"
+                  />
+                  {((isSubmitted && !price) || isNaN(price)) && (
+                    <span
+                      style={{
+                        color: "red",
+                        display: "block",
+                        marginTop: "5px",
+                      }}
+                    >
+                      {errors.price}
+                    </span>
+                  )}
+                </Form.Group>
+              </>
+            )}
+          </div>
+          <div className="mb-4">
+            <h5
+              onClick={() => toggleSection("images")}
+              style={{ cursor: "pointer" }}
+            >
+              🖼 Изображения {openSections.images ? "▲" : "▼"}
+            </h5>
+            {openSections.images && (
+              <div className={styles.ImageGrid}>
+                {images.map((img, index) => (
+                  <div
+                    key={index}
+                    className={styles.ImageCell}
+                    onClick={() =>
+                      document.getElementById(`file-input-${index}`).click()
+                    }
+                  >
+                    {img ? (
+                      <img
+                        src={
+                          typeof img === "string"
+                            ? img
+                            : URL.createObjectURL(img)
+                        }
+                        alt={`img-${index}`}
+                        className={styles.UploadedImage}
+                      />
+                    ) : (
+                      <div className={styles.EmptyCell}>+</div>
+                    )}
+                    <input
+                      type="file"
+                      id={`file-input-${index}`}
+                      onChange={(e) => handleImageChange(index, e)}
+                      hidden
+                    />
+                    {img && (
+                      <button
+                        className={styles.DeleteButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeImage(index);
+                        }}
+                      >
+                        ✖
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
 
           <div className="image-preview-container mt-3">
@@ -711,297 +770,346 @@ useEffect(() => {
               />
             ))}
           </div>
-
-          <hr />
-          <Button variant="outline-dark" onClick={addOption}>
-            Добавить опцию
-          </Button>
-          {options.map((option, optionIndex) => (
-            <div
-              key={optionIndex}
-              className="option-container border p-3 rounded mb-3"
+          <div className="mb-4">
+            <h5
+              onClick={() => toggleSection("options")}
+              style={{ cursor: "pointer" }}
             >
-              <Form.Control
-                value={option.name}
-                onChange={(e) => updateOptionName(optionIndex, e.target.value)}
-                placeholder="Название опции (например, Цвет)"
-                className="mb-2"
-              />
-              {optionErrors[`option_${optionIndex}`] && (
-                <span style={{ color: "red", fontSize: "12px" }}>
-                  {optionErrors[`option_${optionIndex}`]}
-                </span>
-              )}
-
-              {["en", "ru", "est"].map((lang) => (
-                <Form.Control
-                  key={lang}
-                  value={
-                    translations.options?.[optionIndex]?.name?.[lang] || ""
-                  }
-                  onChange={(e) =>
-                    updateOptionTranslation(optionIndex, lang, e.target.value)
-                  }
-                  className="mt-2"
-                  placeholder={`Название опции (${lang.toUpperCase()})`}
-                />
-              ))}
-
-              {option.values.map((value, valueIndex) => (
-                <div
-                  key={valueIndex}
-                  className="option-container border p-3 rounded mb-3"
-                >
-                  <Form.Control
-                    value={value.value}
-                    onChange={(e) =>
-                      updateOptionValue(
-                        optionIndex,
-                        valueIndex,
-                        "value",
-                        e.target.value
-                      )
-                    }
-                    placeholder="Значение (например, Красный)"
-                    className="me-2"
-                  />
-
-                  {["en", "ru", "est"].map((lang) => (
-                    <Form.Control
-                      key={lang}
-                      value={
-                        translations.options?.[optionIndex]?.values?.[
-                          valueIndex
-                        ]?.[lang] || ""
-                      }
-                      onChange={(e) =>
-                        updateOptionValueTranslation(
-                          optionIndex,
-                          valueIndex,
-                          lang,
-                          e.target.value
-                        )
-                      }
-                      className="mt-2"
-                      placeholder={`Перевод значения (${lang.toUpperCase()})`}
-                    />
-                  ))}
-
-                  <Form.Control
-                    type="number"
-                    value={value.price}
-                    onChange={(e) =>
-                      updateOptionValue(
-                        optionIndex,
-                        valueIndex,
-                        "price",
-                        parseFloat(e.target.value)
-                      )
-                    }
-                    placeholder="Цена"
-                    className="me-2"
-                  />
-                  <Form.Control
-                    type="number"
-                    value={value.quantity}
-                    onChange={(e) => {
-                      const newValue =
-                        e.target.value === ""
-                          ? ""
-                          : parseInt(e.target.value, 10);
-                      updateOptionValue(
-                        optionIndex,
-                        valueIndex,
-                        "quantity",
-                        newValue
-                      );
-                    }}
-                    placeholder="Количество"
-                    className="me-2"
-                  />
-                  <Button
-                    variant="outline-danger"
-                    onClick={() => removeOptionValue(optionIndex, valueIndex)}
+              🧩 Опции {openSections.options ? "▲" : "▼"}
+            </h5>
+            {openSections.options && (
+              <>
+                <hr />
+                <Button variant="outline-dark" onClick={addOption}>
+                  Добавить опцию
+                </Button>
+                {options.map((option, optionIndex) => (
+                  <div
+                    key={optionIndex}
+                    className="option-container border p-3 rounded mb-3"
                   >
-                    Удалить
-                  </Button>
-                </div>
-              ))}
-              <Button
-                variant="outline-dark"
-                onClick={() => addOptionValue(optionIndex)}
-              >
-                Добавить значение
-              </Button>
-              <Button
-                variant="outline-danger"
-                className="ms-2"
-                onClick={() => removeOption(optionIndex)}
-              >
-                Удалить опцию
-              </Button>
-            </div>
-          ))}
+                    <Form.Control
+                      value={option.name}
+                      onChange={(e) =>
+                        updateOptionName(optionIndex, e.target.value)
+                      }
+                      placeholder="Название опции (например, Цвет)"
+                      className="mb-2"
+                    />
+                    {optionErrors[`option_${optionIndex}`] && (
+                      <span style={{ color: "red", fontSize: "12px" }}>
+                        {optionErrors[`option_${optionIndex}`]}
+                      </span>
+                    )}
 
-            <div className={styles.formGroup}>
-            <label className={styles.label}>Описание (RU)</label>
-            <textarea
-              className={styles.textarea}
-              rows={3}
-              value={description || ""}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Введите описание девайса RU (необязательно)"
-            />
-            {isSubmitted && description && description.length < 5 && (
-              <span className={styles.errorText}>
-                Описание должно быть не менее 5 символов
-              </span>
+                    {["en", "ru", "est"].map((lang) => (
+                      <Form.Control
+                        key={lang}
+                        value={
+                          translations.options?.[optionIndex]?.name?.[lang] ||
+                          ""
+                        }
+                        onChange={(e) =>
+                          updateOptionTranslation(
+                            optionIndex,
+                            lang,
+                            e.target.value
+                          )
+                        }
+                        className="mt-2"
+                        placeholder={`Название опции (${lang.toUpperCase()})`}
+                      />
+                    ))}
+
+                    {option.values.map((value, valueIndex) => (
+                      <div
+                        key={valueIndex}
+                        className="option-container border p-3 rounded mb-3"
+                      >
+                        <Form.Control
+                          value={value.value}
+                          onChange={(e) =>
+                            updateOptionValue(
+                              optionIndex,
+                              valueIndex,
+                              "value",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Значение (например, Красный)"
+                          className="me-2"
+                        />
+
+                        {["en", "ru", "est"].map((lang) => (
+                          <Form.Control
+                            key={lang}
+                            value={
+                              translations.options?.[optionIndex]?.values?.[
+                                valueIndex
+                              ]?.[lang] || ""
+                            }
+                            onChange={(e) =>
+                              updateOptionValueTranslation(
+                                optionIndex,
+                                valueIndex,
+                                lang,
+                                e.target.value
+                              )
+                            }
+                            className="mt-2"
+                            placeholder={`Перевод значения (${lang.toUpperCase()})`}
+                          />
+                        ))}
+
+                        <Form.Control
+                          type="number"
+                          value={value.price}
+                          onChange={(e) =>
+                            updateOptionValue(
+                              optionIndex,
+                              valueIndex,
+                              "price",
+                              parseFloat(e.target.value)
+                            )
+                          }
+                          placeholder="Цена"
+                          className="me-2"
+                        />
+                        <Form.Control
+                          type="number"
+                          value={value.quantity}
+                          onChange={(e) => {
+                            const newValue =
+                              e.target.value === ""
+                                ? ""
+                                : parseInt(e.target.value, 10);
+                            updateOptionValue(
+                              optionIndex,
+                              valueIndex,
+                              "quantity",
+                              newValue
+                            );
+                          }}
+                          placeholder="Количество"
+                          className="me-2"
+                        />
+                        <Button
+                          variant="outline-danger"
+                          onClick={() =>
+                            removeOptionValue(optionIndex, valueIndex)
+                          }
+                        >
+                          Удалить
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline-dark"
+                      onClick={() => addOptionValue(optionIndex)}
+                    >
+                      Добавить значение
+                    </Button>
+                    <Button
+                      variant="outline-danger"
+                      className="ms-2"
+                      onClick={() => removeOption(optionIndex)}
+                    >
+                      Удалить опцию
+                    </Button>
+                  </div>
+                ))}
+              </>
             )}
           </div>
 
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Description (EN)</label>
-            <textarea
-              className={styles.textarea}
-              rows={3}
-              value={translations.description?.en || ""}
-              placeholder="Введите описание девайса EN (необязательно)"
-              onChange={(e) =>
-                setTranslations({
-                  ...translations,
-                  description: {
-                    ...translations.description,
-                    en: e.target.value,
-                  },
-                })
-              }
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Description (RU)</label>
-            <textarea
-              className={styles.textarea}
-              rows={3}
-              value={translations.description?.ru || ""}
-              placeholder="Введите описание девайса RU (необязательно)"
-              onChange={(e) =>
-                setTranslations({
-                  ...translations,
-                  description: {
-                    ...translations.description,
-                    ru: e.target.value,
-                  },
-                })
-              }
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Description (EST)</label>
-            <textarea
-              className={styles.textarea}
-              rows={3}
-              value={translations.description?.est || ""}
-              placeholder="Введите описание девайса EST (необязательно)"
-              onChange={(e) =>
-                setTranslations({
-                  ...translations,
-                  description: {
-                    ...translations.description,
-                    est: e.target.value,
-                  },
-                })
-              }
-            />
-          </div>
-
-          <hr />
-          <Button variant={"outline-dark"} onClick={addInfo}>
-            Добавить новое свойство
-          </Button>
-          {info.map(
-            (
-              i,
-              index 
-            ) => (
-              <Row className="mt-4" key={`info-${index}`}>
-                <Col md={4}>
-                  <Form.Control
-                    value={i.title}
-                    onChange={(e) =>
-                      changeInfo("title", e.target.value, i.number)
-                    }
-                    placeholder="Введите название свойства"
+          <div className="mb-4">
+            <h5
+              onClick={() => toggleSection("description")}
+              style={{ cursor: "pointer" }}
+            >
+              📄 Описание {openSections.description ? "▲" : "▼"}
+            </h5>
+            {openSections.description && (
+              <>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Описание (RU)</label>
+                  <textarea
+                    className={styles.textarea}
+                    rows={3}
+                    value={description || ""}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Введите описание девайса RU (необязательно)"
                   />
+                  {isSubmitted && description && description.length < 5 && (
+                    <span className={styles.errorText}>
+                      Описание должно быть не менее 5 символов
+                    </span>
+                  )}
+                </div>
 
-                  {["en", "ru", "est"].map((lang) => (
-                    <Form.Control
-                      key={lang}
-                      value={translations.info?.[index]?.title?.[lang] || ""}
-                      onChange={(e) => {
-                        setTranslations((prev) => {
-                          const updatedInfo = [...prev.info];
-
-                          if (!updatedInfo[index]) {
-                            updatedInfo[index] = { title: {}, description: {} };
-                          }
-
-                          updatedInfo[index].title[lang] = e.target.value;
-
-                          return { ...prev, info: updatedInfo };
-                        });
-                      }}
-                      placeholder={`Название (${lang.toUpperCase()})`}
-                      className="mt-1"
-                    />
-                  ))}
-                </Col>
-
-                <Col md={4}>
-                  <Form.Control
-                    value={i.description}
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Description (EN)</label>
+                  <textarea
+                    className={styles.textarea}
+                    rows={3}
+                    value={translations.description?.en || ""}
+                    placeholder="Введите описание девайса EN (необязательно)"
                     onChange={(e) =>
-                      changeInfo("description", e.target.value, i.number)
+                      setTranslations({
+                        ...translations,
+                        description: {
+                          ...translations.description,
+                          en: e.target.value,
+                        },
+                      })
                     }
-                    placeholder="Введите описание свойства"
                   />
+                </div>
 
-                  {["en", "ru", "est"].map((lang) => (
-                    <Form.Control
-                      key={lang}
-                      value={
-                        translations.info?.[index]?.description?.[lang] || ""
-                      }
-                      onChange={(e) => {
-                        setTranslations((prev) => {
-                          const updatedInfo = [...prev.info];
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Description (RU)</label>
+                  <textarea
+                    className={styles.textarea}
+                    rows={3}
+                    value={translations.description?.ru || ""}
+                    placeholder="Введите описание девайса RU (необязательно)"
+                    onChange={(e) =>
+                      setTranslations({
+                        ...translations,
+                        description: {
+                          ...translations.description,
+                          ru: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </div>
 
-                          if (!updatedInfo[index]) {
-                            updatedInfo[index] = { title: {}, description: {} };
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Description (EST)</label>
+                  <textarea
+                    className={styles.textarea}
+                    rows={3}
+                    value={translations.description?.est || ""}
+                    placeholder="Введите описание девайса EST (необязательно)"
+                    onChange={(e) =>
+                      setTranslations({
+                        ...translations,
+                        description: {
+                          ...translations.description,
+                          est: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="mb-4">
+            <h5
+              onClick={() => toggleSection("info")}
+              style={{ cursor: "pointer" }}
+            >
+              ⚙️ Характеристики {openSections.info ? "▲" : "▼"}
+            </h5>
+            {openSections.info && (
+              <>
+                <hr />
+                <Button variant={"outline-dark"} onClick={addInfo}>
+                  Добавить новое свойство
+                </Button>
+                {info.map((i, index) => (
+                  <Row className="mt-4" key={`info-${index}`}>
+                    <Col md={4}>
+                      <Form.Control
+                        value={i.title}
+                        onChange={(e) =>
+                          changeInfo("title", e.target.value, i.number)
+                        }
+                        placeholder="Введите название свойства"
+                      />
+
+                      {["en", "ru", "est"].map((lang) => (
+                        <Form.Control
+                          key={lang}
+                          value={
+                            translations.info?.[index]?.title?.[lang] || ""
                           }
+                          onChange={(e) => {
+                            setTranslations((prev) => {
+                              const updatedInfo = [...prev.info];
 
-                          updatedInfo[index].description[lang] = e.target.value;
+                              if (!updatedInfo[index]) {
+                                updatedInfo[index] = {
+                                  title: {},
+                                  description: {},
+                                };
+                              }
 
-                          return { ...prev, info: updatedInfo };
-                        });
-                      }}
-                      placeholder={`Описание (${lang.toUpperCase()})`}
-                      className="mt-1"
-                    />
-                  ))}
-                </Col>
-                <Col md={4}>
-                  <Button
-                    onClick={() => removeInfo(i.number)}
-                    variant={"outline-danger"}
-                  >
-                    Удалить
-                  </Button>
-                </Col>
-              </Row>
-            )
-          )}
+                              updatedInfo[index].title[lang] = e.target.value;
+
+                              return { ...prev, info: updatedInfo };
+                            });
+                          }}
+                          placeholder={`Название (${lang.toUpperCase()})`}
+                          className="mt-1"
+                        />
+                      ))}
+                    </Col>
+
+                    <Col md={4}>
+                      <Form.Control
+                        value={i.description}
+                        onChange={(e) =>
+                          changeInfo("description", e.target.value, i.number)
+                        }
+                        placeholder="Введите описание свойства"
+                      />
+
+                      {["en", "ru", "est"].map((lang) => (
+                        <Form.Control
+                          key={lang}
+                          value={
+                            translations.info?.[index]?.description?.[lang] ||
+                            ""
+                          }
+                          onChange={(e) => {
+                            setTranslations((prev) => {
+                              const updatedInfo = [...prev.info];
+
+                              if (!updatedInfo[index]) {
+                                updatedInfo[index] = {
+                                  title: {},
+                                  description: {},
+                                };
+                              }
+
+                              updatedInfo[index].description[lang] =
+                                e.target.value;
+
+                              return { ...prev, info: updatedInfo };
+                            });
+                          }}
+                          placeholder={`Описание (${lang.toUpperCase()})`}
+                          className="mt-1"
+                        />
+                      ))}
+                    </Col>
+                    <Col md={4}>
+                      <Button
+                        onClick={() => removeInfo(i.number)}
+                        variant={"outline-danger"}
+                      >
+                        Удалить
+                      </Button>
+                    </Col>
+                  </Row>
+                ))}
+              </>
+            )}
+          </div>
         </Form>
       </Modal.Body>
 
