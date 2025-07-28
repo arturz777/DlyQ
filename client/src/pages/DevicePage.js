@@ -322,6 +322,10 @@ return (
         </div>
       </div>
 
+              <div className={styles.DevicePageInfo}>
+<h2>Фотографии товаров приведены в ознакомительных целях. Возможны незначительные расхождения во внешнем виде.</h2>
+</div>
+
       <div className={styles.DevicePageSpecs}>
         {(device.translations?.description?.[currentLang] ||
           device.description) && (
