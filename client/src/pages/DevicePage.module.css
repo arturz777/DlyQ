@@ -185,6 +185,14 @@
   cursor: not-allowed;
 }
 
+.DevicePageInfo {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  display: block;
+  text-align: center;
+}
+
 .DevicePageSpecs {
   width: 100%;
   max-width: 1400px;
