@@ -63,6 +63,8 @@ const Admin = () => {
   const [allOrders, setAllOrders] = useState([]);
   const [couriers, setCouriers] = useState([]);
   const [unreadChats, setUnreadChats] = useState(new Set());
+   const [openTypeIds, setOpenTypeIds] = useState([]);
+  const [openDeviceTypeIds, setOpenDeviceTypeIds] = useState([]);
 
   useEffect(() => {
     const socket = io(`https://zang-4.onrender.com`);
@@ -213,6 +215,22 @@ const Admin = () => {
     };
   }, [user]);
 
+  const toggleDeviceType = (typeId) => {
+    setOpenDeviceTypeIds((prev) =>
+      prev.includes(typeId)
+        ? prev.filter((id) => id !== typeId)
+        : [...prev, typeId]
+    );
+  };
+
+  const toggleTypeOpen = (typeId) => {
+    setOpenTypeIds((prev) =>
+      prev.includes(typeId)
+        ? prev.filter((id) => id !== typeId)
+        : [...prev, typeId]
+    );
+  };
+
   const openCreateTypeModal = () => {
     fetchTypes().then((fetchedTypes) => {
       setTypes(fetchedTypes);
@@ -352,94 +370,36 @@ const Admin = () => {
               (subtype) => subtype.typeId === type.id
             );
 
+            if (typeDevices.length === 0 && subtypesForType.length === 0)
+              return null;
+
+            const isOpen = openDeviceTypeIds.includes(type.id);
+
             return (
               <div key={type.id} className={styles.typeGroup}>
-                <h5 className={styles.typeTitle}>{type.name}</h5>
-
-                {typeDevices.filter((device) => !device.subtypeId).length >
-                  0 && (
-                  <div className={styles.itemList}>
-                    {typeDevices
-                      .filter((device) => !device.subtypeId)
-                      .map((device) => (
-                        <div key={device.id} className={styles.item}>
-                          <div>
-                            id-
-                            {device.id}
-                            <Image
-                              className={styles.adminDeviceImg}
-                              width={50}
-                              height={50}
-                              src={device.img}
-                            />
-                          </div>
-                          <span className={styles.adminDeviceName}>
-                            {device.name}
-                          </span>
-
-                          <div className={styles.buttons}>
-                            <div className={styles.adminDevicePrice}>
-                              {device.discount ? (
-                                <>
-                                  <span className={styles.discountedPrice}>
-                                    {device.price} €
-                                  </span>
-                                  <span className={styles.oldPrice}>
-                                    {device.oldPrice} €
-                                  </span>
-                                </>
-                              ) : (
-                                <span>{device.price} €</span>
-                              )}
-                            </div>
-                            <span className={styles.deviceQuantity}>
-                              {device.quantity === 0 ? (
-                                <span style={{ color: "red" }}>
-                                  Нет в наличии
-                                </span>
-                              ) : (
-                                <span style={{ color: "green" }}>
-                                  В наличии: {device.quantity}
-                                </span>
-                              )}
-                            </span>
-
-                            <button
-                              className={styles.editButton}
-                              onClick={() => handleEditDevice(device)}
-                            >
-                              Редактировать
-                            </button>
-                            <button
-                              className={styles.deleteButton}
-                              onClick={() => {
-                                const confirmed = window.confirm(
-                                  "Вы уверены, что хотите удалить этот товар?"
-                                );
-                                if (confirmed) {
-                                  handleDeleteDevice(device.id);
-                                }
-                              }}
-                            >
-                              Удалить
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-
-                {subtypesForType.map((subtype) => {
-                  const subtypeDevices = typeDevices.filter(
-                    (device) => device.subtypeId === subtype.id
-                  );
-                  return (
-                    <div key={subtype.id} className={styles.typeGroup}>
-                      <h5 className={styles.typeTitle}>{subtype.name}</h5>
-
+                <div
+                  className={styles.typeHeader}
+                  onClick={() => toggleDeviceType(type.id)}
+                  style={{
+                    cursor: "pointer",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    background: "#e8f0fe",
+                    padding: "10px",
+                    borderRadius: "5px",
+                    marginBottom: "5px",
+                  }}
+                >
+                  <h5 className={styles.typeTitle}>{type.name}</h5>
+                  <span>{isOpen ? "▲" : "▼"}</span>
+                </div>
+                {isOpen && (
+                  <>
+                    {typeDevices.filter((d) => !d.subtypeId).length > 0 && (
                       <div className={styles.itemList}>
-                        {subtypeDevices.length > 0 ? (
-                          subtypeDevices.map((device) => (
+                        {typeDevices
+                          .filter((device) => !device.subtypeId)
+                          .map((device) => (
                             <div key={device.id} className={styles.item}>
                               <div>
                                 id-
@@ -457,19 +417,30 @@ const Admin = () => {
 
                               <div className={styles.buttons}>
                                 <div className={styles.adminDevicePrice}>
-                                  {device.price} € |
-                                  <span className={styles.deviceQuantity}>
-                                    {device.quantity === 0 ? (
-                                      <span style={{ color: "red" }}>
-                                        Нет в наличии
+                                  {device.discount ? (
+                                    <>
+                                      <span className={styles.discountedPrice}>
+                                        {device.price} €
                                       </span>
-                                    ) : (
-                                      <span style={{ color: "green" }}>
-                                        В наличии: {device.quantity}
+                                      <span className={styles.oldPrice}>
+                                        {device.oldPrice} €
                                       </span>
-                                    )}
-                                  </span>
+                                    </>
+                                  ) : (
+                                    <span>{device.price} €</span>
+                                  )}
                                 </div>
+                                <span className={styles.deviceQuantity}>
+                                  {device.quantity === 0 ? (
+                                    <span style={{ color: "red" }}>
+                                      Нет в наличии
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: "green" }}>
+                                      В наличии: {device.quantity}
+                                    </span>
+                                  )}
+                                </span>
 
                                 <button
                                   className={styles.editButton}
@@ -481,7 +452,7 @@ const Admin = () => {
                                   className={styles.deleteButton}
                                   onClick={() => {
                                     const confirmed = window.confirm(
-                                      "Вы уверены, что хотите удалить этот товар?"
+                                      "Вы уверены, что хотите удалить этот девайс?"
                                     );
                                     if (confirmed) {
                                       handleDeleteDevice(device.id);
@@ -492,21 +463,78 @@ const Admin = () => {
                                 </button>
                               </div>
                             </div>
-                          ))
-                        ) : (
-                          <p className={styles.emptyCategoryMessage}>
-                            Нет доступных товаров в этом подтипе.
-                          </p>
-                        )}
+                          ))}
                       </div>
-                    </div>
-                  );
-                })}
+                    )}
 
-                {typeDevices.length === 0 && subtypesForType.length === 0 && (
-                  <p className={styles.emptyCategoryMessage}>
-                    У этого типа нет товаров.
-                  </p>
+                    {subtypesForType.map((subtype) => {
+                      const subtypeDevices = typeDevices.filter(
+                        (device) => device.subtypeId === subtype.id
+                      );
+                      if (subtypeDevices.length === 0) return null;
+                      return (
+                        <div key={subtype.id} className={styles.typeGroup}>
+                          <h5 className={styles.typeTitle}>{subtype.name}</h5>
+                          <div className={styles.itemList}>
+                            {subtypeDevices.map((device) => (
+                              <div key={device.id} className={styles.item}>
+                                <div>
+                                  id-
+                                  {device.id}
+                                  <Image
+                                    className={styles.adminDeviceImg}
+                                    width={50}
+                                    height={50}
+                                    src={device.img}
+                                  />
+                                </div>
+                                <span className={styles.adminDeviceName}>
+                                  {device.name}
+                                </span>
+
+                                <div className={styles.buttons}>
+                                  <div className={styles.adminDevicePrice}>
+                                    {device.price} €
+                                  </div>
+                                  <span className={styles.deviceQuantity}>
+                                    {device.quantity === 0 ? (
+                                      <span style={{ color: "red" }}>
+                                        Нет в наличии
+                                      </span>
+                                    ) : (
+                                      <span style={{ color: "green" }}>
+                                        В наличии: {device.quantity}
+                                      </span>
+                                    )}
+                                  </span>
+
+                                  <button
+                                    className={styles.editButton}
+                                    onClick={() => handleEditDevice(device)}
+                                  >
+                                    Редактировать
+                                  </button>
+                                  <button
+                                    className={styles.deleteButton}
+                                    onClick={() => {
+                                      const confirmed = window.confirm(
+                                        "Вы уверены, что хотите удалить этот девайс?"
+                                      );
+                                      if (confirmed) {
+                                        handleDeleteDevice(device.id);
+                                      }
+                                    }}
+                                  >
+                                    Удалить
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
                 )}
               </div>
             );
@@ -579,37 +607,68 @@ const Admin = () => {
             </button>
           </div>
 
-          <div className={styles.itemList}>
-            {subtypes.map((subtype) => (
-              <div key={subtype.id} className={styles.item}>
-                <span>
-                  {subtype.name} (Тип:{" "}
-                  {typesMap.get(subtype.typeId)?.name || "N/A"})
-                </span>
-                <div className={styles.buttons}>
-                  <button
-                    className={styles.editButton}
-                    onClick={() => handleEditSubtype(subtype)}
-                  >
-                    Редактировать
-                  </button>
-                  <button
-                    className={styles.deleteButton}
-                    onClick={() => {
-                      const confirmed = window.confirm(
-                        "Вы уверены, что хотите удалить этот подтип?"
-                      );
-                      if (confirmed) {
-                        handleDeleteSubtype(subtype.id);
-                      }
-                    }}
-                  >
-                    Удалить
-                  </button>
+          {types.map((type) => {
+            const subtypesForType = subtypes.filter(
+              (s) => s.typeId === type.id
+            );
+            if (subtypesForType.length === 0) return null;
+
+            const isOpen = openTypeIds.includes(type.id);
+
+            return (
+              <div key={type.id} className={styles.typeGroup}>
+                <div
+                  className={styles.typeHeader}
+                  onClick={() => toggleTypeOpen(type.id)}
+                  style={{
+                    cursor: "pointer",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    background: "#f2f2f2",
+                    padding: "10px",
+                    borderRadius: "5px",
+                    marginBottom: "5px",
+                  }}
+                >
+                  <h4 className={styles.typeTitle}>{type.name}</h4>
+                  <span>{isOpen ? "▲" : "▼"}</span>
                 </div>
+                {isOpen && (
+                  <div className={styles.itemList}>
+                    {subtypesForType.map((subtype) => (
+                      <div key={subtype.id} className={styles.item}>
+                        <span>
+                          {subtype.name} (Тип:{" "}
+                          {typesMap.get(subtype.typeId)?.name || "N/A"})
+                        </span>
+                        <div className={styles.buttons}>
+                          <button
+                            className={styles.editButton}
+                            onClick={() => handleEditSubtype(subtype)}
+                          >
+                            Редактировать
+                          </button>
+                          <button
+                            className={styles.deleteButton}
+                            onClick={() => {
+                              const confirmed = window.confirm(
+                                "Вы уверены, что хотите удалить этот подтип?"
+                              );
+                              if (confirmed) {
+                                handleDeleteSubtype(subtype.id);
+                              }
+                            }}
+                          >
+                            Удалить
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </TabPanel>
 
         <TabPanel>
