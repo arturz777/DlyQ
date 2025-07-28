@@ -4,6 +4,14 @@
 	gap: 10px;
 	margin-top: 10px;
   }
+
+ .newProduct {
+	font-size: 30px;
+  }
+
+  .recommendProduct {
+	font-size: 30px;
+  }
   
   .imagePreview {
 	position: relative;
