@@ -7,6 +7,7 @@ import CreateType from "../components/modals/CreateType";
 import CreateSubType from "../components/modals/CreateSubType";
 import CourierMap from "../components/CourierMap";
 import ChatBox from "../components/ChatBox";
+import AdminAccounting from "../components/AdminAccounting";
 import { assignCourierToOrder } from "../http/orderAPI";
 import { fetchTranslations, updateTranslation } from "../http/translationAPI";
 import {
@@ -335,6 +336,7 @@ const Admin = () => {
             Чат поддержки{" "}
             {unreadChats.size > 0 && <span style={{ color: "red" }}>●</span>}
           </Tab>
+              <Tab>Бухгалтерия</Tab>
         </TabList>
 
         <TabPanel>
@@ -974,6 +976,9 @@ const Admin = () => {
             userRole="admin"
             onUnreadChange={(set) => setUnreadChats(set)}
           />
+        </TabPanel>
+              <TabPanel>
+          <AdminAccounting devices={devices} />
         </TabPanel>
       </Tabs>
 
