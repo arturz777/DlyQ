@@ -33,6 +33,8 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [quantity, setQuantity] = useState(0);
   const [optionErrors, setOptionErrors] = useState({});
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [purchaseHasVAT, setPurchaseHasVAT] = useState(false);
   const [translations, setTranslations] = useState({
     name: { en: "", ru: "", est: "" },
     options: [],
@@ -50,6 +52,20 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const toggleSection = (key) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
+   useEffect(() => {
+  if (editableDevice) {
+    setPurchasePrice(
+      editableDevice.purchasePrice !== undefined && editableDevice.purchasePrice !== null
+        ? String(editableDevice.purchasePrice)
+        : ""
+    );
+    setPurchaseHasVAT(Boolean(editableDevice.purchaseHasVAT)); 
+  } else {
+    setPurchasePrice("");
+    setPurchaseHasVAT(false); 
+  }
+}, [editableDevice])
 
   useEffect(() => {
     if (editableDevice) {
@@ -656,6 +672,24 @@ useEffect(() => {
             </h5>
             {openSections.price && (
               <>
+              <Form.Group className="mt-2">
+  <Form.Check
+    type="checkbox"
+    label="Цена включает НДС (24%)"
+    checked={purchaseHasVAT}
+    onChange={(e) => setPurchaseHasVAT(e.target.checked)}
+  />
+</Form.Group>
+        <Form.Group className="mt-3">
+  <Form.Label>Закупочная цена (за единицу)</Form.Label>
+  <Form.Control
+    type="number"
+    step="0.01"
+    value={purchasePrice}
+    onChange={(e) => setPurchasePrice(e.target.value)}
+    placeholder="Например, 5.50"
+  />
+</Form.Group>
                 <Form.Group className="mt-3">
                   <Form.Check
                     type="checkbox"
