@@ -311,6 +311,8 @@ useEffect(() => {
     formData.append("recommended", recommended);
     formData.append("name", name);
     formData.append("price", price);
+    formData.append("purchasePrice", purchasePrice === "" ? "" : String(purchasePrice));
+    formData.append("purchaseHasVAT", purchaseHasVAT);
     formData.append("quantity", quantity);
     formData.append("description", description || "");
 
