@@ -25,6 +25,8 @@ const Device = sequelize.define("device", {
   name: { type: DataTypes.STRING, unique: true, allowNull: false },
   price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
 oldPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
+   purchasePrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
+  purchaseHasVAT: { type: DataTypes.BOOLEAN, defaultValue: false },
   rating: { type: DataTypes.INTEGER, defaultValue: 0 },
   img: { type: DataTypes.STRING, allowNull: false },
   thumbnails: { type: DataTypes.JSONB, allowNull: true, defaultValue: [] },
