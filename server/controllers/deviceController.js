@@ -117,6 +117,10 @@ class DeviceController {
         oldPrice = price;
       }
 
+      const purchasePriceNum = purchasePrice !== undefined && purchasePrice !== null && purchasePrice !== ''
+  ? Number(purchasePrice)
+  : null;
+
       const device = await Device.create({
         name,
         price,
@@ -581,7 +585,6 @@ class DeviceController {
         ];
       }
 
-      // Пересчёт количества, если options есть
       if (options.length > 0) {
         quantity = options.reduce((sum, option) => {
           return (
@@ -685,6 +688,10 @@ class DeviceController {
       if (translationEntries.length > 0) {
         await Translation.bulkCreate(translationEntries);
       }
+
+      const purchasePriceNum = purchasePrice !== undefined && purchasePrice !== null && purchasePrice !== ''
+  ? Number(purchasePrice)
+  : null;
 
       await Device.update(
         {
