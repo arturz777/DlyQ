@@ -30,6 +30,7 @@ class DeviceController {
         isNew,
         discount,
         recommended,
+        purchasePrice,
       } = req.body;
 
       if (!name || !price || !typeId) {
@@ -131,6 +132,8 @@ class DeviceController {
         isNew: isNew === "true",
         discount: discount === "true",
         recommended: recommended === "true",
+        purchasePrice: purchasePriceNum,
+        purchaseHasVAT: req.body.purchaseHasVAT === "true",
       });
 
       if (info) {
@@ -483,6 +486,7 @@ class DeviceController {
         isNew,
         discount,
         recommended,
+        purchasePrice,
       } = req.body;
 
       let existingImages = req.body.existingImages
@@ -698,6 +702,8 @@ class DeviceController {
           isNew: isNew === "true",
           discount: discount === "true",
           recommended: recommended === "true",
+          purchasePrice: purchasePriceNum,
+          purchaseHasVAT: req.body.purchaseHasVAT === "true",
         },
         { where: { id } }
       );
