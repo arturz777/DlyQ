@@ -18,13 +18,11 @@ class BrandController {
 		  const { id } = req.params;
 		  const { name } = req.body;
 	  
-		  // Проверка существования бренда
 		  const brand = await Brand.findOne({ where: { id } });
 		  if (!brand) {
 			return res.status(404).json({ message: 'Бренд не найден' });
 		  }
 	  
-		  // Обновление данных
 		  await Brand.update({ name }, { where: { id } });
 	  
 		  const updatedBrand = await Brand.findOne({ where: { id } });
@@ -37,13 +35,13 @@ class BrandController {
 
 	async delete(req, res) {
 		try {
-		  const { id } = req.params; // Получаем ID из параметров
-		  const brand = await Brand.findOne({ where: { id } }); // Проверяем, существует ли бренд
+		  const { id } = req.params; 
+		  const brand = await Brand.findOne({ where: { id } });
 		  if (!brand) {
 			return res.status(404).json({ message: 'Бренд не найден' });
 		  }
 	
-		  await Brand.destroy({ where: { id } }); // Удаляем бренд
+		  await Brand.destroy({ where: { id } });
 		  return res.status(200).json({ message: 'Бренд успешно удален' });
 		} catch (error) {
 		  console.error(error);
