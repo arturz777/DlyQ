@@ -559,7 +559,7 @@ useEffect(() => {
                       {errors.type}
                     </span>
                   )}
-                  <Dropdown.Menu>
+                  <Dropdown.Menu className={styles.scrollableDropdownMenu}>
                     {device.types.map((type) => (
                       <Dropdown.Item
                         onClick={() => {
@@ -581,7 +581,7 @@ useEffect(() => {
                     {device.selectedSubType?.name ||
                       "Выберите подтип (необязательно)"}
                   </Dropdown.Toggle>
-                  <Dropdown.Menu>
+                  <Dropdown.Menu className={styles.scrollableDropdownMenu}>
                     <Dropdown.Item
                       onClick={() => device.setSelectedSubType(null)}
                     >
@@ -613,7 +613,7 @@ useEffect(() => {
                       {errors.brand}
                     </span>
                   )}
-                  <Dropdown.Menu>
+                  <Dropdown.Menu className={styles.scrollableDropdownMenu}>
                     {device.brands.map((brand) => (
                       <Dropdown.Item
                         onClick={() => device.setSelectedBrand(brand)}
