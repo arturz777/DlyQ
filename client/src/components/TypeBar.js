@@ -19,11 +19,24 @@ const TypeBar = observer(() => {
             type.id === device.selectedType.id ? styles.active : ""
           }`}
           onClick={() => {
-            device.setSelectedType(type);
-            document.getElementById(`type-${type.id}`).scrollIntoView({
-              behavior: "smooth",
-              block: "start",
-            });
+            const isSame = device.selectedType.id === type.id;
+
+            if (isSame) {
+              device.setSelectedType({});
+            } else {
+              device.setSelectedType(type);
+
+              setTimeout(() => {
+                const subtypeSection =
+                  document.getElementById("subtype-filter");
+                if (subtypeSection) {
+                  subtypeSection.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                }
+              }, 100);
+            }
           }}
         >
           <img src={type.img} alt={type.name} className={styles.typeImage} />
