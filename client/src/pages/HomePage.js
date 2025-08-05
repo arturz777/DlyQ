@@ -32,9 +32,9 @@ const HomePage = () => {
           recommendedData,
           typesData,
         ] = await Promise.all([
-          fetchNewDevices(10),
-          fetchDiscountedDevices(10),
-          fetchRecommendedDevices(10),
+          fetchNewDevices(),
+          fetchDiscountedDevices(),
+          fetchRecommendedDevices(),
           fetchTypes(),
         ]);
 
