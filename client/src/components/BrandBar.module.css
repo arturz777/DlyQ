@@ -1,54 +1,95 @@
-.brandBar {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-  padding: 10px;
-  background: #ffffff;
-  border-radius: 10px;
-  box-sizing: border-box;
+.dropdownWrapper {
+  position: relative;
+  width: 250px;
+  margin: 0 auto;
+  text-align: center;
 }
 
-.brandItem {
+.dropdownHeader {
+  position: relative;
+  padding: 10px 40px 10px 16px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  cursor: pointer;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 500;
+  min-height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 16px;
-  border-radius: 8px;
-  background: white;
+}
+
+.dropdownText {
+  flex: 1;
+  text-align: center;
+}
+
+.clearIcon {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  color: #888;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  white-space: nowrap;
+  transition: color 0.2s ease-in-out;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.clearIcon:hover {
+  color: #0072CE;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  width: 100%;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 10;
+  margin-top: 5px;
+}
+
+.searchInput {
+  width: 90%;
+  margin: 10px auto;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  display: block;
+}
+
+.brandList {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.brandItem {
+  padding: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease;
 }
 
 .brandItem:hover {
-  transform: scale(1.05);
-  background: #0072CE;
+  background: #f0f0f0;
 }
 
-.brandItem.active {
-  background: #0072CE;
-  color: white;
+.clearButton {
+  margin-top: 10px;
+  background: transparent;
+  border: none;
+  color: #0072CE;
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: underline;
 }
 
-@media (max-width: 768px) {
-  .brandBar {
-    flex-wrap: nowrap;
-    justify-content: flex-start; 
-    overflow-x: auto;
-    max-width: 100vw;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .brandBar::-webkit-scrollbar {
-    display: none;
-  }
-
-  .brandItem {
-    flex: 0 0 auto;
-  }
+.activeDropdown {
+  border: 2px solid #0072CE;
 }
-
-  
