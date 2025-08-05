@@ -29,7 +29,7 @@
   
   .typeItem:hover {
 	transform: scale(1.05);
-	background: #0072CE;
+	background: #ffffff;
   }
   
   .typeItem.active {
