@@ -73,7 +73,12 @@ import courierPolicyRu from './ru/courierPolicy.json';
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
-  .init({
+   .init({
+    detection: {
+      order: ['localStorage', 'navigator'],
+      lookupLocalStorage: 'i18nextLng',
+      caches: ['localStorage'],
+    },
     resources: {
       en: {
         navbar: navbarEn,
