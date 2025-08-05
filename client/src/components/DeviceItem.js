@@ -152,7 +152,7 @@ device.discount && device.oldPrice > device.price
   };
 
  return (
-    <div onClick={() => navigate(DEVICE_ROUTE + "/" + device.id)}>
+  <div onClick={() => navigate(DEVICE_ROUTE + "/" + device.id)}>
       <Card
         className={`${styles.card}`}
         onClick={(e) => navigate(DEVICE_ROUTE + "/" + device.id)}
@@ -161,11 +161,13 @@ device.discount && device.oldPrice > device.price
           <div className={styles.discountBadge}>-{discountPercentage}%</div>
         )}
 
+        <div className={styles.imageWrapper}>
         <Image className={styles.image} src={device.img} />
+         <div className={styles.addButton} onClick={handleAddToBasket}>+</div>
+        </div>
 
         <div className={styles.info}>
-          <h5 className={styles.name}>{deviceName}</h5>
-
+          
           <div className={styles.priceBlock}>
             {device.discount && device.oldPrice > device.price ? (
               <>
@@ -176,13 +178,8 @@ device.discount && device.oldPrice > device.price
               <span className={styles.regularPrice}>{device.price} €</span>
             )}
           </div>
+          <h5 className={styles.name}>{deviceName}</h5>
         </div>
-
-        <button className={styles.button} onClick={handleAddToBasket}>
-          {availableQuantity <= 0
-            ? t("out_of_stock", { ns: "deviceItem" })
-            : t("add_to_cart", { ns: "deviceItem" })}
-        </button>
 
         {availableQuantity <= 0 && (
           <p className={styles.preorderText}>
@@ -190,7 +187,8 @@ device.discount && device.oldPrice > device.price
           </p>
         )}
       </Card>
-    </div>
+    </div> 
+  
   );
 };
 
