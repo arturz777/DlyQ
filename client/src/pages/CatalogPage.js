@@ -151,7 +151,7 @@ const CatalogPage = observer(() => {
           <div className={catalogStyles.typeFilter}>
             <TypeBar />
           </div>
-          <div className={catalogStyles.subtypeFilter}>
+          <div id="subtype-filter" className={catalogStyles.subtypeFilter}>
             <SubTypeBar />
           </div>
         </div>
