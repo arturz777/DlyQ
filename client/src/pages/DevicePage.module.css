@@ -39,6 +39,8 @@
   justify-content: center;
   align-items: center;
   overflow: hidden;
+   border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .DevicePageImageWrapper {
@@ -48,7 +50,7 @@
   min-height: 400px;
   padding: 1.5rem;
   border-radius: 8px;
-  max-width: 300px;
+  max-width: 400px;
   width: 100%;
   align-items: center;
 }
@@ -81,7 +83,11 @@
 }
 
 .DevicePageThumbnail:hover {
-  border-color: #008b07;
+  border-color: #0072CE;
+}
+
+.ActiveThumbnail {
+  border-color: #0072CE;
 }
 
 .DevicePageDetails {
