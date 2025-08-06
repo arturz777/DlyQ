@@ -149,10 +149,6 @@ device.discount && device.oldPrice > device.price
     setAvailableQuantity((prev) => Math.max(0, prev - 1));
   };
 
-  const handleNavigate = () => {
-    navigate(DEVICE_ROUTE + "/" + device.id);
-  };
-
   return (
     <div onClick={() => onClick(device.id)}>
       <Card className={styles.card}>
