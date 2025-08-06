@@ -18,7 +18,9 @@
   border-top-left-radius: 16px;
   border-top-right-radius: 16px;
   max-height: 70vh;
-  overflow-y: auto;
+    overflow-y: scroll;
+  scrollbar-width: none; 
+  -ms-overflow-style: none;  
   padding: 20px;
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
 }
