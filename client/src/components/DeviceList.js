@@ -5,7 +5,7 @@ import DeviceItem from "./DeviceItem";
 import { useTranslation } from "react-i18next";
 import styles from "./DeviceList.module.css";
 
-const DeviceList = observer(() => {
+const DeviceList = observer(({ onDeviceClick }) => {
   const { device } = useContext(Context);
   const { t, i18n } = useTranslation();
     const currentLang = i18n.language || "en";
@@ -54,20 +54,7 @@ const DeviceList = observer(() => {
     return result;
   }, [device.types, device.subtypes, device.devices, currentLang]);
 
-  const hasVisibleDevices = useMemo(() => {
-    return Object.values(groupedDevices).some(
-      (group) =>
-        group.noSubtypeDevices.length > 0 ||
-        Object.values(group.subtypes).some((sub) => sub.devices.length > 0)
-    );
-  }, [groupedDevices]);
-
-  if (!hasVisibleDevices) {
-    return <p className={styles.noDevices}>{t("No devices found")}</p>;
-  }
-
-
-  return (
+return (
     <div>
       {Object.keys(groupedDevices).map((typeId) => {
         const typeGroup = groupedDevices[typeId];
@@ -89,7 +76,11 @@ const DeviceList = observer(() => {
             {typeGroup.noSubtypeDevices.length > 0 && (
               <div className={styles.deviceGrid}>
                 {typeGroup.noSubtypeDevices.map((device) => (
-                  <DeviceItem key={device.id} device={device} />
+                  <DeviceItem 
+                  key={device.id} 
+                  device={device}
+                  onClick={onDeviceClick}
+                   />
                 ))}
               </div>
             )}
@@ -117,7 +108,11 @@ const DeviceList = observer(() => {
                   )}
                   <div className={styles.deviceGrid}>
                     {subtypeGroup.devices.map((device) => (
-                      <DeviceItem key={device.id} device={device} />
+                      <DeviceItem 
+                      key={device.id} 
+                      device={device}
+                      onClick={onDeviceClick}
+                       />
                     ))}
                   </div>
                 </div>
