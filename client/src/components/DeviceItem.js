@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { isShopOpenNow } from "../utils/workHours";
 import styles from "./DeviceItem.module.css";
 
-const DeviceItem = ({ device }) => {
+const DeviceItem = ({ device, onClick }) => {
   const { basket } = useContext(Context);
   const navigate = useNavigate();
   const [availableQuantity, setAvailableQuantity] = useState(device.quantity);
