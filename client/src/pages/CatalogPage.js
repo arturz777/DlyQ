@@ -6,6 +6,8 @@ import TypeBar from "../components/TypeBar";
 import BrandBar from "../components/BrandBar";
 import SubTypeBar from "..//components/SubTypeBar";
 import DeviceList from "../components/DeviceList";
+import DevicePage from "../pages/DevicePage";
+import SlideModal from "../components/modals/SlideModal";
 import appStore from "../store/appStore";
 import {
   fetchBrands,
@@ -19,6 +21,7 @@ import catalogStyles from "./CatalogPage.module.css";
 
 const CatalogPage = observer(() => {
   const { device } = useContext(Context);
+   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
   const typeIdFromUrl = searchParams.get("typeId");
@@ -137,7 +140,7 @@ const CatalogPage = observer(() => {
     });
   };
 
-  return (
+ return (
     <div className={catalogStyles.catalogWrapper}>
       <div className={catalogStyles.catalogContent}>
         <h1 className={catalogStyles.catalogTitle}>
@@ -157,7 +160,7 @@ const CatalogPage = observer(() => {
         </div>
 
         <div className={catalogStyles.deviceContainer}>
-          <DeviceList />
+          <DeviceList onDeviceClick={(id) => setSelectedDeviceId(id)} />
         </div>
         {showScrollTop && (
           <button
@@ -167,6 +170,11 @@ const CatalogPage = observer(() => {
             ↑
           </button>
         )}
+        {selectedDeviceId && (
+  <SlideModal onClose={() => setSelectedDeviceId(null)}>
+    <DevicePage id={selectedDeviceId} />
+  </SlideModal>
+)}
       </div>
     </div>
   );
