@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   fetchNewDevices,
   fetchDiscountedDevices,
@@ -7,14 +8,16 @@ import {
 } from "../http/deviceAPI";
 import { useTranslation } from "react-i18next";
 import DeviceItem from "../components/DeviceItem";
-import styles from "./HomePage.module.css";
-import { Link } from "react-router-dom";
 import OrderSidebar from "../components/OrderSidebar";
+import SlideModal from "../components/modals/SlideModal";
+import DevicePage from "../pages/DevicePage";
+import styles from "./HomePage.module.css";
 
 const HomePage = () => {
   const [newDevices, setNewDevices] = useState([]);
   const [discountedDevices, setDiscountedDevices] = useState([]);
   const [recommendedDevices, setRecommendedDevices] = useState([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAllTypes, setShowAllTypes] = useState(false);
@@ -62,9 +65,10 @@ const HomePage = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+ 
   return (
     <div className={styles.homePage}>
-    {loading && <div className={styles.loadingOverlay}>{t("loading", { ns: "homePage" })}</div>}
+       {loading && <div className={styles.loadingOverlay}>{t("loading", { ns: "homePage" })}</div>}
       <div className={styles.banner}>
         <h1>{t("fast delivery", { ns: "homePage" })}</h1>
         <p>{t("average delivery time: 15–30 minutes", { ns: "homePage" })}</p>
@@ -131,7 +135,7 @@ const HomePage = () => {
           {newDevices.length > 0 ? (
             newDevices.map((device) => (
               <div key={device.id} className={styles.deviceItem}>
-                <DeviceItem device={device} />
+                <DeviceItem device={device} onClick={(id) => setSelectedDeviceId(id)} />
               </div>
             ))
           ) : (
@@ -146,7 +150,7 @@ const HomePage = () => {
           {Array.isArray(discountedDevices) && discountedDevices.length > 0 ? (
             discountedDevices.map((device) => (
               <div key={device.id} className={styles.deviceItem}>
-                <DeviceItem device={device} />
+                <DeviceItem device={device} onClick={(id) => setSelectedDeviceId(id)} />
               </div>
             ))
           ) : (
@@ -162,7 +166,7 @@ const HomePage = () => {
           recommendedDevices.length > 0 ? (
             recommendedDevices.map((device) => (
               <div key={device.id} className={styles.deviceItem}>
-                <DeviceItem device={device} />
+                <DeviceItem device={device} onClick={(id) => setSelectedDeviceId(id)} />
               </div>
             ))
           ) : (
@@ -170,6 +174,11 @@ const HomePage = () => {
           )}
         </div>
       </section>
+      {selectedDeviceId && (
+  <SlideModal onClose={() => setSelectedDeviceId(null)}>
+    <DevicePage id={selectedDeviceId} />
+  </SlideModal>
+)}
     </div>
   );
 };
