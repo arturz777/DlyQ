@@ -1,11 +1,10 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext } from "react";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import { useTranslation } from "react-i18next";
-import { fetchSubtypesByType } from "../http/deviceAPI";
 import styles from "./SubTypeBar.module.css";
 
-const SubTypeBar = observer(({ subtypes, subtypesReady }) => {
+const SubTypeBar = observer(() => {
   const { device } = useContext(Context);
   const { i18n } = useTranslation();
   const currentLang = i18n.language || "en";
@@ -17,16 +16,16 @@ const SubTypeBar = observer(({ subtypes, subtypesReady }) => {
     }
   };
 
- if (!device.selectedType.id || !subtypesReady) return null;
+  if (!device.selectedType.id) return null;
 
-  const filteredSubtypes = subtypes.filter(
+  const filteredSubtypes = device.subtypes.filter(
     (subtype) => subtype.typeId === device.selectedType.id
   );
 
   if (filteredSubtypes.length === 0) return null;
 
   return (
-   <div className={styles.subTypeBar}>
+    <div className={styles.subTypeBar}>
       {filteredSubtypes.map((subtype) => (
         <div
           key={subtype.id}
@@ -38,8 +37,7 @@ const SubTypeBar = observer(({ subtypes, subtypesReady }) => {
           </span>
         </div>
       ))}
-</div>
-
+    </div>
   );
 });
 
