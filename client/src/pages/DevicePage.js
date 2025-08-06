@@ -339,7 +339,7 @@ const DevicePage = ({ id }) => {
           </p>
         )}
         <h3 className={styles.DevicePageSpecsTitle}>
-          {t("Specifications", { ns: "devicePage" })}
+         {t("description", { ns: "devicePage" })}
         </h3>
 
         <div className={styles.DevicePageSpecsCard}>
