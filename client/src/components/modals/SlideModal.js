@@ -15,8 +15,8 @@ const SlideModal = ({ children, onClose }) => {
           exit={{ y: "100%" }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
           drag="y"
-          dragConstraints={{ top: 0, bottom: 0 }}
-          dragElastic={0.5}
+          dragConstraints={{ top: 0 }}
+          dragElastic={{ top: 0, bottom: 0.5 }}
           onDragEnd={(event, info) => {
             if (info.offset.y > 300) {
               onClose();
