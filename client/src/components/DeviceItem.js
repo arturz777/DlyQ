@@ -178,7 +178,7 @@ device.discount && device.oldPrice > device.price
 
         {availableQuantity <= 0 && (
           <p className={styles.preorderText}>
-            {t("Pre-order available", { ns: "deviceItem" })}
+            {t("pre-order only", { ns: "deviceItem" })}
           </p>
         )}
       </Card>
