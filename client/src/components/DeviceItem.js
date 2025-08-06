@@ -14,6 +14,7 @@ const DeviceItem = ({ device }) => {
   const navigate = useNavigate();
   const [availableQuantity, setAvailableQuantity] = useState(device.quantity);
   const [isPreorder, setIsPreorder] = useState(false);
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
   const deviceName = device.translations?.name?.[currentLang] || device.name;
@@ -147,16 +148,14 @@ device.discount && device.oldPrice > device.price
 
     setAvailableQuantity((prev) => Math.max(0, prev - 1));
   };
+
   const handleNavigate = () => {
     navigate(DEVICE_ROUTE + "/" + device.id);
   };
 
- return (
-  <div onClick={() => navigate(DEVICE_ROUTE + "/" + device.id)}>
-      <Card
-        className={`${styles.card}`}
-        onClick={(e) => navigate(DEVICE_ROUTE + "/" + device.id)}
-      >
+  return (
+    <div onClick={() => onClick(device.id)}>
+      <Card className={styles.card}>
         {discountPercentage && (
           <div className={styles.discountBadge}>-{discountPercentage}%</div>
         )}
@@ -187,8 +186,7 @@ device.discount && device.oldPrice > device.price
           </p>
         )}
       </Card>
-    </div> 
-  
+    </div>
   );
 };
 
