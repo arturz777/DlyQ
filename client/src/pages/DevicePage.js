@@ -5,11 +5,10 @@ import { Context } from "../index";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import DeviceItem from "../components/DeviceItem";
 import { isShopOpenNow } from "../utils/workHours";
 import styles from "./DevicePage.module.css";
 
-const DevicePage = () => {
+const DevicePage = ({ id }) => {
   const { basket } = useContext(Context);
   const [device, setDevice] = useState({
     info: [],
@@ -19,7 +18,6 @@ const DevicePage = () => {
   const [recommendedDevices, setRecommendedDevices] = useState([]);
   const [selectedOptions, setSelectedOptions] = useState({});
   const [finalPrice, setFinalPrice] = useState(0);
-  const { id } = useParams();
   const [activeIndex, setActiveIndex] = useState(0);
   const [availableQuantity, setAvailableQuantity] = useState(0);
   const [isPreorder, setIsPreorder] = useState(false);
@@ -149,12 +147,20 @@ const DevicePage = () => {
     const isThisPreorder = !isAvailable;
 
     if (basket.items.some((item) => item.isPreorder) && !isThisPreorder) {
-      toast.error(`❌ ${t("you cannot add a regular item to the cart with a pre-order", { ns: "deviceItem" })}`);
+      toast.error(
+        `❌ ${t("you cannot add a regular item to the cart with a pre-order", {
+          ns: "deviceItem",
+        })}`
+      );
       return;
     }
 
     if (basket.items.some((item) => !item.isPreorder) && isThisPreorder) {
-      toast.error(`❌ ${t("you cannot add a pre-order to the cart with regular items", { ns: "deviceItem" })}`);
+      toast.error(
+        `❌ ${t("you cannot add a pre-order to the cart with regular items", {
+          ns: "deviceItem",
+        })}`
+      );
       return;
     }
 
@@ -195,7 +201,7 @@ const DevicePage = () => {
 
   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
-return (
+ return (
     <div className={styles.DevicePageContainer}>
       <div className={styles.DevicePageContent}>
         <div className={styles.DevicePageColImg}>
@@ -321,11 +327,9 @@ return (
           </div>
         </div>
       </div>
-
-             <div className={styles.DevicePageInfo}>
+      <div className={styles.DevicePageInfo}>
         <h2>{t("product photos are provided", { ns: "devicePage" })}</h2>
       </div>
-
       <div className={styles.DevicePageSpecs}>
         {(device.translations?.description?.[currentLang] ||
           device.description) && (
@@ -358,22 +362,6 @@ return (
             </div>
           ))}
         </div>
-
-        <section className={styles.section}>
-          <h2>{t("recommended", { ns: "homePage" })}</h2>
-          <div className={styles.deviceCarousel}>
-            {Array.isArray(recommendedDevices) &&
-            recommendedDevices.length > 0 ? (
-              recommendedDevices.map((device) => (
-                <div key={device.id} className={styles.deviceItem}>
-                  <DeviceItem device={device} />
-                </div>
-              ))
-            ) : (
-              <p>{t("loading", { ns: "homePage" })}</p>
-            )}
-          </div>
-        </section>
       </div>
     </div>
   );
