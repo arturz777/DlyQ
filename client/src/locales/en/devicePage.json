@@ -1,5 +1,5 @@
 {
-	"description": "Description",
+	"description": "Description:",
 	"Place a pre-order": "Place a pre-order",
 	"out_of_stock": "Out of stock",
 	"add_to_cart": "Add to cart",
@@ -12,6 +12,6 @@
  "preferred delivery time text": "Pre-order comment",
   "write preferred delivery time": "For example: preferred delivery time, special requests, etc.",
   "desired delivery datetime": "Desired delivery date (if item arrives earlier)",
-  "out of stock (Pre-order)": "Out of stock (Pre-order)",
+  "out of stock (Pre-order)": "Out of stock",
   "product photos are provided": "Product photos are provided for illustrative purposes only. Minor differences in appearance may occur."
 }
