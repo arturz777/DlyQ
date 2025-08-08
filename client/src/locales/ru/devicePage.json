@@ -1,8 +1,7 @@
-{
-	"description": "Описание",
+	"description": "Описание:",
 	"Place a pre-order": "Оформить предзаказ",
 	"out_of_stock": "Нет в наличии",
-	"add_to_cart": "Добавить в корзину",
+	"add_to_cart": "Добавить",
 	"total": "Всего",
 	"Select": "Выберите",
 	"Added to cart!": "Добавлен в корзину!",
@@ -12,6 +11,6 @@
   "preferred delivery time text": "Комментарий к предзаказу",
   "write preferred delivery time": "Например: предпочтительное время получения, особые пожелания и т.д.",
   "desired delivery datetime": "Желаемая дата получения, если товар придёт раньше",
-  "out of stock (Pre-order)": "Нету в наличии (Предзаказ)",
+  "out of stock (Pre-order)": "Нету в наличии",
   "product photos are provided": "Фотографии товаров приведены в ознакомительных целях. Возможны незначительные расхождения во внешнем виде."
 }
