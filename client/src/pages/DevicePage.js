@@ -256,6 +256,7 @@ const DevicePage = ({ id }) => {
               </div>
             )}
           </div>
+            {images.length > 1 && (
           <div className={styles.DevicePageThumbnailContainer}>
             {images.map((thumb, index) => (
               <img
@@ -268,6 +269,7 @@ const DevicePage = ({ id }) => {
               />
             ))}
           </div>
+                  )}
         </div>
                <div className={styles.DevicePageDetails}>
           <div className={styles.DevicePageCard}>
