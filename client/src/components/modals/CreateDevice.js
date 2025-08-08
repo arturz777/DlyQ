@@ -35,6 +35,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [optionErrors, setOptionErrors] = useState({});
   const [purchasePrice, setPurchasePrice] = useState("");
   const [purchaseHasVAT, setPurchaseHasVAT] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [translations, setTranslations] = useState({
     name: { en: "", ru: "", est: "" },
     options: [],
@@ -293,6 +294,7 @@ useEffect(() => {
   };
 
   const handleSave = () => {
+    setLoading(true);
     setIsSubmitted(true);
     const validationErrors = validateDevice();
 
@@ -361,7 +363,10 @@ useEffect(() => {
         console.error(
           "Ошибка при отправке запроса:",
           error.response?.data || error.message
-        );
+         );
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 
@@ -1176,8 +1181,18 @@ useEffect(() => {
         <Button variant="outline-danger" onClick={onHide}>
           Закрыть
         </Button>
-        <Button variant="outline-success" onClick={handleSave}>
-          {isEditMode ? "Сохранить изменения" : "Добавить устройство"}
+        <Button
+          variant="outline-success"
+          onClick={handleSave}
+          disabled={loading}
+        >
+          {loading
+            ? isEditMode
+              ? "Сохраняется..."
+              : "Добавляется..."
+            : isEditMode
+            ? "Сохранить изменения"
+            : "Добавить устройство"}
         </Button>
       </Modal.Footer>
     </Modal>
