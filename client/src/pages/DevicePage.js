@@ -25,6 +25,7 @@ const DevicePage = ({ id }) => {
   const currentLang = i18n.language || "en";
   const deviceName = device.translations?.name?.[currentLang] || device.name;
   const isStoreClosed = !isShopOpenNow();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
@@ -52,6 +53,15 @@ const DevicePage = ({ id }) => {
       return false;
     }
   };
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -259,78 +269,120 @@ const DevicePage = ({ id }) => {
             ))}
           </div>
         </div>
-        <div className={styles.DevicePageDetails}>
+               <div className={styles.DevicePageDetails}>
           <div className={styles.DevicePageCard}>
-            <h2 className={styles.DevicePageTitle}>
+            <p className={styles.DevicePageTitle}>
               {device.translations?.["name"]?.[currentLang] || device.name}
-            </h2>
-            {device.options?.map((option, optionIndex) => (
-              <div key={optionIndex} className={styles.DevicePageOption}>
-                <label>
-                  {option.translations?.name?.[currentLang] || option.name}
-                </label>
+            </p>
 
-                <select
-                  value={selectedOptions[option.name]?.value || ""}
-                  onChange={(e) => {
-                    const selectedValue = option.values.find(
-                      (v) => v.value === e.target.value
-                    );
-                    handleOptionChange(option.name, selectedValue);
-                  }}
-                  className={styles.DevicePageSelect}
-                >
-                  <option value="" disabled hidden>
-                    {t("Select", { ns: "devicePage" })}:{" "}
+            <div className={styles.DevicePageBuyBlockDesktop}>
+              {device.options?.map((option, optionIndex) => (
+                <div key={optionIndex} className={styles.DevicePageOption}>
+                  <label>
                     {option.translations?.name?.[currentLang] || option.name}
-                  </option>
-                  {option.values.map((valueObj, valueIndex) => (
-                    <option key={valueIndex} value={valueObj.value}>
-                      {option.translations?.values?.[valueIndex]?.[
-                        currentLang
-                      ] || valueObj.value}
-                      {valueObj.quantity <= 0
-                        ? ` (${t("out of stock (Pre-order)", {
-                            ns: "devicePage",
-                          })}`
-                        : ""}
+                  </label>
+
+                  <select
+                    value={selectedOptions[option.name]?.value || ""}
+                    onChange={(e) => {
+                      const selectedValue = option.values.find(
+                        (v) => v.value === e.target.value
+                      );
+                      handleOptionChange(option.name, selectedValue);
+                    }}
+                    className={styles.DevicePageSelect}
+                  >
+                    <option value="" disabled hidden>
+                      {t("Select", { ns: "devicePage" })}:{" "}
+                      {option.translations?.name?.[currentLang] || option.name}
                     </option>
-                  ))}
-                </select>
-              </div>
-            ))}
-            <div className={styles.DevicePagePriceBlock}>
-              {device.oldPrice && device.oldPrice > device.price ? (
-                <>
-                  <span className={styles.DevicePageOldPrice}>
-                    {device.oldPrice} €
-                  </span>
-                  <span className={styles.DevicePageNewPrice}>
+                    {option.values.map((valueObj, valueIndex) => (
+                      <option key={valueIndex} value={valueObj.value}>
+                        {option.translations?.values?.[valueIndex]?.[
+                          currentLang
+                        ] || valueObj.value}
+                        {valueObj.quantity <= 0
+                          ? ` (${t("out of stock (Pre-order)", {
+                              ns: "devicePage",
+                            })})`
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+
+              <div className={styles.DevicePagePriceBlock}>
+                {device.oldPrice && device.oldPrice > device.price ? (
+                  <>
+                    <span className={styles.DevicePageOldPrice}>
+                      {device.oldPrice} €
+                    </span>
+                    <span className={styles.DevicePageNewPrice}>
+                      {device.price} €
+                    </span>
+                  </>
+                ) : (
+                  <span className={styles.DevicePageRegularPrice}>
                     {device.price} €
                   </span>
-                </>
-              ) : (
-                <span className={styles.DevicePageRegularPrice}>
-                  {device.price} €
-                </span>
-              )}
+                )}
+              </div>
+
+              <button
+                className={styles.DevicePageAddToCart}
+                onClick={handleAddToBasket}
+              >
+                {availableQuantity <= 0
+                  ? t("out_of_stock", { ns: "devicePage" })
+                  : t("add_to_cart", { ns: "devicePage" })}
+              </button>
             </div>
 
-            <button
-              className={styles.DevicePageAddToCart}
-              onClick={handleAddToBasket}
-            >
-              {availableQuantity <= 0
-                ? t("out_of_stock", { ns: "devicePage" })
-                : t("add_to_cart", { ns: "devicePage" })}
-            </button>
+           
+            <div className={styles.DevicePageInfoMobile}>
+              <p>{t("product photos are provided", { ns: "devicePage" })}</p>
+            </div>
+            <div className={styles.DevicePageSpecsMobile}>
+              {(device.translations?.description?.[currentLang] ||
+                device.description) && (
+                <p className={styles.DevicePageDescription}>
+                  {device.translations?.description?.[currentLang] ||
+                    device.description}
+                </p>
+              )}
+              <p className={styles.DevicePageSpecsTitle}>
+                {t("description", { ns: "devicePage" })}
+              </p>
+
+              <div className={styles.DevicePageSpecsCard}>
+                {device.info.map((info, index) => (
+                  <div
+                    key={info.id}
+                    className={`${styles.DevicePageSpecRow} ${
+                      index % 2 === 0 ? styles.DevicePageSpecRowEven : ""
+                    }`}
+                  >
+                    <span className={styles.DevicePageSpecText}>
+                      <strong>
+                        {info.translations?.title?.[currentLang] || info.title}
+                      </strong>
+                      <span>
+                        {info.translations?.description?.[currentLang] ||
+                          info.description}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div className={styles.DevicePageInfo}>
-        <h2>{t("product photos are provided", { ns: "devicePage" })}</h2>
+      <div className={styles.DevicePageInfoDesktop}>
+        <p>{t("product photos are provided", { ns: "devicePage" })}</p>
       </div>
-      <div className={styles.DevicePageSpecs}>
+      <div className={styles.DevicePageSpecsDesktop}>
         {(device.translations?.description?.[currentLang] ||
           device.description) && (
           <p className={styles.DevicePageDescription}>
@@ -338,9 +390,9 @@ const DevicePage = ({ id }) => {
               device.description}
           </p>
         )}
-        <h3 className={styles.DevicePageSpecsTitle}>
-         {t("description", { ns: "devicePage" })}
-        </h3>
+        <p className={styles.DevicePageSpecsTitle}>
+          {t("description", { ns: "devicePage" })}
+        </p>
 
         <div className={styles.DevicePageSpecsCard}>
           {device.info.map((info, index) => (
@@ -363,6 +415,67 @@ const DevicePage = ({ id }) => {
           ))}
         </div>
       </div>
+       <div
+              className={`${styles.DevicePageBuyBlockMobile} ${
+                device.options?.length ? styles.WithOptions : styles.NoOptions
+              }`}
+            >
+              {device.options?.length > 0 && (
+                <div className={styles.DevicePageSelectedOptions}>
+                  {device.options?.map((option, optionIndex) => (
+                    <div key={optionIndex} className={styles.DevicePageOption}>
+                      <select
+                        value={selectedOptions[option.name]?.value || ""}
+                        onChange={(e) => {
+                          const selectedValue = option.values.find(
+                            (v) => v.value === e.target.value
+                          );
+                          handleOptionChange(option.name, selectedValue);
+                        }}
+                        className={styles.DevicePageSelect}
+                      >
+                        <option value="" disabled hidden>
+                          {t("Select", { ns: "devicePage" })}:{" "}
+                          {option.translations?.name?.[currentLang] ||
+                            option.name}
+                        </option>
+                        {option.values.map((valueObj, valueIndex) => (
+                          <option key={valueIndex} value={valueObj.value}>
+                            {option.translations?.values?.[valueIndex]?.[
+                              currentLang
+                            ] || valueObj.value}
+                            {valueObj.quantity <= 0
+                              ? ` (${t("out of stock (Pre-order)", {
+                                  ns: "devicePage",
+                                })})`
+                              : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                className={styles.DevicePageAddButtonCompact}
+                onClick={handleAddToBasket}
+              >
+                <span className={styles.AddText}>
+                  {t("add_to_cart", { ns: "devicePage" })}
+                </span>
+                <span className={styles.AddPrice}>
+                  {device.oldPrice && device.oldPrice > device.price ? (
+                    <>
+                      <span className={styles.Strike}>{device.oldPrice} €</span>{" "}
+                      {device.price} €
+                    </>
+                  ) : (
+                    `${device.price} €`
+                  )}
+                </span>
+              </button>
+            </div>
     </div>
   );
 };
