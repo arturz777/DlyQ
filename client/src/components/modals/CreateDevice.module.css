@@ -5,7 +5,7 @@
 	margin-top: 10px;
   }
 
- .newProduct {
+  .newProduct {
 	font-size: 30px;
   }
 
@@ -56,12 +56,12 @@
   
   .DeleteButton {
 	position: absolute;
-	top: 5px;
-	right: 5px;
+	top: 1px;
+	right: 1px;
 	background: red;
-	color: white;
+	color: rgb(0, 0, 0);
 	border: none;
-	font-size: 14px;
+	font-size: 0px;
 	cursor: pointer;
   }
   
@@ -96,8 +96,8 @@
 	color: red;
 	font-size: 13px;
   }
-
-.scrollableDropdownMenu {
+  
+ .scrollableDropdownMenu {
   max-height: 200px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -123,7 +123,3 @@
 .scrollableDropdownMenu::-webkit-scrollbar-thumb:hover {
   background-color: #555;
 }
-
-
-  
-  
