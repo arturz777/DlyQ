@@ -68,7 +68,7 @@ const DevicePage = ({ id }) => {
       try {
         const deviceData = await fetchOneDevice(id);
         setDevice(deviceData);
-        setFinalPrice(deviceData.price);
+        setFinalPrice(Number(deviceData.price) || 0);
         setActiveIndex(0);
 
         const itemInBasket = basket.items.find(
@@ -98,12 +98,12 @@ const DevicePage = ({ id }) => {
   }, [id, basket.items]);
 
   useEffect(() => {
-    const additionalPrice = Object.values(selectedOptions).reduce(
-      (total, option) => total + (option?.price || 0),
-      0
-    );
-    setFinalPrice(device.price + additionalPrice);
-  }, [selectedOptions, device.price]);
+  const additionalPrice = Object.values(selectedOptions).reduce(
+    (total, option) => total + (Number(option?.price) || 0),
+    0
+  );
+  setFinalPrice((Number(device.price) || 0) + additionalPrice);
+}, [selectedOptions, device.price]);
 
   const images = [device.img, ...(device.thumbnails || [])];
 
@@ -211,7 +211,7 @@ const DevicePage = ({ id }) => {
 
   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
- return (
+  return (
     <div className={styles.DevicePageContainer}>
       <div className={styles.DevicePageContent}>
         <div className={styles.DevicePageColImg}>
@@ -256,7 +256,7 @@ const DevicePage = ({ id }) => {
               </div>
             )}
           </div>
-            {images.length > 1 && (
+          {images.length > 1 && (
           <div className={styles.DevicePageThumbnailContainer}>
             {images.map((thumb, index) => (
               <img
@@ -269,9 +269,9 @@ const DevicePage = ({ id }) => {
               />
             ))}
           </div>
-                  )}
+          )}
         </div>
-               <div className={styles.DevicePageDetails}>
+        <div className={styles.DevicePageDetails}>
           <div className={styles.DevicePageCard}>
             <p className={styles.DevicePageTitle}>
               {device.translations?.["name"]?.[currentLang] || device.name}
@@ -315,18 +315,18 @@ const DevicePage = ({ id }) => {
               ))}
 
               <div className={styles.DevicePagePriceBlock}>
-                {device.oldPrice && device.oldPrice > device.price ? (
+                {device.oldPrice && Number(device.oldPrice) > Number(device.price) ? (
                   <>
                     <span className={styles.DevicePageOldPrice}>
-                      {device.oldPrice} €
+                      {(Number(device.oldPrice) + (finalPrice - (Number(device.price) || 0))).toFixed(2)} €
                     </span>
                     <span className={styles.DevicePageNewPrice}>
-                      {device.price} €
+                      {finalPrice.toFixed(2)} €
                     </span>
                   </>
                 ) : (
                   <span className={styles.DevicePageRegularPrice}>
-                    {device.price} €
+                    {finalPrice.toFixed(2)} €
                   </span>
                 )}
               </div>
@@ -467,13 +467,15 @@ const DevicePage = ({ id }) => {
                   {t("add_to_cart", { ns: "devicePage" })}
                 </span>
                 <span className={styles.AddPrice}>
-                  {device.oldPrice && device.oldPrice > device.price ? (
+                  {device.oldPrice && Number(device.oldPrice) > Number(device.price) ? (
                     <>
-                      <span className={styles.Strike}>{device.oldPrice} €</span>{" "}
-                      {device.price} €
+                      <span className={styles.Strike}>
+                        {(Number(device.oldPrice) + (finalPrice - (Number(device.price) || 0))).toFixed(2)} €
+                        </span>{" "}
+                      {finalPrice.toFixed(2)} €
                     </>
                   ) : (
-                    `${device.price} €`
+                    `${finalPrice.toFixed(2)} €`
                   )}
                 </span>
               </button>
