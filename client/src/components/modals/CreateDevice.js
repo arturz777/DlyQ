@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import Modal from "react-bootstrap/Modal";
-import { Button, Dropdown, Form, Row, Col } from "react-bootstrap";
+import { Button, Dropdown, Form, Row, Col, Tab, Tabs } from "react-bootstrap";
 import { Context } from "../../index";
 import {
   createDevice,
@@ -36,6 +36,12 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [purchasePrice, setPurchasePrice] = useState("");
   const [purchaseHasVAT, setPurchaseHasVAT] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [bulkInfoText, setBulkInfoText] = useState("");
+  const [bulkInfoTextEN, setBulkInfoTextEN] = useState("");
+  const [bulkInfoTextEST, setBulkInfoTextEST] = useState("");
+  const [activeInfoLang, setActiveInfoLang] = useState("ru");
+  const [activeOptionsLang, setActiveOptionsLang] = useState("ru");
+  const [activeDescLang, setActiveDescLang] = useState("ru");
   const [translations, setTranslations] = useState({
     name: { en: "", ru: "", est: "" },
     options: [],
@@ -54,19 +60,20 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-   useEffect(() => {
-  if (editableDevice) {
-    setPurchasePrice(
-      editableDevice.purchasePrice !== undefined && editableDevice.purchasePrice !== null
-        ? String(editableDevice.purchasePrice)
-        : ""
-    );
-    setPurchaseHasVAT(Boolean(editableDevice.purchaseHasVAT)); 
-  } else {
-    setPurchasePrice("");
-    setPurchaseHasVAT(false); 
-  }
-}, [editableDevice])
+  useEffect(() => {
+    if (editableDevice) {
+      setPurchasePrice(
+        editableDevice.purchasePrice !== undefined &&
+          editableDevice.purchasePrice !== null
+          ? String(editableDevice.purchasePrice)
+          : ""
+      );
+      setPurchaseHasVAT(Boolean(editableDevice.purchaseHasVAT));
+    } else {
+      setPurchasePrice("");
+      setPurchaseHasVAT(false);
+    }
+  }, [editableDevice]);
 
   useEffect(() => {
     if (editableDevice) {
@@ -86,12 +93,12 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       setTranslations({
         name: editableDevice.translations?.name || { en: "", ru: "", est: "" },
 
-         description: editableDevice.translations?.description || {
+        description: editableDevice.translations?.description || {
           en: "",
           ru: "",
           est: "",
         },
-        
+
         options: Array.isArray(editableDevice.translations?.options)
           ? editableDevice.translations.options
           : [],
@@ -201,64 +208,384 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   }, [device.selectedType]);
 
   useEffect(() => {
-  if (
-    isEditMode &&
-    editableDevice?.subtypeId &&
-    device.subtypes.length > 0
-  ) {
-    const matchedSubtype = device.subtypes.find(
-      (st) => String(st.id) === String(editableDevice.subtypeId)
+    if (isEditMode && editableDevice?.subtypeId && device.subtypes.length > 0) {
+      const matchedSubtype = device.subtypes.find(
+        (st) => String(st.id) === String(editableDevice.subtypeId)
+      );
+
+      if (matchedSubtype) {
+        device.setSelectedSubType(matchedSubtype);
+      }
+    }
+  }, [device.subtypes, editableDevice?.subtypeId, isEditMode]);
+
+  useEffect(() => {
+    const ready =
+      editableDevice &&
+      device.types.length > 0 &&
+      device.brands.length > 0 &&
+      (!device.selectedType?.id || device.subtypes.length > 0);
+
+    if (ready) {
+      if (editableDevice.brandId && !device.selectedBrand?.id) {
+        const selectedBrand = device.brands.find(
+          (b) => b.id === editableDevice.brandId
+        );
+        if (selectedBrand) device.setSelectedBrand(selectedBrand);
+      }
+
+      if (editableDevice.typeId && !device.selectedType?.id) {
+        const selectedType = device.types.find(
+          (t) => t.id === editableDevice.typeId
+        );
+        if (selectedType) device.setSelectedType(selectedType);
+      }
+
+      if (
+        editableDevice.subtypeId &&
+        device.selectedType?.id &&
+        device.subtypes.length > 0 &&
+        !device.selectedSubType?.id
+      ) {
+        const selectedSubType = device.subtypes.find(
+          (st) => st.id === editableDevice.subtypeId
+        );
+        if (selectedSubType) device.setSelectedSubType(selectedSubType);
+      }
+    }
+  }, [
+    editableDevice,
+    device.types,
+    device.brands,
+    device.subtypes,
+    device.selectedType?.id,
+    device.selectedBrand?.id,
+    device.selectedSubType?.id,
+  ]);
+
+  const parseBulkInfo = (text) => {
+    const lines = text.split(/\r?\n/);
+    const result = [];
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) continue;
+      const match = line.match(/^\s*([^:\-—]+)\s*[:\-—]\s*(.+)\s*$/);
+      if (match) {
+        const title = match[1].trim();
+        const description = match[2].trim();
+        result.push({
+          title,
+          description,
+          number: Date.now() + Math.random(),
+          translations: { title: {}, description: {} },
+        });
+      } else {
+        result.push({
+          title: line,
+          description: "",
+          number: Date.now() + Math.random(),
+          translations: { title: {}, description: {} },
+        });
+      }
+    }
+    return result;
+  };
+
+  const applyBulkInfo = () => {
+    const parsed = parseBulkInfo(bulkInfoText);
+    if (parsed.length === 0) return;
+    setInfo(parsed);
+  };
+
+  const applyBulkInfoWithTranslations = () => {
+    const ru = parseBulkInfo(bulkInfoText);
+    const en = parseBulkInfo(bulkInfoTextEN);
+    const est = parseBulkInfo(bulkInfoTextEST);
+
+    setInfo(ru);
+
+    setTranslations((prev) => {
+      const t = { ...prev };
+      const maxLen = ru.length;
+
+      if (!Array.isArray(t.info)) t.info = [];
+
+      const ensureInfo = (idx) => {
+        if (!t.info[idx]) t.info[idx] = { title: {}, description: {} };
+        if (!t.info[idx].title) t.info[idx].title = {};
+        if (!t.info[idx].description) t.info[idx].description = {};
+      };
+
+      for (let i = 0; i < maxLen; i++) {
+        ensureInfo(i);
+
+        if (ru[i]) {
+          if (ru[i].title) t.info[i].title.ru = ru[i].title;
+          if (ru[i].description) t.info[i].description.ru = ru[i].description;
+        }
+
+        if (en[i]) {
+          if (en[i].title) t.info[i].title.en = en[i].title;
+          if (en[i].description) t.info[i].description.en = en[i].description;
+        }
+
+        if (est[i]) {
+          if (est[i].title) t.info[i].title.est = est[i].title;
+          if (est[i].description)
+            t.info[i].description.est = est[i].description;
+        }
+      }
+
+      return t;
+    });
+  };
+
+  const fillBulkFromInfoAll = () => {
+    const toLines = (arr) =>
+      (arr || [])
+        .map((i) => {
+          const t = (i.title ?? "").toString().trim();
+          const d = (i.description ?? "").toString().trim();
+          return d ? `${t}: ${d}` : t;
+        })
+        .join("\n");
+
+    setBulkInfoText(toLines(info));
+
+    const enArr = (translations.info || []).map((i) => ({
+      title: i?.title?.en || "",
+      description: i?.description?.en || "",
+    }));
+    const estArr = (translations.info || []).map((i) => ({
+      title: i?.title?.est || "",
+      description: i?.description?.est || "",
+    }));
+
+    const toLinesFromPairs = (arr) =>
+      (arr || [])
+        .map((i) => {
+          const t = (i.title ?? "").toString().trim();
+          const d = (i.description ?? "").toString().trim();
+          return t || d ? (d ? `${t}: ${d}` : t) : "";
+        })
+        .filter(Boolean)
+        .join("\n");
+
+    setBulkInfoTextEN(toLinesFromPairs(enArr));
+    setBulkInfoTextEST(toLinesFromPairs(estArr));
+  };
+
+  const fillBulkFromInfo = () => {
+    const text = (info || [])
+      .map((i) => {
+        const t = (i.title ?? "").toString().trim();
+        const d = (i.description ?? "").toString().trim();
+        return d ? `${t}: ${d}` : t;
+      })
+      .join("\n");
+    setBulkInfoText(text);
+  };
+
+  const getBulkByLang = (lang) =>
+    lang === "ru"
+      ? bulkInfoText
+      : lang === "en"
+      ? bulkInfoTextEN
+      : bulkInfoTextEST;
+
+  const setBulkByLang = (lang, v) => {
+    if (lang === "ru") setBulkInfoText(v);
+    else if (lang === "en") setBulkInfoTextEN(v);
+    else setBulkInfoTextEST(v);
+  };
+
+  const getInfoValue = (index, key) => {
+    if (activeInfoLang === "ru") return info?.[index]?.[key] ?? "";
+    return translations.info?.[index]?.[key]?.[activeInfoLang] ?? "";
+  };
+
+  const updateInfoField = (index, key, value) => {
+    if (activeInfoLang === "ru") {
+      changeInfo(key, value, info[index].number);
+      setTranslations((prev) => {
+        const t = { ...prev };
+        if (!Array.isArray(t.info)) t.info = [];
+        if (!t.info[index]) t.info[index] = { title: {}, description: {} };
+        t.info[index][key].ru = value;
+        return t;
+      });
+    } else {
+      setTranslations((prev) => {
+        const t = { ...prev };
+        if (!Array.isArray(t.info)) t.info = [];
+        if (!t.info[index]) t.info[index] = { title: {}, description: {} };
+        t.info[index][key][activeInfoLang] = value;
+        return t;
+      });
+    }
+  };
+
+  const applyBulkForActiveLang = () => {
+    const parsed = parseBulkInfo(getBulkByLang(activeInfoLang));
+    if (activeInfoLang === "ru") {
+      setInfo(parsed);
+      setTranslations((prev) => {
+        const t = { ...prev };
+        t.info = parsed.map((p) => ({
+          title: { ru: p.title || "" },
+          description: { ru: p.description || "" },
+        }));
+        return t;
+      });
+    } else {
+      setTranslations((prev) => {
+        const t = { ...prev };
+        if (!Array.isArray(t.info)) t.info = [];
+        for (let i = 0; i < parsed.length; i++) {
+          if (!t.info[i]) t.info[i] = { title: {}, description: {} };
+          if (parsed[i].title)
+            t.info[i].title[activeInfoLang] = parsed[i].title;
+          if (parsed[i].description)
+            t.info[i].description[activeInfoLang] = parsed[i].description;
+        }
+        return t;
+      });
+    }
+  };
+
+  const fillBulkFromActive = () => {
+    const toLines = (pairs) =>
+      pairs
+        .map(({ title = "", description = "" }) =>
+          title || description
+            ? description
+              ? `${title}: ${description}`
+              : title
+            : ""
+        )
+        .filter(Boolean)
+        .join("\n");
+
+    if (activeInfoLang === "ru") {
+      setBulkByLang("ru", toLines(info || []));
+    } else {
+      const arr = (translations.info || []).map((i) => ({
+        title: i?.title?.[activeInfoLang] || "",
+        description: i?.description?.[activeInfoLang] || "",
+      }));
+      setBulkByLang(activeInfoLang, toLines(arr));
+    }
+  };
+
+  const [activeNameLang, setActiveNameLang] = useState("ru");
+
+  const getNameValue = () =>
+    activeNameLang === "ru"
+      ? name || ""
+      : translations.name?.[activeNameLang] || "";
+
+  const updateNameValue = (v) => {
+    if (activeNameLang === "ru") {
+      setName(v);
+      setTranslations((prev) => ({
+        ...prev,
+        name: { ...(prev.name || {}), ru: v },
+      }));
+    } else {
+      setTranslations((prev) => ({
+        ...prev,
+        name: { ...(prev.name || {}), [activeNameLang]: v },
+      }));
+    }
+  };
+
+  const ensureOptionTrans = (t, optionIndex) => {
+    if (!Array.isArray(t.options)) t.options = [];
+    if (!t.options[optionIndex])
+      t.options[optionIndex] = { name: {}, values: [] };
+    if (!Array.isArray(t.options[optionIndex].values))
+      t.options[optionIndex].values = [];
+  };
+
+  const ensureOptionValueTrans = (t, optionIndex, valueIndex) => {
+    ensureOptionTrans(t, optionIndex);
+    if (!t.options[optionIndex].values[valueIndex])
+      t.options[optionIndex].values[valueIndex] = {};
+  };
+
+  const getOptionNameByLang = (optionIndex) => {
+    if (activeOptionsLang === "ru") return options?.[optionIndex]?.name ?? "";
+    return translations.options?.[optionIndex]?.name?.[activeOptionsLang] ?? "";
+  };
+
+  const updateOptionNameByLang = (optionIndex, value) => {
+    if (activeOptionsLang === "ru") {
+      updateOptionName(optionIndex, value);
+      setTranslations((prev) => {
+        const t = { ...prev };
+        ensureOptionTrans(t, optionIndex);
+        t.options[optionIndex].name.ru = value;
+        return t;
+      });
+    } else {
+      setTranslations((prev) => {
+        const t = { ...prev };
+        ensureOptionTrans(t, optionIndex);
+        t.options[optionIndex].name[activeOptionsLang] = value;
+        return t;
+      });
+    }
+  };
+
+  const getOptionValueLabelByLang = (optionIndex, valueIndex) => {
+    if (activeOptionsLang === "ru") {
+      return options?.[optionIndex]?.values?.[valueIndex]?.value ?? "";
+    }
+    return (
+      translations.options?.[optionIndex]?.values?.[valueIndex]?.[
+        activeOptionsLang
+      ] ?? ""
     );
+  };
 
-    if (matchedSubtype) {
-      device.setSelectedSubType(matchedSubtype);
+  const updateOptionValueLabelByLang = (optionIndex, valueIndex, text) => {
+    if (activeOptionsLang === "ru") {
+      updateOptionValue(optionIndex, valueIndex, "value", text);
+      setTranslations((prev) => {
+        const t = { ...prev };
+        ensureOptionValueTrans(t, optionIndex, valueIndex);
+        t.options[optionIndex].values[valueIndex].ru = text;
+        return t;
+      });
+    } else {
+      setTranslations((prev) => {
+        const t = { ...prev };
+        ensureOptionValueTrans(t, optionIndex, valueIndex);
+        t.options[optionIndex].values[valueIndex][activeOptionsLang] = text;
+        return t;
+      });
     }
-  }
-}, [device.subtypes, editableDevice?.subtypeId, isEditMode]);
+  };
 
-useEffect(() => {
-  const ready =
-    editableDevice &&
-    device.types.length > 0 &&
-    device.brands.length > 0 &&
-    (!device.selectedType?.id || device.subtypes.length > 0);
+  const getDescValue = () =>
+    activeDescLang === "ru"
+      ? description || ""
+      : translations.description?.[activeDescLang] || "";
 
-  if (ready) {
-    if (editableDevice.brandId && !device.selectedBrand?.id) {
-      const selectedBrand = device.brands.find(
-        (b) => b.id === editableDevice.brandId
-      );
-      if (selectedBrand) device.setSelectedBrand(selectedBrand);
+  const updateDescValue = (v) => {
+    if (activeDescLang === "ru") {
+      setDescription(v);
+      setTranslations((prev) => ({
+        ...prev,
+        description: { ...(prev.description || {}), ru: v },
+      }));
+    } else {
+      setTranslations((prev) => ({
+        ...prev,
+        description: { ...(prev.description || {}), [activeDescLang]: v },
+      }));
     }
-
-    if (editableDevice.typeId && !device.selectedType?.id) {
-      const selectedType = device.types.find(
-        (t) => t.id === editableDevice.typeId
-      );
-      if (selectedType) device.setSelectedType(selectedType);
-    }
-
-    if (
-      editableDevice.subtypeId &&
-      device.selectedType?.id &&
-      device.subtypes.length > 0 &&
-      !device.selectedSubType?.id
-    ) {
-      const selectedSubType = device.subtypes.find(
-        (st) => st.id === editableDevice.subtypeId
-      );
-      if (selectedSubType) device.setSelectedSubType(selectedSubType);
-    }
-  }
-}, [
-  editableDevice,
-  device.types,
-  device.brands,
-  device.subtypes,
-  device.selectedType?.id,
-  device.selectedBrand?.id,
-  device.selectedSubType?.id,
-]);
+  };
 
   const validateDevice = () => {
     const errors = {};
@@ -313,7 +640,10 @@ useEffect(() => {
     formData.append("recommended", recommended);
     formData.append("name", name);
     formData.append("price", price);
-    formData.append("purchasePrice", purchasePrice === "" ? "" : String(purchasePrice));
+    formData.append(
+      "purchasePrice",
+      purchasePrice === "" ? "" : String(purchasePrice)
+    );
     formData.append("purchaseHasVAT", purchaseHasVAT);
     formData.append("quantity", quantity);
     formData.append("description", description || "");
@@ -336,11 +666,14 @@ useEffect(() => {
 
     formData.append("existingImages", JSON.stringify(existingImages));
 
-   formData.append(
-  "brandId",
-  device.selectedBrand?.id || editableDevice?.brandId || ""
-);
-    formData.append("typeId", device.selectedType.id || editableDevice?.typeId);
+    formData.append(
+      "brandId",
+      device.selectedBrand?.id || editableDevice?.brandId || ""
+    );
+    formData.append(
+      "typeId",
+      device.selectedType?.id || editableDevice?.typeId || ""
+    );
 
     if (device.selectedSubType?.id) {
       formData.append("subtypeId", device.selectedSubType.id);
@@ -363,7 +696,7 @@ useEffect(() => {
         console.error(
           "Ошибка при отправке запроса:",
           error.response?.data || error.message
-         );
+        );
       })
       .finally(() => {
         setLoading(false);
@@ -510,7 +843,7 @@ useEffect(() => {
     setOptions(options.filter((_, i) => i !== index));
   };
 
- return (
+  return (
     <Modal show={show} onHide={onHide} centered>
       <Modal.Header closeButton>
         <Modal.Title>
@@ -581,7 +914,7 @@ useEffect(() => {
                   </Dropdown.Menu>
                 </Dropdown>
 
-                <Dropdown className="mt-2 mb-2">
+                <Dropdown>
                   <Dropdown.Toggle>
                     {device.selectedSubType?.name ||
                       "Выберите подтип (необязательно)"}
@@ -630,12 +963,20 @@ useEffect(() => {
                   </Dropdown.Menu>
                 </Dropdown>
 
-                <Form.Control
-                  value={name || ""}
-                  onChange={(e) => setName(e.target.value)}
-                  className="option-container border p-3 rounded mb-3"
-                  placeholder="Введите название устройства"
-                />
+                <Form.Label>Название устройства</Form.Label>
+
+                <Tabs
+                  id="name-lang-tabs"
+                  activeKey={activeNameLang}
+                  onSelect={(k) => {
+                    if (k) setActiveNameLang(k);
+                  }}
+                  className="mb-2"
+                >
+                  <Tab eventKey="ru" title="RU" />
+                  <Tab eventKey="en" title="EN" />
+                  <Tab eventKey="est" title="EST" />
+                </Tabs>
 
                 {isSubmitted && !name && (
                   <span
@@ -645,21 +986,18 @@ useEffect(() => {
                   </span>
                 )}
 
-                <Form.Label>Перевод названия</Form.Label>
-                {["en", "ru", "est"].map((lang) => (
-                  <Form.Control
-                    key={lang}
-                    value={translations.name[lang] || ""}
-                    onChange={(e) =>
-                      setTranslations((prev) => ({
-                        ...prev,
-                        name: { ...prev.name, [lang]: e.target.value },
-                      }))
-                    }
-                    placeholder={`Название (${lang.toUpperCase()})`}
-                    className="mt-2"
-                  />
-                ))}
+                <Form.Control
+                  value={getNameValue()}
+                  onChange={(e) => updateNameValue(e.target.value)}
+                  className="option-container border p-3 rounded mb-2"
+                  placeholder={
+                    activeNameLang === "ru"
+                      ? "Введите название устройства (RU)"
+                      : activeNameLang === "en"
+                      ? "Enter device name (EN)"
+                      : "Sisesta seadme nimi (EST)"
+                  }
+                />
               </>
             )}
           </div>
@@ -679,24 +1017,26 @@ useEffect(() => {
             </h5>
             {openSections.price && (
               <>
-              <Form.Group className="mt-2">
-  <Form.Check
-    type="checkbox"
-    label="Цена включает НДС (24%)"
-    checked={purchaseHasVAT}
-    onChange={(e) => setPurchaseHasVAT(e.target.checked)}
-  />
-</Form.Group>
-        <Form.Group className="mt-3">
-  <Form.Label>Закупочная цена (за единицу)</Form.Label>
-  <Form.Control
-    type="number"
-    step="0.01"
-    value={purchasePrice}
-    onChange={(e) => setPurchasePrice(e.target.value)}
-    placeholder="Например, 5.50"
-  />
-</Form.Group>
+                <Form.Group className="mt-2">
+                  <Form.Check
+                    type="checkbox"
+                    label="Цена включает НДС (24%)"
+                    checked={purchaseHasVAT}
+                    onChange={(e) => setPurchaseHasVAT(e.target.checked)}
+                  />
+                </Form.Group>
+
+                <Form.Group className="mt-3">
+                  <Form.Label>Закупочная цена (за единицу)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    step="0.01"
+                    value={purchasePrice}
+                    onChange={(e) => setPurchasePrice(e.target.value)}
+                    placeholder="Например, 5.50"
+                  />
+                </Form.Group>
+
                 <Form.Group className="mt-3">
                   <Form.Check
                     type="checkbox"
@@ -836,17 +1176,37 @@ useEffect(() => {
                 <Button variant="outline-dark" onClick={addOption}>
                   Добавить опцию
                 </Button>
+
+                <Tabs
+                  id="options-lang-tabs"
+                  activeKey={activeOptionsLang}
+                  onSelect={(k) => {
+                    if (k) setActiveOptionsLang(k);
+                  }}
+                  className="mb-3"
+                >
+                  <Tab eventKey="ru" title="RU" />
+                  <Tab eventKey="en" title="EN" />
+                  <Tab eventKey="est" title="EST" />
+                </Tabs>
+
                 {options.map((option, optionIndex) => (
                   <div
                     key={optionIndex}
                     className="option-container border p-3 rounded mb-3"
                   >
                     <Form.Control
-                      value={option.name}
+                      value={getOptionNameByLang(optionIndex)}
                       onChange={(e) =>
-                        updateOptionName(optionIndex, e.target.value)
+                        updateOptionNameByLang(optionIndex, e.target.value)
                       }
-                      placeholder="Название опции (например, Цвет)"
+                      placeholder={
+                        activeOptionsLang === "ru"
+                          ? "Название опции (например, Цвет)"
+                          : activeOptionsLang === "en"
+                          ? "Option name (e.g., Color)"
+                          : "Valiku nimi (nt Värv)"
+                      }
                       className="mb-2"
                     />
                     {optionErrors[`option_${optionIndex}`] && (
@@ -855,65 +1215,33 @@ useEffect(() => {
                       </span>
                     )}
 
-                    {["en", "ru", "est"].map((lang) => (
-                      <Form.Control
-                        key={lang}
-                        value={
-                          translations.options?.[optionIndex]?.name?.[lang] ||
-                          ""
-                        }
-                        onChange={(e) =>
-                          updateOptionTranslation(
-                            optionIndex,
-                            lang,
-                            e.target.value
-                          )
-                        }
-                        className="mt-2"
-                        placeholder={`Название опции (${lang.toUpperCase()})`}
-                      />
-                    ))}
-
                     {option.values.map((value, valueIndex) => (
                       <div
                         key={valueIndex}
                         className="option-container border p-3 rounded mb-3"
                       >
                         <Form.Control
-                          value={value.value}
+                          value={getOptionValueLabelByLang(
+                            optionIndex,
+                            valueIndex
+                          )}
                           onChange={(e) =>
-                            updateOptionValue(
+                            updateOptionValueLabelByLang(
                               optionIndex,
                               valueIndex,
-                              "value",
                               e.target.value
                             )
                           }
-                          placeholder="Значение (например, Красный)"
-                          className="me-2"
+                          placeholder={
+                            activeOptionsLang === "ru"
+                              ? "Значение (например, Красный)"
+                              : activeOptionsLang === "en"
+                              ? "Value (e.g., Red)"
+                              : "Väärtus (nt Punane)"
+                          }
+                          className="me-2 mb-2"
                         />
-
-                        {["en", "ru", "est"].map((lang) => (
-                          <Form.Control
-                            key={lang}
-                            value={
-                              translations.options?.[optionIndex]?.values?.[
-                                valueIndex
-                              ]?.[lang] || ""
-                            }
-                            onChange={(e) =>
-                              updateOptionValueTranslation(
-                                optionIndex,
-                                valueIndex,
-                                lang,
-                                e.target.value
-                              )
-                            }
-                            className="mt-2"
-                            placeholder={`Перевод значения (${lang.toUpperCase()})`}
-                          />
-                        ))}
-
+                        <p>Цена</p>
                         <Form.Control
                           type="number"
                           value={value.price}
@@ -926,8 +1254,9 @@ useEffect(() => {
                             )
                           }
                           placeholder="Цена"
-                          className="me-2"
+                          className="me-2 mb-2"
                         />
+                        <p>Количество</p>
                         <Form.Control
                           type="number"
                           value={value.quantity}
@@ -944,8 +1273,9 @@ useEffect(() => {
                             );
                           }}
                           placeholder="Количество"
-                          className="me-2"
+                          className="me-2 mb-2"
                         />
+
                         <Button
                           variant="outline-danger"
                           onClick={() =>
@@ -982,81 +1312,58 @@ useEffect(() => {
             >
               📄 Описание {openSections.description ? "▲" : "▼"}
             </h5>
+
             {openSections.description && (
-              <>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Описание (RU)</label>
-                  <textarea
-                    className={styles.textarea}
-                    rows={3}
-                    value={description || ""}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Введите описание девайса RU (необязательно)"
-                  />
-                  {isSubmitted && description && description.length < 5 && (
-                    <span className={styles.errorText}>
-                      Описание должно быть не менее 5 символов
-                    </span>
-                  )}
-                </div>
+              <div>
+                <Tabs
+                  id="description-lang-tabs"
+                  activeKey={activeDescLang}
+                  onSelect={(k) => {
+                    if (k) setActiveDescLang(k);
+                  }}
+                  className="mb-2"
+                >
+                  <Tab eventKey="ru" title="RU" />
+                  <Tab eventKey="en" title="EN" />
+                  <Tab eventKey="est" title="EST" />
+                </Tabs>
 
                 <div className={styles.formGroup}>
-                  <label className={styles.label}>Description (EN)</label>
-                  <textarea
-                    className={styles.textarea}
-                    rows={3}
-                    value={translations.description?.en || ""}
-                    placeholder="Введите описание девайса EN (необязательно)"
-                    onChange={(e) =>
-                      setTranslations({
-                        ...translations,
-                        description: {
-                          ...translations.description,
-                          en: e.target.value,
-                        },
-                      })
-                    }
-                  />
-                </div>
+                  <label className={styles.label}>
+                    {activeDescLang === "ru"
+                      ? "Описание (RU)"
+                      : activeDescLang === "en"
+                      ? "Description (EN)"
+                      : "Kirjeldus (EST)"}
+                  </label>
 
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Description (RU)</label>
                   <textarea
                     className={styles.textarea}
                     rows={3}
-                    value={translations.description?.ru || ""}
-                    placeholder="Введите описание девайса RU (необязательно)"
-                    onChange={(e) =>
-                      setTranslations({
-                        ...translations,
-                        description: {
-                          ...translations.description,
-                          ru: e.target.value,
-                        },
-                      })
+                    value={getDescValue()}
+                    onChange={(e) => updateDescValue(e.target.value)}
+                    placeholder={
+                      activeDescLang === "ru"
+                        ? "Введите описание девайса RU (необязательно)"
+                        : activeDescLang === "en"
+                        ? "Enter device description EN (optional)"
+                        : "Sisesta seadme kirjeldus EST (valikuline)"
                     }
                   />
-                </div>
 
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Description (EST)</label>
-                  <textarea
-                    className={styles.textarea}
-                    rows={3}
-                    value={translations.description?.est || ""}
-                    placeholder="Введите описание девайса EST (необязательно)"
-                    onChange={(e) =>
-                      setTranslations({
-                        ...translations,
-                        description: {
-                          ...translations.description,
-                          est: e.target.value,
-                        },
-                      })
-                    }
-                  />
+                  {isSubmitted &&
+                    getDescValue() &&
+                    getDescValue().trim().length < 5 && (
+                      <span className={styles.errorText}>
+                        {activeDescLang === "ru"
+                          ? "Описание должно быть не менее 5 символов"
+                          : activeDescLang === "en"
+                          ? "Description must be at least 5 characters"
+                          : "Kirjeldus peab olema vähemalt 5 tähemärki"}
+                      </span>
+                    )}
                 </div>
-              </>
+              </div>
             )}
           </div>
 
@@ -1067,93 +1374,105 @@ useEffect(() => {
             >
               ⚙️ Характеристики {openSections.info ? "▲" : "▼"}
             </h5>
+
             {openSections.info && (
               <>
+                <div className="mb-3">
+                  <Form.Label>Массовый ввод характеристик</Form.Label>
+
+                  <Tabs
+                    activeKey={activeInfoLang}
+                    onSelect={(k) => setActiveInfoLang(k)}
+                    className="mb-2"
+                  >
+                    <Tab eventKey="ru" title="RU" />
+                    <Tab eventKey="en" title="EN" />
+                    <Tab eventKey="est" title="EST" />
+                  </Tabs>
+
+                  <Form.Control
+                    as="textarea"
+                    rows={4}
+                    value={getBulkByLang(activeInfoLang)}
+                    onChange={(e) =>
+                      setBulkByLang(activeInfoLang, e.target.value)
+                    }
+                    placeholder={
+                      activeInfoLang === "ru"
+                        ? `RU: по одной характеристике в строке.\nМатериал: нержавеющая сталь\nДлина кабеля — 1.2 м\nВес - 350 г`
+                        : activeInfoLang === "en"
+                        ? `EN (optional):\nMaterial: Stainless steel\nCable length — 1.2 m\nWeight - 350 g`
+                        : `EST (valikuline):\nMaterjal: roostevaba teras\nKaabli pikkus — 1.2 m\nKaal - 350 g`
+                    }
+                  />
+
+                  <div className="mt-2 d-flex flex-wrap gap-2">
+                    <Button
+                      variant="outline-dark"
+                      onClick={applyBulkForActiveLang}
+                    >
+                      Преобразовать для текущего языка
+                    </Button>
+                    <Button
+                      variant="outline-secondary"
+                      onClick={fillBulkFromActive}
+                    >
+                      Заполнить из текущих
+                    </Button>
+                  </div>
+                </div>
+
                 <hr />
-                <Button variant={"outline-dark"} onClick={addInfo}>
+                <Button variant="outline-dark" onClick={addInfo}>
                   Добавить новое свойство
                 </Button>
+
                 {info.map((i, index) => (
-                  <Row className="mt-4" key={`info-${index}`}>
-                    <Col md={4}>
-                      <Form.Control
-                        value={i.title}
-                        onChange={(e) =>
-                          changeInfo("title", e.target.value, i.number)
-                        }
-                        placeholder="Введите название свойства"
-                      />
-
-                      {["en", "ru", "est"].map((lang) => (
+                  <Row className="mt-3" key={`info-${index}`}>
+                    <Col md={8}>
+                      <div>
                         <Form.Control
-                          key={lang}
-                          value={
-                            translations.info?.[index]?.title?.[lang] || ""
+                          className="mt-2"
+                          value={getInfoValue(index, "title")}
+                          onChange={(e) =>
+                            updateInfoField(index, "title", e.target.value)
                           }
-                          onChange={(e) => {
-                            setTranslations((prev) => {
-                              const updatedInfo = [...prev.info];
-
-                              if (!updatedInfo[index]) {
-                                updatedInfo[index] = {
-                                  title: {},
-                                  description: {},
-                                };
-                              }
-
-                              updatedInfo[index].title[lang] = e.target.value;
-
-                              return { ...prev, info: updatedInfo };
-                            });
-                          }}
-                          placeholder={`Название (${lang.toUpperCase()})`}
-                          className="mt-1"
+                          placeholder={
+                            activeInfoLang === "ru"
+                              ? "Название (RU)"
+                              : activeInfoLang === "en"
+                              ? "Title (EN)"
+                              : "Nimetus (EST)"
+                          }
                         />
-                      ))}
+                        <Form.Control
+                          className="mt-2"
+                          value={getInfoValue(index, "description")}
+                          onChange={(e) =>
+                            updateInfoField(
+                              index,
+                              "description",
+                              e.target.value
+                            )
+                          }
+                          placeholder={
+                            activeInfoLang === "ru"
+                              ? "Описание (RU)"
+                              : activeInfoLang === "en"
+                              ? "Description (EN)"
+                              : "Kirjeldus (EST)"
+                          }
+                        />
+                      </div>
                     </Col>
 
-                    <Col md={4}>
-                      <Form.Control
-                        value={i.description}
-                        onChange={(e) =>
-                          changeInfo("description", e.target.value, i.number)
-                        }
-                        placeholder="Введите описание свойства"
-                      />
-
-                      {["en", "ru", "est"].map((lang) => (
-                        <Form.Control
-                          key={lang}
-                          value={
-                            translations.info?.[index]?.description?.[lang] ||
-                            ""
-                          }
-                          onChange={(e) => {
-                            setTranslations((prev) => {
-                              const updatedInfo = [...prev.info];
-
-                              if (!updatedInfo[index]) {
-                                updatedInfo[index] = {
-                                  title: {},
-                                  description: {},
-                                };
-                              }
-
-                              updatedInfo[index].description[lang] =
-                                e.target.value;
-
-                              return { ...prev, info: updatedInfo };
-                            });
-                          }}
-                          placeholder={`Описание (${lang.toUpperCase()})`}
-                          className="mt-1"
-                        />
-                      ))}
-                    </Col>
-                    <Col md={4}>
+                    <Col
+                      md={4}
+                      className="d-flex align-items-start justify-content-end"
+                    >
                       <Button
                         onClick={() => removeInfo(i.number)}
-                        variant={"outline-danger"}
+                        variant="outline-danger"
                       >
                         Удалить
                       </Button>
