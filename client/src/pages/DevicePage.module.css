@@ -522,3 +522,10 @@
     padding: 10px;
   }
 }
+
+@media (max-width: 768px) {
+  .DevicePageSpecsMobile > .DevicePageSpecRow {
+    margin-left: 10px;    
+    max-width: 600px;     
+  }
+}
