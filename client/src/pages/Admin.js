@@ -91,7 +91,9 @@ const Admin = () => {
     fetchTypes().then(setTypes);
     fetchSubtypes().then(setSubtypes);
     fetchBrands().then(setBrands);
-    fetchDevices().then((data) => setDevices(data.rows || []));
+    fetchDevices(undefined, undefined, undefined, 1, 1000).then((data) =>
+      setDevices(data.rows || data)
+    );
     fetchTranslations().then(setTranslations);
   }, []);
 
@@ -153,7 +155,13 @@ const Admin = () => {
       const brandsData = await fetchBrands();
       setBrands(brandsData);
 
-      const devicesData = await fetchDevices();
+      const devicesData = await fetchDevices(
+        undefined,
+        undefined,
+        undefined,
+        1,
+        1000
+      );
       setDevices(devicesData.rows || devicesData);
       setVisibleDevices((devicesData.rows || devicesData).slice(0, limit));
     };
@@ -184,7 +192,7 @@ const Admin = () => {
     }
   };
 
-   useEffect(() => {
+  useEffect(() => {
     if (!user?.user?.id) return;
 
     fetch(`https://zang-4.onrender.com/api/chat/user/${user.user.id}`)
@@ -322,6 +330,47 @@ const Admin = () => {
   const typesMap = new Map(types.map((type) => [type.id, type]));
   const subtypesMap = new Map(subtypes.map((subtype) => [subtype.id, subtype]));
 
+ const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const dayStart = (dateStr) => {
+    const d = new Date(dateStr);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  const isSnoozed = (d) => d.snoozeUntil && dayStart(d.snoozeUntil) >= today;
+
+  const isExpired = (d) => d.expiryDate && dayStart(d.expiryDate) < today;
+
+  const twoMonthsFromToday = new Date(today);
+  twoMonthsFromToday.setMonth(twoMonthsFromToday.getMonth() + 2);
+
+  const isExpiringWithin2Months = (d) => {
+    if (!d.expiryDate) return false;
+    const ed = dayStart(d.expiryDate);
+    return ed >= today && ed <= twoMonthsFromToday;
+  };
+
+  const daysToExpire = (d) => {
+    if (!d.expiryDate) return null;
+    return Math.floor((dayStart(d.expiryDate) - today) / 86400000);
+  };
+
+  const expiryBadge = (d) => {
+    const days = daysToExpire(d);
+    if (days === null) return null;
+    if (days < 0) return "просрочено";
+    if (days === 0) return "истекает сегодня";
+    return `${days} дн.`;
+  };
+
+  const attentionDevices = filteredDevices
+    .filter(
+      (d) => !isSnoozed(d) && (isExpired(d) || isExpiringWithin2Months(d))
+    )
+    .sort((a, b) => (daysToExpire(a) ?? 9e9) - (daysToExpire(b) ?? 9e9));
+
   return (
     <div className={styles.adminPanelContainer}>
       <Tabs>
@@ -336,7 +385,7 @@ const Admin = () => {
             Чат поддержки{" "}
             {unreadChats.size > 0 && <span style={{ color: "red" }}>●</span>}
           </Tab>
-              <Tab>Бухгалтерия</Tab>
+          <Tab>Бухгалтерия</Tab>
         </TabList>
 
         <TabPanel>
@@ -348,6 +397,76 @@ const Admin = () => {
               Добавить устройство
             </button>
           </div>
+
+          {attentionDevices.length > 0 && (
+            <div
+              style={{ border: "2px solid red", padding: 10, marginBottom: 15 }}
+            >
+              <h3 style={{ color: "red", marginTop: 0 }}>
+                Товары с истёкшим или истекающим сроком (в ближайшие 2 месяца)
+              </h3>
+
+              <div className={styles.itemList}>
+                {attentionDevices.map((device) => (
+                  <div
+                    key={device.id}
+                    className={styles.item}
+                    style={{ background: "#ffe5e5" }}
+                  >
+                    <div>
+                      id-{device.id}
+                      <Image
+                        className={styles.adminDeviceImg}
+                        width={50}
+                        height={50}
+                        src={device.img}
+                      />
+                    </div>
+
+                    <span className={styles.adminDeviceName}>
+                      {device.name}
+                    </span>
+
+                    <div className={styles.buttons}>
+                      <span
+                        style={{
+                          color: "red",
+                          fontWeight: 600,
+                          marginRight: 8,
+                        }}
+                      >
+                        {expiryBadge(device)}
+                      </span>
+                      {device.expiryDate && (
+                        <span style={{ color: "#666", marginRight: 12 }}>
+                          до{" "}
+                          {new Date(device.expiryDate).toLocaleDateString(
+                            "ru-RU"
+                          )}
+                        </span>
+                      )}
+
+                      <button
+                        className={styles.editButton}
+                        onClick={() => handleEditDevice(device)}
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        className={styles.deleteButton}
+                        onClick={() => {
+                          if (window.confirm("Удалить этот товар?"))
+                            handleDeleteDevice(device.id);
+                        }}
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className={styles.filterContainer}>
             <input
@@ -977,7 +1096,8 @@ const Admin = () => {
             onUnreadChange={(set) => setUnreadChats(set)}
           />
         </TabPanel>
-              <TabPanel>
+
+        <TabPanel>
           <AdminAccounting devices={devices} />
         </TabPanel>
       </Tabs>
@@ -994,7 +1114,9 @@ const Admin = () => {
         show={deviceVisible}
         onHide={() => {
           setDeviceVisible(false);
-          fetchDevices().then((data) => setDevices(data.rows || []));
+          fetchDevices(undefined, undefined, undefined, 1, 1000).then((data) =>
+            setDevices(data.rows || data)
+          );
         }}
         editableDevice={editableDevice}
         onDeviceSaved={() => setEditableDevice(null)}
