@@ -211,7 +211,7 @@ const DevicePage = ({ id }) => {
 
   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
-  return (
+ return (
     <div className={styles.DevicePageContainer}>
       <div className={styles.DevicePageContent}>
         <div className={styles.DevicePageColImg}>
@@ -388,10 +388,10 @@ const DevicePage = ({ id }) => {
                   <span className={styles.DevicePageSpecText}>
                     <strong>
                       {device.expiryKind === "use_by"
-                        ? "Годен до"
+                        ? t("use_by", { ns: "devicePage" })
                         : device.expiryKind === "best_before"
-                        ? "Лучше употребить до"
-                        : "Срок годности"}
+                        ? t("best_before", { ns: "devicePage" })
+                        : t("expiry_date", { ns: "devicePage" })}
                     </strong>
                     <span>
                       {new Date(device.expiryDate).toLocaleDateString("ru-RU")}
@@ -437,25 +437,25 @@ const DevicePage = ({ id }) => {
               </span>
             </div>
           ))}
-        </div>
-        {device.expiryDate && (
-          <div
-            className={`${styles.DevicePageSpecRow} ${styles.DevicePageSpecRowEven}`}
-          >
-            <span className={styles.DevicePageSpecText}>
-              <strong>
-                {device.expiryKind === "use_by"
-                  ? "Годен до"
-                  : device.expiryKind === "best_before"
-                  ? "Лучше употребить до"
-                  : "Срок годности"}
-              </strong>
-              <span>
-                {new Date(device.expiryDate).toLocaleDateString("ru-RU")}
+          {device.expiryDate && (
+            <div
+              className={`${styles.DevicePageSpecRow} ${styles.DevicePageSpecRowEven}`}
+            >
+              <span className={styles.DevicePageSpecText}>
+                <strong>
+                  {device.expiryKind === "use_by"
+                    ? t("use_by", { ns: "devicePage" })
+                    : device.expiryKind === "best_before"
+                    ? t("best_before", { ns: "devicePage" })
+                    : t("expiry_date", { ns: "devicePage" })}
+                </strong>
+                <span>
+                  {new Date(device.expiryDate).toLocaleDateString("ru-RU")}
+                </span>
               </span>
-            </span>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
       <div
         className={`${styles.DevicePageBuyBlockMobile} ${
