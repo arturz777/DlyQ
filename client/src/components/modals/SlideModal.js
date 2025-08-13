@@ -7,7 +7,6 @@ const SlideModal = ({ children, onClose }) => {
   const dragControls = useDragControls();
 
   const handlePointerDown = (e) => {
-    // запускаем drag только когда пользователь тянет за хендл
     dragControls.start(e);
   };
 
@@ -22,7 +21,6 @@ const SlideModal = ({ children, onClose }) => {
           exit={{ y: "100%" }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
           
-          // ВАЖНО: тянем по Y, но только по команде с хендла
           drag="y"
           dragControls={dragControls}
           dragListener={false}
