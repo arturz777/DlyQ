@@ -13,5 +13,8 @@
   "write preferred delivery time": "Näiteks: eelistatud tarneaeg, erisoovid jne.",
   "desired delivery datetime": "Soovitud tarnekuupäev (kui kaup saabub varem)",
   "out of stock (Pre-order)": "Pole laos",
-  "product photos are provided": "Tootefotod on esitatud üksnes illustreerival eesmärgil. Välimuses võivad esineda väikesed erinevused."
+  "product photos are provided": "Tootefotod on esitatud üksnes illustreerival eesmärgil. Välimuses võivad esineda väikesed erinevused.",
+  "use_by": "Kõlblik kuni",
+  "best_before": "Parim enne",
+  "expiry_date": "Kõlblikkusaeg"
 }
