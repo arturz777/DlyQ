@@ -63,7 +63,7 @@ const DevicePage = ({ id }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  useEffect(() => {
+   useEffect(() => {
     const fetchData = async () => {
       try {
         const deviceData = await fetchOneDevice(id);
@@ -98,12 +98,12 @@ const DevicePage = ({ id }) => {
   }, [id, basket.items]);
 
   useEffect(() => {
-  const additionalPrice = Object.values(selectedOptions).reduce(
-    (total, option) => total + (Number(option?.price) || 0),
-    0
-  );
-  setFinalPrice((Number(device.price) || 0) + additionalPrice);
-}, [selectedOptions, device.price]);
+    const additionalPrice = Object.values(selectedOptions).reduce(
+      (total, option) => total + (Number(option?.price) || 0),
+      0
+    );
+    setFinalPrice((Number(device.price) || 0) + additionalPrice);
+  }, [selectedOptions, device.price]);
 
   const images = [device.img, ...(device.thumbnails || [])];
 
@@ -257,18 +257,18 @@ const DevicePage = ({ id }) => {
             )}
           </div>
           {images.length > 1 && (
-          <div className={styles.DevicePageThumbnailContainer}>
-            {images.map((thumb, index) => (
-              <img
-                key={index}
-                src={thumb}
-                className={`${styles.DevicePageThumbnail} ${
-                  index === activeIndex ? styles.ActiveThumbnail : ""
-                }`}
-                onClick={() => setActiveIndex(index)}
-              />
-            ))}
-          </div>
+            <div className={styles.DevicePageThumbnailContainer}>
+              {images.map((thumb, index) => (
+                <img
+                  key={index}
+                  src={thumb}
+                  className={`${styles.DevicePageThumbnail} ${
+                    index === activeIndex ? styles.ActiveThumbnail : ""
+                  }`}
+                  onClick={() => setActiveIndex(index)}
+                />
+              ))}
+            </div>
           )}
         </div>
         <div className={styles.DevicePageDetails}>
@@ -315,10 +315,15 @@ const DevicePage = ({ id }) => {
               ))}
 
               <div className={styles.DevicePagePriceBlock}>
-                {device.oldPrice && Number(device.oldPrice) > Number(device.price) ? (
+                {device.oldPrice &&
+                Number(device.oldPrice) > Number(device.price) ? (
                   <>
                     <span className={styles.DevicePageOldPrice}>
-                      {(Number(device.oldPrice) + (finalPrice - (Number(device.price) || 0))).toFixed(2)} €
+                      {(
+                        Number(device.oldPrice) +
+                        (finalPrice - (Number(device.price) || 0))
+                      ).toFixed(2)}{" "}
+                      €
                     </span>
                     <span className={styles.DevicePageNewPrice}>
                       {finalPrice.toFixed(2)} €
@@ -341,7 +346,6 @@ const DevicePage = ({ id }) => {
               </button>
             </div>
 
-           
             <div className={styles.DevicePageInfoMobile}>
               <p>{t("product photos are provided", { ns: "devicePage" })}</p>
             </div>
@@ -377,6 +381,24 @@ const DevicePage = ({ id }) => {
                   </div>
                 ))}
               </div>
+              {device.expiryDate && (
+                <div
+                  className={`${styles.DevicePageSpecRow} ${styles.DevicePageSpecRowEven}`}
+                >
+                  <span className={styles.DevicePageSpecText}>
+                    <strong>
+                      {device.expiryKind === "use_by"
+                        ? "Годен до"
+                        : device.expiryKind === "best_before"
+                        ? "Лучше употребить до"
+                        : "Срок годности"}
+                    </strong>
+                    <span>
+                      {new Date(device.expiryDate).toLocaleDateString("ru-RU")}
+                    </span>
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -416,70 +438,92 @@ const DevicePage = ({ id }) => {
             </div>
           ))}
         </div>
+        {device.expiryDate && (
+          <div
+            className={`${styles.DevicePageSpecRow} ${styles.DevicePageSpecRowEven}`}
+          >
+            <span className={styles.DevicePageSpecText}>
+              <strong>
+                {device.expiryKind === "use_by"
+                  ? "Годен до"
+                  : device.expiryKind === "best_before"
+                  ? "Лучше употребить до"
+                  : "Срок годности"}
+              </strong>
+              <span>
+                {new Date(device.expiryDate).toLocaleDateString("ru-RU")}
+              </span>
+            </span>
+          </div>
+        )}
       </div>
-       <div
-              className={`${styles.DevicePageBuyBlockMobile} ${
-                device.options?.length ? styles.WithOptions : styles.NoOptions
-              }`}
-            >
-              {device.options?.length > 0 && (
-                <div className={styles.DevicePageSelectedOptions}>
-                  {device.options?.map((option, optionIndex) => (
-                    <div key={optionIndex} className={styles.DevicePageOption}>
-                      <select
-                        value={selectedOptions[option.name]?.value || ""}
-                        onChange={(e) => {
-                          const selectedValue = option.values.find(
-                            (v) => v.value === e.target.value
-                          );
-                          handleOptionChange(option.name, selectedValue);
-                        }}
-                        className={styles.DevicePageSelect}
-                      >
-                        <option value="" disabled hidden>
-                          {t("Select", { ns: "devicePage" })}:{" "}
-                          {option.translations?.name?.[currentLang] ||
-                            option.name}
-                        </option>
-                        {option.values.map((valueObj, valueIndex) => (
-                          <option key={valueIndex} value={valueObj.value}>
-                            {option.translations?.values?.[valueIndex]?.[
-                              currentLang
-                            ] || valueObj.value}
-                            {valueObj.quantity <= 0
-                              ? ` (${t("out of stock (Pre-order)", {
-                                  ns: "devicePage",
-                                })})`
-                              : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+      <div
+        className={`${styles.DevicePageBuyBlockMobile} ${
+          device.options?.length ? styles.WithOptions : styles.NoOptions
+        }`}
+      >
+        {device.options?.length > 0 && (
+          <div className={styles.DevicePageSelectedOptions}>
+            {device.options?.map((option, optionIndex) => (
+              <div key={optionIndex} className={styles.DevicePageOption}>
+                <select
+                  value={selectedOptions[option.name]?.value || ""}
+                  onChange={(e) => {
+                    const selectedValue = option.values.find(
+                      (v) => v.value === e.target.value
+                    );
+                    handleOptionChange(option.name, selectedValue);
+                  }}
+                  className={styles.DevicePageSelect}
+                >
+                  <option value="" disabled hidden>
+                    {t("Select", { ns: "devicePage" })}:{" "}
+                    {option.translations?.name?.[currentLang] || option.name}
+                  </option>
+                  {option.values.map((valueObj, valueIndex) => (
+                    <option key={valueIndex} value={valueObj.value}>
+                      {option.translations?.values?.[valueIndex]?.[
+                        currentLang
+                      ] || valueObj.value}
+                      {valueObj.quantity <= 0
+                        ? ` (${t("out of stock (Pre-order)", {
+                            ns: "devicePage",
+                          })})`
+                        : ""}
+                    </option>
                   ))}
-                </div>
-              )}
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
 
-              <button
-                className={styles.DevicePageAddButtonCompact}
-                onClick={handleAddToBasket}
-              >
-                <span className={styles.AddText}>
-                  {t("add_to_cart", { ns: "devicePage" })}
-                </span>
-                <span className={styles.AddPrice}>
-                  {device.oldPrice && Number(device.oldPrice) > Number(device.price) ? (
-                    <>
-                      <span className={styles.Strike}>
-                        {(Number(device.oldPrice) + (finalPrice - (Number(device.price) || 0))).toFixed(2)} €
-                        </span>{" "}
-                      {finalPrice.toFixed(2)} €
-                    </>
-                  ) : (
-                    `${finalPrice.toFixed(2)} €`
-                  )}
-                </span>
-              </button>
-            </div>
+        <button
+          className={styles.DevicePageAddButtonCompact}
+          onClick={handleAddToBasket}
+        >
+          <span className={styles.AddText}>
+            {t("add_to_cart", { ns: "devicePage" })}
+          </span>
+          <span className={styles.AddPrice}>
+            {device.oldPrice &&
+            Number(device.oldPrice) > Number(device.price) ? (
+              <>
+                <span className={styles.Strike}>
+                  {(
+                    Number(device.oldPrice) +
+                    (finalPrice - (Number(device.price) || 0))
+                  ).toFixed(2)}{" "}
+                  €
+                </span>{" "}
+                {finalPrice.toFixed(2)} €
+              </>
+            ) : (
+              `${finalPrice.toFixed(2)} €`
+            )}
+          </span>
+        </button>
+      </div>
     </div>
   );
 };
