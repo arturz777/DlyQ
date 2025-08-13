@@ -42,6 +42,9 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [activeInfoLang, setActiveInfoLang] = useState("ru");
   const [activeOptionsLang, setActiveOptionsLang] = useState("ru");
   const [activeDescLang, setActiveDescLang] = useState("ru");
+  const [expiryKind, setExpiryKind] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [snoozeUntil, setSnoozeUntil] = useState("");
   const [translations, setTranslations] = useState({
     name: { en: "", ru: "", est: "" },
     options: [],
@@ -81,6 +84,9 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       setPrice(editableDevice.price);
       setOldPrice(editableDevice.oldPrice || "");
       setDescription(editableDevice.description || "");
+      setExpiryKind(editableDevice.expiryKind || "");
+      setExpiryDate(editableDevice.expiryDate || "");
+      setSnoozeUntil(editableDevice.snoozeUntil || "");
       setDiscount(editableDevice.discount || false);
       setRecommended(editableDevice.recommended || false);
       setInfo(editableDevice.info || []);
@@ -589,6 +595,16 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
   const validateDevice = () => {
     const errors = {};
+
+    if (expiryKind && !expiryDate) {
+      errors.expiryDate = "Укажите дату годности";
+    }
+    if (expiryKind === "use_by" && expiryDate) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (expiryDate < today)
+        errors.expiryDate = "Для use_by дата не может быть в прошлом";
+    }
+
     if (!device.selectedType?.id) errors.type = "Выберите тип";
     if (!price || isNaN(price)) errors.price = "Введите цену";
     if (discount && (!oldPrice || isNaN(oldPrice))) {
@@ -682,6 +698,9 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     formData.append("info", JSON.stringify(info));
     formData.append("options", JSON.stringify(options));
     formData.append("translations", JSON.stringify(translations));
+    formData.append("expiryKind", expiryKind || "");
+    formData.append("expiryDate", expiryDate || "");
+    formData.append("snoozeUntil", snoozeUntil || "");
 
     const saveAction = isEditMode
       ? updateDevice(editableDevice.id, formData)
@@ -1483,6 +1502,42 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
             )}
           </div>
         </Form>
+
+        <div className="mt-3 mb-2">
+          <h6>🧪 Срок годности</h6>
+          <div className="d-flex gap-2 flex-wrap">
+            <Form.Select
+              value={expiryKind}
+              onChange={(e) => setExpiryKind(e.target.value)}
+              style={{ maxWidth: 260 }}
+            >
+              <option value="">— тип срока —</option>
+              <option value="use_by">Годен до (use_by)</option>
+              <option value="best_before">
+                Лучше употребить до (best_before)
+              </option>
+            </Form.Select>
+
+            <Form.Control
+              type="date"
+              value={expiryDate || ""}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              style={{ maxWidth: 200 }}
+              placeholder="Дата годности"
+            />
+
+            <Form.Control
+              type="date"
+              value={snoozeUntil || ""}
+              onChange={(e) => setSnoozeUntil(e.target.value)}
+              style={{ maxWidth: 200 }}
+              placeholder="Snooze до (необязательно)"
+            />
+          </div>
+          {isSubmitted && errors.expiryDate && (
+            <span style={{ color: "red" }}>{errors.expiryDate}</span>
+          )}
+        </div>
       </Modal.Body>
 
       <Form.Group>
