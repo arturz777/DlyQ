@@ -13,5 +13,8 @@
   "write preferred delivery time": "For example: preferred delivery time, special requests, etc.",
   "desired delivery datetime": "Desired delivery date (if item arrives earlier)",
   "out of stock (Pre-order)": "Out of stock",
-  "product photos are provided": "Product photos are provided for illustrative purposes only. Minor differences in appearance may occur."
+  "product photos are provided": "Product photos are provided for illustrative purposes only. Minor differences in appearance may occur.",
+  "use_by": "Use by",
+  "best_before": "Best before",
+  "expiry_date": "Expiry date"
 }
