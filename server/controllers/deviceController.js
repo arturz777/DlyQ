@@ -31,14 +31,10 @@ class DeviceController {
         discount,
         recommended,
         purchasePrice,
+        expiryKind,
+        expiryDate,
+        snoozeUntil,
       } = req.body;
-
-      if (!name || !price || !typeId) {
-  return res.status(400).json({
-    message:
-      "Обязательные поля (name, price, typeId) должны быть заполнены.",
-  });
-}
 
       if (!req.files || !req.files.img) {
         return res
@@ -117,9 +113,23 @@ class DeviceController {
         oldPrice = price;
       }
 
-      const purchasePriceNum = purchasePrice !== undefined && purchasePrice !== null && purchasePrice !== ''
-  ? Number(purchasePrice)
-  : null;
+      const purchasePriceNum =
+        purchasePrice !== undefined &&
+        purchasePrice !== null &&
+        purchasePrice !== ""
+          ? Number(purchasePrice)
+          : null;
+
+      expiryKind = expiryKind || null;
+      expiryDate = expiryDate || null;
+      snoozeUntil = snoozeUntil || null;
+
+      if (!name || !price || !typeId) {
+        return res.status(400).json({
+          message:
+            "Обязательные поля (name, price, typeId) должны быть заполнены.",
+        });
+      }
 
       const device = await Device.create({
         name,
@@ -133,12 +143,26 @@ class DeviceController {
         options,
         quantity: quantity || 0,
         description,
+        expiryKind,
+        expiryDate,
+        snoozeUntil,
         isNew: isNew === "true",
         discount: discount === "true",
         recommended: recommended === "true",
         purchasePrice: purchasePriceNum,
         purchaseHasVAT: req.body.purchaseHasVAT === "true",
       });
+
+      if (expiryKind === "use_by" && expiryDate) {
+        const today = new Date().toISOString().slice(0, 10);
+        if (expiryDate < today) {
+          return res
+            .status(400)
+            .json({
+              message: "Для use_by дата годности не может быть в прошлом.",
+            });
+        }
+      }
 
       if (info) {
         info = JSON.parse(info);
@@ -278,14 +302,28 @@ class DeviceController {
         ],
       });
 
-      const deviceIds = devices.rows.map((d) => d.id);
-      const translations = await Translation.findAll({
-        where: {
-          key: {
-            [Op.or]: deviceIds.map((id) => ({ [Op.like]: `device_${id}.%` })),
-          },
-        },
+      const todayStr = new Date().toISOString().slice(0, 10);
+      devices.rows.forEach((d) => {
+        const v = d.dataValues;
+        if (v.expiryDate) {
+          const ms = new Date(v.expiryDate) - new Date(todayStr);
+          v.daysToExpire = Math.floor(ms / 86400000);
+        } else {
+          v.daysToExpire = null;
+        }
       });
+
+      const deviceIds = devices.rows.map((d) => d.id);
+      let translations = [];
+      if (deviceIds.length > 0) {
+        translations = await Translation.findAll({
+          where: {
+            key: {
+              [Op.or]: deviceIds.map((id) => ({ [Op.like]: `device_${id}.%` })),
+            },
+          },
+        });
+      }
 
       const translatedSpecs = {};
       translations.forEach((t) => {
@@ -491,7 +529,28 @@ class DeviceController {
         discount,
         recommended,
         purchasePrice,
+        expiryKind,
+        expiryDate,
+        snoozeUntil,
       } = req.body;
+
+      expiryKind =
+        expiryKind === "use_by" || expiryKind === "best_before"
+          ? expiryKind
+          : null;
+      expiryDate = expiryDate || null;
+      snoozeUntil = snoozeUntil || null;
+
+      if (expiryKind === "use_by" && expiryDate) {
+        const today = new Date().toISOString().slice(0, 10);
+        if (expiryDate < today) {
+          return res
+            .status(400)
+            .json({
+              message: "Для use_by дата годности не может быть в прошлом.",
+            });
+        }
+      }
 
       let existingImages = req.body.existingImages
         ? JSON.parse(req.body.existingImages)
@@ -689,9 +748,12 @@ class DeviceController {
         await Translation.bulkCreate(translationEntries);
       }
 
-      const purchasePriceNum = purchasePrice !== undefined && purchasePrice !== null && purchasePrice !== ''
-  ? Number(purchasePrice)
-  : null;
+      const purchasePriceNum =
+        purchasePrice !== undefined &&
+        purchasePrice !== null &&
+        purchasePrice !== ""
+          ? Number(purchasePrice)
+          : null;
 
       await Device.update(
         {
@@ -706,6 +768,9 @@ class DeviceController {
           options,
           quantity: quantity || 0,
           description,
+          expiryKind,
+          expiryDate,
+          snoozeUntil,
           isNew: isNew === "true",
           discount: discount === "true",
           recommended: recommended === "true",
