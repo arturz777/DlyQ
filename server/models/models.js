@@ -37,6 +37,9 @@ oldPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
   discount: { type: DataTypes.BOOLEAN, defaultValue: false },
   recommended: { type: DataTypes.BOOLEAN, defaultValue: false },
   description: { type: DataTypes.TEXT, allowNull: true },
+  expiryKind: { type: DataTypes.STRING, allowNull: true, defaultValue: null },
+  expiryDate: { type: DataTypes.DATEONLY, allowNull: true },
+  snoozeUntil: { type: DataTypes.DATEONLY, allowNull: true },
 });
 
 const Type = sequelize.define("type", {
