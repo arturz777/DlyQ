@@ -43,3 +43,4 @@ const SlideModal = ({ children, onClose }) => {
 };
 
 export default SlideModal;
+
