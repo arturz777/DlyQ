@@ -199,6 +199,8 @@
   margin: 0 auto;
   display: block;
   text-align: center;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 1000px;
 }
 
 .DevicePageDescription {
