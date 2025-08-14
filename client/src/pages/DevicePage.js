@@ -95,7 +95,7 @@ const DevicePage = ({ id }) => {
     };
 
     fetchData();
-  }, [id, basket.items]);
+  }, [id]);
 
   useEffect(() => {
     const additionalPrice = Object.values(selectedOptions).reduce(
