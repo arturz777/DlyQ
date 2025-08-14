@@ -27,6 +27,12 @@
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
 }
 
+.modalContent {
+  will-change: transform;
+  transform: translateZ(0);
+  contain: layout paint style;
+}
+
 .dragHandle {
   width: 40px;
   height: 5px;
@@ -35,4 +41,3 @@
   margin: 0 auto 12px auto;
   touch-action: none;
 }
-
