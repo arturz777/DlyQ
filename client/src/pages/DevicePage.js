@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext } from "react";
 import { useParams } from "react-router-dom";
-import { fetchOneDevice, fetchRecommendedDevices } from "../http/deviceAPI";
+import { fetchOneDevice, fetchRecommendedDevices, } from "../http/deviceAPI";
 import { Context } from "../index";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
@@ -10,7 +10,6 @@ import styles from "./DevicePage.module.css";
 
 const DevicePage = ({ id }) => {
   const { basket } = useContext(Context);
-  const [imgReady, setImgReady] = useState(false);
   const [device, setDevice] = useState({
     info: [],
     options: [],
@@ -27,6 +26,7 @@ const DevicePage = ({ id }) => {
   const deviceName = device.translations?.name?.[currentLang] || device.name;
   const isStoreClosed = !isShopOpenNow();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [loading, setLoading] = useState(true);
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
@@ -65,39 +65,49 @@ const DevicePage = ({ id }) => {
   }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const deviceData = await fetchOneDevice(id);
-        setDevice(deviceData);
-        setFinalPrice(Number(deviceData.price) || 0);
-        setActiveIndex(0);
-        setImgReady(false);
+  let ignore = false;
+  const run = async () => {
+    try {
+      setLoading(true);
 
-        const itemInBasket = basket.items.find(
-          (item) => item.id === deviceData.id
-        );
-        const quantityInBasket = itemInBasket ? itemInBasket.count : 0;
-        setAvailableQuantity((deviceData.quantity ?? 0) - quantityInBasket);
+      const deviceData = await fetchOneDevice(id);
+      if (ignore) return;
 
-        const initialOptions = {};
-        deviceData.options?.forEach((option) => {
-          if (option.values.length > 0) {
-            initialOptions[option.name] = option.values[0];
-          }
-        });
+      setDevice(deviceData);
+      setFinalPrice(Number(deviceData.price) || 0);
+      setActiveIndex(0);
 
-        setSelectedOptions(initialOptions);
+      // инициализируем опции ПЕРВЫМИ значениями, если есть
+      const initialOptions = {};
+      deviceData.options?.forEach((option) => {
+        if (option.values.length > 0) {
+          initialOptions[option.name] = option.values[0];
+        }
+      });
+      setSelectedOptions(initialOptions);
 
-        const recommended = await fetchRecommendedDevices(deviceData.type);
-        setRecommendedDevices(recommended);
-      } catch (error) {
-        toast.error("❌ Ошибка загрузки устройства");
-        console.error(error);
-      }
-    };
+      // подтянем рекомендации (не блокируем UI — можно не await)
+      fetchRecommendedDevices(deviceData.type)
+        .then((recommended) => { if (!ignore) setRecommendedDevices(recommended); })
+        .catch(() => {});
+    } catch (error) {
+      toast.error("❌ Ошибка загрузки устройства");
+      console.error(error);
+    } finally {
+      if (!ignore) setLoading(false);
+    }
+  };
+  run();
+  return () => { ignore = true; };
+}, [id]); // ✅ только id
 
-    fetchData();
-  }, [id]);
+useEffect(() => {
+  if (!device?.id) return;
+  const inBasket = basket.items
+    .filter((it) => it.id === device.id)
+    .reduce((s, it) => s + (it.count || 0), 0);
+  setAvailableQuantity(Math.max(0, (device.quantity ?? 0) - inBasket));
+}, [basket.items, device.id, device.quantity]);
 
   useEffect(() => {
     const additionalPrice = Object.values(selectedOptions).reduce(
@@ -213,6 +223,16 @@ const DevicePage = ({ id }) => {
 
   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
+   if (loading) {
+    return (
+      <div style={{ padding: 20 }}>
+        <div style={{ height: 200, background: "#eee", borderRadius: 8 }} />
+        <div style={{ height: 20, background: "#eee", marginTop: 10, borderRadius: 4 }} />
+        <div style={{ height: 20, width: "80%", background: "#eee", marginTop: 10, borderRadius: 4 }} />
+      </div>
+    );
+  }
+
   return (
     <div className={styles.DevicePageContainer}>
       <div className={styles.DevicePageContent}>
@@ -229,12 +249,10 @@ const DevicePage = ({ id }) => {
             )}
 
             <div className={styles.ImageContainer}>
-              <AnimatePresence mode="wait">
-                {images.map(
-                  (img, index) =>
-                    index === activeIndex && (
+               <AnimatePresence mode="wait">
+                {images.length > 0 && (
                       <motion.img
-                        key={images[activeIndex]} // важен ключ
+                        key={images[activeIndex]}
                         src={images[activeIndex]}
                         alt={device.name}
                         className={styles.DevicePageMainImage}
@@ -245,9 +263,7 @@ const DevicePage = ({ id }) => {
                         decoding="async"
                         loading="eager"
                         fetchpriority="high"
-                        onLoad={() => setImgReady(true)}
                       />
-                    )
                 )}
               </AnimatePresence>
             </div>
@@ -272,8 +288,6 @@ const DevicePage = ({ id }) => {
                     index === activeIndex ? styles.ActiveThumbnail : ""
                   }`}
                   onClick={() => setActiveIndex(index)}
-                  loading="lazy" // ← ДОБАВЬ
-                  decoding="async"
                 />
               ))}
             </div>
@@ -281,18 +295,10 @@ const DevicePage = ({ id }) => {
         </div>
         <div className={styles.DevicePageDetails}>
           <div className={styles.DevicePageCard}>
-          {!imgReady ? (
-            <div className={styles.SkeletonAboveTheFold}>
-              <div className={styles.SkelTitle} />
-              <div className={styles.SkelPrice} />
-              <div className={styles.SkelButtons} />
-            </div>
-            ) : (
-               <>
             <p className={styles.DevicePageTitle}>
               {device.translations?.["name"]?.[currentLang] || device.name}
             </p>
-            
+
             <div className={styles.DevicePageBuyBlockDesktop}>
               {device.options?.map((option, optionIndex) => (
                 <div key={optionIndex} className={styles.DevicePageOption}>
@@ -361,12 +367,10 @@ const DevicePage = ({ id }) => {
                   : t("add_to_cart", { ns: "devicePage" })}
               </button>
             </div>
-            </>
-)}
+
             <div className={styles.DevicePageInfoMobile}>
               <p>{t("product photos are provided", { ns: "devicePage" })}</p>
             </div>
-            
             <div className={styles.DevicePageSpecsMobile}>
               {(device.translations?.description?.[currentLang] ||
                 device.description) && (
@@ -421,8 +425,6 @@ const DevicePage = ({ id }) => {
           </div>
         </div>
       </div>
-      {imgReady && (
-  <>
       <div className={styles.DevicePageInfoDesktop}>
         <p>{t("product photos are provided", { ns: "devicePage" })}</p>
       </div>
@@ -477,8 +479,6 @@ const DevicePage = ({ id }) => {
           )}
         </div>
       </div>
-       </>
-)}
       <div
         className={`${styles.DevicePageBuyBlockMobile} ${
           device.options?.length ? styles.WithOptions : styles.NoOptions
