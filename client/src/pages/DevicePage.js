@@ -10,6 +10,7 @@ import styles from "./DevicePage.module.css";
 
 const DevicePage = ({ id }) => {
   const { basket } = useContext(Context);
+  const [imgReady, setImgReady] = useState(false);
   const [device, setDevice] = useState({
     info: [],
     options: [],
@@ -63,19 +64,20 @@ const DevicePage = ({ id }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-   useEffect(() => {
+  useEffect(() => {
     const fetchData = async () => {
       try {
         const deviceData = await fetchOneDevice(id);
         setDevice(deviceData);
         setFinalPrice(Number(deviceData.price) || 0);
         setActiveIndex(0);
+        setImgReady(false);
 
         const itemInBasket = basket.items.find(
           (item) => item.id === deviceData.id
         );
         const quantityInBasket = itemInBasket ? itemInBasket.count : 0;
-        setAvailableQuantity(deviceData.quantity - quantityInBasket);
+        setAvailableQuantity((deviceData.quantity ?? 0) - quantityInBasket);
 
         const initialOptions = {};
         deviceData.options?.forEach((option) => {
@@ -84,7 +86,7 @@ const DevicePage = ({ id }) => {
           }
         });
 
-        setSelectedOptions({});
+        setSelectedOptions(initialOptions);
 
         const recommended = await fetchRecommendedDevices(deviceData.type);
         setRecommendedDevices(recommended);
@@ -95,7 +97,7 @@ const DevicePage = ({ id }) => {
     };
 
     fetchData();
-  }, [id, basket.items]);
+  }, [id]);
 
   useEffect(() => {
     const additionalPrice = Object.values(selectedOptions).reduce(
@@ -211,7 +213,7 @@ const DevicePage = ({ id }) => {
 
   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
- return (
+  return (
     <div className={styles.DevicePageContainer}>
       <div className={styles.DevicePageContent}>
         <div className={styles.DevicePageColImg}>
@@ -232,14 +234,18 @@ const DevicePage = ({ id }) => {
                   (img, index) =>
                     index === activeIndex && (
                       <motion.img
-                        key={`${img}-${index}`}
-                        src={img}
+                        key={images[activeIndex]} // важен ключ
+                        src={images[activeIndex]}
                         alt={device.name}
                         className={styles.DevicePageMainImage}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
+                        decoding="async"
+                        loading="eager"
+                        fetchpriority="high"
+                        onLoad={() => setImgReady(true)}
                       />
                     )
                 )}
@@ -266,6 +272,8 @@ const DevicePage = ({ id }) => {
                     index === activeIndex ? styles.ActiveThumbnail : ""
                   }`}
                   onClick={() => setActiveIndex(index)}
+                  loading="lazy" // ← ДОБАВЬ
+                  decoding="async"
                 />
               ))}
             </div>
@@ -273,10 +281,18 @@ const DevicePage = ({ id }) => {
         </div>
         <div className={styles.DevicePageDetails}>
           <div className={styles.DevicePageCard}>
+          {!imgReady ? (
+            <div className={styles.SkeletonAboveTheFold}>
+              <div className={styles.SkelTitle} />
+              <div className={styles.SkelPrice} />
+              <div className={styles.SkelButtons} />
+            </div>
+            ) : (
+               <>
             <p className={styles.DevicePageTitle}>
               {device.translations?.["name"]?.[currentLang] || device.name}
             </p>
-
+            
             <div className={styles.DevicePageBuyBlockDesktop}>
               {device.options?.map((option, optionIndex) => (
                 <div key={optionIndex} className={styles.DevicePageOption}>
@@ -345,10 +361,12 @@ const DevicePage = ({ id }) => {
                   : t("add_to_cart", { ns: "devicePage" })}
               </button>
             </div>
-
+            </>
+)}
             <div className={styles.DevicePageInfoMobile}>
               <p>{t("product photos are provided", { ns: "devicePage" })}</p>
             </div>
+            
             <div className={styles.DevicePageSpecsMobile}>
               {(device.translations?.description?.[currentLang] ||
                 device.description) && (
@@ -403,6 +421,8 @@ const DevicePage = ({ id }) => {
           </div>
         </div>
       </div>
+      {imgReady && (
+  <>
       <div className={styles.DevicePageInfoDesktop}>
         <p>{t("product photos are provided", { ns: "devicePage" })}</p>
       </div>
@@ -457,6 +477,8 @@ const DevicePage = ({ id }) => {
           )}
         </div>
       </div>
+       </>
+)}
       <div
         className={`${styles.DevicePageBuyBlockMobile} ${
           device.options?.length ? styles.WithOptions : styles.NoOptions
