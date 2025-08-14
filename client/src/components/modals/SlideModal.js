@@ -16,7 +16,7 @@ const SlideModal = ({ children, onClose }) => {
         <motion.div
           className={styles.modalContent}
           onClick={(e) => e.stopPropagation()}
-          initial={{ y: "100%" }}
+          initial={false} 
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
@@ -43,4 +43,3 @@ const SlideModal = ({ children, onClose }) => {
 };
 
 export default SlideModal;
-
