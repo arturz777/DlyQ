@@ -1,10 +1,11 @@
 import React from "react";
+import { observer } from "mobx-react-lite";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
-import LoadingBar from "../LoadingBar";
+import appStore from "../../store/appStore";
 import styles from "./SlideModal.module.css";
 
-const SlideModal = ({ children, onClose }) => {
+const SlideModal = observer(({ children, onClose }) => {
   const dragControls = useDragControls();
 
   const handlePointerDown = (e) => {
@@ -21,7 +22,6 @@ const SlideModal = ({ children, onClose }) => {
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
-          
           drag="y"
           dragControls={dragControls}
           dragListener={false}
@@ -35,15 +35,23 @@ const SlideModal = ({ children, onClose }) => {
             className={styles.dragHandle}
             onPointerDown={handlePointerDown}
           />
-           <div className={styles.modalLoadingBar}>
-            <LoadingBar />
+
+          <div
+            className={appStore.isLoading ? styles.hiddenContent : undefined}
+          >
+            {children}
           </div>
-          {children}
+
+          {appStore.isLoading && (
+            <div className={styles.spinnerOverlay}>
+              <div className={styles.spinner} />
+            </div>
+          )}
         </motion.div>
       </AnimatePresence>
     </div>,
     document.body
   );
-};
+});
 
 export default SlideModal;
