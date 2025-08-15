@@ -41,3 +41,10 @@
   margin: 0 auto 12px auto;
   touch-action: none;
 }
+
+.modalLoadingBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
