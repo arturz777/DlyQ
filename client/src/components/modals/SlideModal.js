@@ -1,6 +1,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
+import LoadingBar from "../LoadingBar";
 import styles from "./SlideModal.module.css";
 
 const SlideModal = ({ children, onClose }) => {
@@ -16,7 +17,7 @@ const SlideModal = ({ children, onClose }) => {
         <motion.div
           className={styles.modalContent}
           onClick={(e) => e.stopPropagation()}
-          initial={false} 
+          initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
@@ -34,6 +35,9 @@ const SlideModal = ({ children, onClose }) => {
             className={styles.dragHandle}
             onPointerDown={handlePointerDown}
           />
+           <div className={styles.modalLoadingBar}>
+            <LoadingBar />
+          </div>
           {children}
         </motion.div>
       </AnimatePresence>
