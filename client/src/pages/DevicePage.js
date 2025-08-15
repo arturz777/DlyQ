@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useContext } from "react";
-import { useParams } from "react-router-dom";
-import { fetchOneDevice, fetchRecommendedDevices, } from "../http/deviceAPI";
+import { fetchOneDevice, fetchRecommendedDevices } from "../http/deviceAPI";
 import { Context } from "../index";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { isShopOpenNow } from "../utils/workHours";
+import appStore from "../store/appStore";
 import styles from "./DevicePage.module.css";
 
 const DevicePage = ({ id }) => {
@@ -26,7 +26,6 @@ const DevicePage = ({ id }) => {
   const deviceName = device.translations?.name?.[currentLang] || device.name;
   const isStoreClosed = !isShopOpenNow();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [loading, setLoading] = useState(true);
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
@@ -55,7 +54,7 @@ const DevicePage = ({ id }) => {
     }
   };
 
-  useEffect(() => {
+   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
     };
@@ -65,49 +64,41 @@ const DevicePage = ({ id }) => {
   }, []);
 
   useEffect(() => {
-  let ignore = false;
-  const run = async () => {
-    try {
-      setLoading(true);
+    const fetchData = async () => {
+      appStore.startLoading();
+      try {
+        const deviceData = await fetchOneDevice(id);
+        setDevice(deviceData);
+        setFinalPrice(Number(deviceData.price) || 0);
+        setActiveIndex(0);
 
-      const deviceData = await fetchOneDevice(id);
-      if (ignore) return;
+        const itemInBasket = basket.items.find(
+          (item) => item.id === deviceData.id
+        );
+        const quantityInBasket = itemInBasket ? itemInBasket.count : 0;
+        setAvailableQuantity(deviceData.quantity - quantityInBasket);
 
-      setDevice(deviceData);
-      setFinalPrice(Number(deviceData.price) || 0);
-      setActiveIndex(0);
+        const initialOptions = {};
+        deviceData.options?.forEach((option) => {
+          if (option.values.length > 0) {
+            initialOptions[option.name] = option.values[0];
+          }
+        });
 
-      // инициализируем опции ПЕРВЫМИ значениями, если есть
-      const initialOptions = {};
-      deviceData.options?.forEach((option) => {
-        if (option.values.length > 0) {
-          initialOptions[option.name] = option.values[0];
-        }
-      });
-      setSelectedOptions(initialOptions);
+        setSelectedOptions({});
 
-      // подтянем рекомендации (не блокируем UI — можно не await)
-      fetchRecommendedDevices(deviceData.type)
-        .then((recommended) => { if (!ignore) setRecommendedDevices(recommended); })
-        .catch(() => {});
-    } catch (error) {
-      toast.error("❌ Ошибка загрузки устройства");
-      console.error(error);
-    } finally {
-      if (!ignore) setLoading(false);
-    }
-  };
-  run();
-  return () => { ignore = true; };
-}, [id]); // ✅ только id
+        const recommended = await fetchRecommendedDevices(deviceData.type);
+        setRecommendedDevices(recommended);
+      } catch (error) {
+        toast.error("❌ Ошибка загрузки устройства");
+        console.error(error);
+      } finally {
+        appStore.stopLoading();
+      }
+    };
 
-useEffect(() => {
-  if (!device?.id) return;
-  const inBasket = basket.items
-    .filter((it) => it.id === device.id)
-    .reduce((s, it) => s + (it.count || 0), 0);
-  setAvailableQuantity(Math.max(0, (device.quantity ?? 0) - inBasket));
-}, [basket.items, device.id, device.quantity]);
+    fetchData();
+  }, [id, basket.items]);
 
   useEffect(() => {
     const additionalPrice = Object.values(selectedOptions).reduce(
@@ -223,16 +214,6 @@ useEffect(() => {
 
   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
-   if (loading) {
-    return (
-      <div style={{ padding: 20 }}>
-        <div style={{ height: 200, background: "#eee", borderRadius: 8 }} />
-        <div style={{ height: 20, background: "#eee", marginTop: 10, borderRadius: 4 }} />
-        <div style={{ height: 20, width: "80%", background: "#eee", marginTop: 10, borderRadius: 4 }} />
-      </div>
-    );
-  }
-
   return (
     <div className={styles.DevicePageContainer}>
       <div className={styles.DevicePageContent}>
@@ -249,21 +230,23 @@ useEffect(() => {
             )}
 
             <div className={styles.ImageContainer}>
-               <AnimatePresence mode="wait">
-                {images.length > 0 && (
+              <AnimatePresence mode="wait">
+                {images.map(
+                  (img, index) =>
+                    index === activeIndex && (
                       <motion.img
-                        key={images[activeIndex]}
-                        src={images[activeIndex]}
+                        key={`${img}-${index}`}
+                        src={img}
                         alt={device.name}
                         className={styles.DevicePageMainImage}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        decoding="async"
-                        loading="eager"
-                        fetchpriority="high"
+                        onLoad={() => appStore.stopLoading(false)}
+                        onError={() => appStore.startLoading(false)}
                       />
+                    )
                 )}
               </AnimatePresence>
             </div>
