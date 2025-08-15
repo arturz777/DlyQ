@@ -63,7 +63,7 @@ const DevicePage = ({ id }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  useEffect(() => {
+   useEffect(() => {
     const fetchData = async () => {
       appStore.startLoading();
       try {
