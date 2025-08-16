@@ -136,7 +136,7 @@ const NavBar = observer(() => {
     user.setIsAuth(false);
   };
 
-  return (
+    return (
     <div className={`${styles.navbar} NavBar`} style={navbarStyle}>
       <div className={styles.navbarContainer}>
         <NavLink to="/" className={styles.navbarLogo}>
@@ -144,7 +144,7 @@ const NavBar = observer(() => {
         </NavLink>
 
         <NavLink to="/catalog" className={styles.navbarLink}>
-          <List />
+          <List size={22} />
           <span className={styles.navbarLinkTitle}>{t("catalog")}</span>
         </NavLink>
 
@@ -183,12 +183,8 @@ const NavBar = observer(() => {
           )}
         </div>
         {user.isAuth && user?.user?.role?.toUpperCase() === "ADMIN" && (
-          <div
-            className={styles.navbarLink}
-            onClick={() => navigate(ADMIN_ROUTE)}
-            style={{ position: "relative" }}
-          >
-            <Settings />
+           <NavLink to={ADMIN_ROUTE} className={styles.navbarLink} style={{ position: "relative" }}>
+            <Settings size={22} />
             {unreadChats.size > 0 && (
               <span
                 style={{
@@ -206,34 +202,31 @@ const NavBar = observer(() => {
             <span className={styles.navbarLinkTitle}>
               {t("adminPanel", { ns: "navbar" })}
             </span>
-          </div>
+          </NavLink>
         )}
-        <div className={styles.navbarLink} onClick={() => navigate("/basket")}>
+        <NavLink to="/basket" className={styles.navbarLink}>
           <ShoppingCart />
           <span className={styles.navbarLinkTitle}>
             {t("cart")} ({basket.totalItems})
           </span>
-        </div>
+       </NavLink>
         {user.isAuth ? (
           location.pathname === "/profile" ? (
             <div className={styles.navbarLink} onClick={handleLogOut}>
-              <LogOut />
+              <LogOut size={22} />
               <span className={styles.navbarLinkTitle}>{t("logOut")}</span>
             </div>
           ) : (
-            <div
-              className={styles.navbarLink}
-              onClick={() => navigate("/profile")}
-            >
-              <UserCircle />
+            <NavLink to="/profile" className={styles.navbarLink}>
+              <UserCircle size={22} />
               <span className={styles.navbarLinkTitle}>{t("profile")}</span>
-            </div>
+           </NavLink>
           )
         ) : (
-          <div className={styles.navbarLink} onClick={() => navigate("/login")}>
-            <UserCircle />
+          <NavLink to="/login" className={styles.navbarLink}>
+            <UserCircle size={22} />
             <span className={styles.navbarLinkTitle}>{t("profile")}</span>
-          </div>
+         </NavLink>
         )}
       </div>
     </div>
