@@ -71,6 +71,12 @@ const CatalogPage = observer(() => {
   }, [currentLang]);
 
   useEffect(() => {
+  return () => {
+    device.setSelectedBrand({});
+  };
+}, []);
+
+  useEffect(() => {
     const loadDevices = async () => {
       try {
         const data = await fetchDevices(
