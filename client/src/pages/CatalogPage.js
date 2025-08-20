@@ -45,11 +45,17 @@ const CatalogPage = observer(() => {
           }))
         );
 
-        device.setSubtypes(
-          subtypesData.map((subtype) => ({
-            ...subtype,
-            translations: subtype.translations || {},
-          }))
+         device.setSubtypes(
+          subtypesData
+            .map((subtype) => ({
+              ...subtype,
+              translations: subtype.translations || {},
+            }))
+            .sort((a, b) => {
+              const ao = Number(a.displayOrder ?? 0);
+              const bo = Number(b.displayOrder ?? 0);
+              return ao === bo ? a.id - b.id : ao - bo;
+            })
         );
 
         device.setBrands(brandsData);
