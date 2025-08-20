@@ -52,6 +52,7 @@ const Type = sequelize.define("type", {
 const SubType = sequelize.define("subtype", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   name: { type: DataTypes.STRING, unique: true, allowNull: false },
+  displayOrder: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
 });
 
 const Brand = sequelize.define("brand", {
