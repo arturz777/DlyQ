@@ -6,6 +6,7 @@ import { createSubtype, fetchTypes, updateSubType } from "../../http/deviceAPI";
 const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
   const [value, setValue] = useState("");
   const [typeId, setTypeId] = useState("");
+  const [displayOrder, setDisplayOrder] = useState("");
   const [types, setTypes] = useState([]);
   const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -25,15 +26,25 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
     if (editableSubtype) {
       setValue(editableSubtype.name || "");
       setTypeId(editableSubtype.typeId || "");
-      setTranslations(editableSubtype.translations?.name || { en: "", ru: "", est: "" });
+      setTranslations(
+        editableSubtype.translations?.name || { en: "", ru: "", est: "" }
+      );
+      setDisplayOrder(
+        editableSubtype.displayOrder !== undefined &&
+          editableSubtype.displayOrder !== null
+          ? String(editableSubtype.displayOrder)
+          : ""
+      );
     } else {
       setValue("");
       setTypeId("");
       setTranslations({ en: "", ru: "", est: "" });
+      setDisplayOrder("");
     }
   }, [editableSubtype]);
 
   const addSubType = () => {
+    setIsSubmitted(true);
     const errors = {};
     if (!value) errors.name = "Введите название подтипа";
     if (!typeId) errors.typeId = "Выберите тип";
@@ -43,10 +54,11 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
       return;
     }
 
-    const data = { 
-      name: value, 
+    const data = {
+      name: value,
       typeId: Number(typeId),
-      translations: JSON.stringify({ name: translations }), 
+      translations: JSON.stringify({ name: translations }),
+      ...(displayOrder !== "" ? { displayOrder: Number(displayOrder) } : {}),
     };
 
     if (editableSubtype) {
@@ -55,6 +67,7 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
           onSubtypeSaved();
           setValue("");
           setTypeId("");
+          setDisplayOrder("");
           onHide();
         })
         .catch((err) => {
@@ -66,6 +79,7 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
           onSubtypeSaved();
           setValue("");
           setTypeId("");
+          setDisplayOrder("");
           onHide();
         })
         .catch((err) => {
@@ -114,6 +128,21 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
             ))}
           </Form.Select>
 
+          <Form.Group className="mt-3">
+            <Form.Label>Порядок отображения</Form.Label>
+            <Form.Control
+              type="text"
+              value={displayOrder}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (/^\d*$/.test(val)) setDisplayOrder(val);
+              }}
+              placeholder="Например: 0, 1, 2..."
+              inputMode="numeric"
+              autoComplete="off"
+            />
+          </Form.Group>
+
           <h5 className="mt-3">Переводы:</h5>
           <Form.Group>
             <Form.Label>Английский (EN)</Form.Label>
@@ -147,7 +176,7 @@ const CreateSubType = ({ show, onHide, editableSubtype, onSubtypeSaved }) => {
               placeholder="Название на эстонском"
             />
           </Form.Group>
-          
+
           {isSubmitted && !typeId && (
             <span style={{ color: "red", display: "block", marginTop: "5px" }}>
               Выберите тип
