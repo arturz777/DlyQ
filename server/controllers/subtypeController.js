@@ -3,22 +3,27 @@ const ApiError = require("../error/ApiError");
 const { Op } = require("sequelize");
 
 class SubtypeController {
-  // Создание подтипа
   async create(req, res) {
     try {
-      const { name, typeId, translations } = req.body;
+      const { name, typeId, translations, displayOrder } = req.body;
 
-      // Проверяем, что обязательные поля заполнены
       if (!name || !typeId) {
-        return res
-          .status(400)
-          .json({
-            message: "Поля 'name' и 'typeId' обязательны для заполнения.",
-          });
+        return res.status(400).json({
+          message: "Поля 'name' и 'typeId' обязательны для заполнения.",
+        });
       }
 
-      // Создаем подтип
-      const subtype = await SubType.create({ name, typeId });
+      let order = parseInt(displayOrder);
+      if (!Number.isInteger(order)) {
+        const max = await SubType.max("displayOrder", { where: { typeId } });
+        order = Number.isInteger(max) ? max + 1 : 0;
+      }
+
+      const subtype = await SubType.create({
+        name,
+        typeId,
+        displayOrder: order,
+      });
 
       if (translations) {
         const parsedTranslations = JSON.parse(translations);
@@ -50,7 +55,12 @@ class SubtypeController {
 
   async getAll(req, res) {
     try {
-      const subtypes = await SubType.findAll();
+      const subtypes = await SubType.findAll({
+        order: [
+          ["displayOrder", "ASC"],
+          ["id", "ASC"],
+        ],
+      });
 
       const subtypeIds = subtypes.map((s) => s.id);
       const translations = await Translation.findAll({
@@ -93,14 +103,18 @@ class SubtypeController {
           .json({ message: "Параметр 'typeId' обязателен." });
       }
 
-      // Получаем подтипы по типу
-      const subtypes = await SubType.findAll({ where: { typeId } });
+      const subtypes = await SubType.findAll({
+        where: { typeId },
+        order: [
+          ["displayOrder", "ASC"],
+          ["id", "ASC"],
+        ],
+      });
 
       if (!subtypes.length) {
         return res.json([]);
       }
 
-      // Получаем все переводы для этих подтипов
       const subtypeIds = subtypes.map((s) => s.id);
       const translations = await Translation.findAll({
         where: {
@@ -110,7 +124,6 @@ class SubtypeController {
         },
       });
 
-      // Создаём карту переводов
       const translationMap = {};
       translations.forEach((t) => {
         const subtypeId = t.key.replace("subtype_", "").replace(".name", "");
@@ -119,7 +132,6 @@ class SubtypeController {
         translationMap[subtypeId].name[t.lang] = t.text;
       });
 
-      // Добавляем переводы к подтипам
       const subtypesWithTranslations = subtypes.map((subtype) => ({
         ...subtype.toJSON(),
         translations: translationMap[subtype.id] || {},
@@ -137,30 +149,48 @@ class SubtypeController {
   async update(req, res) {
     try {
       const { id } = req.params;
-      const { name, typeId, translations } = req.body;
+      const { name, typeId, translations, displayOrder } = req.body;
 
       if (!id) {
         return res.status(400).json({ message: "Параметр 'id' обязателен." });
       }
 
-      if (!name && !typeId) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "Поля 'name' или 'typeId' должны быть переданы для обновления.",
-          });
+      if (!name && !typeId && displayOrder === undefined && !translations) {
+        return res.status(400).json({
+          message:
+            "Передайте хотя бы одно из полей: name, typeId, displayOrder или translations.",
+        });
       }
 
-      const [updatedRows] = await SubType.update(
-        { name, typeId },
-        { where: { id } }
-      );
+      const updateData = {};
+      if (name !== undefined) updateData.name = name;
+      if (typeId !== undefined) updateData.typeId = typeId;
+      if (displayOrder !== undefined) {
+        const v = parseInt(displayOrder, 10);
+        if (!Number.isInteger(v)) {
+          return res
+            .status(400)
+            .json({ message: "displayOrder должен быть целым числом." });
+        }
+        updateData.displayOrder = v;
+      }
 
-      if (updatedRows === 0) {
-        return res
-          .status(404)
-          .json({ message: "Подтип с указанным id не найден." });
+      if (Object.keys(updateData).length > 0) {
+        const [updatedRows] = await SubType.update(updateData, {
+          where: { id },
+        });
+        if (updatedRows === 0) {
+          return res
+            .status(404)
+            .json({ message: "Подтип с указанным id не найден." });
+        }
+      } else {
+        const exists = await SubType.findByPk(id, { attributes: ["id"] });
+        if (!exists) {
+          return res
+            .status(404)
+            .json({ message: "Подтип с указанным id не найден." });
+        }
       }
 
       if (translations) {
@@ -178,7 +208,6 @@ class SubtypeController {
           parsedTranslations = translations;
         }
 
-        // Формируем записи для обновления переводов
         const translationEntries = Object.entries(parsedTranslations.name || {})
           .filter(([lang, text]) => text && typeof text === "string")
           .map(([lang, text]) => ({
@@ -187,7 +216,6 @@ class SubtypeController {
             text,
           }));
 
-        // Удаляем старые переводы и добавляем новые
         if (translationEntries.length > 0) {
           await Translation.destroy({ where: { key: `subtype_${id}.name` } });
           await Translation.bulkCreate(translationEntries);
@@ -207,22 +235,18 @@ class SubtypeController {
     try {
       const { id } = req.params;
 
-      // Проверяем, что id передан
       if (!id) {
         return res.status(400).json({ message: "Параметр 'id' обязателен." });
       }
 
-      // Удаляем подтип
       const deletedRows = await SubType.destroy({ where: { id } });
 
-      // Если подтип не найден
       if (deletedRows === 0) {
         return res
           .status(404)
           .json({ message: "Подтип с указанным id не найден." });
       }
 
-      // Удаляем связанные переводы
       await Translation.destroy({ where: { key: `subtype_${id}.name` } });
 
       return res.json({ message: "Подтип удалён успешно." });
