@@ -8,26 +8,28 @@ import styles from "./DeviceList.module.css";
 const DeviceList = observer(({ onDeviceClick }) => {
   const { device } = useContext(Context);
   const { t, i18n } = useTranslation();
-    const currentLang = i18n.language || "en";
+  const currentLang = i18n.language || "en";
 
-    const groupedDevices = useMemo(() => {
-      const result = {};
-  
-      device.types.forEach((type) => {
-        const typeName = type.translations?.name?.[currentLang] || type.name;
-        result[type.id] = {
-          typeName,
-          subtypes: {},
-          noSubtypeDevices: [],
-        };
+  const groupedDevices = useMemo(() => {
+    const result = {};
 
-        device.subtypes
+    device.types.forEach((type) => {
+      const typeName = type.translations?.name?.[currentLang] || type.name;
+      result[type.id] = {
+        typeName,
+        subtypes: {},
+        noSubtypeDevices: [],
+      };
+
+      device.subtypes
         .filter((sub) => sub.typeId === type.id)
         .forEach((sub) => {
           const subtypeName = sub.translations?.name?.[currentLang] || sub.name;
           result[type.id].subtypes[sub.id] = {
             devices: [],
             subtypeName,
+            displayOrder: sub.displayOrder ?? 0,
+            subtypeId: sub.id,
           };
         });
     });
@@ -54,7 +56,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
     return result;
   }, [device.types, device.subtypes, device.devices, currentLang]);
 
-return (
+  return (
     <div>
       {Object.keys(groupedDevices).map((typeId) => {
         const typeGroup = groupedDevices[typeId];
@@ -76,48 +78,54 @@ return (
             {typeGroup.noSubtypeDevices.length > 0 && (
               <div className={styles.deviceGrid}>
                 {typeGroup.noSubtypeDevices.map((device) => (
-                  <DeviceItem 
-                  key={device.id} 
-                  device={device}
-                  onClick={onDeviceClick}
-                   />
+                  <DeviceItem
+                    key={device.id}
+                    device={device}
+                    onClick={onDeviceClick}
+                  />
                 ))}
               </div>
             )}
 
-            {Object.keys(typeGroup.subtypes).map((subtypeId) => {
-              const subtypeGroup = typeGroup.subtypes[subtypeId];
+            {Object.values(typeGroup.subtypes)
+              .sort((a, b) => {
+                const ao = Number(a.displayOrder ?? 0);
+                const bo = Number(b.displayOrder ?? 0);
+                return ao === bo ? 0 : ao - bo;
+              })
+              .map((subtypeGroup) => {
+                if (subtypeGroup.devices.length === 0) {
+                  return null;
+                }
 
-              if (subtypeGroup.devices.length === 0) {
-                return null;
-              }
-
-              return (
-                <div
-                  key={subtypeId}
-                  id={`subtype-${subtypeId}`}
-                  className={styles.subtypeSection}
-                >
-                  <h3 className={styles.subtypeTitle}>
-                    {subtypeGroup.subtypeName}
-                  </h3>
-                  {subtypeGroup.devices.length === 0 && (
-                    <p className={styles.noDevices}>
-                     {t("No products for this subtype", { ns: "deviceList" })}
-                    </p>
-                  )}
-                  <div className={styles.deviceGrid}>
-                    {subtypeGroup.devices.map((device) => (
-                      <DeviceItem 
-                      key={device.id} 
-                      device={device}
-                      onClick={onDeviceClick}
-                       />
-                    ))}
+                return (
+                  <div
+                    key={subtypeGroup.subtypeId}
+                    id={`subtype-${subtypeGroup.subtypeId}`}
+                    className={styles.subtypeSection}
+                  >
+                    <h3 className={styles.subtypeTitle}>
+                      {subtypeGroup.subtypeName}
+                    </h3>
+                    {subtypeGroup.devices.length === 0 && (
+                      <p className={styles.noDevices}>
+                        {t("No products for this subtype", {
+                          ns: "deviceList",
+                        })}
+                      </p>
+                    )}
+                    <div className={styles.deviceGrid}>
+                      {subtypeGroup.devices.map((device) => (
+                        <DeviceItem
+                          key={device.id}
+                          device={device}
+                          onClick={onDeviceClick}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         );
       })}
