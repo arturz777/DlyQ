@@ -18,9 +18,14 @@ const SubTypeBar = observer(() => {
 
   if (!device.selectedType.id) return null;
 
-  const filteredSubtypes = device.subtypes.filter(
-    (subtype) => subtype.typeId === device.selectedType.id
-  );
+  const filteredSubtypes = device.subtypes
+    .filter((subtype) => subtype.typeId === device.selectedType.id)
+    .slice()
+    .sort((a, b) => {
+      const ao = a.displayOrder ?? 0;
+      const bo = b.displayOrder ?? 0;
+      return ao === bo ? a.id - b.id : ao - bo;
+    });
 
   if (filteredSubtypes.length === 0) return null;
 
