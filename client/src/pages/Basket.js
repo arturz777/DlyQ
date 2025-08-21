@@ -446,7 +446,7 @@ const Basket = observer(() => {
             <Form.Group className={styles.preorderSection}>
               <Form.Check
                 type="checkbox"
-                label={t("place order as a pre-order", { ns: "basket" })}
+                label={t("place a pre-order", { ns: "basket" })}
                 checked={isPreorder}
                 onChange={() => setIsPreorder(!isPreorder)}
                 className={styles.preorderCheckbox}
