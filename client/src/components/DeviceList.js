@@ -73,7 +73,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
 
         return (
           <div key={typeId} className={styles.section}>
-            <h2 className={styles.sectionTitle}>{typeGroup.typeName}</h2>
+            <p className={styles.sectionTitle}>{typeGroup.typeName}</p>
 
             {typeGroup.noSubtypeDevices.length > 0 && (
               <div className={styles.deviceGrid}>
@@ -104,9 +104,9 @@ const DeviceList = observer(({ onDeviceClick }) => {
                     id={`subtype-${subtypeGroup.subtypeId}`}
                     className={styles.subtypeSection}
                   >
-                    <h3 className={styles.subtypeTitle}>
+                    <p className={styles.subtypeTitle}>
                       {subtypeGroup.subtypeName}
-                    </h3>
+                    </p>
                     {subtypeGroup.devices.length === 0 && (
                       <p className={styles.noDevices}>
                         {t("No products for this subtype", {
