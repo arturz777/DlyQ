@@ -527,7 +527,7 @@ const PaymentForm = ({
             ? t("processing", { ns: "paymentForm" })
             : `${t("pay", { ns: "paymentForm" })} ${(
                 totalPrice + deliveryCost
-              ).toFixed(2)} $`}
+              ).toFixed(2)} €`}
         </button>
       </div>
     </Form>
