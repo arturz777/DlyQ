@@ -82,18 +82,6 @@
   }
 }
 
-@media (max-width: 1200px) {
-  .navbarLinkTitle {
-    display: none;
-  }
-}
-
-@media (max-width: 769px) {
-  .navbarLinkTitle {
-    display: none;
-  }
-}
-
 .navbarAuth {
   display: flex;
   align-items: center;
