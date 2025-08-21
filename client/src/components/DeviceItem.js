@@ -173,7 +173,7 @@ device.discount && device.oldPrice > device.price
               <span className={styles.regularPrice}>{device.price} €</span>
             )}
           </div>
-          <h5 className={styles.name}>{deviceName}</h5>
+          <p className={styles.name}>{deviceName}</p>
         </div>
 
         {availableQuantity <= 0 && (
