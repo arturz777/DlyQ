@@ -24,6 +24,7 @@ import userProfileEst from './est/userProfile.json';
 import mobileNavBarEst from './est/mobileNavBar.json';
 import homePageEst from './est/homePage.json';
 import courierPolicyEst from './est/courierPolicy.json';
+import brandBarEst from './est/brandBar.json';
 
 import navbarEn from './en/navbar.json';
 import searchbarEn from './en/searchbar.json';
@@ -46,6 +47,7 @@ import userProfileEn from './en/userProfile.json';
 import mobileNavBarEn from './en/mobileNavBar.json';
 import homePageEn from './en/homePage.json';
 import courierPolicyEn from './en/courierPolicy.json';
+import brandBarEn from './en/brandBar.json';
 
 import navbarRu from './ru/navbar.json';
 import searchbarRu from './ru/searchbar.json';
@@ -68,6 +70,7 @@ import userProfileRu from './ru/userProfile.json';
 import mobileNavBarRu from './ru/mobileNavBar.json';
 import homePageRu from './ru/homePage.json';
 import courierPolicyRu from './ru/courierPolicy.json';
+import brandBarRu from './ru/brandBar.json';
 
 
 i18n
@@ -102,6 +105,7 @@ i18n
         mobileNavBar: mobileNavBarEn,
         homePage: homePageEn,
         courierPolicy: courierPolicyEn,
+        brandBar: brandBarEn,
       },
       ru: {
         navbar: navbarRu,
@@ -125,6 +129,7 @@ i18n
         mobileNavBar: mobileNavBarRu,
         homePage: homePageRu,
         courierPolicy: courierPolicyRu,
+        brandBar: brandBarRu,
       },
       est: {
         navbar: navbarEst,
@@ -148,6 +153,7 @@ i18n
         mobileNavBar: mobileNavBarEst,
         homePage: homePageEst,
         courierPolicy: courierPolicyEst,
+        brandBar: brandBarEst,
       },
     },
 
@@ -155,7 +161,7 @@ i18n
     defaultNS: "navbar",
     debug: false, // Включить отладку
     interpolation: {
-      escapeValue: false, // Не экранировать HTML
+    escapeValue: false, // Не экранировать HTML
     },
   });
 
