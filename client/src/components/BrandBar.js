@@ -1,6 +1,7 @@
 import React, { useContext, useState, useRef, useEffect } from "react";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
+import { useTranslation } from "react-i18next";
 import styles from "./BrandBar.module.css";
 
 const BrandBar = observer(() => {
@@ -8,6 +9,7 @@ const BrandBar = observer(() => {
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef(null);
+  const { t, i18n } = useTranslation();
 
   const filteredBrands = device.brands.filter((brand) =>
     brand.name.toLowerCase().includes(search.toLowerCase())
@@ -46,7 +48,7 @@ const BrandBar = observer(() => {
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className={styles.dropdownText}>
-          {device.selectedBrand.name || "Vali bränd"}
+          {device.selectedBrand.name || t("chooseBrand", { ns: "brandBar" })}
         </span>
         {device.selectedBrand.name && (
           <button
@@ -67,7 +69,7 @@ const BrandBar = observer(() => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Otsi brändi..."
+            placeholder={t("searchBrand", { ns: "brandBar" })}
             className={styles.searchInput}
           />
           <div className={styles.brandList}>
