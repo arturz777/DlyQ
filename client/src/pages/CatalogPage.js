@@ -155,9 +155,9 @@ const CatalogPage = observer(() => {
  return (
     <div className={catalogStyles.catalogWrapper}>
       <div className={catalogStyles.catalogContent}>
-        <h1 className={catalogStyles.catalogTitle}>
+        <p className={catalogStyles.catalogTitle}>
           {t("product Catalog", { ns: "deviceList" })}
-        </h1>
+        </p>
 
         <div className={catalogStyles.filters}>
           <div className={catalogStyles.brandFilter}>
