@@ -265,14 +265,12 @@ const PaymentForm = ({
 const handleSubmit = async (event) => {
   event.preventDefault();
 
-  // 1) Требуем телефон в форме для всех
   const phoneNormalized = normalizePhone(formData.phone);
   if (!phoneNormalized) {
     toast.error(t("phone is required", { ns: "paymentForm" }));
     return;
   }
 
-  // Подменим на нормализованный (чтобы ушёл в заказ и письма «чистым»)
   setFormData(prev => ({ ...prev, phone: phoneNormalized }));
 
   if (!formData.firstName?.trim()) { toast.error(t("first name is required", { ns: "paymentForm" })); return; }
@@ -296,7 +294,6 @@ const handleSubmit = async (event) => {
       return;
     }
 
-    // 2) Сохраняем телефон в профиль ТОЛЬКО если пользователь авторизован и телефона ещё нет
     if (user.isAuth && !user.user?.phone?.trim()) {
       try {
         await updateProfile({ phone: phoneNormalized });
@@ -309,16 +306,13 @@ const handleSubmit = async (event) => {
           email: updatedProfile.email,
         });
       } catch (err) {
-        // Важно: не обрываем оплату, просто информируем
         console.warn("Не удалось сохранить номер телефона в профиль:", err);
         toast.error("Не удалось сохранить номер телефона в профиль");
-        // если у тебя политика «без сохранения — не пускаем», то делай return ТОЛЬКО для авторизованных:
         setLoading(false);
-        return; // ← оставь эту строку, если авторизованному обязательно хранить телефон в профиле
+        return;
       }
     }
 
-    // 3) Дальше — твой процесс завершения оплаты/заказа
     await onPaymentSuccess(paymentMethod, { ...formData, phone: phoneNormalized });
 
   } catch (err) {
@@ -329,14 +323,13 @@ const handleSubmit = async (event) => {
   }
 };
 
-
   return (
     <Form
       onSubmit={handleSubmit}
       className={styles.form}
       style={{ maxWidth: "600px" }}
     >
-      {(!user.isAuth || (user.isAuth && !user.user?.phone)) && (
+      {(!user.isAuth || (user.isAuth && !user.user?.phone?.trim())) && (
         <>
           <Row className="mb-1">
             <Col md={6}>
@@ -391,7 +384,7 @@ const handleSubmit = async (event) => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  disabled={user.isAuth && user.user?.phone}
+                  disabled={user.isAuth && !!user.user?.phone?.trim()}
                 />
               </Form.Group>
             </Col>
