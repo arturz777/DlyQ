@@ -24,7 +24,7 @@ import {
 } from "../http/courierAPI";
 import styles from "./Courier.module.css";
 
-const socket = io("https://zang-4.onrender.com");
+const socket = io("https://dlyq-backend-staging.onrender.com");
 
 const WAREHOUSE_LOCATION = { lat: 59.51372, lng: 24.828888 };
 
