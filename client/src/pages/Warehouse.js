@@ -7,7 +7,7 @@ import {
 import { io } from "socket.io-client";
 import styles from "./Warehouse.module.css";
 
-const socket = io("https://zang-4.onrender.com");
+const socket = io("https://dlyq-backend-staging.onrender.com");
 
 const Warehouse = () => {
   const [orders, setOrders] = useState([]);
@@ -60,10 +60,10 @@ const Warehouse = () => {
         if (order.warehouseStatus === "processing" && order.processingTime) {
           const savedTime = localStorage.getItem(`timer_${order.id}`);
           if (savedTime) {
-            initialTimers[order.id] = parseInt(savedTime, 10); // Используем сохраненное значение
+            initialTimers[order.id] = parseInt(savedTime, 10); /
           } else {
-            const [minutes] = order.processingTime.split(" "); // Преобразуем "5 минут" в 5
-            initialTimers[order.id] = parseInt(minutes, 10) * 60; // Сохраняем время в секундах
+            const [minutes] = order.processingTime.split(" "); 
+            initialTimers[order.id] = parseInt(minutes, 10) * 60; 
           }
         }
       });
@@ -82,8 +82,8 @@ const Warehouse = () => {
       setTimers((prevTimers) => {
         const updatedTimers = { ...prevTimers };
         Object.keys(updatedTimers).forEach((orderId) => {
-          updatedTimers[orderId] -= 1; // Уменьшаем время
-          localStorage.setItem(`timer_${orderId}`, updatedTimers[orderId]); // Сохраняем
+          updatedTimers[orderId] -= 1; 
+          localStorage.setItem(`timer_${orderId}`, updatedTimers[orderId]);
         });
         return updatedTimers;
       });
@@ -118,13 +118,13 @@ const Warehouse = () => {
     try {
       await acceptWarehouseOrder(orderId, processingTime);
 
-      const [value, unit] = processingTime.split(" "); // Разделяем число и единицу измерения
+      const [value, unit] = processingTime.split(" "); 
 
       let timeInSeconds = 0;
       if (unit === "минут" || unit === "минуты") {
-        timeInSeconds = parseInt(value, 10) * 60; // Преобразуем минуты в секунды
+        timeInSeconds = parseInt(value, 10) * 60; 
       } else if (unit === "дней" || unit === "день" || unit === "дня") {
-        timeInSeconds = parseInt(value, 10) * 24 * 60 * 60; // Преобразуем дни в секунды
+        timeInSeconds = parseInt(value, 10) * 24 * 60 * 60; 
       }
 
       localStorage.setItem(`timer_${orderId}`, timeInSeconds);
