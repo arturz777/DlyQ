@@ -1,4 +1,4 @@
-const API_URL = process.env.REACT_APP_API_URL || "https://zang-4.onrender.com";
+const API_URL = process.env.REACT_APP_API_URL || "https://dlyq-backend-staging.onrender.com";
 
 export const fetchDeliveryCost = async (totalPrice, latitude, longitude) => {
 	try {
