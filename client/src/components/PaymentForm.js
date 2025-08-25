@@ -103,7 +103,7 @@ const PaymentForm = ({
         longitude,
       }));
 
-      fetch(`https://zang-4.onrender.com/api/geo/reverse?lat=${latitude}&lon=${longitude}`)
+      fetch(`https://dlyq-backend-staging.onrender.com/api/geo/reverse?lat=${latitude}&lon=${longitude}`)
         .then((res) => res.json())
         .then((data) => {
           setFormData((prev) => ({
