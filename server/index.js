@@ -25,7 +25,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: 'https://phenomenal-sunburst-78533d.netlify.app',
+    origin: 'https://dlyq-staging.netlify.app',
     methods: ["GET", "POST"],
     credentials: true
   },
@@ -33,7 +33,7 @@ const io = new Server(server, {
 
 
 app.use(cors({
-  origin: 'https://phenomenal-sunburst-78533d.netlify.app',
+  origin: 'https://https://dlyq-staging.netlify.app',
   credentials: true           
 }));
 app.use(express.json());
