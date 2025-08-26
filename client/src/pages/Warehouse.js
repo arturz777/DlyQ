@@ -60,7 +60,7 @@ const Warehouse = () => {
         if (order.warehouseStatus === "processing" && order.processingTime) {
           const savedTime = localStorage.getItem(`timer_${order.id}`);
           if (savedTime) {
-            initialTimers[order.id] = parseInt(savedTime, 10); /
+            initialTimers[order.id] = parseInt(savedTime, 10); 
           } else {
             const [minutes] = order.processingTime.split(" "); 
             initialTimers[order.id] = parseInt(minutes, 10) * 60; 
