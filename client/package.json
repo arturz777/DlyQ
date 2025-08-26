@@ -44,4 +44,9 @@
       "last 1 safari version"
     ]
   }
+
+  "overrides": {
+  "ajv": "8.12.0",
+  "ajv-keywords": "5.1.0"
+}
 }
