@@ -216,7 +216,7 @@ const createOrder = async (req, res) => {
         if (error) {
           console.error("❌ Ошибка загрузки изображения в Supabase:", error);
         } else {
-          deviceImageUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
+          deviceImageUrl = `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${fileName}`;
         }
       } catch (error) {
         console.error("❌ Ошибка обработки изображения:", error);
