@@ -53,7 +53,7 @@ class DeviceController {
         throw new Error("Ошибка загрузки изображения в Supabase Storage");
       }
 
-      const publicURL = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
+      const publicURL = `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${fileName}`;
 
       let thumbnails = [];
       if (req.files && req.files.thumbnails) {
@@ -76,7 +76,7 @@ class DeviceController {
               return null;
             }
 
-            return `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${thumbFileName}`;
+            return `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${thumbFileName}`;
           })
         );
 
