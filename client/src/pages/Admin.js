@@ -371,6 +371,10 @@ const Admin = () => {
     )
     .sort((a, b) => (daysToExpire(a) ?? 9e9) - (daysToExpire(b) ?? 9e9));
 
+  const outOfStockDevices = filteredDevices
+    .filter((d) => (d.quantity ?? 0) <= 0 && !isSnoozed(d))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <div className={styles.adminPanelContainer}>
       <Tabs>
@@ -457,6 +461,90 @@ const Admin = () => {
                         onClick={() => {
                           if (window.confirm("Удалить этот товар?"))
                             handleDeleteDevice(device.id);
+                        }}
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+            {outOfStockDevices.length > 0 && (
+            <div
+              style={{
+                border: "2px solid red",
+                padding: 10,
+                marginBottom: 15,
+                background: "#ffe5e5",
+              }}
+            >
+              <h3 style={{ color: "red", marginTop: 0 }}>Нет в наличии</h3>
+
+              <div className={styles.itemList}>
+                {outOfStockDevices.map((device) => (
+                  <div
+                    key={device.id}
+                    className={styles.item}
+                    style={{ background: "#ffe5e5" }}
+                  >
+                    <div>
+                      id-{device.id}
+                      <Image
+                        className={styles.adminDeviceImg}
+                        width={50}
+                        height={50}
+                        src={device.img}
+                      />
+                    </div>
+
+                    <span className={styles.adminDeviceName}>
+                      {device.name}
+                    </span>
+
+                    <div className={styles.buttons}>
+                      <span
+                        style={{
+                          color: "red",
+                          fontWeight: 600,
+                          marginRight: 12,
+                        }}
+                      >
+                        нет в наличии
+                      </span>
+
+                      <div
+                        className={styles.adminDevicePrice}
+                        style={{ marginRight: 12 }}
+                      >
+                        {device.discount ? (
+                          <>
+                            <span className={styles.discountedPrice}>
+                              {device.price} €
+                            </span>
+                            <span className={styles.oldPrice}>
+                              {device.oldPrice} €
+                            </span>
+                          </>
+                        ) : (
+                          <span>{device.price} €</span>
+                        )}
+                      </div>
+
+                      <button
+                        className={styles.editButton}
+                        onClick={() => handleEditDevice(device)}
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        className={styles.deleteButton}
+                        onClick={() => {
+                          if (window.confirm("Удалить этот товар?")) {
+                            handleDeleteDevice(device.id);
+                          }
                         }}
                       >
                         Удалить
