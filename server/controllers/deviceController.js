@@ -951,6 +951,91 @@ class DeviceController {
     }
   }
 
+   async adjustStock(req, res) {
+    try {
+      const { id } = req.params;
+      const { delta, selectedOptions } = req.body;
+
+      const deltaInt = parseInt(delta, 10);
+      if (!id || !Number.isInteger(deltaInt) || deltaInt === 0) {
+        return res
+          .status(400)
+          .json({ message: "Нужны id и целочисленный delta (не 0)" });
+      }
+
+      const device = await Device.findByPk(id);
+      if (!device) return res.status(404).json({ message: "Товар не найден" });
+
+      let options = [];
+      const raw = device.options;
+      if (Array.isArray(raw)) options = raw;
+      else if (typeof raw === "string") {
+        try {
+          options = JSON.parse(raw) || [];
+        } catch {}
+      } else if (raw && typeof raw === "object")
+        options = Array.isArray(raw) ? raw : [];
+
+      const applyToOptions = options.length > 0;
+
+      if (applyToOptions) {
+        if (!selectedOptions || Object.keys(selectedOptions).length === 0) {
+          return res
+            .status(400)
+            .json({
+              message: "У этого товара есть опции. Укажи selectedOptions.",
+            });
+        }
+
+        const [optName, sel] = Object.entries(selectedOptions)[0];
+        const selValue = sel && typeof sel === "object" ? sel.value : sel;
+
+        const opt = options.find((o) => o.name === optName);
+        if (!opt)
+          return res
+            .status(400)
+            .json({ message: `Опция "${optName}" не найдена` });
+
+        const val = (opt.values || []).find((v) => v.value === selValue);
+        if (!val)
+          return res
+            .status(400)
+            .json({
+              message: `Значение "${selValue}" в опции "${optName}" не найдено`,
+            });
+
+        const newQty = (Number(val.quantity) || 0) + deltaInt;
+        if (newQty < 0)
+          return res
+            .status(400)
+            .json({ message: "Недостаточно остатка по выбранной опции" });
+
+        val.quantity = newQty;
+
+        const totalQty = options.reduce((sum, o) => {
+          const add = Array.isArray(o.values)
+            ? o.values.reduce((s, v) => s + (Number(v.quantity) || 0), 0)
+            : 0;
+          return sum + add;
+        }, 0);
+
+        device.options = options;
+        device.quantity = totalQty;
+      } else {
+        const newQty = (Number(device.quantity) || 0) + deltaInt;
+        if (newQty < 0)
+          return res.status(400).json({ message: "Недостаточно остатка" });
+        device.quantity = newQty;
+      }
+
+      await device.save();
+      return res.json(device);
+    } catch (e) {
+      console.error("adjustStock error:", e);
+      return res.status(500).json({ message: "Ошибка изменения остатков" });
+    }
+  }
+
   async search(req, res, next) {
     try {
       const { q } = req.query;
