@@ -138,3 +138,7 @@ export const searchDevices = async (query) => {
   const { data } = await $host.get(`/device/search`, { params: { q: query } });
   return data;
 };
+
+export const adjustDeviceStock = (id, delta, selectedOptions) =>
+  $authHost.post(`/device/${id}/stock`, { delta, selectedOptions })
+    .then(r => r.data);
