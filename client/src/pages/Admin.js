@@ -24,6 +24,7 @@ import {
   fetchAllOrdersForAdmin,
   adminUpdateOrderStatus,
 } from "../http/orderAPI";
+import StockQuickAdjustModal from "../components/modals/StockQuickAdjustModal";
 import { io } from "socket.io-client";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
 import "react-tabs/style/react-tabs.css";
@@ -66,6 +67,7 @@ const Admin = () => {
   const [unreadChats, setUnreadChats] = useState(new Set());
    const [openTypeIds, setOpenTypeIds] = useState([]);
   const [openDeviceTypeIds, setOpenDeviceTypeIds] = useState([]);
+   const [quickAdjustVisible, setQuickAdjustVisible] = useState(false);
 
   useEffect(() => {
     const socket = io(`https://dlyq-backend-staging.onrender.com`);
@@ -399,6 +401,14 @@ const Admin = () => {
               className={styles.actionButton}
             >
               Добавить устройство
+            </button>
+
+                 <button
+              onClick={() => setQuickAdjustVisible(true)}
+              className={styles.actionButton}
+              style={{ background: "#033977ff", borderColor: "#c8e1ff" }}
+            >
+              Остаток ±
             </button>
           </div>
 
@@ -1231,6 +1241,16 @@ const Admin = () => {
         editableSubtype={editableSubtype}
         onSubtypeSaved={() => {
           fetchSubtypes().then(setSubtypes);
+        }}
+      />
+          <StockQuickAdjustModal
+        show={quickAdjustVisible}
+        onHide={() => setQuickAdjustVisible(false)}
+        devices={devices}
+        onUpdated={(updated) => {
+          setDevices((prev) =>
+            prev.map((d) => (d.id === updated.id ? updated : d))
+          );
         }}
       />
     </div>
