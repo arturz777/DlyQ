@@ -13,5 +13,6 @@ router.get('/:id', deviceController.getOne)
 router.delete('/:id', deviceController.delete);
 router.put('/:id', deviceController.update);
 router.post("/check-stock", deviceController.checkStock);
+router.post('/:id/stock', deviceController.adjustStock);
 
 module.exports = router
