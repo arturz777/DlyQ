@@ -1,34 +1,12 @@
-import React from "react";
-import { observer } from "mobx-react-lite";
-import { useContext } from "react";
-import { Context } from "../index";
-import styles from "./ModelBar.module.css";
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
 
-const ModelBar = observer(() => {
-  const { device } = useContext(Context);
-  if (!device.selectedMake?.id) return null;
+@media (max-width: 640px) {
+  .row { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 8px; }
+  .chip { flex: 0 0 auto; }
+}
 
-  const toggleModel = (model) => {
-    if (device.selectedModel?.id === model.id) {
-      device.setSelectedModel({});
-    } else {
-      device.setSelectedModel(model);
-    }
-  };
-
-  return (
-    <div className={styles.row}>
-      {device.models.map((m) => (
-        <button
-          key={m.id}
-          className={m.id === device.selectedModel?.id ? styles.chipActive : styles.chip}
-          onClick={() => toggleModel(m)}
-        >
-          {m.name}
-        </button>
-      ))}
-    </div>
-  );
-});
-
-export default ModelBar;
+.chipActive {
+  border-color: #3b82f6;
+  background: #eef4ff;
+  font-weight: 600;
+}
