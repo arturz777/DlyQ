@@ -147,7 +147,15 @@ export const createDevice = async (device) => {
   return data;
 };
 
-export const fetchDevices = async (typeId, subtypeId, brandId, page, limit = 100) => {
+export const fetchDevices = async (
+  typeId,
+  subtypeId,
+  brandId,
+  page,
+  limit = 20,
+  makeId,
+  modelId
+) => {
   const { data } = await $host.get("/device", {
     params: {
       typeId,
@@ -155,6 +163,8 @@ export const fetchDevices = async (typeId, subtypeId, brandId, page, limit = 100
       brandId,
       page,
       limit,
+      makeId,
+      modelId,
     },
   });
   return data;
@@ -175,7 +185,9 @@ export const deleteDevice = async (id) => {
 };
 
 export const searchDevices = async (query) => {
-  const { data } = await $host.get(`/device/search`, { params: { q: query } });
+  const { data } = await $host.get(`/device/search`, {
+    params: { q: query },
+  });
   return data;
 };
 
