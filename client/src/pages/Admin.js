@@ -5,6 +5,8 @@ import CreateBrand from "../components/modals/CreateBrand";
 import CreateDevice from "../components/modals/CreateDevice";
 import CreateType from "../components/modals/CreateType";
 import CreateSubType from "../components/modals/CreateSubType";
+import CreateMake from "../components/modals/CreateMake";
+import CreateModel from "../components/modals/CreateModel";
 import CourierMap from "../components/CourierMap";
 import ChatBox from "../components/ChatBox";
 import AdminAccounting from "../components/AdminAccounting";
@@ -15,10 +17,14 @@ import {
   fetchSubtypes,
   fetchBrands,
   fetchDevices,
+  fetchMakes,
+  fetchModelsByMake,
   deleteType,
   deleteSubtype,
   deleteBrand,
   deleteDevice,
+  deleteMake,
+  deleteModel,
 } from "../http/deviceAPI";
 import {
   fetchAllOrdersForAdmin,
@@ -45,11 +51,15 @@ const Admin = () => {
   const [typeVisible, setTypeVisible] = useState(false);
   const [subtypeVisible, setSubtypeVisible] = useState(false);
   const [deviceVisible, setDeviceVisible] = useState(false);
+  const [makeVisible, setMakeVisible] = useState(false);
+  const [modelVisible, setModelVisible] = useState(false);
 
   const [editableDevice, setEditableDevice] = useState(null);
   const [editableType, setEditableType] = useState(null);
   const [editableSubtype, setEditableSubtype] = useState(null);
   const [editableBrand, setEditableBrand] = useState(null);
+  const [editableMake, setEditableMake] = useState(null);
+  const [editableModel, setEditableModel] = useState(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOption, setSortOption] = useState("priceAsc");
@@ -65,9 +75,12 @@ const Admin = () => {
   const [allOrders, setAllOrders] = useState([]);
   const [couriers, setCouriers] = useState([]);
   const [unreadChats, setUnreadChats] = useState(new Set());
-   const [openTypeIds, setOpenTypeIds] = useState([]);
+  const [openTypeIds, setOpenTypeIds] = useState([]);
   const [openDeviceTypeIds, setOpenDeviceTypeIds] = useState([]);
-   const [quickAdjustVisible, setQuickAdjustVisible] = useState(false);
+  const [quickAdjustVisible, setQuickAdjustVisible] = useState(false);
+  const [makes, setMakes] = useState([]);
+  const [modelsByMake, setModelsByMake] = useState({});
+  const [openMakeIds, setOpenMakeIds] = useState([]);
 
   useEffect(() => {
     const socket = io(`https://dlyq-backend-staging.onrender.com`);
@@ -99,8 +112,9 @@ const Admin = () => {
     fetchTranslations().then(setTranslations);
   }, []);
 
-  useEffect(() => {
+   useEffect(() => {
     fetchAllOrdersForAdmin().then(setAllOrders);
+    fetchMakes().then(setMakes).catch(console.error);
   }, []);
 
   const handleStatusChange = async (
@@ -226,6 +240,46 @@ const Admin = () => {
     };
   }, [user]);
 
+  const reloadMakes = async () => {
+    const m = await fetchMakes();
+    setMakes(m);
+  };
+
+  const loadModelsForMake = async (makeId) => {
+    const list = await fetchModelsByMake(makeId);
+    setModelsByMake((prev) => ({ ...prev, [makeId]: list }));
+  };
+
+  const toggleMakeOpen = (makeId) => {
+    setOpenMakeIds((prev) =>
+      prev.includes(makeId)
+        ? prev.filter((id) => id !== makeId)
+        : [...prev, makeId]
+    );
+
+    if (!modelsByMake[makeId]) {
+      loadModelsForMake(makeId).catch(console.error);
+    }
+  };
+
+  const handleDeleteMake = async (makeId) => {
+    if (!window.confirm("Удалить эту марку?")) return;
+    await deleteMake(makeId);
+    await reloadMakes();
+    setModelsByMake((prev) => {
+      const copy = { ...prev };
+      delete copy[makeId];
+      return copy;
+    });
+    setOpenMakeIds((prev) => prev.filter((id) => id !== makeId));
+  };
+
+  const handleDeleteModel = async (model) => {
+    if (!window.confirm(`Удалить модель "${model.name}"?`)) return;
+    await deleteModel(model.id);
+    await loadModelsForMake(model.makeId);
+  };
+
   const toggleDeviceType = (typeId) => {
     setOpenDeviceTypeIds((prev) =>
       prev.includes(typeId)
@@ -240,7 +294,7 @@ const Admin = () => {
         ? prev.filter((id) => id !== typeId)
         : [...prev, typeId]
     );
-  };
+  }; 
 
   const openCreateTypeModal = () => {
     fetchTypes().then((fetchedTypes) => {
@@ -377,12 +431,13 @@ const Admin = () => {
     .filter((d) => (d.quantity ?? 0) <= 0 && !isSnoozed(d))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  return (
+   return (
     <div className={styles.adminPanelContainer}>
       <Tabs>
         <TabList>
           <Tab>Устройства</Tab>
           <Tab>Типы</Tab>
+          <Tab>Марки/Модели</Tab>
           <Tab>Подтипы</Tab>
           <Tab>Бренды</Tab>
           <Tab>Переводы</Tab>
@@ -403,7 +458,7 @@ const Admin = () => {
               Добавить устройство
             </button>
 
-                 <button
+            <button
               onClick={() => setQuickAdjustVisible(true)}
               className={styles.actionButton}
               style={{ background: "#033977ff", borderColor: "#c8e1ff" }}
@@ -482,7 +537,7 @@ const Admin = () => {
             </div>
           )}
 
-             {outOfStockDevices.length > 0 && (
+          {outOfStockDevices.length > 0 && (
             <div
               style={{
                 border: "2px solid red",
@@ -814,6 +869,137 @@ const Admin = () => {
               </div>
             ))}
           </div>
+        </TabPanel>
+
+        <TabPanel>
+          <div className={styles.actionButtons}>
+            <button
+              onClick={() => {
+                setEditableMake(null);
+                setMakeVisible(true);
+              }}
+              className={styles.actionButton}
+            >
+              Добавить марку
+            </button>
+
+            <button
+              onClick={() => {
+                setEditableModel(null);
+                setModelVisible(true);
+              }}
+              className={styles.actionButton}
+            >
+              Добавить модель
+            </button>
+          </div>
+
+          {makes.length === 0 ? (
+            <p>Марок нет</p>
+          ) : (
+            <div className={styles.itemList}>
+              {makes
+                .slice()
+                .sort((a, b) =>
+                  (a.displayOrder ?? 0) === (b.displayOrder ?? 0)
+                    ? a.id - b.id
+                    : (a.displayOrder ?? 0) - (b.displayOrder ?? 0)
+                )
+                .map((make) => {
+                  const isOpen = openMakeIds.includes(make.id);
+                  const models = modelsByMake[make.id] || [];
+                  return (
+                    <div key={make.id} className={styles.item}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                        }}
+                      >
+                        <button
+                          onClick={() => toggleMakeOpen(make.id)}
+                          className={styles.editButton}
+                          style={{ minWidth: 34 }}
+                          title={isOpen ? "Свернуть" : "Развернуть"}
+                        >
+                          {isOpen ? "▲" : "▼"}
+                        </button>
+                        <strong>{make.name}</strong>
+                        <span style={{ color: "#666" }}>
+                          (order: {make.displayOrder ?? 0})
+                        </span>
+                      </div>
+
+                      <div className={styles.buttons}>
+                        <button
+                          className={styles.editButton}
+                          onClick={() => {
+                            setEditableMake(make);
+                            setMakeVisible(true);
+                          }}
+                        >
+                          Редактировать
+                        </button>
+                        <button
+                          className={styles.deleteButton}
+                          onClick={() => handleDeleteMake(make.id)}
+                        >
+                          Удалить
+                        </button>
+                        <button
+                          className={styles.actionButton}
+                          onClick={() => {
+                            setEditableModel({ makeId: make.id });
+                            setModelVisible(true);
+                          }}
+                        >
+                          + Модель к марке
+                        </button>
+                      </div>
+
+                      {isOpen && (
+                        <div style={{ marginTop: 10, paddingLeft: 44 }}>
+                          {models.length === 0 ? (
+                            <div style={{ color: "#666" }}>Моделей нет</div>
+                          ) : (
+                            <div className={styles.itemList}>
+                              {models.map((m) => (
+                                <div key={m.id} className={styles.item}>
+                                  <span>
+                                    {m.name}{" "}
+                                    <span style={{ color: "#999" }}>
+                                      id-{m.id}
+                                    </span>
+                                  </span>
+                                  <div className={styles.buttons}>
+                                    <button
+                                      className={styles.editButton}
+                                      onClick={() => {
+                                        setEditableModel(m);
+                                        setModelVisible(true);
+                                      }}
+                                    >
+                                      Редактировать
+                                    </button>
+                                    <button
+                                      className={styles.deleteButton}
+                                      onClick={() => handleDeleteModel(m)}
+                                    >
+                                      Удалить
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          )}
         </TabPanel>
 
         <TabPanel>
@@ -1232,6 +1418,43 @@ const Admin = () => {
         }}
         types={types}
       />
+
+      <CreateMake
+        show={makeVisible}
+        editableMake={editableMake}
+        onHide={() => {
+          setMakeVisible(false);
+          setEditableMake(null);
+          reloadMakes();
+        }}
+        onSaved={(saved) => {
+          reloadMakes().then(() => {
+            if (saved?.id) {
+              setOpenMakeIds((prev) => [...new Set([...prev, saved.id])]);
+              loadModelsForMake(saved.id);
+            }
+          });
+        }}
+      />
+
+      <CreateModel
+        show={modelVisible}
+        editableModel={editableModel}
+        makes={makes}
+        onHide={() => {
+          setModelVisible(false);
+          openMakeIds.forEach((id) => loadModelsForMake(id));
+          setEditableModel(null);
+        }}
+        onSaved={(saved) => {
+          const makeId = saved?.makeId ?? editableModel?.makeId;
+          if (makeId) {
+            setOpenMakeIds((prev) => [...new Set([...prev, makeId])]); 
+            loadModelsForMake(makeId); 
+          }
+        }}
+      />
+
       <CreateSubType
         show={subtypeVisible}
         onHide={() => {
@@ -1243,7 +1466,7 @@ const Admin = () => {
           fetchSubtypes().then(setSubtypes);
         }}
       />
-          <StockQuickAdjustModal
+      <StockQuickAdjustModal
         show={quickAdjustVisible}
         onHide={() => setQuickAdjustVisible(false)}
         devices={devices}
