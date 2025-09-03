@@ -23,20 +23,22 @@ const TypeBar = observer(() => {
 
             if (isSame) {
               device.setSelectedType({});
-            } else {
-              device.setSelectedType(type);
-
-              setTimeout(() => {
-                const subtypeSection =
-                  document.getElementById("subtype-filter");
-                if (subtypeSection) {
-                  subtypeSection.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start",
-                  });
-                }
-              }, 100);
+              return;
             }
+
+            device.setSelectedType(type);
+
+            setTimeout(() => {
+              const label =
+                type.translations?.name?.[currentLang] || type.name || "";
+              const isAuto = /авто/i.test(label);
+
+              const targetId = isAuto ? "make-filter" : "subtype-filter";
+              document.getElementById(targetId)?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }, 100);
           }}
         >
           <img src={type.img} alt={type.name} className={styles.typeImage} />
