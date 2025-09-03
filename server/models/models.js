@@ -49,6 +49,54 @@ const Type = sequelize.define("type", {
   displayOrder: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
 });
 
+const VehicleMake = sequelize.define(
+  "vehicle_make",
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    name: { type: DataTypes.STRING, allowNull: false, unique: true },
+    displayOrder: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+  },
+  {
+    indexes: [{ fields: ["displayOrder"] }, { unique: true, fields: ["name"] }],
+  }
+);
+
+const VehicleModel = sequelize.define(
+  "vehicle_model",
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    name: { type: DataTypes.STRING, allowNull: false },
+  },
+  {
+    indexes: [{ unique: true, fields: ["makeId", "name"] }],
+  }
+);
+
+const DeviceCompatibility = sequelize.define(
+  "device_compatibility",
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    yearFrom: { type: DataTypes.INTEGER, allowNull: true },
+    yearTo: { type: DataTypes.INTEGER, allowNull: true },
+    isUniversal: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+  },
+  {
+    indexes: [
+      { fields: ["deviceId"] },
+      { fields: ["makeId", "modelId"] },
+      { fields: ["isUniversal"] },
+    ],
+  }
+);
+
 const SubType = sequelize.define("subtype", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   name: { type: DataTypes.STRING, unique: true, allowNull: false },
@@ -224,12 +272,54 @@ Brand.belongsToMany(Type, { through: TypeBrand });
 Type.hasMany(SubType, { foreignKey: "typeId", as: "subtypes" });
 SubType.belongsTo(Type, { foreignKey: "typeId", as: "type" });
 
+VehicleMake.hasMany(VehicleModel, {
+  as: "models",
+  foreignKey: "makeId",
+  onDelete: "CASCADE",
+});
+VehicleModel.belongsTo(VehicleMake, {
+  as: "make",
+  foreignKey: "makeId",
+});
+
+Device.hasMany(DeviceCompatibility, {
+  as: "compat",
+  foreignKey: "deviceId",
+  onDelete: "CASCADE",
+});
+DeviceCompatibility.belongsTo(Device, {
+  foreignKey: "deviceId",
+});
+
+VehicleMake.hasMany(DeviceCompatibility, {
+  as: "compat",
+  foreignKey: "makeId",
+  onDelete: "CASCADE",
+});
+DeviceCompatibility.belongsTo(VehicleMake, {
+  as: "make",
+  foreignKey: "makeId",
+});
+
+VehicleModel.hasMany(DeviceCompatibility, {
+  as: "compat",
+  foreignKey: "modelId",
+  onDelete: "CASCADE",
+});
+DeviceCompatibility.belongsTo(VehicleModel, {
+  as: "model",
+  foreignKey: "modelId",
+});
+
 module.exports = {
   User,
   Basket,
   BasketDevice,
   Device,
   Type,
+  VehicleMake,
+  VehicleModel,
+  DeviceCompatibility,
   SubType,
   Brand,
   Rating,
