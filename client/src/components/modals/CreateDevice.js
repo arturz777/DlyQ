@@ -8,6 +8,8 @@ import {
   fetchBrands,
   fetchTypes,
   fetchSubtypesByType,
+  fetchMakes,       
+  fetchModelsByMake,
 } from "../../http/deviceAPI";
 import { observer } from "mobx-react-lite";
 import styles from "./CreateDevice.module.css";
@@ -45,6 +47,9 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [expiryKind, setExpiryKind] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [snoozeUntil, setSnoozeUntil] = useState("");
+  const [isUniversal, setIsUniversal] = useState(true); 
+const [compatRows, setCompatRows] = useState([]);  
+const [makes, setMakes] = useState([]);   
   const [translations, setTranslations] = useState({
     name: { en: "", ru: "", est: "" },
     options: [],
@@ -58,6 +63,13 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     description: false,
     info: false,
   });
+
+  const currentYear = new Date().getFullYear();
+  const YEARS = Array.from(
+    { length: currentYear - 1949 },
+    (_, i) => currentYear - i
+  );
+  const yearOptions = YEARS;
 
   const toggleSection = (key) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -145,20 +157,72 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         });
       }
 
-      const updatedImages = [
+     const updatedImages = [
         ...new Set([editableDevice.img, ...(editableDevice.thumbnails || [])]),
       ];
       setExistingImages(updatedImages);
 
+      const pad = Math.max(0, 5 - updatedImages.length);
       const updatedDisplayedImages = [
         ...updatedImages,
         ...Array(5 - updatedImages.length).fill(null),
       ];
       setImages(updatedDisplayedImages);
+
+      if (
+        Array.isArray(editableDevice.compat) &&
+        editableDevice.compat.length
+      ) {
+        if (editableDevice.compat.some((c) => c.isUniversal)) {
+          setIsUniversal(true);
+          setCompatRows([]);
+        } else {
+          setIsUniversal(false);
+          const baseRows = editableDevice.compat.map((c) => ({
+            makeId: c.makeId || "",
+            modelId: c.modelId || "",
+            yearFrom: c.yearFrom || "",
+            yearTo: c.yearTo || "",
+            models: [],
+          }));
+          setCompatRows(baseRows);
+
+          baseRows.forEach((row, idx) => {
+            if (row.makeId) {
+              fetchModelsByMake(row.makeId)
+                .then((models) => {
+                  setCompatRows((prev) => {
+                    const next = [...prev];
+                    if (next[idx]) next[idx].models = models;
+                    return next;
+                  });
+                })
+                .catch((e) => console.error("Ошибка загрузки моделей:", e));
+            }
+          });
+        }
+      } else {
+        setIsUniversal(true);
+        setCompatRows([]);
+      }
     } else {
       resetFields();
+      setIsUniversal(true);
+      setCompatRows([]);
     }
   }, [editableDevice, device.brands, device.types]);
+
+  useEffect(() => {
+    if (show) {
+      fetchMakes().then(setMakes).catch(console.error);
+    }
+  }, [show]);
+
+  useEffect(() => {
+    fetchMakes()
+      .then(setMakes)
+      .catch((e) => console.error("Ошибка загрузки марок:", e));
+  }, []);
 
   const resetFields = () => {
     setName("");
@@ -268,6 +332,40 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     device.selectedBrand?.id,
     device.selectedSubType?.id,
   ]);
+
+  const addCompatRow = () =>
+    setCompatRows((prev) => [
+      ...prev,
+      { makeId: "", modelId: "", yearFrom: "", yearTo: "", models: [] },
+    ]);
+
+  const removeCompatRow = (idx) =>
+    setCompatRows((prev) => prev.filter((_, i) => i !== idx));
+
+  const onCompatChange = async (idx, field, value) => {
+    setCompatRows((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [field]: value };
+      if (field === "makeId") {
+        next[idx].modelId = "";
+        next[idx].models = [];
+      }
+      return next;
+    });
+
+    if (field === "makeId" && value) {
+      try {
+        const models = await fetchModelsByMake(value);
+        setCompatRows((prev) => {
+          const next = [...prev];
+          if (next[idx]) next[idx].models = models;
+          return next;
+        });
+      } catch (e) {
+        console.error("Ошибка загрузки моделей:", e);
+      }
+    }
+  };
 
   const parseBulkInfo = (text) => {
     const lines = text.split(/\r?\n/);
@@ -663,6 +761,34 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     formData.append("purchaseHasVAT", purchaseHasVAT);
     formData.append("quantity", quantity);
     formData.append("description", description || "");
+    formData.append("isUniversal", isUniversal ? "true" : "false");
+
+    if (!isUniversal) {
+      const payload = compatRows
+        .filter((r) => r.makeId || r.modelId || r.yearFrom || r.yearTo)
+        .map((r) => ({
+          makeId: r.makeId ? Number(r.makeId) : null,
+          modelId: r.modelId ? Number(r.modelId) : null,
+          yearFrom: r.yearFrom ? Number(r.yearFrom) : null,
+          yearTo: r.yearTo ? Number(r.yearTo) : null,
+        }));
+
+      formData.append("compat", JSON.stringify(payload));
+    }
+
+    if (!isUniversal) {
+      if (compatRows.length === 0) {
+        errors.compat =
+          "Добавьте хотя бы одну строку совместимости или включите «универсальный товар».";
+      } else {
+        compatRows.forEach((r, i) => {
+          if (!r.makeId && !r.modelId && !r.yearFrom && !r.yearTo) {
+            errors.compat =
+              "Есть пустая строка совместимости — удалите её или заполните.";
+          }
+        });
+      }
+    }
 
     if (discount) {
       formData.append("oldPrice", oldPrice);
@@ -863,7 +989,13 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered>
+    <Modal
+      show={show}
+      onHide={onHide}
+      centered
+      size="lg"
+      dialogClassName={styles.wideModal}
+    >
       <Modal.Header closeButton>
         <Modal.Title>
           {isEditMode ? "Редактировать устройство" : "Добавить устройство"}
@@ -890,7 +1022,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         />
       </Form.Group>
 
-      <Modal.Body>
+      <Modal.Body className={styles.modalBodyScrollable}>
         <Form>
           <div className="mb-4">
             <h5
@@ -954,6 +1086,131 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                     ))}
                   </Dropdown.Menu>
                 </Dropdown>
+
+                <div className={styles.compatSection}>
+                  <h5 className={styles.compatHeader}>🚗 Совместимость авто</h5>
+
+                  <Form.Check
+                    type="checkbox"
+                    id="compat-enabled"
+                    label="Указать совместимость (марка/модель/годы)"
+                    checked={!isUniversal} // <-- галочка = включена совместимость
+                    onChange={(e) => {
+                      const enable = e.target.checked;
+                      setIsUniversal(!enable); // <-- инвертируем сохранённое состояние
+                      if (enable && compatRows.length === 0) {
+                        // UX: при включении — сразу добавить строку
+                        addCompatRow();
+                      }
+                    }}
+                    className={styles.compatCheck}
+                  />
+
+                  {!isUniversal && (
+                    <>
+                      {compatRows.map((row, idx) => (
+                        <div key={idx} className={styles.compatRow}>
+                          <Form.Select
+                            className={styles.compatSelect}
+                            value={row.makeId || ""}
+                            onChange={(e) =>
+                              onCompatChange(
+                                idx,
+                                "makeId",
+                                e.target.value ? Number(e.target.value) : ""
+                              )
+                            }
+                          >
+                            <option value="">Марка...</option>
+                            {makes.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.name}
+                              </option>
+                            ))}
+                          </Form.Select>
+
+                          <Form.Select
+                            className={styles.compatSelect}
+                            value={row.modelId || ""}
+                            onChange={(e) =>
+                              onCompatChange(
+                                idx,
+                                "modelId",
+                                e.target.value ? Number(e.target.value) : ""
+                              )
+                            }
+                            disabled={!row.makeId}
+                          >
+                            <option value="">Модель...</option>
+                            {(row.models || []).map((mm) => (
+                              <option key={mm.id} value={mm.id}>
+                                {mm.name}
+                              </option>
+                            ))}
+                          </Form.Select>
+
+                          <Form.Select
+                            className={styles.yearSelect}
+                            value={row.yearFrom ?? ""}
+                            onChange={(e) =>
+                              onCompatChange(
+                                idx,
+                                "yearFrom",
+                                e.target.value ? Number(e.target.value) : ""
+                              )
+                            }
+                          >
+                            <option value="">Год от</option>
+                            {yearOptions.map((y) => (
+                              <option key={y} value={y}>
+                                {y}
+                              </option>
+                            ))}
+                          </Form.Select>
+
+                          <Form.Select
+                            className={styles.yearSelect}
+                            value={row.yearTo ?? ""}
+                            onChange={(e) =>
+                              onCompatChange(
+                                idx,
+                                "yearTo",
+                                e.target.value ? Number(e.target.value) : ""
+                              )
+                            }
+                          >
+                            <option value="">Год до</option>
+                            {yearOptions.map((y) => (
+                              <option key={y} value={y}>
+                                {y}
+                              </option>
+                            ))}
+                          </Form.Select>
+
+                          <Button
+                            variant="outline-danger"
+                            className={styles.compatDeleteBtn}
+                            onClick={() => removeCompatRow(idx)}
+                          >
+                            Удалить
+                          </Button>
+                        </div>
+                      ))}
+
+                      <Button
+                        variant="outline-dark"
+                        className={styles.addCompatBtn}
+                        onClick={addCompatRow}
+                      >
+                        + Добавить строку совместимости
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                {isSubmitted && errors.compat && (
+                  <div className="text-danger mt-2">{errors.compat}</div>
+                )}
 
                 <Dropdown className="mt-2 mb-2">
                   <Dropdown.Toggle>
