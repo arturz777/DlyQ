@@ -28,7 +28,7 @@ class TypeController {
           throw new Error("Ошибка загрузки изображения в Supabase");
         }
 
-        imgUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
+        imgUrl = `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${fileName}`;
       }
 
       const type = await Type.create({
@@ -100,7 +100,7 @@ class TypeController {
           throw new Error("Ошибка загрузки нового изображения в Supabase");
         }
 
-        imgUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${newFileName}`;
+        imgUrl = `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${newFileName}`;
       }
 
       await type.update({
