@@ -31,7 +31,7 @@
     "username": "postgres",
     "password": "ZMIluFjgQfgSwfsf",
     "database": "postgres",
-    "host": "db.esjsdctbiuzornxbktjb.supabase.co",
+    "host": "db.ujsitjkochexlcqrwxan.supabase.co",
     "port": 5432,
     "dialect": "postgres",
     "dialectOptions": {
