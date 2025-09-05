@@ -58,6 +58,46 @@ export const deleteType = async (id) => {
   await $authHost.delete(`/type/${id}`);
 };
 
+export const fetchMakes = async () => {
+  const { data } = await $host.get('/device/make');
+  return data;
+};
+
+export const createMake = async (body) => {
+  const { data } = await $authHost.post('/device/make', body);
+  return data;
+};
+
+export const updateMake = async (id, body) => {
+  const { data } = await $authHost.put(`/device/make/${id}`, body);
+  return data;
+};
+
+export const deleteMake = async (id) => {
+  const { data } = await $authHost.delete(`/device/make/${id}`);
+  return data;
+};
+
+export const fetchModelsByMake = async (makeId) => {
+  const { data } = await $host.get('/device/model', { params: { makeId } });
+  return data;
+};
+
+export const createModel = async (body) => {
+  const { data } = await $authHost.post('/device/model', body);
+  return data;
+};
+
+export const updateModel = async (id, body) => {
+  const { data } = await $authHost.put(`/device/model/${id}`, body);
+  return data;
+};
+
+export const deleteModel = async (id) => {
+  const { data } = await $authHost.delete(`/device/model/${id}`);
+  return data;
+};
+
 export const createSubtype = async (subtype) => {
   const { data } = await $authHost.post("/subtype", subtype);
   return data;
@@ -107,7 +147,15 @@ export const createDevice = async (device) => {
   return data;
 };
 
-export const fetchDevices = async (typeId, subtypeId, brandId, page, limit = 100) => {
+export const fetchDevices = async (
+  typeId,
+  subtypeId,
+  brandId,
+  page,
+  limit = 20,
+  makeId,
+  modelId
+) => {
   const { data } = await $host.get("/device", {
     params: {
       typeId,
@@ -115,6 +163,8 @@ export const fetchDevices = async (typeId, subtypeId, brandId, page, limit = 100
       brandId,
       page,
       limit,
+      makeId,
+      modelId,
     },
   });
   return data;
