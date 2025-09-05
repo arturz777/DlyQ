@@ -4,10 +4,12 @@ import { Context } from "../index";
 import { useSearchParams } from "react-router-dom";
 import TypeBar from "../components/TypeBar";
 import BrandBar from "../components/BrandBar";
-import SubTypeBar from "..//components/SubTypeBar";
+import SubTypeBar from "../components/SubTypeBar";
 import DeviceList from "../components/DeviceList";
 import DevicePage from "../pages/DevicePage";
 import SlideModal from "../components/modals/SlideModal";
+import MakeBar from "../components/MakeBar";
+import ModelBar from "../components/ModelBar";
 import appStore from "../store/appStore";
 import {
   fetchBrands,
@@ -15,13 +17,15 @@ import {
   fetchTypes,
   fetchSubtypes,
   fetchSubtypesByType,
+  fetchMakes,
+  fetchModelsByMake,
 } from "../http/deviceAPI";
 import { useTranslation } from "react-i18next";
 import catalogStyles from "./CatalogPage.module.css";
 
 const CatalogPage = observer(() => {
   const { device } = useContext(Context);
-   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
   const typeIdFromUrl = searchParams.get("typeId");
@@ -29,14 +33,19 @@ const CatalogPage = observer(() => {
 
   const [showScrollTop, setShowScrollTop] = useState(false);
 
+  const isAutoType =
+    !!device.selectedType?.name && /авто/i.test(device.selectedType.name);
+
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [typesData, subtypesData, brandsData] = await Promise.all([
-          fetchTypes(),
-          fetchSubtypes(),
-          fetchBrands(),
-        ]);
+        const [typesData, subtypesData, brandsData, makesData] =
+          await Promise.all([
+            fetchTypes(),
+            fetchSubtypes(),
+            fetchBrands(),
+            fetchMakes(),
+          ]);
 
         device.setTypes(
           typesData.map((type) => ({
@@ -45,7 +54,7 @@ const CatalogPage = observer(() => {
           }))
         );
 
-         device.setSubtypes(
+        device.setSubtypes(
           subtypesData
             .map((subtype) => ({
               ...subtype,
@@ -59,6 +68,7 @@ const CatalogPage = observer(() => {
         );
 
         device.setBrands(brandsData);
+        device.setMakes(makesData);
 
         if (typeIdFromUrl) {
           const selectedType = typesData.find(
@@ -77,10 +87,10 @@ const CatalogPage = observer(() => {
   }, [currentLang]);
 
   useEffect(() => {
-  return () => {
-    device.setSelectedBrand({});
-  };
-}, []);
+    return () => {
+      device.setSelectedBrand({});
+    };
+  }, []);
 
   useEffect(() => {
     const loadDevices = async () => {
@@ -90,7 +100,9 @@ const CatalogPage = observer(() => {
           device.selectedSubType?.id || null,
           device.selectedBrand?.id || null,
           device.page,
-          device.limit
+          device.limit,
+          device.selectedMake?.id || null,
+          device.selectedModel?.id || null
         );
 
         device.setDevices(data.rows);
@@ -105,8 +117,26 @@ const CatalogPage = observer(() => {
     device.selectedType,
     device.selectedSubType,
     device.selectedBrand,
+    device.selectedMake,
+    device.selectedModel,
     device.page,
   ]);
+
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        if (device.selectedMake?.id) {
+          const models = await fetchModelsByMake(device.selectedMake.id);
+          device.setModels(models);
+        } else {
+          device.setModels([]);
+        }
+      } catch (e) {
+        console.error("Ошибка загрузки моделей:", e);
+      }
+    };
+    loadModels();
+  }, [device.selectedMake]);
 
   useEffect(() => {
     const loadSubtypes = async () => {
@@ -145,6 +175,23 @@ const CatalogPage = observer(() => {
     };
   }, []);
 
+  useEffect(() => {
+    device.setSelectedMake({});
+    device.setSelectedModel({});
+    device.setSelectedSubType({});
+  }, [device.selectedType?.id]);
+
+  useEffect(() => {
+    device.setSelectedModel({});
+    device.setSelectedSubType({});
+  }, [device.selectedMake?.id]);
+
+  useEffect(() => {
+    if (isAutoType) {
+      device.setSelectedSubType({});
+    }
+  }, [device.selectedModel?.id, isAutoType]);
+
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
@@ -152,7 +199,7 @@ const CatalogPage = observer(() => {
     });
   };
 
- return (
+  return (
     <div className={catalogStyles.catalogWrapper}>
       <div className={catalogStyles.catalogContent}>
         <p className={catalogStyles.catalogTitle}>
@@ -166,8 +213,26 @@ const CatalogPage = observer(() => {
           <div className={catalogStyles.typeFilter}>
             <TypeBar />
           </div>
+
+          {isAutoType && (
+            <>
+              <div id="make-filter" className={catalogStyles.makeFilter}>
+                <MakeBar />
+              </div>
+
+              <div className={catalogStyles.modelFilter}>
+                <ModelBar />
+              </div>
+            </>
+          )}
           <div id="subtype-filter" className={catalogStyles.subtypeFilter}>
-            <SubTypeBar />
+            {isAutoType ? (
+              device.selectedModel?.id ? (
+                <SubTypeBar />
+              ) : null
+            ) : (
+              <SubTypeBar />
+            )}
           </div>
         </div>
 
@@ -183,10 +248,10 @@ const CatalogPage = observer(() => {
           </button>
         )}
         {selectedDeviceId && (
-  <SlideModal onClose={() => setSelectedDeviceId(null)}>
-    <DevicePage id={selectedDeviceId} />
-  </SlideModal>
-)}
+          <SlideModal onClose={() => setSelectedDeviceId(null)}>
+            <DevicePage id={selectedDeviceId} />
+          </SlideModal>
+        )}
       </div>
     </div>
   );
