@@ -1,0 +1,12 @@
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+@media (max-width: 640px) {
+  .row { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 8px; }
+  .chip { flex: 0 0 auto; }
+}
+
+.chipActive {
+  border-color: #3b82f6;
+  background: #eef4ff;
+  font-weight: 600;
+}
