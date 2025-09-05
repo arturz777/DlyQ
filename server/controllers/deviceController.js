@@ -6,9 +6,12 @@ const {
   SubType,
   Type,
   Translation,
+  VehicleMake,
+  VehicleModel,
+  DeviceCompatibility,
 } = require("../models/models");
 const ApiError = require("../error/ApiError");
-const { Op } = require("sequelize");
+const { Op, Sequelize } = require("sequelize");
 const fs = require("fs");
 const { supabase } = require("../config/supabaseClient");
 
@@ -84,18 +87,6 @@ class DeviceController {
       }
 
       options = options ? JSON.parse(options) : [];
-
-      if (options.length > 0) {
-        quantity = options.reduce((sum, option) => {
-          return (
-            sum +
-            option.values.reduce(
-              (optSum, v) => optSum + (Number(v.quantity) || 0),
-              0
-            )
-          );
-        }, 0);
-      }
 
       if (options.length > 0) {
         quantity = options.reduce((sum, option) => {
@@ -261,13 +252,48 @@ class DeviceController {
         }
       }
 
+try {
+        const { compat, isUniversal } = req.body;
+
+        if (isUniversal === "true") {
+          await DeviceCompatibility.create({
+            deviceId: device.id,
+            isUniversal: true,
+            makeId: null,
+            modelId: null,
+            yearFrom: null,
+            yearTo: null,
+          });
+        } else if (compat) {
+          let arr = [];
+          try {
+            arr = JSON.parse(compat);
+          } catch {
+            arr = [];
+          }
+          if (Array.isArray(arr) && arr.length) {
+            const rows = arr.map((c) => ({
+              deviceId: device.id,
+              makeId: c.makeId ?? null,
+              modelId: c.modelId ?? null,
+              yearFrom: c.yearFrom ?? null,
+              yearTo: c.yearTo ?? null,
+              isUniversal: false,
+            }));
+            await DeviceCompatibility.bulkCreate(rows);
+          }
+        }
+      } catch (e) {
+        console.error("Ошибка сохранения совместимости:", e.message);
+      }
+
       return res.json(device);
     } catch (e) {
       next(ApiError.badRequest(e.message));
     }
   }
 
-  async getAll(req, res) {
+ async getAll(req, res) {
     try {
       let {
         brandId,
@@ -278,6 +304,8 @@ class DeviceController {
         isNew,
         discount,
         recommended,
+        makeId,
+        modelId,
       } = req.query;
       page = page || 1;
       limit = limit || 9;
@@ -291,15 +319,38 @@ class DeviceController {
       if (discount !== undefined) where.discount = discount === "true";
       if (recommended !== undefined) where.recommended = recommended === "true";
 
+      const include = [
+        { model: SubType, as: "subtype" },
+        { model: Type },
+        { model: DeviceInfo, as: "info" },
+      ];
+
+      if (modelId) {
+        include.push({
+          model: DeviceCompatibility,
+          as: "compat",
+          required: true,
+          where: {
+            [Op.or]: [{ modelId: Number(modelId) }, { isUniversal: true }],
+          },
+        });
+      } else if (makeId) {
+        include.push({
+          model: DeviceCompatibility,
+          as: "compat",
+          required: true,
+          where: {
+            [Op.or]: [{ makeId: Number(makeId) }, { isUniversal: true }],
+          },
+        });
+      }
+
       const devices = await Device.findAndCountAll({
         where,
         limit,
         offset,
-        include: [
-          { model: SubType, as: "subtype" },
-          { model: Type },
-          { model: DeviceInfo, as: "info" },
-        ],
+        include,
+        distinct: true,
       });
 
       const todayStr = new Date().toISOString().slice(0, 10);
@@ -401,6 +452,14 @@ class DeviceController {
           { model: DeviceInfo, as: "info" },
           { model: SubType, as: "subtype" },
           { model: Type },
+          {
+            model: DeviceCompatibility,
+            as: "compat",
+            include: [
+              { model: VehicleMake, as: "make", attributes: ["id", "name"] },
+              { model: VehicleModel, as: "model", attributes: ["id", "name"] },
+            ],
+          },
         ],
       });
 
@@ -789,6 +848,44 @@ class DeviceController {
       }
 
       const updatedDevice = await Device.findOne({ where: { id } });
+      
+      try {
+        await DeviceCompatibility.destroy({ where: { deviceId: id } });
+
+        const { compat, isUniversal } = req.body;
+
+        if (isUniversal === "true") {
+          await DeviceCompatibility.create({
+            deviceId: id,
+            isUniversal: true,
+            makeId: null,
+            modelId: null,
+            yearFrom: null,
+            yearTo: null,
+          });
+        } else if (compat) {
+          let arr = [];
+          try {
+            arr = JSON.parse(compat);
+          } catch {
+            arr = [];
+          }
+          if (Array.isArray(arr) && arr.length) {
+            const rows = arr.map((c) => ({
+              deviceId: id,
+              makeId: c.makeId ?? null,
+              modelId: c.modelId ?? null,
+              yearFrom: c.yearFrom ?? null,
+              yearTo: c.yearTo ?? null,
+              isUniversal: false,
+            }));
+            await DeviceCompatibility.bulkCreate(rows);
+          }
+        }
+      } catch (e) {
+        console.error("Ошибка обновления совместимости:", e.message);
+      }
+
       return res.json(updatedDevice);
     } catch (error) {
       console.error("❌ Ошибка в update:", error);
