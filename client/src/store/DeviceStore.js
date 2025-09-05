@@ -3,10 +3,14 @@ import { makeAutoObservable } from "mobx";
 export default class DeviceStore {
   constructor() {
     this._types = [];
+    this._makes = [];
+    this._models = [];
     this._subtypes = [];
     this._brands = [];
     this._devices = [];
     this._selectedType = {};
+    this._selectedMake = {};
+    this._selectedModel = {};
     this._selectedSubType = {};
     this._selectedBrand = {};
     this._page = 1;
@@ -25,15 +29,21 @@ export default class DeviceStore {
     this._selectedType = type;
   }
 
+  setMakes(makes) {
+    this._makes = makes;
+  }
+  setModels(models) {
+    this._models = models;
+  }
+
   setSubtypes(subtypes) {
     this._subtypes = subtypes.map((subtype) => ({
-        ...subtype,
-        translations: subtype.translations || {},
+      ...subtype,
+      translations: subtype.translations || {},
     }));
     this._selectedSubType = {};
-}
+  }
 
-  
   setBrands(brands) {
     this._brands = brands;
   }
@@ -45,11 +55,33 @@ export default class DeviceStore {
     if (this._selectedType.id === type.id) {
       this._selectedType = {};
       this._selectedSubType = {};
+      this._selectedMake = {};
+      this._selectedModel = {};
     } else {
       this.setPage(1);
       this._selectedType = type;
       this._selectedSubType = {};
     }
+  }
+
+  setSelectedMake(make) {
+    if (this._selectedMake.id === make.id) {
+      this._selectedMake = {};
+      this._selectedModel = {};
+    } else {
+      this._selectedMake = make;
+      this._selectedModel = {};
+    }
+    this.setPage(1);
+  }
+
+   setSelectedModel(model) {
+    if (this._selectedModel.id === model.id) {
+      this._selectedModel = {};
+    } else {
+      this._selectedModel = model;
+    }
+    this.setPage(1);
   }
 
   setSelectedSubType(subtype) {
@@ -79,6 +111,12 @@ export default class DeviceStore {
   get types() {
     return this._types;
   }
+  get makes() {
+    return this._makes;
+  }
+  get models() {
+    return this._models;
+  }
   get subtypes() {
     return this._subtypes;
   }
@@ -90,6 +128,12 @@ export default class DeviceStore {
   }
   get selectedType() {
     return this._selectedType;
+  }
+  get selectedMake() {
+    return this._selectedMake;
+  }
+  get selectedModel() {
+    return this._selectedModel;
   }
   get selectedSubType() {
     return this._selectedSubType;
