@@ -1,103 +1,103 @@
 .imagePreviewContainer {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10px;
-	margin-top: 10px;
-  }
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
 
-  .newProduct {
-	font-size: 30px;
-  }
+.newProduct {
+  font-size: 30px;
+}
 
-  .recommendProduct {
-	font-size: 30px;
-  }
-  
-  .imagePreview {
-	position: relative;
-	width: 30px;
-	height: 30px;
-  }
-  
-  .imagePreview img {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	border-radius: 6px;
-  }
+.recommendProduct {
+  font-size: 30px;
+}
 
-  .ImageGrid {
-	display: flex;
-	gap: 10px;
-	margin-top: 10px;
-  }
-  
-  .ImageCell {
-	width: 80px;
-	height: 80px;
-	border: 2px dashed gray;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-	position: relative;
-  }
-  
-  .UploadedImage {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-  }
-  
-  .EmptyCell {
-	font-size: 24px;
-	color: gray;
-  }
-  
-  .DeleteButton {
-	position: absolute;
-	top: 1px;
-	right: 1px;
-	background: red;
-	color: rgb(0, 0, 0);
-	border: none;
-	font-size: 0px;
-	cursor: pointer;
-  }
-  
-  .formGroup {
-	margin-bottom: 16px;
-	display: flex;
-	flex-direction: column;
-  }
-  
-  .label {
-	font-weight: 600;
-	margin-bottom: 8px;
-  }
-  
-  .textarea {
-	padding: 10px;
-	font-size: 14px;
-	border: 1px solid #ccc;
-	border-radius: 6px;
-	resize: vertical;
-	min-height: 80px;
-	transition: border-color 0.2s;
-  }
-  
-  .textarea:focus {
-	border-color: #007bff;
-	outline: none;
-  }
-  
-  .errorText {
-	margin-top: 5px;
-	color: red;
-	font-size: 13px;
-  }
-  
- .scrollableDropdownMenu {
+.imagePreview {
+  position: relative;
+  width: 30px;
+  height: 30px;
+}
+
+.imagePreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.ImageGrid {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.ImageCell {
+  width: 80px;
+  height: 80px;
+  border: 2px dashed gray;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+}
+
+.UploadedImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.EmptyCell {
+  font-size: 24px;
+  color: gray;
+}
+
+.DeleteButton {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  background: red;
+  color: rgb(0, 0, 0);
+  border: none;
+  font-size: 0px;
+  cursor: pointer;
+}
+
+.formGroup {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.textarea {
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s;
+}
+
+.textarea:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+.errorText {
+  margin-top: 5px;
+  color: red;
+  font-size: 13px;
+}
+
+.scrollableDropdownMenu {
   max-height: 200px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -122,4 +122,90 @@
 
 .scrollableDropdownMenu::-webkit-scrollbar-thumb:hover {
   background-color: #555;
+}
+
+.wideModal :global(.modal-dialog) {
+  max-width: 760px;
+}
+
+.wideModal {
+  --bs-modal-width: 700px;
+  max-width: 70vw;
+}
+
+.modalBodyScrollable {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.compatSection {
+  margin: 12px 0 16px;
+  padding-top: 8px;
+  border-top: 1px dashed #e5e7eb;
+}
+
+.compatRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.04);
+  overflow: hidden;
+}
+
+@media (min-width: 680px) {
+  .compatRow {
+    grid-template-columns: 1fr 1fr 120px 120px;
+  }
+}
+
+@media (min-width: 880px) {
+  .compatRow {
+    grid-template-columns: 1fr 1fr 120px 120px auto;
+  }
+}
+
+.compatRow > :global(*) {
+  min-width: 0;
+}
+
+.compatSelect,
+.yearSelect {
+  min-height: 38px;
+}
+
+.compatRow :global(.form-select),
+.compatRow :global(.form-control) {
+  height: 38px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.yearSelect :global(select) {
+  text-align-last: center;
+}
+
+.compatDeleteBtn {
+  height: 38px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  justify-self: end;
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 880px) {
+  .compatDeleteBtn {
+    grid-column: auto;
+  }
+}
+
+.addCompatBtn {
+  margin-top: 6px;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
 }
