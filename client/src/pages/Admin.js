@@ -332,7 +332,7 @@ const Admin = () => {
   };
 
   const autoTypeId = React.useMemo(() => {
-    return types.find((t) => /автомоб/i.test(t.name))?.id ?? null;
+    return types.find((t) => /Автотовары/i.test(t.name))?.id ?? null;
   }, [types]);
 
   const toggleDeviceType = (typeId) => {
