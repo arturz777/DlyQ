@@ -25,7 +25,7 @@ import catalogStyles from "./CatalogPage.module.css";
 
 const CatalogPage = observer(() => {
   const { device } = useContext(Context);
-   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
   const typeIdFromUrl = searchParams.get("typeId");
@@ -39,13 +39,13 @@ const CatalogPage = observer(() => {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [typesData, subtypesData, brandsData, makesData] = 
+        const [typesData, subtypesData, brandsData, makesData] =
           await Promise.all([
-          fetchTypes(),
-          fetchSubtypes(),
-          fetchBrands(),
-          fetchMakes(),
-        ]);
+            fetchTypes(),
+            fetchSubtypes(),
+            fetchBrands(),
+            fetchMakes(),
+          ]);
 
         device.setTypes(
           typesData.map((type) => ({
@@ -54,7 +54,7 @@ const CatalogPage = observer(() => {
           }))
         );
 
-         device.setSubtypes(
+        device.setSubtypes(
           subtypesData
             .map((subtype) => ({
               ...subtype,
@@ -87,17 +87,17 @@ const CatalogPage = observer(() => {
   }, [currentLang]);
 
   useEffect(() => {
-  return () => {
-    device.setSelectedBrand({});
-  };
-}, []);
+    return () => {
+      device.setSelectedBrand({});
+    };
+  }, []);
 
   useEffect(() => {
     const loadDevices = async () => {
       try {
         const data = await fetchDevices(
           device.selectedType?.id || null,
-          device.selectedSubType?.id || null,
+          device.selectedSubType?.id ?? null,
           device.selectedBrand?.id || null,
           device.page,
           device.limit,
@@ -115,14 +115,13 @@ const CatalogPage = observer(() => {
     loadDevices();
   }, [
     device.selectedType,
-    device.selectedSubType,
     device.selectedBrand,
     device.selectedMake,
     device.selectedModel,
     device.page,
   ]);
 
-   useEffect(() => {
+  useEffect(() => {
     const loadModels = async () => {
       try {
         if (device.selectedMake?.id) {
@@ -175,13 +174,6 @@ const CatalogPage = observer(() => {
     };
   }, []);
 
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
-
   useEffect(() => {
     device.setSelectedMake({});
     device.setSelectedModel({});
@@ -199,7 +191,14 @@ const CatalogPage = observer(() => {
     }
   }, [device.selectedModel?.id, isAutoType]);
 
-   return (
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  return (
     <div className={catalogStyles.catalogWrapper}>
       <div className={catalogStyles.catalogContent}>
         <p className={catalogStyles.catalogTitle}>
