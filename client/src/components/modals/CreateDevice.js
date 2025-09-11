@@ -8,7 +8,7 @@ import {
   fetchBrands,
   fetchTypes,
   fetchSubtypesByType,
-  fetchMakes,       
+  fetchMakes,
   fetchModelsByMake,
 } from "../../http/deviceAPI";
 import { observer } from "mobx-react-lite";
@@ -29,7 +29,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [info, setInfo] = useState([]);
   const [options, setOptions] = useState([]);
   const [description, setDescription] = useState("");
-  const [subtypes, setSubtypes] = useState([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -47,9 +46,13 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [expiryKind, setExpiryKind] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [snoozeUntil, setSnoozeUntil] = useState("");
-  const [isUniversal, setIsUniversal] = useState(true); 
-const [compatRows, setCompatRows] = useState([]);  
-const [makes, setMakes] = useState([]);   
+  const [isUniversal, setIsUniversal] = useState(true);
+  const [compatRows, setCompatRows] = useState([]);
+  const [makes, setMakes] = useState([]);
+  const [extraTypeIds, setExtraTypeIds] = useState(new Set());
+  const [extraSubtypeIds, setExtraSubtypeIds] = useState(new Set());
+  const [visibleSubtypes, setVisibleSubtypes] = useState([]);
+
   const [translations, setTranslations] = useState({
     name: { en: "", ru: "", est: "" },
     options: [],
@@ -89,6 +92,42 @@ const [makes, setMakes] = useState([]);
       setPurchaseHasVAT(false);
     }
   }, [editableDevice]);
+
+  useEffect(() => {
+    if (editableDevice?.types) {
+      const primaryType = Number(
+        editableDevice.typeId ?? editableDevice.type?.id ?? NaN
+      );
+      const extras = editableDevice.types
+        .map((t) => Number(t.id))
+        .filter((n) => Number.isFinite(n) && n !== primaryType);
+      setExtraTypeIds(new Set(extras));
+    } else {
+      setExtraTypeIds(new Set());
+    }
+  }, [editableDevice]);
+
+  useEffect(() => {
+    const initPrimary = Number(editableDevice?.typeId ?? 0);
+    const currentPrimary = Number(device.selectedType?.id ?? 0);
+
+    if (!editableDevice) {
+      setExtraTypeIds(new Set());
+      return;
+    }
+
+    if (initPrimary && currentPrimary && currentPrimary !== initPrimary) {
+      setExtraTypeIds(new Set());
+    }
+  }, [device.selectedType?.id, editableDevice?.typeId]);
+
+  useEffect(() => {
+    const allowed = new Set(visibleSubtypes.map((st) => Number(st.id)));
+    const current = Number(device.selectedSubType?.id ?? 0);
+    if (current && !allowed.has(current)) {
+      device.setSelectedSubType(null);
+    }
+  }, [visibleSubtypes]);
 
   useEffect(() => {
     if (editableDevice) {
@@ -157,12 +196,11 @@ const [makes, setMakes] = useState([]);
         });
       }
 
-     const updatedImages = [
+      const updatedImages = [
         ...new Set([editableDevice.img, ...(editableDevice.thumbnails || [])]),
       ];
       setExistingImages(updatedImages);
 
-      const pad = Math.max(0, 5 - updatedImages.length);
       const updatedDisplayedImages = [
         ...updatedImages,
         ...Array(5 - updatedImages.length).fill(null),
@@ -213,16 +251,75 @@ const [makes, setMakes] = useState([]);
   }, [editableDevice, device.brands, device.types]);
 
   useEffect(() => {
+    const primaryTypeId =
+      Number(device.selectedType?.id ?? editableDevice?.typeId ?? 0) || null;
+    const allTypeIds = new Set();
+    if (primaryTypeId) allTypeIds.add(primaryTypeId);
+    for (const tid of extraTypeIds) allTypeIds.add(Number(tid));
+
+    if (allTypeIds.size === 0) {
+      setVisibleSubtypes([]);
+      return;
+    }
+
+    Promise.all([...allTypeIds].map((tid) => fetchSubtypesByType(tid)))
+      .then((lists) => {
+        const seen = new Set();
+        const merged = [];
+        lists.forEach((arr) => {
+          arr.forEach((st) => {
+            const id = Number(st.id);
+            if (!seen.has(id)) {
+              seen.add(id);
+              merged.push(st);
+            }
+          });
+        });
+        merged.sort((a, b) => {
+          const ao = Number(a.displayOrder ?? 0);
+          const bo = Number(b.displayOrder ?? 0);
+          return ao === bo ? a.id - b.id : ao - bo;
+        });
+        setVisibleSubtypes(merged);
+      })
+      .catch(console.error);
+  }, [device.selectedType?.id, editableDevice?.typeId, extraTypeIds]);
+
+  useEffect(() => {
+    if (!editableDevice) return;
+    if (!visibleSubtypes || visibleSubtypes.length === 0) return;
+
+    const allowed = new Set(visibleSubtypes.map((s) => Number(s.id)));
+
+    const currentPrimary = Number(
+      device.selectedSubType?.id ??
+        editableDevice.subtypeId ??
+        editableDevice.subtype?.id ??
+        0
+    );
+
+    const existing = (editableDevice.subtypes || [])
+      .map((s) => Number(s.id))
+      .filter(Boolean);
+
+    const extras = existing.filter(
+      (id) => id !== currentPrimary && allowed.has(id)
+    );
+
+    setExtraSubtypeIds(new Set(extras));
+  }, [editableDevice, visibleSubtypes, device.selectedSubType?.id]);
+
+  useEffect(() => {
+    const allowed = new Set(visibleSubtypes.map((st) => Number(st.id)));
+    const current = Number(device.selectedSubType?.id ?? 0);
+    if (current && !allowed.has(current)) device.setSelectedSubType(null);
+  }, [visibleSubtypes]);
+
+  useEffect(() => {
     if (show) {
       fetchMakes().then(setMakes).catch(console.error);
     }
   }, [show]);
-
-  useEffect(() => {
-    fetchMakes()
-      .then(setMakes)
-      .catch((e) => console.error("Ошибка загрузки марок:", e));
-  }, []);
 
   const resetFields = () => {
     setName("");
@@ -250,18 +347,6 @@ const [makes, setMakes] = useState([]);
     setImages((prev) => prev.map((img, i) => (i === index ? null : img)));
 
     setExistingImages((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const selectMainImage = (e) => {
-    setMainImage(e.target.files[0]);
-  };
-
-  const selectThumbnails = (e) => {
-    const files = Array.from(e.target.files);
-    const previews = files.map((file) => URL.createObjectURL(file));
-
-    setImages((prev) => [...prev, ...files]);
-    setImagePreviews((prev) => [...prev, ...previews]);
   };
 
   useEffect(() => {
@@ -737,16 +822,31 @@ const [makes, setMakes] = useState([]);
   const handleSave = () => {
     setLoading(true);
     setIsSubmitted(true);
+    setErrors({});
+    setOptionErrors({});
+
     const validationErrors = validateDevice();
+
+    if (!isUniversal) {
+      if (compatRows.length === 0) {
+        validationErrors.compat =
+          "Добавьте хотя бы одну строку совместимости или включите «универсальный товар».";
+      } else if (
+        compatRows.some(
+          (r) => !r.makeId && !r.modelId && !r.yearFrom && !r.yearTo
+        )
+      ) {
+        validationErrors.compat =
+          "Есть пустая строка совместимости — удалите её или заполните.";
+      }
+    }
 
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       setOptionErrors(validationErrors);
+      setLoading(false);
       return;
     }
-
-    setErrors({});
-    setOptionErrors({});
 
     const formData = new FormData();
     formData.append("isNew", isNew);
@@ -776,20 +876,6 @@ const [makes, setMakes] = useState([]);
       formData.append("compat", JSON.stringify(payload));
     }
 
-    if (!isUniversal) {
-      if (compatRows.length === 0) {
-        errors.compat =
-          "Добавьте хотя бы одну строку совместимости или включите «универсальный товар».";
-      } else {
-        compatRows.forEach((r, i) => {
-          if (!r.makeId && !r.modelId && !r.yearFrom && !r.yearTo) {
-            errors.compat =
-              "Есть пустая строка совместимости — удалите её или заполните.";
-          }
-        });
-      }
-    }
-
     if (discount) {
       formData.append("oldPrice", oldPrice);
     } else {
@@ -812,14 +898,27 @@ const [makes, setMakes] = useState([]);
       "brandId",
       device.selectedBrand?.id || editableDevice?.brandId || ""
     );
-    formData.append(
-      "typeId",
-      device.selectedType?.id || editableDevice?.typeId || ""
+
+    const primarySubtypeId =
+      Number(device.selectedSubType?.id ?? editableDevice?.subtypeId ?? 0) ||
+      null;
+    const subtypeIdsArray = Array.from(
+      new Set([
+        ...(primarySubtypeId ? [primarySubtypeId] : []),
+        ...Array.from(extraSubtypeIds).map(Number),
+      ])
     );
 
-    if (device.selectedSubType?.id) {
-      formData.append("subtypeId", device.selectedSubType.id);
-    }
+    const primaryTypeId =
+      Number(device.selectedType?.id ?? editableDevice?.typeId ?? 0) || null;
+    const cleanExtraTypeIds = Array.from(extraTypeIds)
+      .map(Number)
+      .filter((id) => id && id !== primaryTypeId);
+
+    formData.append("typeId", primaryTypeId ?? "");
+    formData.append("typeIds", JSON.stringify(cleanExtraTypeIds));
+    formData.append("subtypeId", primarySubtypeId ?? "");
+    formData.append("subtypeIds", JSON.stringify(subtypeIdsArray));
 
     formData.append("info", JSON.stringify(info));
     formData.append("options", JSON.stringify(options));
@@ -1035,7 +1134,7 @@ const [makes, setMakes] = useState([]);
               <>
                 <Dropdown className="mt-2 mb-2">
                   <Dropdown.Toggle>
-                    {device.selectedType.name || "Выберите тип"}
+                    {device.selectedType?.name || "Выберите тип"}
                   </Dropdown.Toggle>
                   {isSubmitted && !device.selectedType?.id && (
                     <span
@@ -1053,6 +1152,8 @@ const [makes, setMakes] = useState([]);
                       <Dropdown.Item
                         onClick={() => {
                           device.setSelectedType(type);
+                          device.clearSelectedSubType();
+                          setExtraSubtypeIds(new Set());
                           fetchSubtypesByType(type.id).then((data) =>
                             device.setSubtypes(data)
                           );
@@ -1064,6 +1165,36 @@ const [makes, setMakes] = useState([]);
                     ))}
                   </Dropdown.Menu>
                 </Dropdown>
+
+                {device.types.length > 0 && (
+                  <div className="mt-2">
+                    <div className="mb-1">Доп. типы (кроме выбранного):</div>
+                    {device.types
+                      .filter(
+                        (t) =>
+                          t.id !==
+                          (device.selectedType?.id ?? editableDevice?.typeId)
+                      )
+                      .map((t) => (
+                        <Form.Check
+                          key={t.id}
+                          type="checkbox"
+                          id={`extra-type-${t.id}`}
+                          label={t.name}
+                          checked={extraTypeIds.has(Number(t.id))}
+                          onChange={(e) => {
+                            const id = Number(t.id);
+                            setExtraTypeIds((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(id);
+                              else next.delete(id);
+                              return next;
+                            });
+                          }}
+                        />
+                      ))}
+                  </div>
+                )}
 
                 <Dropdown>
                   <Dropdown.Toggle>
@@ -1087,6 +1218,38 @@ const [makes, setMakes] = useState([]);
                   </Dropdown.Menu>
                 </Dropdown>
 
+                {visibleSubtypes.length > 0 && (
+                  <div className="mt-2">
+                    <div className="mb-1">
+                      Доп. разделы (помимо выбранного):
+                    </div>
+                    {visibleSubtypes.map((st) => {
+                      const stId = Number(st.id);
+                      const primaryIdNum = Number(
+                        device.selectedSubType?.id ?? editableDevice?.subtypeId
+                      );
+                      return (
+                        <Form.Check
+                          key={stId}
+                          type="checkbox"
+                          id={`extra-st-${stId}`}
+                          label={st.name}
+                          checked={extraSubtypeIds.has(stId)}
+                          disabled={primaryIdNum === stId}
+                          onChange={(e) => {
+                            setExtraSubtypeIds((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(stId);
+                              else next.delete(stId);
+                              return next;
+                            });
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+
                 <div className={styles.compatSection}>
                   <h5 className={styles.compatHeader}>🚗 Совместимость авто</h5>
 
@@ -1094,12 +1257,11 @@ const [makes, setMakes] = useState([]);
                     type="checkbox"
                     id="compat-enabled"
                     label="Указать совместимость (марка/модель/годы)"
-                    checked={!isUniversal} // <-- галочка = включена совместимость
+                    checked={!isUniversal}
                     onChange={(e) => {
                       const enable = e.target.checked;
-                      setIsUniversal(!enable); // <-- инвертируем сохранённое состояние
+                      setIsUniversal(!enable);
                       if (enable && compatRows.length === 0) {
-                        // UX: при включении — сразу добавить строку
                         addCompatRow();
                       }
                     }}
