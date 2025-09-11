@@ -42,6 +42,31 @@ oldPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
   snoozeUntil: { type: DataTypes.DATEONLY, allowNull: true },
 });
 
+const DeviceSubType = sequelize.define('device_subtype', {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  deviceId: { type: DataTypes.INTEGER, allowNull: false },
+  subtypeId: { type: DataTypes.INTEGER, allowNull: false },
+  isPrimary: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+}, {
+  indexes: [
+    { fields: ['deviceId'] },
+    { fields: ['subtypeId'] },
+    { unique: true, fields: ['deviceId', 'subtypeId'] },
+    { fields: ['isPrimary'] },
+  ],
+});
+
+const DeviceType = sequelize.define('device_type', {
+  deviceId: { type: DataTypes.INTEGER, allowNull: false },
+  typeId:   { type: DataTypes.INTEGER, allowNull: false },
+}, {
+  indexes: [
+    { fields: ['deviceId'] },
+    { fields: ['typeId'] },
+    { unique: true, fields: ['deviceId','typeId'] },
+  ],
+});
+
 const Type = sequelize.define("type", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   name: { type: DataTypes.STRING, unique: true, allowNull: false },
@@ -178,14 +203,18 @@ const Warehouse = sequelize.define("warehouse", {
   status: { type: DataTypes.STRING, defaultValue: "offline" },
 });
 
-const Translation = sequelize.define("translation", {
-  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  key: { type: DataTypes.STRING, allowNull: false },
-  lang: { type: DataTypes.STRING(10), allowNull: false },
-  text: { type: DataTypes.TEXT, allowNull: false },
-}, {
-  indexes: [{ unique: true, fields: ["key", "lang"] }]
-});
+const Translation = sequelize.define(
+  "translation",
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    key: { type: DataTypes.STRING, allowNull: false },
+    lang: { type: DataTypes.STRING(10), allowNull: false },
+    text: { type: DataTypes.TEXT, allowNull: false },
+  },
+  {
+    indexes: [{ unique: true, fields: ["key", "lang"] }],
+  }
+);
 
 const Chat = sequelize.define("chat", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -272,11 +301,40 @@ Brand.belongsToMany(Type, { through: TypeBrand });
 Type.hasMany(SubType, { foreignKey: "typeId", as: "subtypes" });
 SubType.belongsTo(Type, { foreignKey: "typeId", as: "type" });
 
+Device.belongsToMany(SubType, {
+  through: DeviceSubType,
+  as: 'subtypes',           
+  foreignKey: 'deviceId',
+  otherKey: 'subtypeId',
+});
+
+SubType.belongsToMany(Device, {
+  through: DeviceSubType,
+  as: 'm2mDevices',        
+  foreignKey: 'subtypeId',
+  otherKey: 'deviceId',
+});
+
+Device.belongsToMany(Type, {
+  through: DeviceType,
+  as: 'types',
+  foreignKey: 'deviceId',
+  otherKey: 'typeId',
+});
+
+Type.belongsToMany(Device, {
+  through: DeviceType,
+  as: 'devicesM2M',
+  foreignKey: 'typeId',
+  otherKey: 'deviceId',
+});
+
 VehicleMake.hasMany(VehicleModel, {
   as: "models",
   foreignKey: "makeId",
   onDelete: "CASCADE",
 });
+
 VehicleModel.belongsTo(VehicleMake, {
   as: "make",
   foreignKey: "makeId",
@@ -316,7 +374,9 @@ module.exports = {
   Basket,
   BasketDevice,
   Device,
+  DeviceSubType,
   Type,
+  DeviceType,
   VehicleMake,
   VehicleModel,
   DeviceCompatibility,
