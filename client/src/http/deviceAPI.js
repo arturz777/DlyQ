@@ -147,6 +147,11 @@ export const createDevice = async (device) => {
   return data;
 };
 
+const toInt = (v) => {
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 ? n : undefined;
+};
+
 export const fetchDevices = async (
   typeId,
   subtypeId,
@@ -156,17 +161,18 @@ export const fetchDevices = async (
   makeId,
   modelId
 ) => {
-  const { data } = await $host.get("/device", {
-    params: {
-      typeId,
-      subtypeId,
-      brandId,
-      page,
-      limit,
-      makeId,
-      modelId,
-    },
-  });
+  const params = {
+    page,
+    limit,
+    typeId:   toInt(typeId),
+    subtypeId:toInt(subtypeId),
+    brandId:  toInt(brandId),
+    makeId:   toInt(makeId),
+    modelId:  toInt(modelId),
+  };
+  Object.keys(params).forEach(k => params[k] === undefined && delete params[k]);
+
+  const { data } = await $host.get("/device", { params });
   return data;
 };
 
