@@ -43,9 +43,6 @@ const Admin = () => {
   const [subtypes, setSubtypes] = useState([]);
   const [brands, setBrands] = useState([]);
   const [devices, setDevices] = useState([]);
-  const [visibleDevices, setVisibleDevices] = useState([]);
-  const [currentOffset, setCurrentOffset] = useState(0);
-  const limit = 10; // Количество товаров для загрузки за раз
 
   const [brandVisible, setBrandVisible] = useState(false);
   const [typeVisible, setTypeVisible] = useState(false);
@@ -81,6 +78,8 @@ const Admin = () => {
   const [makes, setMakes] = useState([]);
   const [modelsByMake, setModelsByMake] = useState({});
   const [openMakeIds, setOpenMakeIds] = useState([]);
+   const [openMakeInType, setOpenMakeInType] = useState(new Set());
+  const [openModelInMakeType, setOpenModelInMakeType] = useState(new Set());
 
   useEffect(() => {
     const socket = io(`https://dlyq-backend-staging.onrender.com`);
@@ -139,18 +138,9 @@ const Admin = () => {
     fetchAllCouriers().then(setCouriers).catch(console.error);
   }, []);
 
-  const handleLoadMore = () => {
-    const nextOffset = currentOffset + limit;
-    const newDevices = filteredDevices.slice(nextOffset, nextOffset + limit);
-    setVisibleDevices((prev) => [...prev, ...newDevices]);
-    setCurrentOffset(nextOffset);
-  };
-
   const filteredDevices = React.useMemo(() => {
     return devices
-      .filter((device) =>
-        device.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      .filter((d) => d.name.toLowerCase().includes(searchQuery.toLowerCase()))
       .sort((a, b) => {
         if (sortOption === "priceAsc") return a.price - b.price;
         if (sortOption === "priceDesc") return b.price - a.price;
@@ -159,6 +149,31 @@ const Admin = () => {
         return 0;
       });
   }, [devices, searchQuery, sortOption]);
+
+  useEffect(() => {
+    if (!devices?.length) return;
+
+    const needMakeIds = new Set();
+
+    for (const d of devices) {
+      const compat = getCompatList(d);
+      for (const c of compat) {
+        const maybeMakeId =
+          c?.makeId ?? c?.make?.id ?? c?.model?.makeId ?? null;
+        if (maybeMakeId) needMakeIds.add(Number(maybeMakeId));
+      }
+    }
+
+    [...needMakeIds].forEach((makeId) => {
+      if (!modelsByMake[makeId]) {
+        fetchModelsByMake(makeId)
+          .then((list) =>
+            setModelsByMake((prev) => ({ ...prev, [makeId]: list }))
+          )
+          .catch(console.error);
+      }
+    });
+  }, [devices]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -179,16 +194,10 @@ const Admin = () => {
         1000
       );
       setDevices(devicesData.rows || devicesData);
-      setVisibleDevices((devicesData.rows || devicesData).slice(0, limit));
     };
 
     fetchData();
   }, []);
-
-  useEffect(() => {
-    setVisibleDevices(filteredDevices.slice(0, limit));
-    setCurrentOffset(0);
-  }, [filteredDevices]);
 
   const handleAssignCourier = async (orderId, courierId) => {
     if (!courierId) {
@@ -279,6 +288,52 @@ const Admin = () => {
     await deleteModel(model.id);
     await loadModelsForMake(model.makeId);
   };
+
+  const makeKey = (typeId, makeId) => `t${typeId}-m${makeId}`;
+  const modelKey = (typeId, makeId, modelId) =>
+    `t${typeId}-m${makeId}-md${modelId ?? "none"}`;
+
+  const isMakeOpen = (typeId, makeId) =>
+    openMakeInType.has(makeKey(typeId, makeId));
+  const isModelOpen = (typeId, makeId, modelId) =>
+    openModelInMakeType.has(modelKey(typeId, makeId, modelId));
+
+ const toggleMakeInType = (typeId, makeId) => {
+    setOpenMakeInType((prev) => {
+      const k = makeKey(typeId, makeId);
+      const next = new Set(prev);
+      next.has(k) ? next.delete(k) : next.add(k);
+      return next;
+    });
+  };
+
+  const toggleModelInMakeType = (typeId, makeId, modelId) => {
+    setOpenModelInMakeType((prev) => {
+      const k = modelKey(typeId, makeId, modelId);
+      const next = new Set(prev);
+      next.has(k) ? next.delete(k) : next.add(k);
+      return next;
+    });
+  };
+
+  const getMakeName = (id) =>
+    makes.find((m) => Number(m.id) === Number(id))?.name || `id-${id}`;
+
+  const getModelName = (makeId, modelId) =>
+    (modelsByMake[makeId] || []).find((mm) => Number(mm.id) === Number(modelId))
+      ?.name || `id-${modelId}`;
+
+  const getModelNameAny = (modelId) => {
+    for (const arr of Object.values(modelsByMake)) {
+      const hit = (arr || []).find((mm) => Number(mm.id) === Number(modelId));
+      if (hit) return hit.name;
+    }
+    return `id-${modelId}`;
+  };
+
+  const autoTypeId = React.useMemo(() => {
+    return types.find((t) => /автомоб/i.test(t.name))?.id ?? null;
+  }, [types]);
 
   const toggleDeviceType = (typeId) => {
     setOpenDeviceTypeIds((prev) =>
@@ -402,6 +457,26 @@ const Admin = () => {
   const twoMonthsFromToday = new Date(today);
   twoMonthsFromToday.setMonth(twoMonthsFromToday.getMonth() + 2);
 
+  const getDeviceTypeIds = (d) => {
+    const ids = new Set();
+    if (d.typeId) ids.add(Number(d.typeId));
+    if (d.type?.id) ids.add(Number(d.type.id));
+    if (Array.isArray(d.types)) {
+      d.types.forEach((t) => t?.id && ids.add(Number(t.id)));
+    }
+    return ids;
+  };
+
+  const getDeviceSubtypeIds = (d) => {
+    const ids = new Set();
+    if (d.subtypeId) ids.add(Number(d.subtypeId));
+    if (d.subtype?.id) ids.add(Number(d.subtype.id));
+    if (Array.isArray(d.subtypes)) {
+      d.subtypes.forEach((s) => s?.id && ids.add(Number(s.id)));
+    }
+    return ids;
+  };
+
   const isExpiringWithin2Months = (d) => {
     if (!d.expiryDate) return false;
     const ed = dayStart(d.expiryDate);
@@ -431,7 +506,76 @@ const Admin = () => {
     .filter((d) => (d.quantity ?? 0) <= 0 && !isSnoozed(d))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-   return (
+  const getCompatList = (d) => {
+    if (!d) return [];
+    if (Array.isArray(d.compat)) return d.compat;
+    if (Array.isArray(d.compatibility)) return d.compatibility;
+    if (Array.isArray(d.carCompat)) return d.carCompat;
+    return [];
+  };
+
+  const renderCompat = (d) => {
+    if (!d) return null;
+
+    const compat = getCompatList(d);
+
+    if (!compat.length) return null;
+
+    const isUniversal = compat.some((c) => c?.isUniversal);
+    if (isUniversal) {
+      return (
+        <div style={{ color: "#666", fontStyle: "italic" }}>Универсальный</div>
+      );
+    }
+
+    const makeIdFrom = (c) =>
+      c?.makeId ?? c?.make?.id ?? c?.model?.makeId ?? null;
+    const modelIdFrom = (c) => c?.modelId ?? c?.model?.id ?? null;
+
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
+        {compat.map((c, i) => {
+          const makeId = makeIdFrom(c);
+          const modelId = modelIdFrom(c);
+
+          const mk = c?.make?.name || (makeId ? getMakeName(makeId) : "");
+          const md =
+            c?.model?.name ||
+            (modelId
+              ? makeId
+                ? getModelName(makeId, modelId)
+                : getModelNameAny(modelId) // см. ниже, если добавлял
+              : "");
+
+          const years =
+            c?.yearFrom || c?.yearTo
+              ? ` (${c.yearFrom || "…"}–${c.yearTo || "…"})`
+              : "";
+
+          const label = [mk, md].filter(Boolean).join(" ");
+          if (!label && !years) return null;
+
+          return (
+            <span
+              key={i}
+              style={{
+                padding: "2px 8px",
+                border: "1px solid #e1e4e8",
+                borderRadius: 12,
+                fontSize: 12,
+                background: "#f8f9fb",
+              }}
+            >
+              {label}
+              {years}
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
     <div className={styles.adminPanelContainer}>
       <Tabs>
         <TabList>
@@ -637,190 +781,230 @@ const Admin = () => {
           </div>
 
           {types.map((type) => {
-            const typeDevices = filteredDevices.filter(
-              (device) => device.typeId === type.id
-            );
-            const subtypesForType = subtypes.filter(
-              (subtype) => subtype.typeId === type.id
-            );
+  const subtypesForType = subtypes.filter((s) => s.typeId === type.id);
+  const subtypeIdsOfType = new Set(subtypesForType.map((s) => Number(s.id)));
 
-            if (typeDevices.length === 0 && subtypesForType.length === 0)
-              return null;
+  const typeDevices = filteredDevices.filter((d) => {
+    const tIds = getDeviceTypeIds(d);
+    const sIds = getDeviceSubtypeIds(d);
+    const viaType = tIds.has(Number(type.id));
+    const viaSubtype = [...sIds].some((id) => subtypeIdsOfType.has(id));
+    return viaType || viaSubtype;
+  });
 
-            const isOpen = openDeviceTypeIds.includes(type.id);
+  const isOpenType = openDeviceTypeIds.includes(type.id);
+  const isAuto = Number(type.id) === Number(autoTypeId); // <-- ВАЖНО
+
+  // ===== СТАРАЯ раскладка для НЕ-авто =====
+  const devicesWithoutSubtypeInThisType = !isAuto
+    ? typeDevices.filter((d) => {
+        const sIds = getDeviceSubtypeIds(d);
+        const hasSubtypeOfThisType = [...sIds].some((id) =>
+          subtypeIdsOfType.has(id)
+        );
+        const belongsViaType = getDeviceTypeIds(d).has(Number(type.id));
+        return belongsViaType && !hasSubtypeOfThisType;
+      })
+    : [];
+
+  // ===== Подготовка авто-групп (марка/модель) ТОЛЬКО ДЛЯ авто =====
+  const makesMap = new Map();
+  const universalDevices = [];
+  const makeIdFrom = (c) => c?.makeId ?? c?.make?.id ?? c?.model?.makeId ?? null;
+  const modelIdFrom = (c) => c?.modelId ?? c?.model?.id ?? null;
+
+  if (isAuto) {
+    for (const d of typeDevices) {
+      const compat = getCompatList(d);
+      if (!compat.length) continue;
+
+      for (const c of compat) {
+        if (c?.isUniversal) {
+          universalDevices.push(d);
+          continue;
+        }
+        const mk = makeIdFrom(c);
+        if (!mk) continue;
+
+        const md = modelIdFrom(c) ?? "__none__";
+        if (!makesMap.has(mk)) makesMap.set(mk, new Map());
+        const byModel = makesMap.get(mk);
+        if (!byModel.has(md)) byModel.set(md, []);
+        byModel.get(md).push(d);
+      }
+    }
+  }
+
+          const uniqueById = (arr) => {
+    const seen = new Set(); const out = [];
+    for (const x of arr) if (!seen.has(x.id)) { seen.add(x.id); out.push(x); }
+    return out;
+  };
+
+  const groupBySubtypeWithinType = (list) => {
+    const m = new Map();
+    for (const d of uniqueById(list)) {
+      const sIds = getDeviceSubtypeIds(d);
+      const idsOfThisType = [...sIds].filter((id) => subtypeIdsOfType.has(Number(id)));
+      if (idsOfThisType.length === 0) {
+        if (!m.has("__none__")) m.set("__none__", []);
+        m.get("__none__").push(d);
+      } else {
+        for (const sid of idsOfThisType) {
+          if (!m.has(sid)) m.set(sid, []);
+          m.get(sid).push(d);
+        }
+      }
+    }
+    return m;
+  };
+
+           
+  const DeviceRow = ({ d }) => (
+    <div key={d.id} className={styles.item}>
+      <div>
+        id-{d.id}
+        <Image className={styles.adminDeviceImg} width={50} height={50} src={d.img}/>
+      </div>
+      <span className={styles.adminDeviceName}>{d.name}</span>
+      <div className={styles.buttons}>
+        <div className={styles.adminDevicePrice}>
+          {d.discount ? (<><span className={styles.discountedPrice}>{d.price} €</span>
+          <span className={styles.oldPrice}>{d.oldPrice} €</span></>) : (<span>{d.price} €</span>)}
+        </div>
+        <span className={styles.deviceQuantity}>
+          {d.quantity === 0 ? <span style={{color:'red'}}>Нет в наличии</span> :
+            <span style={{color:'green'}}>В наличии: {d.quantity}</span>}
+        </span>
+        <button className={styles.editButton} onClick={() => handleEditDevice(d)}>Редактировать</button>
+        <button className={styles.deleteButton} onClick={() => { if (window.confirm('Удалить этот девайс?')) handleDeleteDevice(d.id); }}>Удалить</button>
+      </div>
+    </div>
+  );
 
             return (
-              <div key={type.id} className={styles.typeGroup}>
-                <div
-                  className={styles.typeHeader}
-                  onClick={() => toggleDeviceType(type.id)}
-                  style={{
-                    cursor: "pointer",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    background: "#e8f0fe",
-                    padding: "10px",
-                    borderRadius: "5px",
-                    marginBottom: "5px",
-                  }}
-                >
-                  <h5 className={styles.typeTitle}>{type.name}</h5>
-                  <span>{isOpen ? "▲" : "▼"}</span>
+    <div key={type.id} className={styles.typeGroup}>
+      <div
+        className={`${styles.typeHeader} ${styles.typeHeaderType}`}
+        onClick={() => toggleDeviceType(type.id)}
+        style={{cursor:'pointer',display:'flex',justifyContent:'space-between',
+                background:'#e8f0fe',padding:'10px',borderRadius:'5px',marginBottom:'5px'}}
+      >
+        <h5 className={styles.typeTitle}>{type.name}</h5>
+        <span>{isOpenType ? '▲' : '▼'}</span>
+      </div>
+
+      {isOpenType && (
+        <>
+          {!isAuto && (
+            <>
+              {devicesWithoutSubtypeInThisType.length > 0 && (
+                <div className={styles.itemList}>
+                  {devicesWithoutSubtypeInThisType.map((d) => (
+                    <DeviceRow key={d.id} d={d} />
+                  ))}
                 </div>
-                {isOpen && (
-                  <>
-                    {typeDevices.filter((d) => !d.subtypeId).length > 0 && (
-                      <div className={styles.itemList}>
-                        {typeDevices
-                          .filter((device) => !device.subtypeId)
-                          .map((device) => (
-                            <div key={device.id} className={styles.item}>
-                              <div>
-                                id-
-                                {device.id}
-                                <Image
-                                  className={styles.adminDeviceImg}
-                                  width={50}
-                                  height={50}
-                                  src={device.img}
-                                />
-                              </div>
-                              <span className={styles.adminDeviceName}>
-                                {device.name}
-                              </span>
+              )}
 
-                              <div className={styles.buttons}>
-                                <div className={styles.adminDevicePrice}>
-                                  {device.discount ? (
-                                    <>
-                                      <span className={styles.discountedPrice}>
-                                        {device.price} €
-                                      </span>
-                                      <span className={styles.oldPrice}>
-                                        {device.oldPrice} €
-                                      </span>
-                                    </>
-                                  ) : (
-                                    <span>{device.price} €</span>
-                                  )}
-                                </div>
-                                <span className={styles.deviceQuantity}>
-                                  {device.quantity === 0 ? (
-                                    <span style={{ color: "red" }}>
-                                      Нет в наличии
-                                    </span>
-                                  ) : (
-                                    <span style={{ color: "green" }}>
-                                      В наличии: {device.quantity}
-                                    </span>
-                                  )}
-                                </span>
-
-                                <button
-                                  className={styles.editButton}
-                                  onClick={() => handleEditDevice(device)}
-                                >
-                                  Редактировать
-                                </button>
-                                <button
-                                  className={styles.deleteButton}
-                                  onClick={() => {
-                                    const confirmed = window.confirm(
-                                      "Вы уверены, что хотите удалить этот девайс?"
-                                    );
-                                    if (confirmed) {
-                                      handleDeleteDevice(device.id);
-                                    }
-                                  }}
-                                >
-                                  Удалить
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-
-                    {subtypesForType.map((subtype) => {
-                      const subtypeDevices = typeDevices.filter(
-                        (device) => device.subtypeId === subtype.id
-                      );
-                      if (subtypeDevices.length === 0) return null;
-                      return (
-                        <div key={subtype.id} className={styles.typeGroup}>
-                          <h5 className={styles.typeTitle}>{subtype.name}</h5>
-                          <div className={styles.itemList}>
-                            {subtypeDevices.map((device) => (
-                              <div key={device.id} className={styles.item}>
-                                <div>
-                                  id-
-                                  {device.id}
-                                  <Image
-                                    className={styles.adminDeviceImg}
-                                    width={50}
-                                    height={50}
-                                    src={device.img}
-                                  />
-                                </div>
-                                <span className={styles.adminDeviceName}>
-                                  {device.name}
-                                </span>
-
-                                <div className={styles.buttons}>
-                                  <div className={styles.adminDevicePrice}>
-                                    {device.price} €
-                                  </div>
-                                  <span className={styles.deviceQuantity}>
-                                    {device.quantity === 0 ? (
-                                      <span style={{ color: "red" }}>
-                                        Нет в наличии
-                                      </span>
-                                    ) : (
-                                      <span style={{ color: "green" }}>
-                                        В наличии: {device.quantity}
-                                      </span>
-                                    )}
-                                  </span>
-
-                                  <button
-                                    className={styles.editButton}
-                                    onClick={() => handleEditDevice(device)}
-                                  >
-                                    Редактировать
-                                  </button>
-                                  <button
-                                    className={styles.deleteButton}
-                                    onClick={() => {
-                                      const confirmed = window.confirm(
-                                        "Вы уверены, что хотите удалить этот девайс?"
-                                      );
-                                      if (confirmed) {
-                                        handleDeleteDevice(device.id);
-                                      }
-                                    }}
-                                  >
-                                    Удалить
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </>
-                )}
-              </div>
-            );
-          })}
-
-          {visibleDevices.length < filteredDevices.length ? (
-            <button onClick={handleLoadMore} className={styles.loadMoreButton}>
-              Еще
-            </button>
-          ) : (
-            <p className={styles.emptyCategoryMessage}>Все товары загружены.</p>
+              {subtypesForType.map((subtype) => {
+                const subtypeDevices = typeDevices.filter((d) =>
+                  getDeviceSubtypeIds(d).has(Number(subtype.id))
+                );
+                if (!subtypeDevices.length) return null;
+                return (
+                  <div key={subtype.id} className={styles.typeGroup}>
+                    <h5 className={styles.subtypeTitle}>{subtype.name}</h5>
+                    <div className={styles.itemList}>
+                      {subtypeDevices.map((d) => <DeviceRow key={d.id} d={d} />)}
+                    </div>
+                  </div>
+                );
+              })}
+            </>
           )}
+
+          {isAuto && (
+            <>
+              {uniqueById(universalDevices).length > 0 && (
+                <div className={styles.typeGroup} style={{marginTop:8}}>
+                  <h5 className={styles.typeTitle}>Без марки/модели</h5>
+                  {[...groupBySubtypeWithinType(universalDevices)].map(([key, list]) => {
+                    const title = key === '__none__'
+                      ? 'Без подтипа'
+                      : subtypesForType.find((s) => s.id === Number(key))?.name || `Подтип ${key}`;
+                    return (
+                      <div key={`u-${String(key)}`} style={{marginBottom:6}}>
+                        <div className={styles.subtypeTitle}>{title}</div>
+                        <div className={styles.itemList}>
+                          {list.map((d) => <DeviceRow key={d.id} d={d} />)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {[...makesMap.entries()].map(([makeId, byModel]) => {
+                const mkOpen = isMakeOpen(type.id, makeId);
+                const makeName = getMakeName(makeId);
+                return (
+                  <div key={`mk-${makeId}`} className={styles.typeGroup} style={{marginTop:10}}>
+                    <div className={`${styles.typeHeader} ${styles.typeHeaderMake}`}
+                         onClick={() => toggleMakeInType(type.id, makeId)}
+                         style={{cursor:'pointer',display:'flex',justifyContent:'space-between',
+                                 background:'#f5f7ff',padding:10,borderRadius:5}}>
+                      <h5 className={styles.typeTitle}>{makeName}</h5>
+                      <span>{mkOpen ? '▲' : '▼'}</span>
+                    </div>
+
+                    {mkOpen && (
+                      <>
+                        {[...byModel.entries()].map(([modelKeyId, list]) => {
+                          const modelId = modelKeyId === '__none__' ? null : Number(modelKeyId);
+                          const mdOpen = isModelOpen(type.id, makeId, modelId);
+                          const modelName = modelId == null ? 'Без модели' : getModelName(makeId, modelId);
+                          return (
+                            <div key={`md-${makeId}-${modelKeyId}`} className={styles.subtypeTitle} style={{marginTop:6}}>
+                              <div className={`${styles.typeHeader} ${styles.typeHeaderModel}`}
+                                   onClick={() => toggleModelInMakeType(type.id, makeId, modelId)}
+                                   style={{cursor:'pointer',display:'flex',justifyContent:'space-between',
+                                           background:'#eef2ff',padding:8,borderRadius:5}}>
+                                <h6 className={styles.typeTitle} style={{margin:0}}>{modelName}</h6>
+                                <span>{mdOpen ? '▲' : '▼'}</span>
+                              </div>
+
+                              {mdOpen && (
+                                <div style={{marginTop:6}}>
+                                  {[...groupBySubtypeWithinType(list)].map(([key, items]) => {
+                                    const title = key === '__none__'
+                                      ? 'Без подтипа'
+                                      : subtypesForType.find((s) => s.id === Number(key))?.name || `Подтип ${key}`;
+                                    return (
+                                      <div key={`sg-${modelKeyId}-${String(key)}`} style={{marginBottom:6}}>
+                                        <div style={{fontWeight:600, margin:'6px 0'}}>{title}</div>
+                                        <div className={styles.itemList}>
+                                          {items.map((d) => <DeviceRow key={d.id} d={d} />)}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+})}
         </TabPanel>
 
         <TabPanel>
@@ -1449,8 +1633,8 @@ const Admin = () => {
         onSaved={(saved) => {
           const makeId = saved?.makeId ?? editableModel?.makeId;
           if (makeId) {
-            setOpenMakeIds((prev) => [...new Set([...prev, makeId])]); 
-            loadModelsForMake(makeId); 
+            setOpenMakeIds((prev) => [...new Set([...prev, makeId])]);
+            loadModelsForMake(makeId);
           }
         }}
       />
