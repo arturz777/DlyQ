@@ -97,7 +97,7 @@ const CatalogPage = observer(() => {
       try {
         const data = await fetchDevices(
           device.selectedType?.id || null,
-          device.selectedSubType?.id || null,
+          device.selectedSubType?.id ?? null,
           device.selectedBrand?.id || null,
           device.page,
           device.limit,
@@ -115,7 +115,6 @@ const CatalogPage = observer(() => {
     loadDevices();
   }, [
     device.selectedType,
-    device.selectedSubType,
     device.selectedBrand,
     device.selectedMake,
     device.selectedModel,
