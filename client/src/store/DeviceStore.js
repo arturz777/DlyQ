@@ -84,13 +84,23 @@ export default class DeviceStore {
     this.setPage(1);
   }
 
+   clearSelectedSubType() {
+    this._selectedSubType = {};
+    this.setPage(1);
+  }
+
   setSelectedSubType(subtype) {
+    if (!subtype || !subtype.id) {
+      this._selectedSubType = {};
+      this.setPage(1);
+      return;
+    }
     if (this._selectedSubType.id === subtype.id) {
       this._selectedSubType = {};
     } else {
-      this.setPage(1);
       this._selectedSubType = subtype;
     }
+    this.setPage(1);
   }
 
   setSelectedBrand(brand) {
