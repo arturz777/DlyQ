@@ -1250,11 +1250,9 @@ try {
 
       if (applyToOptions) {
         if (!selectedOptions || Object.keys(selectedOptions).length === 0) {
-          return res
-            .status(400)
-            .json({
-              message: "У этого товара есть опции. Укажи selectedOptions.",
-            });
+          return res.status(400).json({
+            message: "У этого товара есть опции. Укажи selectedOptions.",
+          });
         }
 
         const [optName, sel] = Object.entries(selectedOptions)[0];
@@ -1266,13 +1264,11 @@ try {
             .status(400)
             .json({ message: `Опция "${optName}" не найдена` });
 
-        const val = (opt.values || []).find((v) => v.value === selValue);
+           const val = (opt.values || []).find((v) => v.value === selValue);
         if (!val)
-          return res
-            .status(400)
-            .json({
-              message: `Значение "${selValue}" в опции "${optName}" не найдено`,
-            });
+          return res.status(400).json({
+            message: `Значение "${selValue}" в опции "${optName}" не найдено`,
+          });
 
         const newQty = (Number(val.quantity) || 0) + deltaInt;
         if (newQty < 0)
