@@ -3,8 +3,10 @@ const path = require("path");
 const {
   Device,
   DeviceInfo,
+  DeviceSubType,
   SubType,
   Type,
+  DeviceType,
   Translation,
   VehicleMake,
   VehicleModel,
@@ -144,14 +146,73 @@ class DeviceController {
         purchaseHasVAT: req.body.purchaseHasVAT === "true",
       });
 
+       const primaryId = subtypeId || null;
+      let subtypeIdsArr = [];
+      if (req.body.subtypeIds) {
+        try {
+          subtypeIdsArr = JSON.parse(req.body.subtypeIds) || [];
+        } catch {}
+      }
+
+      const allSubtypes = new Set(subtypeIdsArr.filter(Boolean));
+      if (primaryId) allSubtypes.add(Number(primaryId));
+
+      if (allSubtypes.size) {
+        const rows = Array.from(allSubtypes).map((stId) => ({
+          deviceId: device.id,
+          subtypeId: Number(stId),
+          isPrimary: primaryId ? Number(stId) === Number(primaryId) : false,
+        }));
+        await DeviceSubType.bulkCreate(rows, { ignoreDuplicates: true });
+      }
+
+      try {
+        const parsedTypeIds = req.body.typeIds
+          ? JSON.parse(req.body.typeIds)
+          : [];
+        const extraTypeIds = new Set(
+          (Array.isArray(parsedTypeIds) ? parsedTypeIds : [])
+            .map(Number)
+            .filter(Number.isInteger)
+        );
+
+        const allSubtypeIdsArr = Array.from(allSubtypes);
+        if (allSubtypeIdsArr.length) {
+          const subtypesRows = await SubType.findAll({
+            where: { id: allSubtypeIdsArr },
+          });
+          const subtypeTypeIds = new Set(subtypesRows.map((s) => s.typeId));
+
+          const primaryTypeId = typeId ? Number(typeId) : null;
+          for (const tid of subtypeTypeIds) {
+            if (tid && tid !== primaryTypeId) extraTypeIds.add(tid);
+          }
+        }
+
+        if (typeof device.setTypes === "function") {
+          await device.setTypes([...extraTypeIds]);
+        } else {
+          await DeviceType.destroy({ where: { deviceId: device.id } });
+          if (extraTypeIds.size) {
+            await DeviceType.bulkCreate(
+              [...extraTypeIds].map((tid) => ({
+                deviceId: device.id,
+                typeId: tid,
+              })),
+              { ignoreDuplicates: true }
+            );
+          }
+        }
+      } catch (e) {
+        console.error("Не удалось сохранить доп. типы:", e.message);
+      }
+
       if (expiryKind === "use_by" && expiryDate) {
         const today = new Date().toISOString().slice(0, 10);
         if (expiryDate < today) {
-          return res
-            .status(400)
-            .json({
-              message: "Для use_by дата годности не может быть в прошлом.",
-            });
+          return res.status(400).json({
+            message: "Для use_by дата годности не может быть в прошлом.",
+          });
         }
       }
 
@@ -307,14 +368,23 @@ try {
         makeId,
         modelId,
       } = req.query;
-      page = page || 1;
-      limit = limit || 9;
+
+      const toInt = (v) => {
+        const n = Number(v);
+        return Number.isInteger(n) && n > 0 ? n : undefined;
+      };
+
+      brandId = toInt(brandId);
+      typeId = toInt(typeId);
+      subtypeId = toInt(subtypeId);
+      makeId = toInt(makeId);
+      modelId = toInt(modelId);
+      page = Number(page) || 1;
+      limit = Number(limit) || 9;
       const offset = page * limit - limit;
 
       const where = {};
-      if (brandId) where.brandId = brandId;
-      if (typeId) where.typeId = typeId;
-      if (subtypeId) where.subtypeId = subtypeId;
+      if (brandId != null) where.brandId = brandId;
       if (isNew !== undefined) where.isNew = isNew === "true";
       if (discount !== undefined) where.discount = discount === "true";
       if (recommended !== undefined) where.recommended = recommended === "true";
@@ -323,27 +393,61 @@ try {
         { model: SubType, as: "subtype" },
         { model: Type },
         { model: DeviceInfo, as: "info" },
+        {
+          model: Type,
+          as: "types",
+          through: { attributes: [] },
+          required: false,
+        },
+        {
+          model: SubType,
+          as: "subtypes",
+          through: { attributes: [] },
+          required: false,
+        },
       ];
 
-      if (modelId) {
-        include.push({
-          model: DeviceCompatibility,
-          as: "compat",
-          required: true,
-          where: {
-            [Op.or]: [{ modelId: Number(modelId) }, { isUniversal: true }],
-          },
-        });
-      } else if (makeId) {
-        include.push({
-          model: DeviceCompatibility,
-          as: "compat",
-          required: true,
-          where: {
-            [Op.or]: [{ makeId: Number(makeId) }, { isUniversal: true }],
-          },
+      if (typeId != null) {
+        where[Op.and] = where[Op.and] || [];
+        where[Op.and].push({
+          [Op.or]: [
+            { typeId },
+            { "$types.id$": typeId },
+            { "$subtypes.typeId$": typeId },
+          ],
         });
       }
+
+      if (subtypeId != null) {
+        where[Op.and] = where[Op.and] || [];
+        where[Op.and].push({
+          [Op.or]: [{ subtypeId }, { "$subtypes.id$": subtypeId }],
+        });
+      }
+
+      const compatInclude = {
+        model: DeviceCompatibility,
+        as: "compat",
+        required: false,
+        include: [
+          { model: VehicleMake, as: "make", attributes: ["id", "name"] },
+          {
+            model: VehicleModel,
+            as: "model",
+            attributes: ["id", "name", "makeId"],
+          },
+        ],
+      };
+
+      if (modelId != null) {
+        compatInclude.required = true;
+        compatInclude.where = { [Op.or]: [{ modelId }, { isUniversal: true }] };
+      } else if (makeId != null) {
+        compatInclude.required = true;
+        compatInclude.where = { [Op.or]: [{ makeId }, { isUniversal: true }] };
+      }
+
+      include.push(compatInclude);
 
       const devices = await Device.findAndCountAll({
         where,
@@ -351,6 +455,7 @@ try {
         offset,
         include,
         distinct: true,
+        subQuery: false,
       });
 
       const todayStr = new Date().toISOString().slice(0, 10);
@@ -452,6 +557,12 @@ try {
           { model: DeviceInfo, as: "info" },
           { model: SubType, as: "subtype" },
           { model: Type },
+          { model: Type, as: "types", through: { attributes: [] } },
+          {
+            model: SubType,
+            as: "subtypes",
+            through: { attributes: ["isPrimary"] },
+          },
           {
             model: DeviceCompatibility,
             as: "compat",
@@ -466,6 +577,8 @@ try {
       if (!device) {
         return res.status(404).json({ message: "Устройство не найдено" });
       }
+
+      const allSubtypeIds = (device.subtypes || []).map((s) => s.id);
 
       const translations = await Translation.findAll({
         where: { key: { [Op.like]: `device_${id}.%` } },
@@ -603,11 +716,9 @@ try {
       if (expiryKind === "use_by" && expiryDate) {
         const today = new Date().toISOString().slice(0, 10);
         if (expiryDate < today) {
-          return res
-            .status(400)
-            .json({
-              message: "Для use_by дата годности не может быть в прошлом.",
-            });
+          return res.status(400).json({
+            message: "Для use_by дата годности не может быть в прошлом.",
+          });
         }
       }
 
@@ -839,6 +950,68 @@ try {
         { where: { id } }
       );
 
+      const primaryId = subtypeId || null;
+      let subtypeIdsArr = [];
+      if (req.body.subtypeIds) {
+        try {
+          subtypeIdsArr = JSON.parse(req.body.subtypeIds) || [];
+        } catch {}
+      }
+      const allSubtypes = new Set(subtypeIdsArr.filter(Boolean));
+      if (primaryId) allSubtypes.add(Number(primaryId));
+
+      await DeviceSubType.destroy({ where: { deviceId: id } });
+
+      if (allSubtypes.size) {
+        const rows = Array.from(allSubtypes).map((stId) => ({
+          deviceId: Number(id),
+          subtypeId: Number(stId),
+          isPrimary: primaryId ? Number(stId) === Number(primaryId) : false,
+        }));
+        await DeviceSubType.bulkCreate(rows);
+      }
+
+      try {
+        const parsedTypeIds = req.body.typeIds
+          ? JSON.parse(req.body.typeIds)
+          : [];
+        const extraTypeIds = new Set(
+          (Array.isArray(parsedTypeIds) ? parsedTypeIds : [])
+            .map(Number)
+            .filter(Number.isInteger)
+        );
+
+        const allSubtypeIdsArr = Array.from(allSubtypes);
+        if (allSubtypeIdsArr.length) {
+          const subtypesRows = await SubType.findAll({
+            where: { id: allSubtypeIdsArr },
+          });
+          const subtypeTypeIds = new Set(subtypesRows.map((s) => s.typeId));
+
+          const primaryTypeId = typeId ? Number(typeId) : null;
+          for (const tid of subtypeTypeIds) {
+            if (tid && tid !== primaryTypeId) extraTypeIds.add(tid);
+          }
+        }
+
+        if (typeof device.setTypes === "function") {
+          await device.setTypes([...extraTypeIds]);
+        } else {
+          await DeviceType.destroy({ where: { deviceId: id } });
+          if (extraTypeIds.size) {
+            await DeviceType.bulkCreate(
+              [...extraTypeIds].map((tid) => ({
+                deviceId: Number(id),
+                typeId: tid,
+              })),
+              { ignoreDuplicates: true }
+            );
+          }
+        }
+      } catch (e) {
+        console.error("Не удалось обновить доп. типы:", e.message);
+      }
+
       if (info) {
         const parsedInfo = JSON.parse(info);
         await DeviceInfo.destroy({ where: { deviceId: id } });
@@ -848,7 +1021,7 @@ try {
       }
 
       const updatedDevice = await Device.findOne({ where: { id } });
-      
+
       try {
         await DeviceCompatibility.destroy({ where: { deviceId: id } });
 
