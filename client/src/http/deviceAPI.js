@@ -1,7 +1,7 @@
 import { $authHost, $host } from "./index";
 import jwt_decode from "jwt-decode";
 
-export const fetchNewDevices = async (limit = 10) => {
+export const fetchNewDevices = async (limit = 100) => {
   try {
     const { data } = await $host.get("/device", {
       params: { isNew: true, limit }
@@ -13,7 +13,7 @@ export const fetchNewDevices = async (limit = 10) => {
   }
 };
 
-export const fetchDiscountedDevices = async (limit = 10) => {
+export const fetchDiscountedDevices = async (limit = 100) => {
   try {
     const { data } = await $host.get("/device", {
       params: { discount: true, limit },
@@ -26,12 +26,11 @@ export const fetchDiscountedDevices = async (limit = 10) => {
   }
 };
 
-export const fetchRecommendedDevices = async (deviceType, limit = 10) => {
+export const fetchRecommendedDevices = async (deviceType, limit = 100) => {
   try {
     const { data } = await $host.get("/device", {
       params: { type: deviceType, recommended: true, limit },
     });
-
     return data.rows || [];
   } catch (error) {
     console.error("❌ Ошибка загрузки рекомендованных товаров:", error);
