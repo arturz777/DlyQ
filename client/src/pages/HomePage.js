@@ -26,26 +26,34 @@ const HomePage = () => {
   const currentLang = i18n.language || "en";
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
-  useEffect(() => {
+ useEffect(() => {
     const loadData = async () => {
       try {
-        const [
-          newDevicesData,
-          discountedData,
-          recommendedData,
-          typesData,
-        ] = await Promise.all([
-          fetchNewDevices(),
-          fetchDiscountedDevices(),
-          fetchRecommendedDevices(),
-          fetchTypes(),
-        ]);
+        const limit = 1000;
+        const [newDevicesData, discountedData, recommendedData, typesData] =
+          await Promise.all([
+            fetchNewDevices(limit),
+            fetchDiscountedDevices(limit),
+            fetchRecommendedDevices(undefined, limit),
+            fetchTypes(),
+          ]);
 
-        setNewDevices(newDevicesData || []);
-        setDiscountedDevices(discountedData || []);
-        setRecommendedDevices(recommendedData || []);
+        setNewDevices(
+          Array.isArray(newDevicesData)
+            ? newDevicesData
+            : newDevicesData?.devices ?? []
+        );
+        setDiscountedDevices(
+          Array.isArray(discountedData)
+            ? discountedData
+            : discountedData?.devices ?? []
+        );
+        setRecommendedDevices(
+          Array.isArray(recommendedData)
+            ? recommendedData
+            : recommendedData?.devices ?? []
+        );
         setTypes(Array.isArray(typesData) ? typesData : []);
-        
       } catch (err) {
         console.error("❌ Ошибка при загрузке данных:", err);
       } finally {
@@ -55,7 +63,7 @@ const HomePage = () => {
 
     loadData();
   }, []);
-
+  
   useEffect(() => {
     const handleResize = () => {
       setIsDesktop(window.innerWidth >= 1024);
