@@ -1310,11 +1310,25 @@ try {
 
       const devices = await Device.findAll({
         where: { name: { [Op.iLike]: `%${q}%` } },
+        order: [
+          [
+            Sequelize.literal(
+              `CASE WHEN "name" ILIKE '${q}%' THEN 0 ELSE 1 END`
+            ),
+            "ASC",
+          ],
+          ["name", "ASC"],
+        ],
       });
 
       const translations = await Translation.findAll({
         where: {
-          key: { [Op.like]: `device_%.name` },
+          key: {
+            [Op.and]: [
+              { [Op.like]: `device_%.name` },
+              { [Op.notLike]: `%.option.%` },
+            ],
+          },
           text: { [Op.iLike]: `%${q}%` },
         },
         attributes: ["key", "lang", "text"],
