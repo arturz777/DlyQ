@@ -191,6 +191,25 @@ const CatalogPage = observer(() => {
     }
   }, [device.selectedModel?.id, isAutoType]);
 
+   useEffect(() => {
+    const onOpenDevice = (e) => {
+      const id = e?.detail?.id;
+      console.log("CatalogPage: received openDeviceModal, id=", id);
+      if (id) {
+        setSelectedDeviceId(id);
+      }
+    };
+
+    window.addEventListener("openDeviceModal", onOpenDevice);
+
+    window.__hasOpenDeviceModalListener = true;
+
+    return () => {
+      window.removeEventListener("openDeviceModal", onOpenDevice);
+      window.__hasOpenDeviceModalListener = false;
+    };
+  }, []);
+
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
