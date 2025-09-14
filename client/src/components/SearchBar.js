@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { searchDevices } from "../http/deviceAPI";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import styles from "./NavBar.module.css";
 import { useTranslation } from "react-i18next";
 
@@ -9,7 +9,6 @@ const SearchBar = () => {
   const [results, setResults] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const location = useLocation();
-  const navigate = useNavigate();
   const searchRef = useRef(null);
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
@@ -18,35 +17,50 @@ const SearchBar = () => {
     const value = e.target.value;
     setQuery(value);
     if (value.length > 0) {
-      const devices = await searchDevices(value);
+      try {
+        const devices = await searchDevices(value);
 
-      const processedDevices = devices.map((device) => ({
-        ...device,
-        name: device.translations?.name?.[currentLang] || device.name,
-      }));
+        const processedDevices = devices.map((device) => ({
+          ...device,
+          name: device.translations?.name?.[currentLang] || device.name,
+        }));
 
-      setResults(processedDevices);
+        setResults(processedDevices);
+        setSelectedIndex(-1);
+      } catch (err) {
+        console.error("Ошибка поиска:", err);
+        setResults([]);
+      }
     } else {
       setResults([]);
     }
   };
 
   const handleKeyDown = async (e) => {
+    if (!results.length && (e.key === "ArrowDown" || e.key === "ArrowUp"))
+      return;
+
     if (e.key === "ArrowDown") {
-      setSelectedIndex((prevIndex) => (prevIndex + 1) % results.length);
+      setSelectedIndex((prevIndex) =>
+        results.length ? (prevIndex + 1) % results.length : -1
+      );
     } else if (e.key === "ArrowUp") {
-      setSelectedIndex(
-        (prevIndex) => (prevIndex - 1 + results.length) % results.length
+      setSelectedIndex((prevIndex) =>
+        results.length ? (prevIndex - 1 + results.length) % results.length : -1
       );
     } else if (e.key === "Enter") {
       if (selectedIndex >= 0 && results.length > 0) {
         handleResultClick(results[selectedIndex].id);
       } else if (query.length > 0) {
-        const devices = await searchDevices(query);
-        if (devices.length > 0) {
-          handleResultClick(devices[0].id);
-        } else {
-          console.log("Устройства не найдены");
+        try {
+          const devices = await searchDevices(query);
+          if (devices.length > 0) {
+            handleResultClick(devices[0].id);
+          } else {
+            console.log("Устройства не найдены");
+          }
+        } catch (err) {
+          console.error("Ошибка поиска при Enter:", err);
         }
       }
     }
@@ -68,7 +82,13 @@ const SearchBar = () => {
   const handleResultClick = (id) => {
     setQuery("");
     setResults([]);
-    navigate(`/device/${id}`, { replace: true });
+    setSelectedIndex(-1);
+
+    window.dispatchEvent(
+      new CustomEvent("openDeviceModal", {
+        detail: { id },
+      })
+    );
   };
 
   useEffect(() => {
@@ -98,7 +118,7 @@ const SearchBar = () => {
                 onClick={() => handleResultClick(device.id)}
                 tabIndex={0}
               >
-               <img
+                <img
                   src={device.img}
                   alt={device.name}
                   className={styles.resultImage}
