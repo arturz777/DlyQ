@@ -26,7 +26,7 @@ const HomePage = () => {
   const currentLang = i18n.language || "en";
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
- useEffect(() => {
+  useEffect(() => {
     const loadData = async () => {
       try {
         const limit = 1000;
@@ -73,10 +73,24 @@ const HomePage = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
- 
+useEffect(() => {
+  const onOpenDevice = (e) => {
+    const id = e?.detail?.id;
+    if (id) {
+      setSelectedDeviceId(id);
+    }
+  };
+  window.addEventListener("openDeviceModal", onOpenDevice);
+  return () => window.removeEventListener("openDeviceModal", onOpenDevice);
+}, []);
+
   return (
     <div className={styles.homePage}>
-       {loading && <div className={styles.loadingOverlay}>{t("loading", { ns: "homePage" })}</div>}
+      {loading && (
+        <div className={styles.loadingOverlay}>
+          {t("loading", { ns: "homePage" })}
+        </div>
+      )}
       <div className={styles.banner}>
         <h1>{t("fast delivery", { ns: "homePage" })}</h1>
         <p>{t("average delivery time: 15–30 minutes", { ns: "homePage" })}</p>
@@ -133,9 +147,9 @@ const HomePage = () => {
       </div>
 
       <OrderSidebar
-            isSidebarOpen={isSidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-          />
+        isSidebarOpen={isSidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+      />
 
       <section className={styles.section}>
         <h2>{t("new", { ns: "homePage" })}</h2>
@@ -143,7 +157,10 @@ const HomePage = () => {
           {newDevices.length > 0 ? (
             newDevices.map((device) => (
               <div key={device.id} className={styles.deviceItem}>
-                <DeviceItem device={device} onClick={(id) => setSelectedDeviceId(id)} />
+                <DeviceItem
+                  device={device}
+                  onClick={(id) => setSelectedDeviceId(id)}
+                />
               </div>
             ))
           ) : (
@@ -158,7 +175,10 @@ const HomePage = () => {
           {Array.isArray(discountedDevices) && discountedDevices.length > 0 ? (
             discountedDevices.map((device) => (
               <div key={device.id} className={styles.deviceItem}>
-                <DeviceItem device={device} onClick={(id) => setSelectedDeviceId(id)} />
+                <DeviceItem
+                  device={device}
+                  onClick={(id) => setSelectedDeviceId(id)}
+                />
               </div>
             ))
           ) : (
@@ -174,7 +194,10 @@ const HomePage = () => {
           recommendedDevices.length > 0 ? (
             recommendedDevices.map((device) => (
               <div key={device.id} className={styles.deviceItem}>
-                <DeviceItem device={device} onClick={(id) => setSelectedDeviceId(id)} />
+                <DeviceItem
+                  device={device}
+                  onClick={(id) => setSelectedDeviceId(id)}
+                />
               </div>
             ))
           ) : (
@@ -183,10 +206,10 @@ const HomePage = () => {
         </div>
       </section>
       {selectedDeviceId && (
-  <SlideModal onClose={() => setSelectedDeviceId(null)}>
-    <DevicePage id={selectedDeviceId} />
-  </SlideModal>
-)}
+        <SlideModal onClose={() => setSelectedDeviceId(null)}>
+          <DevicePage id={selectedDeviceId} />
+        </SlideModal>
+      )}
     </div>
   );
 };
