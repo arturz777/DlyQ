@@ -307,7 +307,7 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
           className={styles.floatingIcon}
           onClick={() => setSidebarOpen(true)}
         >
-          📦
+           {t("order", { ns: "userProfile" })}
         </div>
       )}
       <div className={`${styles.sidebar} ${isSidebarOpen ? styles.open : ""}`}>
