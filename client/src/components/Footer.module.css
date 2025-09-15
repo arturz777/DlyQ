@@ -17,7 +17,6 @@
 	gap: 15px;
   }
   
-  /* Логотип */
   .logoSection h2 {
 	font-size: 1.6rem;
 	color: #000;
@@ -29,7 +28,6 @@
 	color: #666;
   }
   
-  /* Полезные ссылки */
   .linksSection {
 	display: flex;
 	flex-wrap: wrap;
@@ -49,7 +47,6 @@
 	color: #007bff;
   }
   
-  /* Социальные сети */
   .socialSection {
 	display: flex;
 	gap: 15px;
@@ -66,17 +63,109 @@
 	color: #007bff;
   }
   
-  /* Адаптивность */
-  @media (max-width: 768px) {
-	.linksSection {
-	  flex-direction: column;
-	  gap: 10px;
-	}
-  
-	.socialSection {
-	  flex-direction: column;
-	}
+ @media (max-width: 768px) {
+  .linksSection {
+    flex-direction: column;
+    gap: 10px;
   }
-  
-  
-  
+
+  .chatCta {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+    padding: 12px;
+  }
+
+  .chatLinkButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .chatSub {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chatLinkButton {
+    transition: none;
+  }
+}
+
+  .chatCta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  max-width: 880px;
+  background: #ffffff;
+  border: 1px solid #e6e8eb;
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 12px rgba(16, 24, 40, 0.06);
+}
+
+.chatText {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+
+.chatText strong {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.chatSub {
+  color: #64748b;
+  margin-left: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dotOnline {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.chatLinkButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #0ea5e9;
+  background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%);
+  color: #fff;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  will-change: transform;
+}
+
+.chatLinkButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(14, 165, 233, 0.25);
+}
+
+.chatLinkButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.25);
+}
+
+.chatLinkButton:focus-visible {
+  outline: 3px solid rgba(14, 165, 233, 0.5);
+  outline-offset: 2px;
+}
+
+.chatIcon {
+  display: inline-block;
+}
