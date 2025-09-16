@@ -20,10 +20,8 @@ const TypeBar = observer(() => {
           }`}
           onClick={() => {
             const isSame = device.selectedType.id === type.id;
-             device.clearSelectedSubType?.();
-
             if (isSame) {
-              device.setSelectedType({});
+              device.selectType({});
               return;
             }
 
@@ -33,7 +31,6 @@ const TypeBar = observer(() => {
               const label =
                 type.translations?.name?.[currentLang] || type.name || "";
               const isAuto = /авто/i.test(label);
-
               const targetId = isAuto ? "make-filter" : "subtype-filter";
               document.getElementById(targetId)?.scrollIntoView({
                 behavior: "smooth",
