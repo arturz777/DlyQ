@@ -93,6 +93,8 @@ const CatalogPage = observer(() => {
   }, []);
 
   useEffect(() => {
+    let alive = true;
+    const requestId = Symbol();
     const loadDevices = async () => {
       try {
         const data = await fetchDevices(
@@ -104,21 +106,26 @@ const CatalogPage = observer(() => {
           device.selectedMake?.id || null,
           device.selectedModel?.id || null
         );
-
+        if (!alive) return;
         device.setDevices(data.rows);
         device.setTotalCount(data.count);
       } catch (error) {
+        if (!alive) return;
         console.error("Ошибка загрузки девайсов:", error);
       }
     };
 
     loadDevices();
+    return () => {
+      alive = false;
+    };
   }, [
-    device.selectedType,
-    device.selectedBrand,
-    device.selectedMake,
-    device.selectedModel,
+    device.selectedType?.id,
+    device.selectedBrand?.id,
+    device.selectedMake?.id,
+    device.selectedModel?.id,
     device.page,
+    device.limit,
   ]);
 
   useEffect(() => {
@@ -140,12 +147,9 @@ const CatalogPage = observer(() => {
   useEffect(() => {
     const loadSubtypes = async () => {
       try {
-        let subtypesData;
-        if (device.selectedType?.id) {
-          subtypesData = await fetchSubtypesByType(device.selectedType.id);
-        } else {
-          subtypesData = await fetchSubtypes();
-        }
+        const subtypesData = device.selectedType?.id
+          ? await fetchSubtypesByType(device.selectedType.id)
+          : await fetchSubtypes();
 
         device.setSubtypes(
           subtypesData.map((subtype) => ({
@@ -153,15 +157,13 @@ const CatalogPage = observer(() => {
             translations: subtype.translations || {},
           }))
         );
-
-        device.setSelectedSubType({});
       } catch (error) {
         console.error("Ошибка при загрузке подтипов:", error);
       }
     };
 
     loadSubtypes();
-  }, [device.selectedType, currentLang]);
+  }, [device.selectedType?.id, currentLang]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -175,23 +177,6 @@ const CatalogPage = observer(() => {
   }, []);
 
   useEffect(() => {
-    device.setSelectedMake({});
-    device.setSelectedModel({});
-    device.setSelectedSubType({});
-  }, [device.selectedType?.id]);
-
-  useEffect(() => {
-    device.setSelectedModel({});
-    device.setSelectedSubType({});
-  }, [device.selectedMake?.id]);
-
-  useEffect(() => {
-    if (isAutoType) {
-      device.setSelectedSubType({});
-    }
-  }, [device.selectedModel?.id, isAutoType]);
-
-   useEffect(() => {
     const onOpenDevice = (e) => {
       const id = e?.detail?.id;
       console.log("CatalogPage: received openDeviceModal, id=", id);
