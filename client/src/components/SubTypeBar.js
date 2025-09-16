@@ -10,7 +10,7 @@ const SubTypeBar = observer(() => {
   const currentLang = i18n.language || "en";
 
   const handleSelect = (subtype) => {
-    device.setSelectedSubType(subtype);
+    device.selectSubType(subtype);
     const element = document.getElementById(`subtype-${subtype.id}`);
     if (element) element.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -30,15 +30,14 @@ const SubTypeBar = observer(() => {
 
   const activeId = device.selectedSubType?.id;
 
-return (
+  return (
     <div className={styles.subTypeBar}>
-
-
-
       {filteredSubtypes.map((subtype) => (
         <div
           key={subtype.id}
-          className={`${styles.subTypeItem} ${activeId === subtype.id ? styles.active : ""}`}
+          className={`${styles.subTypeItem} ${
+            activeId === subtype.id ? styles.active : ""
+          }`}
           role="button"
           tabIndex={0}
           onClick={() => handleSelect(subtype)}
