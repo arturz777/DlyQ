@@ -93,8 +93,6 @@ const CatalogPage = observer(() => {
   }, []);
 
   useEffect(() => {
-    let alive = true;
-    const requestId = Symbol();
     const loadDevices = async () => {
       try {
         const data = await fetchDevices(
@@ -106,19 +104,15 @@ const CatalogPage = observer(() => {
           device.selectedMake?.id || null,
           device.selectedModel?.id || null
         );
-        if (!alive) return;
+
         device.setDevices(data.rows);
         device.setTotalCount(data.count);
       } catch (error) {
-        if (!alive) return;
         console.error("Ошибка загрузки девайсов:", error);
       }
     };
 
     loadDevices();
-    return () => {
-      alive = false;
-    };
   }, [
     device.selectedType?.id,
     device.selectedBrand?.id,
@@ -142,7 +136,7 @@ const CatalogPage = observer(() => {
       }
     };
     loadModels();
-  }, [device.selectedMake]);
+  }, [device.selectedMake?.id]);
 
   useEffect(() => {
     const loadSubtypes = async () => {
@@ -157,6 +151,8 @@ const CatalogPage = observer(() => {
             translations: subtype.translations || {},
           }))
         );
+
+        // НЕ сбрасываем выбранный подтип здесь — это вызывает «мигание» и промежуточные состояния
       } catch (error) {
         console.error("Ошибка при загрузке подтипов:", error);
       }
@@ -229,13 +225,7 @@ const CatalogPage = observer(() => {
             </>
           )}
           <div id="subtype-filter" className={catalogStyles.subtypeFilter}>
-            {isAutoType ? (
-              device.selectedModel?.id ? (
-                <SubTypeBar />
-              ) : null
-            ) : (
-              <SubTypeBar />
-            )}
+             {isAutoType ? (device.selectedModel?.id ? <SubTypeBar /> : null) : <SubTypeBar />}
           </div>
         </div>
 
