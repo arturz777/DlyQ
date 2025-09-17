@@ -93,23 +93,21 @@ class SubtypeController {
     }
   }
 
-  async getByType(req, res) {
+ async getByType(req, res) {
     try {
       const { typeId } = req.params;
+      const id = Number(typeId);
 
-      if (!typeId) {
-        return res
-          .status(400)
-          .json({ message: "Параметр 'typeId' обязателен." });
-      }
-
+      if (!Number.isInteger(id)) {
+      return res.status(400).json({ message: "Неверный typeId" });
+    }
       const subtypes = await SubType.findAll({
-        where: { typeId },
-        order: [
-          ["displayOrder", "ASC"],
-          ["id", "ASC"],
-        ],
-      });
+      where: { typeId: id },
+      order: [
+        ["displayOrder", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
 
       if (!subtypes.length) {
         return res.json([]);
