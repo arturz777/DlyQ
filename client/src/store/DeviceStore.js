@@ -1,4 +1,4 @@
-import { makeAutoObservable, runInAction } from "mobx";
+import { makeAutoObservable } from "mobx";
 
 export default class DeviceStore {
   constructor() {
@@ -16,7 +16,7 @@ export default class DeviceStore {
     this._page = 1;
     this._totalCount = 0;
     this._limit = 20;
-    makeAutoObservable(this, {}, { autoBind: true });
+    makeAutoObservable(this);
   }
 
   setTypes(types) {
@@ -72,7 +72,7 @@ export default class DeviceStore {
     this.setPage(1);
   }
 
-  setSelectedModel(model) {
+   setSelectedModel(model) {
     if (this._selectedModel.id === model.id) {
       this._selectedModel = {};
     } else {
@@ -81,7 +81,7 @@ export default class DeviceStore {
     this.setPage(1);
   }
 
-  clearSelectedSubType() {
+   clearSelectedSubType() {
     this._selectedSubType = {};
     this.setPage(1);
   }
@@ -111,94 +111,6 @@ export default class DeviceStore {
   setPage(page) {
     this._page = page;
   }
-
-  selectType(type) {
-    const next = type && type.id ? type : {};
-    const same = (this._selectedType?.id || 0) === (next?.id || 0);
-
-    runInAction(() => {
-      if (same) {
-        this._selectedType = {};
-        this._selectedBrand = {};
-        this._selectedMake = {};
-        this._selectedModel = {};
-        this._selectedSubType = {};
-      } else {
-        this._selectedType = next;
-        this._selectedBrand = {};
-        this._selectedMake = {};
-        this._selectedModel = {};
-        this._selectedSubType = {};
-      }
-      this._page = 1;
-    });
-  }
-
-  selectMake(make) {
-    const next = make && make.id ? make : {};
-    const same = (this._selectedMake?.id || 0) === (next?.id || 0);
-
-    runInAction(() => {
-      if (same) {
-        this._selectedMake = {};
-        this._selectedModel = {};
-        this._selectedSubType = {};
-      } else {
-        this._selectedMake = next;
-        this._selectedModel = {};
-        this._selectedSubType = {};
-      }
-      this._page = 1;
-    });
-  }
-
-  selectModel(model) {
-    const next = model && model.id ? model : {};
-    const same = (this._selectedModel?.id || 0) === (next?.id || 0);
-
-    runInAction(() => {
-      if (same) {
-        this._selectedModel = {};
-        this._selectedSubType = {};
-      } else {
-        this._selectedModel = next;
-        this._selectedSubType = {};
-      }
-      this._page = 1;
-    });
-  }
-
-  selectSubType(subtype) {
-    const next = subtype && subtype.id ? subtype : {};
-    const same = (this._selectedSubType?.id || 0) === (next?.id || 0);
-
-    runInAction(() => {
-      this._selectedSubType = same ? {} : next;
-      this._page = 1;
-    });
-  }
-
-  selectBrand(brand) {
-    const next = brand && brand.id ? brand : {};
-    const same = (this._selectedBrand?.id || 0) === (next?.id || 0);
-
-    runInAction(() => {
-      this._selectedBrand = same ? {} : next;
-      this._page = 1;
-    });
-  }
-
-  clearAllFilters() {
-    runInAction(() => {
-      this._selectedType = {};
-      this._selectedBrand = {};
-      this._selectedMake = {};
-      this._selectedModel = {};
-      this._selectedSubType = {};
-      this._page = 1;
-    });
-  }
-
   setTotalCount(count) {
     this._totalCount = count;
   }
