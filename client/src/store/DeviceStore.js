@@ -65,9 +65,11 @@ export default class DeviceStore {
     if (this._selectedMake.id === make.id) {
       this._selectedMake = {};
       this._selectedModel = {};
+      this._selectedSubType = {};
     } else {
       this._selectedMake = make;
       this._selectedModel = {};
+      this._selectedSubType = {};
     }
     this.setPage(1);
   }
@@ -75,8 +77,10 @@ export default class DeviceStore {
    setSelectedModel(model) {
     if (this._selectedModel.id === model.id) {
       this._selectedModel = {};
+      this._selectedSubType = {};
     } else {
       this._selectedModel = model;
+      this._selectedSubType = {};
     }
     this.setPage(1);
   }
