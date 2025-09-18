@@ -40,6 +40,7 @@
   .subTypeBar::-webkit-scrollbar {
     display: none;
   }
+  .subTypeItem { flex: 0 0 auto; white-space: nowrap; }
 
   .subTypeItem {
     flex: 0 0 auto;
