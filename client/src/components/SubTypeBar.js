@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useMemo, useRef } from "react";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import { useTranslation } from "react-i18next";
@@ -9,30 +9,65 @@ const SubTypeBar = observer(() => {
   const { i18n } = useTranslation();
   const currentLang = i18n.language || "en";
 
-  const handleSelect = (subtype) => {
-    device.setSelectedSubType(subtype);
-    const element = document.getElementById(`subtype-${subtype.id}`);
-    if (element) element.scrollIntoView({ behavior: "smooth", block: "start" });
+    const containerRef = useRef(null);
+
+  const sorter = (a, b) => {
+    const ao = a.displayOrder ?? 0;
+    const bo = b.displayOrder ?? 0;
+    return ao === bo ? a.id - b.id : ao - bo;
   };
 
-  if (!device.selectedType?.id) return null;
+  const list = useMemo(() => {
+    const facets = device.facets?.subtypes || [];
+    if (facets.length) {
+      const dict = new Map(device.subtypes.map(s => [s.id, s]));
+      return facets
+        .map(f => {
+          const base = dict.get(f.id);
+          return base ? { ...base, count: f.count } : { id: f.id, name: f.name, displayOrder: 0, count: f.count };
+        })
+        .sort(sorter);
+    }
+    return device.subtypes
+      .filter(s => s.typeId === device.selectedType?.id)
+      .slice()
+      .sort(sorter);
+  }, [device.facets?.subtypes, device.subtypes, device.selectedType?.id]);
 
-  const filteredSubtypes = device.subtypes
-    .slice()
-    .sort((a, b) => {
-      const ao = a.displayOrder ?? 0;
-      const bo = b.displayOrder ?? 0;
-      return ao === bo ? a.id - b.id : ao - bo;
-    });
-
-  if (filteredSubtypes.length === 0) return null;
+  if (!list.length) return null;
 
   const activeId = device.selectedSubType?.id;
 
-return (
-    <div className={styles.subTypeBar}>
-      {filteredSubtypes.map((subtype) => (
+     const centerChip = (el) => {
+    const parent = containerRef.current;
+    if (!parent || !el) return;
+    if (parent.scrollWidth <= parent.clientWidth) return;
+    const left = el.offsetLeft - (parent.clientWidth - el.offsetWidth) / 2;
+    parent.scrollTo({ left, behavior: "smooth" });
+  };
+
+  const handleSelect = (subtype) => {
+    device.setSelectedSubType(subtype);
+
+    // центрируем выбранный чип
+    requestAnimationFrame(() => {
+      const chip = document.getElementById(`subtype-${subtype.id}`);
+      if (chip) centerChip(chip);
+    });
+
+    // скроллим к списку товаров
+    requestAnimationFrame(() => {
+      document
+        .getElementById("catalog-devices")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+ return (
+   <div className={styles.subTypeBar} ref={containerRef}>
+      {list.map((subtype) => (
         <div
+        id={`subtype-${subtype.id}`}
           key={subtype.id}
           className={`${styles.subTypeItem} ${activeId === subtype.id ? styles.active : ""}`}
           role="button"
