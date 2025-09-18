@@ -10,15 +10,14 @@ import DevicePage from "../pages/DevicePage";
 import SlideModal from "../components/modals/SlideModal";
 import MakeBar from "../components/MakeBar";
 import ModelBar from "../components/ModelBar";
-import appStore from "../store/appStore";
 import {
   fetchBrands,
-  fetchDevices,
   fetchTypes,
   fetchSubtypes,
   fetchSubtypesByType,
   fetchMakes,
   fetchModelsByMake,
+  fetchFilter,
 } from "../http/deviceAPI";
 import { useTranslation } from "react-i18next";
 import catalogStyles from "./CatalogPage.module.css";
@@ -70,13 +69,9 @@ const CatalogPage = observer(() => {
         device.setBrands(brandsData);
         device.setMakes(makesData);
 
-        if (typeIdFromUrl) {
-          const selectedType = typesData.find(
-            (type) => type.id === Number(typeIdFromUrl)
-          );
-          if (selectedType) {
-            device.setSelectedType(selectedType);
-          }
+       if (typeIdFromUrl) {
+          const selectedType = typesData.find((type) => type.id === Number(typeIdFromUrl));
+          if (selectedType) device.setSelectedType(selectedType);
         }
       } catch (error) {
         console.error("Ошибка загрузки начальных данных:", error);
@@ -93,34 +88,33 @@ const CatalogPage = observer(() => {
   }, []);
 
   useEffect(() => {
-    const loadDevices = async () => {
-      try {
-        const data = await fetchDevices(
-          device.selectedType?.id || null,
-          device.selectedSubType?.id ?? null,
-          device.selectedBrand?.id || null,
-          device.page,
-          device.limit,
-          device.selectedMake?.id || null,
-          device.selectedModel?.id || null
-        );
-
-        device.setDevices(data.rows);
-        device.setTotalCount(data.count);
-      } catch (error) {
-        console.error("Ошибка загрузки девайсов:", error);
-      }
-    };
-
-    loadDevices();
-  }, [
-    device.selectedType?.id,
-    device.selectedBrand?.id,
-    device.selectedMake?.id,
-    device.selectedModel?.id,
-    device.page,
-    device.limit,
-  ]);
+  const load = async () => {
+    try {
+      const data = await fetchFilter(
+        device.selectedType?.id || null,
+        device.selectedSubType?.id ?? null,
+        device.selectedBrand?.id || null,
+        device.page,
+        device.limit,
+        device.selectedMake?.id || null,
+        device.selectedModel?.id || null
+      );
+      device.setDevices(data.rows);
+      device.setTotalCount(data.count);
+    } catch (e) {
+      console.error("Ошибка загрузки девайсов:", e);
+    }
+  };
+  load();
+}, [
+  device.selectedType?.id,
+   device.selectedSubType?.id, 
+  device.selectedBrand?.id,
+  device.selectedMake?.id,
+  device.selectedModel?.id,
+  device.page,
+  device.limit,
+]);
 
   useEffect(() => {
     const loadModels = async () => {
@@ -138,7 +132,7 @@ const CatalogPage = observer(() => {
     loadModels();
   }, [device.selectedMake?.id]);
 
-  useEffect(() => {
+   useEffect(() => {
     const loadSubtypes = async () => {
       try {
         const subtypesData = device.selectedType?.id
@@ -146,13 +140,17 @@ const CatalogPage = observer(() => {
           : await fetchSubtypes();
 
         device.setSubtypes(
-          subtypesData.map((subtype) => ({
-            ...subtype,
-            translations: subtype.translations || {},
-          }))
+          subtypesData
+            .map((subtype) => ({
+              ...subtype,
+              translations: subtype.translations || {},
+            }))
+            .sort((a, b) => {
+              const ao = Number(a.displayOrder ?? 0);
+              const bo = Number(b.displayOrder ?? 0);
+              return ao === bo ? a.id - b.id : ao - bo;
+            })
         );
-
-        // НЕ сбрасываем выбранный подтип здесь — это вызывает «мигание» и промежуточные состояния
       } catch (error) {
         console.error("Ошибка при загрузке подтипов:", error);
       }
@@ -167,24 +165,16 @@ const CatalogPage = observer(() => {
     };
 
     window.addEventListener("scroll", handleScroll);
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
+   useEffect(() => {
     const onOpenDevice = (e) => {
       const id = e?.detail?.id;
-      console.log("CatalogPage: received openDeviceModal, id=", id);
-      if (id) {
-        setSelectedDeviceId(id);
-      }
+      if (id) setSelectedDeviceId(id);
     };
-
     window.addEventListener("openDeviceModal", onOpenDevice);
-
     window.__hasOpenDeviceModalListener = true;
-
     return () => {
       window.removeEventListener("openDeviceModal", onOpenDevice);
       window.__hasOpenDeviceModalListener = false;
@@ -229,7 +219,10 @@ const CatalogPage = observer(() => {
           </div>
         </div>
 
-        <div className={catalogStyles.deviceContainer}>
+        <div 
+        className={catalogStyles.deviceContainer}
+        id="catalog-devices"
+        >
           <DeviceList onDeviceClick={(id) => setSelectedDeviceId(id)} />
         </div>
         {showScrollTop && (
