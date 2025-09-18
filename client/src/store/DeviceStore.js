@@ -16,6 +16,7 @@ export default class DeviceStore {
     this._page = 1;
     this._totalCount = 0;
     this._limit = 20;
+    this._facets = { subtypes: [], brands: [] };
     makeAutoObservable(this);
   }
 
@@ -49,43 +50,55 @@ export default class DeviceStore {
   }
 
   setSelectedType(type) {
-    if (this._selectedType.id === type.id) {
+    const same = this._selectedType.id === type?.id;
+
+    if (same) {
+      // сняли выбор типа
       this._selectedType = {};
       this._selectedSubType = {};
       this._selectedMake = {};
       this._selectedModel = {};
+      // бренд по желанию тоже можно очистить, если он зависит от типа:
+      // this._selectedBrand = {};
     } else {
-      this.setPage(1);
-      this._selectedType = type;
+      // новый тип → обязательно сбрасываем зависимости
+      this._selectedType = type || {};
       this._selectedSubType = {};
+      this._selectedMake = {};
+      this._selectedModel = {};
+      // бренд очищать по вкусу:
+      // this._selectedBrand = {};
+      this.setPage(1);
     }
   }
 
   setSelectedMake(make) {
-    if (this._selectedMake.id === make.id) {
+    const same = this._selectedMake.id === make?.id;
+    if (same) {
       this._selectedMake = {};
       this._selectedModel = {};
       this._selectedSubType = {};
     } else {
-      this._selectedMake = make;
+      this._selectedMake = make || {};
       this._selectedModel = {};
       this._selectedSubType = {};
     }
     this.setPage(1);
   }
 
-   setSelectedModel(model) {
-    if (this._selectedModel.id === model.id) {
+  setSelectedModel(model) {
+    const same = this._selectedModel.id === model?.id;
+    if (same) {
       this._selectedModel = {};
       this._selectedSubType = {};
     } else {
-      this._selectedModel = model;
+      this._selectedModel = model || {};
       this._selectedSubType = {};
     }
     this.setPage(1);
   }
 
-   clearSelectedSubType() {
+  clearSelectedSubType() {
     this._selectedSubType = {};
     this.setPage(1);
   }
@@ -105,13 +118,18 @@ export default class DeviceStore {
   }
 
   setSelectedBrand(brand) {
-    if (this._selectedBrand.id === brand.id) {
+    if (this._selectedBrand.id === brand?.id) {
       this._selectedBrand = {};
     } else {
+      this._selectedBrand = brand || {};
       this.setPage(1);
-      this._selectedBrand = brand;
     }
   }
+
+  setFacets(facets) {
+  this._facets = facets || { subtypes: [], brands: [] };
+}
+
   setPage(page) {
     this._page = page;
   }
@@ -160,5 +178,8 @@ export default class DeviceStore {
   }
   get limit() {
     return this._limit;
+  }
+  get facets() {
+    return this._facets;
   }
 }
