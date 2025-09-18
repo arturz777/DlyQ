@@ -151,6 +151,28 @@ const toInt = (v) => {
   return Number.isInteger(n) && n > 0 ? n : undefined;
 };
 
+export const fetchFilter = async (
+  typeId,
+  subtypeId,
+  brandId,
+  page,
+  limit,
+  makeId,
+  modelId
+) => {
+  const params = {
+    typeId,
+    subtypeId,
+    brandId,
+    page,
+    limit,
+    makeId,
+    modelId,
+  };
+  const { data } = await $host.get("api/device/filter", { params });
+  return data; 
+};
+
 export const fetchDevices = async (
   typeId,
   subtypeId,
