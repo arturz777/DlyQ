@@ -169,7 +169,7 @@ export const fetchFilter = async (
     makeId,
     modelId,
   };
-  const { data } = await $host.get("api/device/filter", { params });
+  const { data } = await $host.get("/device/filter", { params });
   return data; 
 };
 
