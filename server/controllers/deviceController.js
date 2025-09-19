@@ -1221,7 +1221,7 @@ class DeviceController {
     }
   }
 
-   async filter(req, res) {
+  async filter(req, res) {
     try {
       const toInt = (v) => {
         const n = Number(v);
@@ -1419,6 +1419,18 @@ class DeviceController {
         if (whereNoSubtype[Op.and].length === 0) delete whereNoSubtype[Op.and];
       }
 
+      const primarySubtypes = await Device.findAll({
+        where: whereNoSubtype,
+        include: stripAttrsDeep(baseInclude),
+        attributes: [
+          [col("device.subtypeId"), "subtypeId"],
+          [fn("COUNT", fn("DISTINCT", col("device.id"))), "count"],
+        ],
+        group: [col("device.subtypeId")],
+        having: literal('"device"."subtypeId" IS NOT NULL'),
+        raw: true,
+      });
+
       const m2mSubtypes = await Device.findAll({
         where: whereNoSubtype,
         include: [
@@ -1429,7 +1441,6 @@ class DeviceController {
             through: { attributes: [] },
             required: true,
             attributes: [],
-             ...(typeId != null ? { where: { typeId } } : {}),
           },
         ],
         attributes: [
@@ -1441,18 +1452,27 @@ class DeviceController {
       });
 
       const subtypeCounts = new Map();
+
+      for (const r of primarySubtypes) {
+        const id = Number(r.subtypeId);
+        const c = Number(r.count || 0);
+        if (id) subtypeCounts.set(id, (subtypeCounts.get(id) || 0) + c);
+      }
+
       for (const r of m2mSubtypes) {
         const id = Number(r.id);
         const c = Number(r.count || 0);
-        if (id) subtypeCounts.set(id, c);
+        if (id) subtypeCounts.set(id, (subtypeCounts.get(id) || 0) + c);
       }
 
       const subtypeIds = Array.from(subtypeCounts.keys());
       let allSubtypes = [];
       if (subtypeIds.length) {
         allSubtypes = await SubType.findAll({
-          where: { id: { [Op.in]: subtypeIds } },
-          ...(typeId != null ? { typeId } : {}),
+          where: {
+            id: { [Op.in]: subtypeIds },
+            ...(typeId != null ? { typeId } : {}),
+          },
           order: [
             ["displayOrder", "ASC"],
             ["id", "ASC"],
