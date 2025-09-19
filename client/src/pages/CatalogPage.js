@@ -77,7 +77,6 @@ const CatalogPage = observer(() => {
   }, [currentLang, typeIdFromUrl]);
 
   useEffect(() => {
-  // cleanup: когда уходим со страницы каталога — сбрасываем всё
   return () => {
     device.setSelectedType({});
     device.setSelectedSubType({});
