@@ -149,10 +149,13 @@ class TypeController {
     }
   }
 
-  async getAll(req, res) {
+async getAll(req, res) {
     try {
       const types = await Type.findAll({
-        order: [["displayOrder", "ASC"]],
+        order: [
+          ["displayOrder", "ASC"],
+          ["id", "ASC"],
+        ],
       });
 
       const typeIds = types.map((t) => t.id);
@@ -160,7 +163,7 @@ class TypeController {
       const translations = await Translation.findAll({
         where: {
           key: {
-            [Op.or]: typeIds.map((id) => `type_${id}.name`),
+            [Op.in]: typeIds.map((id) => `type_${id}.name`),
           },
         },
       });
