@@ -15,6 +15,8 @@ const DeviceList = observer(({ onDeviceClick }) => {
     const subtypes = Array.isArray(device.subtypes) ? device.subtypes : [];
     const devices = Array.isArray(device.devices) ? device.devices : [];
 
+    const selectedSubtypeId = Number(device.selectedSubType?.id) || null;
+
     const result = {};
     types.forEach((type) => {
       const typeId = Number(type.id);
@@ -72,12 +74,22 @@ const DeviceList = observer(({ onDeviceClick }) => {
         const group = result[tid];
         if (!group) return; 
 
-        if (allSubtypeIds.size === 0) {
+        let targetSubtypeIds;
+        if (selectedSubtypeId) {
+          if (!allSubtypeIds.has(selectedSubtypeId)) {
+            return;
+          }
+          targetSubtypeIds = new Set([selectedSubtypeId]);
+        } else {
+          targetSubtypeIds = allSubtypeIds;
+        }
+
+        if (targetSubtypeIds.size === 0) {
           group.noSubtypeDevices.push(dev);
           return;
         }
 
-        allSubtypeIds.forEach((sid) => {
+        targetSubtypeIds.forEach((sid) => {
           if (group.subtypes[sid]) {
             group.subtypes[sid].devices.push(dev);
           }
