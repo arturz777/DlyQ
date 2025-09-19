@@ -1221,6 +1221,308 @@ try {
     }
   }
 
+ async filter(req, res) {
+    try {
+      const toInt = (v) => {
+        const n = Number(v);
+        return Number.isInteger(n) && n > 0 ? n : undefined;
+      };
+
+      const stripAttrsDeep = (inc) => {
+        const arr = Array.isArray(inc) ? inc : [];
+        return arr.map((i) => ({
+          ...i,
+          attributes: [],
+          include: stripAttrsDeep(i.include),
+        }));
+      };
+
+      let {
+        brandId,
+        typeId,
+        subtypeId,
+        makeId,
+        modelId,
+        isNew,
+        discount,
+        recommended,
+        page,
+        limit,
+      } = req.query;
+
+      brandId = toInt(brandId);
+      typeId = toInt(typeId);
+      subtypeId = toInt(subtypeId);
+      makeId = toInt(makeId);
+      modelId = toInt(modelId);
+      page = Number(page) || 1;
+      limit = Number(limit) || 9;
+      const offset = page * limit - limit;
+
+      const baseWhere = {};
+      if (brandId != null) baseWhere.brandId = brandId;
+      if (isNew !== undefined) baseWhere.isNew = isNew === "true";
+      if (discount !== undefined) baseWhere.discount = discount === "true";
+      if (recommended !== undefined)
+        baseWhere.recommended = recommended === "true";
+
+      if (typeId != null) {
+        baseWhere[Op.and] = baseWhere[Op.and] || [];
+        baseWhere[Op.and].push({
+          [Op.or]: [
+            { typeId },
+            { "$types.id$": typeId },
+            { "$subtypes.typeId$": typeId },
+          ],
+        });
+      }
+
+      if (subtypeId != null) {
+        baseWhere[Op.and] = baseWhere[Op.and] || [];
+        baseWhere[Op.and].push({
+          [Op.or]: [{ subtypeId }, { "$subtypes.id$": subtypeId }],
+        });
+      }
+
+      const compatInclude = {
+        model: DeviceCompatibility,
+        as: "compat",
+        required: false,
+        include: [
+          { model: VehicleMake, as: "make", attributes: ["id", "name"] },
+          {
+            model: VehicleModel,
+            as: "model",
+            attributes: ["id", "name", "makeId"],
+          },
+        ],
+      };
+      if (modelId != null) {
+        compatInclude.required = true;
+        compatInclude.where = { [Op.or]: [{ modelId }, { isUniversal: true }] };
+      } else if (makeId != null) {
+        compatInclude.required = true;
+        compatInclude.where = { [Op.or]: [{ makeId }, { isUniversal: true }] };
+      }
+
+      const baseInclude = [
+        { model: SubType, as: "subtype" },
+        { model: Type },
+        { model: DeviceInfo, as: "info" },
+        {
+          model: Type,
+          as: "types",
+          through: { attributes: [] },
+          required: false,
+        },
+        {
+          model: SubType,
+          as: "subtypes",
+          through: { attributes: [] },
+          required: false,
+        },
+        compatInclude,
+      ];
+
+      const devices = await Device.findAndCountAll({
+        where: baseWhere,
+        limit,
+        offset,
+        include: baseInclude,
+        distinct: true,
+        subQuery: false,
+      });
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      devices.rows.forEach((d) => {
+        const v = d.dataValues;
+        if (v.expiryDate) {
+          const ms = new Date(v.expiryDate) - new Date(todayStr);
+          v.daysToExpire = Math.floor(ms / 86400000);
+        } else {
+          v.daysToExpire = null;
+        }
+      });
+
+      const deviceIds = devices.rows.map((d) => d.id);
+      let translations = [];
+      if (deviceIds.length > 0) {
+        translations = await Translation.findAll({
+          where: {
+            key: {
+              [Op.or]: deviceIds.map((id) => ({ [Op.like]: `device_${id}.%` })),
+            },
+          },
+        });
+      }
+      const translatedSpecs = {};
+      translations.forEach((t) => {
+        const keyParts = t.key.split(".");
+        const deviceId = keyParts[0].replace("device_", "");
+        const section = keyParts[1];
+        const optionIdx = keyParts[2];
+        const field = keyParts[3];
+        const valueIdx = keyParts[4];
+
+        if (!translatedSpecs[deviceId]) translatedSpecs[deviceId] = {};
+
+        if (section === "info") {
+          if (!translatedSpecs[deviceId].info)
+            translatedSpecs[deviceId].info = [];
+          if (!translatedSpecs[deviceId].info[optionIdx]) {
+            translatedSpecs[deviceId].info[optionIdx] = {
+              title: {},
+              description: {},
+            };
+          }
+          translatedSpecs[deviceId].info[optionIdx][field][t.lang] = t.text;
+        } else if (section === "option") {
+          if (!translatedSpecs[deviceId].options)
+            translatedSpecs[deviceId].options = [];
+          if (!translatedSpecs[deviceId].options[optionIdx]) {
+            translatedSpecs[deviceId].options[optionIdx] = {
+              name: {},
+              values: [],
+            };
+          }
+          if (field === "name") {
+            translatedSpecs[deviceId].options[optionIdx].name[t.lang] = t.text;
+          } else if (field === "value" && valueIdx !== undefined) {
+            if (
+              !translatedSpecs[deviceId].options[optionIdx].values[valueIdx]
+            ) {
+              translatedSpecs[deviceId].options[optionIdx].values[valueIdx] =
+                {};
+            }
+            translatedSpecs[deviceId].options[optionIdx].values[valueIdx][
+              t.lang
+            ] = t.text;
+          }
+        } else {
+          if (!translatedSpecs[deviceId][section])
+            translatedSpecs[deviceId][section] = {};
+          translatedSpecs[deviceId][section][t.lang] = t.text;
+        }
+      });
+      devices.rows.forEach((d) => {
+        d.dataValues.translations = translatedSpecs[d.id] || {};
+      });
+
+      const whereNoSubtype = { ...baseWhere };
+      if (whereNoSubtype[Op.and]) {
+        whereNoSubtype[Op.and] = whereNoSubtype[Op.and].filter((cond) => {
+          return (
+            !cond[Op.or] ||
+            !cond[Op.or].some((x) => x.subtypeId || x["$subtypes.id$"])
+          );
+        });
+        if (whereNoSubtype[Op.and].length === 0) delete whereNoSubtype[Op.and];
+      }
+
+      const primarySubtypes = await Device.findAll({
+        where: whereNoSubtype,
+        include: stripAttrsDeep(baseInclude),
+        attributes: [
+          [col("device.subtypeId"), "subtypeId"],
+          [fn("COUNT", fn("DISTINCT", col("device.id"))), "count"],
+        ],
+        group: [col("device.subtypeId")],
+        having: literal('"device"."subtypeId" IS NOT NULL'),
+        raw: true,
+      });
+
+      const m2mSubtypes = await Device.findAll({
+        where: whereNoSubtype,
+        include: [
+          ...stripAttrsDeep(baseInclude).filter((i) => i.as !== "subtypes"),
+          {
+            model: SubType,
+            as: "subtypes",
+            through: { attributes: [] },
+            required: true,
+            attributes: [],
+          },
+        ],
+        attributes: [
+          [col("subtypes.id"), "id"],
+          [fn("COUNT", fn("DISTINCT", col("device.id"))), "count"],
+        ],
+        group: [col("subtypes.id")],
+        raw: true,
+      });
+
+      const subtypeCounts = new Map();
+
+      for (const r of primarySubtypes) {
+        const id = Number(r.subtypeId);
+        const c = Number(r.count || 0);
+        if (id) subtypeCounts.set(id, (subtypeCounts.get(id) || 0) + c);
+      }
+
+      for (const r of m2mSubtypes) {
+        const id = Number(r.id);
+        const c = Number(r.count || 0);
+        if (id) subtypeCounts.set(id, (subtypeCounts.get(id) || 0) + c);
+      }
+
+      const subtypeIds = Array.from(subtypeCounts.keys());
+      let allSubtypes = [];
+      if (subtypeIds.length) {
+        allSubtypes = await SubType.findAll({
+          where: {
+            id: { [Op.in]: subtypeIds },
+            ...(typeId != null ? { typeId } : {}),
+          },
+          order: [
+            ["displayOrder", "ASC"],
+            ["id", "ASC"],
+          ],
+        });
+      }
+
+      const subtypesFacet = allSubtypes.length
+        ? allSubtypes.map((s) => ({
+            id: s.id,
+            name: s.name,
+            typeId: s.typeId,
+            displayOrder: s.displayOrder,
+            count: subtypeCounts.get(s.id) || 0,
+          }))
+        : [];
+
+      const whereNoBrand = { ...baseWhere };
+      if (whereNoBrand.brandId != null) delete whereNoBrand.brandId;
+
+      const brandsRows = await Device.findAll({
+        where: whereNoBrand,
+        include: stripAttrsDeep(baseInclude),
+        attributes: [
+          [col("device.brandId"), "brandId"],
+          [fn("COUNT", fn("DISTINCT", col("device.id"))), "count"],
+        ],
+        group: [col("device.brandId")],
+        having: literal('"device"."brandId" IS NOT NULL'),
+        raw: true,
+      });
+
+      const brandsFacet = brandsRows
+        .map((r) => ({ id: Number(r.brandId), count: Number(r.count || 0) }))
+        .filter((b) => b.id);
+
+      return res.json({
+        rows: devices.rows,
+        count: devices.count,
+        facets: {
+          subtypes: subtypesFacet,
+          brands: brandsFacet,
+        },
+      });
+    } catch (error) {
+      console.error("❌ Ошибка filter:", error);
+      return res.status(500).json({ message: "Ошибка фильтра" });
+    }
+  }
+  
   async adjustStock(req, res) {
     try {
       const { id } = req.params;
@@ -1302,7 +1604,7 @@ try {
     }
   }
 
-  async search(req, res, next) {
+   async search(req, res, next) {
     try {
       const { q } = req.query;
       if (!q)
@@ -1311,12 +1613,7 @@ try {
       const devices = await Device.findAll({
         where: { name: { [Op.iLike]: `%${q}%` } },
         order: [
-          [
-            Sequelize.literal(
-              `CASE WHEN "name" ILIKE '${q}%' THEN 0 ELSE 1 END`
-            ),
-            "ASC",
-          ],
+          [literal(`CASE WHEN "name" ILIKE '${q}%' THEN 0 ELSE 1 END`), "ASC"],
           ["name", "ASC"],
         ],
       });
@@ -1360,11 +1657,6 @@ try {
       const allDevices = [...devices, ...translatedDevices].filter(
         (value, index, self) =>
           index === self.findIndex((d) => d.id === value.id)
-      );
-
-      console.log(
-        "🚀 Итоговый результат поиска:",
-        allDevices.map((d) => d.id)
       );
 
       return res.json(allDevices);
