@@ -66,7 +66,7 @@ class SubtypeController {
       const translations = await Translation.findAll({
         where: {
           key: {
-            [Op.or]: subtypeIds.map((id) => `subtype_${id}.name`),
+            [Op.in]: subtypeIds.map((id) => `subtype_${id}.name`),
           },
         },
       });
@@ -119,7 +119,7 @@ class SubtypeController {
       const translations = await Translation.findAll({
         where: {
           key: {
-            [Op.or]: subtypeIds.map((id) => `subtype_${id}.name`),
+            [Op.in]: subtypeIds.map((id) => `subtype_${id}.name`),
           },
         },
       });
