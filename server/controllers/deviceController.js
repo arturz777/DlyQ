@@ -1221,7 +1221,7 @@ class DeviceController {
     }
   }
 
-  async filter(req, res) {
+   async filter(req, res) {
     try {
       const toInt = (v) => {
         const n = Number(v);
@@ -1429,6 +1429,7 @@ class DeviceController {
             through: { attributes: [] },
             required: true,
             attributes: [],
+             ...(typeId != null ? { where: { typeId } } : {}),
           },
         ],
         attributes: [
@@ -1451,6 +1452,7 @@ class DeviceController {
       if (subtypeIds.length) {
         allSubtypes = await SubType.findAll({
           where: { id: { [Op.in]: subtypeIds } },
+          ...(typeId != null ? { typeId } : {}),
           order: [
             ["displayOrder", "ASC"],
             ["id", "ASC"],
