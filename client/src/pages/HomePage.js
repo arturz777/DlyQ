@@ -8,10 +8,12 @@ import {
 } from "../http/deviceAPI";
 import { useTranslation } from "react-i18next";
 import DeviceItem from "../components/DeviceItem";
+import DeviceList from "../components/DeviceList";
 import OrderSidebar from "../components/OrderSidebar";
 import SlideModal from "../components/modals/SlideModal";
 import DevicePage from "../pages/DevicePage";
 import styles from "./HomePage.module.css";
+import catalogStyles from "./CatalogPage.module.css";
 
 const HomePage = () => {
   const [newDevices, setNewDevices] = useState([]);
@@ -26,6 +28,8 @@ const HomePage = () => {
   const currentLang = i18n.language || "en";
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -205,6 +209,17 @@ useEffect(() => {
           )}
         </div>
       </section>
+      <div className={catalogStyles.deviceContainer} id="catalog-devices">
+          <DeviceList onDeviceClick={(id) => setSelectedDeviceId(id)} />
+        </div>
+        {showScrollTop && (
+          <button
+            onClick={scrollToTop}
+            className={catalogStyles.scrollToTopButton}
+          >
+            ↑
+          </button>
+        )}
       {selectedDeviceId && (
         <SlideModal onClose={() => setSelectedDeviceId(null)}>
           <DevicePage id={selectedDeviceId} />
