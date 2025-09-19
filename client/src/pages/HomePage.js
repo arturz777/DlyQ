@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { Link } from "react-router-dom";
+import { Context } from "../index";
 import {
   fetchNewDevices,
   fetchDiscountedDevices,
   fetchRecommendedDevices,
   fetchTypes,
+  fetchSubtypes,
+  fetchFilter,
 } from "../http/deviceAPI";
 import { useTranslation } from "react-i18next";
 import DeviceItem from "../components/DeviceItem";
@@ -16,6 +19,7 @@ import styles from "./HomePage.module.css";
 import catalogStyles from "./CatalogPage.module.css";
 
 const HomePage = () => {
+  const { device } = useContext(Context);
   const [newDevices, setNewDevices] = useState([]);
   const [discountedDevices, setDiscountedDevices] = useState([]);
   const [recommendedDevices, setRecommendedDevices] = useState([]);
@@ -29,18 +33,32 @@ const HomePage = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   const [showScrollTop, setShowScrollTop] = useState(false);
-  
+
   useEffect(() => {
-    const loadData = async () => {
+    let cancelled = false;
+
+    (async () => {
       try {
-        const limit = 1000;
-        const [newDevicesData, discountedData, recommendedData, typesData] =
-          await Promise.all([
-            fetchNewDevices(limit),
-            fetchDiscountedDevices(limit),
-            fetchRecommendedDevices(undefined, limit),
-            fetchTypes(),
-          ]);
+        setLoading(true);
+        const LIMIT = 1000;
+
+        const [
+          newDevicesData,
+          discountedData,
+          recommendedData,
+          typesData,
+          subtypesData,
+          catalogData,
+        ] = await Promise.all([
+          fetchNewDevices(LIMIT),
+          fetchDiscountedDevices(LIMIT),
+          fetchRecommendedDevices(undefined, LIMIT),
+          fetchTypes(),
+          fetchSubtypes(),
+          fetchFilter(null, null, null, 1, LIMIT, null, null),
+        ]);
+
+        if (cancelled) return;
 
         setNewDevices(
           Array.isArray(newDevicesData)
@@ -57,15 +75,37 @@ const HomePage = () => {
             ? recommendedData
             : recommendedData?.devices ?? []
         );
-        setTypes(Array.isArray(typesData) ? typesData : []);
+
+        device.setTypes(
+          (Array.isArray(typesData) ? typesData : []).map((t) => ({
+            ...t,
+            translations: t.translations || {},
+          }))
+        );
+        device.setSubtypes(
+          (Array.isArray(subtypesData) ? subtypesData : []).map((s) => ({
+            ...s,
+            translations: s.translations || {},
+          }))
+        );
+
+        device.setDevices(catalogData.rows || []);
+        device.setTotalCount(catalogData.count || 0);
+        device.setSelectedType({});
+        device.setSelectedSubType({});
+        device.setSelectedBrand({});
+        device.setSelectedMake({});
+        device.setSelectedModel({});
       } catch (err) {
         console.error("❌ Ошибка при загрузке данных:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    };
+    })();
 
-    loadData();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -77,16 +117,32 @@ const HomePage = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-useEffect(() => {
-  const onOpenDevice = (e) => {
-    const id = e?.detail?.id;
-    if (id) {
-      setSelectedDeviceId(id);
-    }
+  useEffect(() => {
+    const onOpenDevice = (e) => {
+      const id = e?.detail?.id;
+      if (id) {
+        setSelectedDeviceId(id);
+      }
+    };
+    window.addEventListener("openDeviceModal", onOpenDevice);
+    return () => window.removeEventListener("openDeviceModal", onOpenDevice);
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
-  window.addEventListener("openDeviceModal", onOpenDevice);
-  return () => window.removeEventListener("openDeviceModal", onOpenDevice);
-}, []);
 
   return (
     <div className={styles.homePage}>
@@ -210,16 +266,16 @@ useEffect(() => {
         </div>
       </section>
       <div className={catalogStyles.deviceContainer} id="catalog-devices">
-          <DeviceList onDeviceClick={(id) => setSelectedDeviceId(id)} />
-        </div>
-        {showScrollTop && (
-          <button
-            onClick={scrollToTop}
-            className={catalogStyles.scrollToTopButton}
-          >
-            ↑
-          </button>
-        )}
+        <DeviceList onDeviceClick={(id) => setSelectedDeviceId(id)} />
+      </div>
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className={catalogStyles.scrollToTopButton}
+        >
+          ↑
+        </button>
+      )}
       {selectedDeviceId && (
         <SlideModal onClose={() => setSelectedDeviceId(null)}>
           <DevicePage id={selectedDeviceId} />
@@ -230,4 +286,3 @@ useEffect(() => {
 };
 
 export default HomePage;
-
