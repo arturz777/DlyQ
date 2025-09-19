@@ -212,7 +212,9 @@ export const deleteDevice = async (id) => {
 };
 
 export const searchDevices = async (query) => {
-  const { data } = await $host.get(`/device/search`, { params: { q: query } });
+  const { data } = await $host.get(`/device/search`, {
+    params: { q: query },
+  });
   return data;
 };
 
