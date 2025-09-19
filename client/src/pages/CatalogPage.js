@@ -26,7 +26,7 @@ const CatalogPage = observer(() => {
   const { device } = useContext(Context);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const { t, i18n } = useTranslation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const typeIdFromUrl = searchParams.get("typeId");
   const currentLang = i18n.language || "en";
 
@@ -68,18 +68,25 @@ const CatalogPage = observer(() => {
 
         device.setBrands(brandsData);
         device.setMakes(makesData);
-
-       if (typeIdFromUrl) {
-          const selectedType = typesData.find((type) => type.id === Number(typeIdFromUrl));
-          if (selectedType) device.setSelectedType(selectedType);
-        }
       } catch (error) {
         console.error("Ошибка загрузки начальных данных:", error);
       }
     };
 
     loadInitialData();
-  }, [currentLang]);
+  }, [currentLang, typeIdFromUrl]);
+
+  useEffect(() => {
+  // cleanup: когда уходим со страницы каталога — сбрасываем всё
+  return () => {
+    device.setSelectedType({});
+    device.setSelectedSubType({});
+    device.setSelectedMake({});
+    device.setSelectedModel({});
+    device.setSelectedBrand({});
+    device.setPage(1);
+  };
+}, []);
 
   useEffect(() => {
     return () => {
@@ -101,6 +108,7 @@ const CatalogPage = observer(() => {
       );
       device.setDevices(data.rows);
       device.setTotalCount(data.count);
+      device.setFacets?.(data.facets);
     } catch (e) {
       console.error("Ошибка загрузки девайсов:", e);
     }
@@ -215,7 +223,9 @@ const CatalogPage = observer(() => {
             </>
           )}
           <div id="subtype-filter" className={catalogStyles.subtypeFilter}>
-             {isAutoType ? (device.selectedModel?.id ? <SubTypeBar /> : null) : <SubTypeBar />}
+             {device.selectedType?.id
+     ? (isAutoType ? (device.selectedModel?.id ? <SubTypeBar /> : null) : <SubTypeBar />)
+     : null}
           </div>
         </div>
 
