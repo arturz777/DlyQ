@@ -374,7 +374,7 @@ class DeviceController {
         return Number.isInteger(n) && n > 0 ? n : undefined;
       };
 
-       brandId = toInt(brandId);
+      brandId = toInt(brandId);
       typeId = toInt(typeId);
       subtypeId = toInt(subtypeId);
       makeId = toInt(makeId);
@@ -383,13 +383,13 @@ class DeviceController {
       limit = Number(limit) || 9;
       const offset = page * limit - limit;
 
-     const where = {};
+      const where = {};
       if (brandId != null) where.brandId = brandId;
       if (isNew !== undefined) where.isNew = isNew === "true";
       if (discount !== undefined) where.discount = discount === "true";
       if (recommended !== undefined) where.recommended = recommended === "true";
 
-       const include = [
+      const include = [
         { model: SubType, as: "subtype" },
         { model: Type },
         { model: DeviceInfo, as: "info" },
@@ -407,7 +407,7 @@ class DeviceController {
         },
       ];
 
-       if (typeId != null) {
+      if (typeId != null) {
         where[Op.and] = where[Op.and] || [];
         where[Op.and].push({
           [Op.or]: [
@@ -547,7 +547,7 @@ class DeviceController {
     }
   }
 
-   async getOne(req, res) {
+  async getOne(req, res) {
     try {
       const { id } = req.params;
 
@@ -681,7 +681,7 @@ class DeviceController {
         .json({ message: "Ошибка при получении устройства" });
     }
   }
-
+  
   async update(req, res, next) {
     try {
       const { id } = req.params;
@@ -1221,7 +1221,7 @@ class DeviceController {
     }
   }
 
-  async filter(req, res) {
+   async filter(req, res) {
     try {
       const toInt = (v) => {
         const n = Number(v);
