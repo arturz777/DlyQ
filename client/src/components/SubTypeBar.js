@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useMemo } from "react";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import { useTranslation } from "react-i18next";
@@ -9,36 +9,48 @@ const SubTypeBar = observer(() => {
   const { i18n } = useTranslation();
   const currentLang = i18n.language || "en";
 
-  const handleSelect = (subtype) => {
-    device.setSelectedSubType(subtype);
-    const element = document.getElementById(`subtype-${subtype.id}`);
-    if (element) element.scrollIntoView({ behavior: "smooth", block: "start" });
+  const sorter = (a, b) => {
+    const ao = a.displayOrder ?? 0;
+    const bo = b.displayOrder ?? 0;
+    return ao === bo ? a.id - b.id : ao - bo;
   };
 
-  if (!device.selectedType?.id) return null;
+  const list = useMemo(() => {
+    const facets = device.facets?.subtypes || [];
+    if (facets.length) {
+      const dict = new Map(device.subtypes.map((s) => [s.id, s]));
+      return facets
+        .map((f) => {
+          const base = dict.get(f.id);
+          return base
+            ? { ...base, count: f.count }
+            : { id: f.id, name: f.name, displayOrder: 0, count: f.count };
+        })
+        .sort(sorter);
+    }
+    return device.subtypes
+      .filter((s) => s.typeId === device.selectedType?.id)
+      .slice()
+      .sort(sorter);
+  }, [device.facets?.subtypes, device.subtypes, device.selectedType?.id]);
 
-  const filteredSubtypes = device.subtypes
-    .filter((subtype) => subtype.typeId === device.selectedType.id)
-    .slice()
-    .sort((a, b) => {
-      const ao = a.displayOrder ?? 0;
-      const bo = b.displayOrder ?? 0;
-      return ao === bo ? a.id - b.id : ao - bo;
-    });
-
-  if (filteredSubtypes.length === 0) return null;
+  if (!list.length) return null;
 
   const activeId = device.selectedSubType?.id;
 
-return (
+  const handleSelect = (subtype) => {
+    device.setSelectedSubType(subtype);
+  };
+
+  return (
     <div className={styles.subTypeBar}>
-
-
-
-      {filteredSubtypes.map((subtype) => (
+      {list.map((subtype) => (
         <div
+          id={`subtype-${subtype.id}`}
           key={subtype.id}
-          className={`${styles.subTypeItem} ${activeId === subtype.id ? styles.active : ""}`}
+          className={`${styles.subTypeItem} ${
+            activeId === subtype.id ? styles.active : ""
+          }`}
           role="button"
           tabIndex={0}
           onClick={() => handleSelect(subtype)}
