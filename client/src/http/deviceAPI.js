@@ -31,7 +31,6 @@ export const fetchRecommendedDevices = async (deviceType, limit = 100) => {
     const { data } = await $host.get("/device", {
       params: { type: deviceType, recommended: true, limit },
     });
-
     return data.rows || [];
   } catch (error) {
     console.error("❌ Ошибка загрузки рекомендованных товаров:", error);
@@ -150,6 +149,28 @@ export const createDevice = async (device) => {
 const toInt = (v) => {
   const n = Number(v);
   return Number.isInteger(n) && n > 0 ? n : undefined;
+};
+
+export const fetchFilter = async (
+  typeId,
+  subtypeId,
+  brandId,
+  page,
+  limit,
+  makeId,
+  modelId
+) => {
+  const params = {
+    typeId,
+    subtypeId,
+    brandId,
+    page,
+    limit,
+    makeId,
+    modelId,
+  };
+  const { data } = await $host.get("/device/filter", { params });
+  return data; 
 };
 
 export const fetchDevices = async (
