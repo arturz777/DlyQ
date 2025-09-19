@@ -13,7 +13,7 @@ const {
   DeviceCompatibility,
 } = require("../models/models");
 const ApiError = require("../error/ApiError");
-const { Op, Sequelize } = require("sequelize");
+const { Op, fn, col, literal } = require("sequelize");
 const fs = require("fs");
 const { supabase } = require("../config/supabaseClient");
 
