@@ -94,8 +94,8 @@ const CatalogPage = observer(() => {
     device.setLoading("devices", true);
 
     device.setDevices([]);
-device.setTotalCount(0);
-device.setFacets({ subtypes: [], brands: [] });
+    device.setTotalCount(0);
+    device.setFacets({ subtypes: [], brands: [] });
 
     const load = async () => {
       try {
@@ -159,7 +159,7 @@ device.setFacets({ subtypes: [], brands: [] });
           ? await fetchSubtypesByType(device.selectedType.id)
           : await fetchSubtypes();
 
-          if (id !== subtypesReqId.current) return;
+        if (id !== subtypesReqId.current) return;
         device.setSubtypes(
           subtypesData
             .map((subtype) => ({
@@ -172,7 +172,7 @@ device.setFacets({ subtypes: [], brands: [] });
               return ao === bo ? a.id - b.id : ao - bo;
             })
         );
-       } catch (err) {
+      } catch (err) {
         if (id === subtypesReqId.current) {
           console.error("Ошибка при загрузке подтипов:", err);
         }
@@ -252,9 +252,10 @@ device.setFacets({ subtypes: [], brands: [] });
           </div>
         </div>
 
-        <div className={catalogStyles.deviceContainer} 
-        id="catalog-devices"
-        style={{ opacity: device.loading.devices ? 0.3 : 1 }}
+        <div
+          className={catalogStyles.deviceContainer}
+          id="catalog-devices"
+          style={{ opacity: device.loading.devices ? 0.3 : 1 }}
         >
           <DeviceList onDeviceClick={(id) => setSelectedDeviceId(id)} />
         </div>
@@ -273,11 +274,10 @@ device.setFacets({ subtypes: [], brands: [] });
         )}
       </div>
       {device.isLoadingAnything && (
-  <div className={catalogStyles.loadingOverlay}>
-    {t("loading", { ns: "homePage" })}
-  </div>
-)}
-
+        <div className={catalogStyles.loadingOverlay}>
+          {t("loading", { ns: "homePage" })}
+        </div>
+      )}
     </div>
   );
 });
