@@ -1,4 +1,4 @@
-import React, { useEffect, useContext, useState } from "react";
+import React, { useEffect, useContext, useRef, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import { useSearchParams } from "react-router-dom";
@@ -29,6 +29,8 @@ const CatalogPage = observer(() => {
   const [searchParams, setSearchParams] = useSearchParams();
   const typeIdFromUrl = searchParams.get("typeId");
   const currentLang = i18n.language || "en";
+  const devicesReqId = useRef(0);
+  const subtypesReqId = useRef(0);
 
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -94,6 +96,9 @@ const CatalogPage = observer(() => {
   }, []);
 
   useEffect(() => {
+    const id = ++devicesReqId.current;
+    device.setLoading("devices", true);
+
     const load = async () => {
       try {
         const data = await fetchFilter(
@@ -105,11 +110,16 @@ const CatalogPage = observer(() => {
           device.selectedMake?.id || null,
           device.selectedModel?.id || null
         );
+        if (id !== devicesReqId.current) return;
         device.setDevices(data.rows);
         device.setTotalCount(data.count);
         device.setFacets?.(data.facets);
       } catch (e) {
-        console.error("Ошибка загрузки девайсов:", e);
+        if (id === devicesReqId.current) {
+          console.error("Ошибка загрузки девайсов:", e);
+        }
+      } finally {
+        if (id === devicesReqId.current) device.setLoading("devices", false);
       }
     };
     load();
@@ -140,12 +150,16 @@ const CatalogPage = observer(() => {
   }, [device.selectedMake?.id]);
 
   useEffect(() => {
+    const id = ++subtypesReqId.current;
+    device.setLoading("subtypes", true);
+
     const loadSubtypes = async () => {
       try {
         const subtypesData = device.selectedType?.id
           ? await fetchSubtypesByType(device.selectedType.id)
           : await fetchSubtypes();
 
+          if (id !== subtypesReqId.current) return;
         device.setSubtypes(
           subtypesData
             .map((subtype) => ({
@@ -158,14 +172,18 @@ const CatalogPage = observer(() => {
               return ao === bo ? a.id - b.id : ao - bo;
             })
         );
-      } catch (error) {
-        console.error("Ошибка при загрузке подтипов:", error);
+       } catch (err) {
+        if (id === subtypesReqId.current) {
+          console.error("Ошибка при загрузке подтипов:", err);
+        }
+      } finally {
+        if (id === subtypesReqId.current) device.setLoading("subtypes", false);
       }
     };
 
     loadSubtypes();
   }, [device.selectedType?.id, currentLang]);
-
+  
   useEffect(() => {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 300);
