@@ -58,7 +58,6 @@ export default class DeviceStore {
       this._selectedSubType = {};
       this._selectedMake = {};
       this._selectedModel = {};
-  
     } else {
       this._selectedType = type || {};
       this._selectedSubType = {};
