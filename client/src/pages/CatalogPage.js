@@ -99,6 +99,8 @@ const CatalogPage = observer(() => {
     const id = ++devicesReqId.current;
     device.setLoading("devices", true);
 
+    device.setFacets({ subtypes: [], brands: [] });
+
     const load = async () => {
       try {
         const data = await fetchFilter(
@@ -183,7 +185,7 @@ const CatalogPage = observer(() => {
 
     loadSubtypes();
   }, [device.selectedType?.id, currentLang]);
-  
+
   useEffect(() => {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 300);
@@ -269,6 +271,12 @@ const CatalogPage = observer(() => {
           </SlideModal>
         )}
       </div>
+      {device.isLoadingAnything && (
+  <div className={catalogStyles.loadingOverlay}>
+    {t("loading", { ns: "homePage" })}
+  </div>
+)}
+
     </div>
   );
 });
