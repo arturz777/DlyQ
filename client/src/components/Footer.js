@@ -44,6 +44,14 @@ const Footer = () => {
             {t("support chat", { ns: "footer"})}
           </button>
         </div>
+           <div className={styles.bottomLine}>
+          <small className={styles.muted}>
+            DlyQ OÜ • Registrikood 17268052 • KMKR EE102873957 •{" "}
+            <a className={styles.link} href="mailto:info@dlyq.ee">
+              info@dlyq.ee
+            </a>
+          </small>
+        </div>                               
       </div>
     </footer>
   );
