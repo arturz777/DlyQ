@@ -54,21 +54,16 @@ export default class DeviceStore {
     const same = this._selectedType.id === type?.id;
 
     if (same) {
-      // сняли выбор типа
       this._selectedType = {};
       this._selectedSubType = {};
       this._selectedMake = {};
       this._selectedModel = {};
-      // бренд по желанию тоже можно очистить, если он зависит от типа:
-      // this._selectedBrand = {};
+  
     } else {
-      // новый тип → обязательно сбрасываем зависимости
       this._selectedType = type || {};
       this._selectedSubType = {};
       this._selectedMake = {};
       this._selectedModel = {};
-      // бренд очищать по вкусу:
-      // this._selectedBrand = {};
       this.setPage(1);
     }
   }
