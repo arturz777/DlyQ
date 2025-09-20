@@ -20,7 +20,7 @@ const TypeBar = observer(() => {
           }`}
           onClick={() => {
             const isSame = device.selectedType.id === type.id;
-             device.clearSelectedSubType?.();
+            device.clearSelectedSubType?.();
 
             if (isSame) {
               device.setSelectedType({});
