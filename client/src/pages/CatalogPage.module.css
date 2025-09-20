@@ -89,6 +89,17 @@
   font-size: 1.5rem;
 }
 
+.subtypeFilter {
+  scroll-margin-top: 13px;
+}
+
+.makeFilter {
+  scroll-margin-top: 13px;
+}
+.modelFilter {
+  scroll-margin-top: 13px;
+}
+
 @keyframes loadingAnimation {
   0% {
     transform: translateX(-100%);
