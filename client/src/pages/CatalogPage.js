@@ -90,16 +90,12 @@ const CatalogPage = observer(() => {
   }, []);
 
   useEffect(() => {
-    return () => {
-      device.setSelectedBrand({});
-    };
-  }, []);
-
-  useEffect(() => {
     const id = ++devicesReqId.current;
     device.setLoading("devices", true);
 
-    device.setFacets({ subtypes: [], brands: [] });
+    device.setDevices([]);
+device.setTotalCount(0);
+device.setFacets({ subtypes: [], brands: [] });
 
     const load = async () => {
       try {
@@ -154,6 +150,8 @@ const CatalogPage = observer(() => {
   useEffect(() => {
     const id = ++subtypesReqId.current;
     device.setLoading("subtypes", true);
+
+    device.setSubtypes([]);
 
     const loadSubtypes = async () => {
       try {
@@ -254,7 +252,10 @@ const CatalogPage = observer(() => {
           </div>
         </div>
 
-        <div className={catalogStyles.deviceContainer} id="catalog-devices">
+        <div className={catalogStyles.deviceContainer} 
+        id="catalog-devices"
+        style={{ opacity: device.loading.devices ? 0.3 : 1 }}
+        >
           <DeviceList onDeviceClick={(id) => setSelectedDeviceId(id)} />
         </div>
         {showScrollTop && (
