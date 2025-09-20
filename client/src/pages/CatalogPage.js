@@ -206,6 +206,21 @@ device.setFacets({ subtypes: [], brands: [] });
     };
   }, []);
 
+    // Прокрутка к подтипам при выборе типа c учётом фикс-хедера
+useEffect(() => {
+  if (!device.selectedType?.id) return;
+
+  const HEADER_OFFSET = 90; // подгони под высоту твоей шапки
+  // Даем разметке обновиться (подтипы уже вставятся в DOM)
+  const r = requestAnimationFrame(() => {
+    const el = document.getElementById("subtype-filter");
+    if (!el) return;
+    const y = el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET;
+    window.scrollTo({ top: y, behavior: "smooth" });
+  });
+  return () => cancelAnimationFrame(r);
+}, [device.selectedType?.id]);
+
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
