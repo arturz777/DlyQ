@@ -77,6 +77,18 @@
   transform: scale(0.95);
 }
 
+.loadingOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255,255,255,0.7);
+  color: #0072CE;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  font-size: 1.5rem;
+}
+
 @keyframes loadingAnimation {
   0% {
     transform: translateX(-100%);
