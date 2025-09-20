@@ -17,6 +17,7 @@ export default class DeviceStore {
     this._totalCount = 0;
     this._limit = 1000;
     this._facets = { subtypes: [], brands: [] };
+    this._loading = { devices: false, subtypes: false };
     makeAutoObservable(this);
   }
 
@@ -127,14 +128,18 @@ export default class DeviceStore {
   }
 
   setFacets(facets) {
-  this._facets = facets || { subtypes: [], brands: [] };
-}
+    this._facets = facets || { subtypes: [], brands: [] };
+  }
 
   setPage(page) {
     this._page = page;
   }
   setTotalCount(count) {
     this._totalCount = count;
+  }
+
+  setLoading(key, val) {
+    this._loading[key] = !!val;
   }
 
   get types() {
@@ -181,5 +186,11 @@ export default class DeviceStore {
   }
   get facets() {
     return this._facets;
+  }
+  get loading() {
+    return this._loading;
+  }
+  get isLoadingAnything() {
+    return this._loading.devices || this._loading.subtypes;
   }
 }
