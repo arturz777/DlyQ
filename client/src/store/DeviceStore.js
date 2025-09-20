@@ -17,6 +17,7 @@ export default class DeviceStore {
     this._totalCount = 0;
     this._limit = 1000;
     this._facets = { subtypes: [], brands: [] };
+    this._loading = { devices: false, subtypes: false };
     makeAutoObservable(this);
   }
 
@@ -53,21 +54,15 @@ export default class DeviceStore {
     const same = this._selectedType.id === type?.id;
 
     if (same) {
-      // сняли выбор типа
       this._selectedType = {};
       this._selectedSubType = {};
       this._selectedMake = {};
       this._selectedModel = {};
-      // бренд по желанию тоже можно очистить, если он зависит от типа:
-      // this._selectedBrand = {};
     } else {
-      // новый тип → обязательно сбрасываем зависимости
       this._selectedType = type || {};
       this._selectedSubType = {};
       this._selectedMake = {};
       this._selectedModel = {};
-      // бренд очищать по вкусу:
-      // this._selectedBrand = {};
       this.setPage(1);
     }
   }
@@ -127,14 +122,18 @@ export default class DeviceStore {
   }
 
   setFacets(facets) {
-  this._facets = facets || { subtypes: [], brands: [] };
-}
+    this._facets = facets || { subtypes: [], brands: [] };
+  }
 
   setPage(page) {
     this._page = page;
   }
   setTotalCount(count) {
     this._totalCount = count;
+  }
+
+  setLoading(key, val) {
+    this._loading[key] = !!val;
   }
 
   get types() {
@@ -181,5 +180,11 @@ export default class DeviceStore {
   }
   get facets() {
     return this._facets;
+  }
+  get loading() {
+    return this._loading;
+  }
+  get isLoadingAnything() {
+    return this._loading.devices || this._loading.subtypes;
   }
 }
