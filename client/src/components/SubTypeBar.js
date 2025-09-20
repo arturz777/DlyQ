@@ -16,7 +16,11 @@ const SubTypeBar = observer(() => {
   };
 
   const list = useMemo(() => {
+
+    if (device.loading?.subtypes) return null;
+
     const facets = device.facets?.subtypes || [];
+
     if (facets.length) {
       const dict = new Map(device.subtypes.map((s) => [s.id, s]));
       return facets
@@ -28,12 +32,16 @@ const SubTypeBar = observer(() => {
         })
         .sort(sorter);
     }
+
+     if (!device.selectedType?.id) return [];
+
     return device.subtypes
       .filter((s) => s.typeId === device.selectedType?.id)
       .slice()
       .sort(sorter);
   }, [device.facets?.subtypes, device.subtypes, device.selectedType?.id]);
 
+   if (device.loading?.subtypes) return null;
   if (!list.length) return null;
 
   const activeId = device.selectedSubType?.id;
