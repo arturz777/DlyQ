@@ -495,7 +495,7 @@ const Basket = observer(() => {
           </h3>
         </>
       )}
-      {!hasMixedItems && (
+      {basket.items.length > 0 && !hasMixedItems && (
         <Elements stripe={stripePromise}>
           <PaymentForm
             totalPrice={basket.getTotalPrice()}
