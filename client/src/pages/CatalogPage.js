@@ -78,6 +78,19 @@ const CatalogPage = observer(() => {
     loadInitialData();
   }, [currentLang, typeIdFromUrl]);
 
+   useEffect(() => {
+  const id = Number(typeIdFromUrl);
+  if (!id) {
+    device.setSelectedType({});
+    return;
+  }
+  const found = device.types?.find((t) => t.id === id);
+  if (found && device.selectedType?.id !== id) {
+    device.setSelectedType(found);
+    device.setPage(1);
+  }
+}, [typeIdFromUrl, device.types]);
+
   useEffect(() => {
     return () => {
       device.setSelectedType({});
