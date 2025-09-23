@@ -110,6 +110,14 @@ const DevicePage = ({ id }) => {
 
   const images = [device.img, ...(device.thumbnails || [])];
 
+  const hyphenLang = (() => {
+    const l = (i18n.language || "ru").toLowerCase();
+    if (l.startsWith("ru")) return "ru";
+    if (l.startsWith("en")) return "en";
+    if (l.startsWith("et") || l === "est") return "et";
+    return "en";
+  })();
+  
   const handleNext = () => {
     setActiveIndex((prev) => (prev + 1) % images.length);
   };
@@ -278,10 +286,11 @@ const DevicePage = ({ id }) => {
         </div>
         <div className={styles.DevicePageDetails}>
           <div className={styles.DevicePageCard}>
-            <p className={styles.DevicePageTitle}>
+            <p className={styles.DevicePageTitle} lang={hyphenLang}>
               {device.translations?.["name"]?.[currentLang] || device.name}
             </p>
 
+               <hr className={styles.Separator} />
             <div className={styles.DevicePageBuyBlockDesktop}>
               {device.options?.map((option, optionIndex) => (
                 <div key={optionIndex} className={styles.DevicePageOption}>
@@ -351,9 +360,12 @@ const DevicePage = ({ id }) => {
               </button>
             </div>
 
-            <div className={styles.DevicePageInfoMobile}>
+            <div className={styles.DevicePageInfoMobile} lang={hyphenLang}>
               <p>{t("product photos are provided", { ns: "devicePage" })}</p>
             </div>
+
+ <hr className={styles.Separator} />
+                    
             <div className={styles.DevicePageSpecsMobile}>
               {(device.translations?.description?.[currentLang] ||
                 device.description) && (
