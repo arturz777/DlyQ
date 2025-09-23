@@ -5,17 +5,28 @@ import { Context } from "../../index";
 import styles from "./ChatModal.module.css";
 
 const ChatModal = () => {
-  const { supportChatVisible, supportChatId, closeSupportChat } = useContext(ChatContext);
+  const { supportChatVisible, supportChatId, closeSupportChat } =
+    useContext(ChatContext);
   const { user } = useContext(Context);
 
- if (!supportChatVisible) return null;
+  if (!supportChatVisible) return null;
+
+  const fallbackUser = {
+    id:
+      user.user?.id ??
+      (localStorage.guestId ||= "guest_" + crypto.randomUUID()),
+    role: user.user?.role ?? "guest",
+  };
 
   return (
-    <div className={styles.modalWrapper}>
-      <div className={styles.chatContainer}>
+    <div className={styles.modalWrapper} onClick={closeSupportChat}>
+      <div
+        className={styles.chatContainer}
+        onClick={(e) => e.stopPropagation()}
+      >
         <ChatBox
-          userId={user.user.id}
-          userRole={user.user.role}
+          userId={fallbackUser.id}
+          userRole={fallbackUser.role}
           chatId={supportChatId}
         />
       </div>
