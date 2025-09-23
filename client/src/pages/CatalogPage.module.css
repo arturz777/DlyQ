@@ -2,16 +2,14 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh; 
-  padding: 20px; 
+  min-height: 100vh;
   margin-top: 50px;
 }
 
 .catalogContent {
   width: 100%;
-  max-width: 1400px; 
+  max-width: 1400px;
   background-color: #fff;
-  padding: 20px;
 }
 
 .catalogTitle {
@@ -23,38 +21,38 @@
 
 .filters {
   display: flex;
-  flex-direction: column; 
-  align-items: center; 
-  gap: 5px; 
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
 }
 
 .brandFilter {
   font-size: 13px;
-  width: 100%; 
-  max-width: 800px; 
+  width: 100%;
+  max-width: 800px;
   margin-bottom: 0px;
 }
 
 .typeFilter {
-  width: 100%; 
+  width: 100%;
   max-width: 800px;
 }
 
 .deviceContainer {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-	gap: 20px; 
-	max-width: 1200px; 
-	width: 100%; 
-	margin: 0 auto; 
-   min-height: 600px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  min-height: 600px;
 }
 
 .scrollToTopButton {
   position: fixed;
   bottom: 80px;
   right: 20px;
-  background-color: #0072CE;
+  background-color: #0072ce;
   color: white;
   border: none;
   border-radius: 50%;
@@ -80,8 +78,8 @@
 .loadingOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(255,255,255,0.7);
-  color: #0072CE;
+  background: rgba(255, 255, 255, 0.7);
+  color: #0072ce;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -98,11 +96,6 @@
 }
 .modelFilter {
   scroll-margin-top: 13px;
-}
-
-@media (max-width: 768px) {
-  .catalogWrapper { padding: 8px; }       
-  .catalogContent { padding: 12px; }       
 }
 
 @keyframes loadingAnimation {
