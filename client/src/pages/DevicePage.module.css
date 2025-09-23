@@ -74,11 +74,11 @@
 }
 
 .DevicePageThumbnail:hover {
-  border-color: #0072CE;
+  border-color: #0072ce;
 }
 
 .ActiveThumbnail {
-  border-color: #0072CE;
+  border-color: #0072ce;
 }
 
 .DevicePageDetails {
@@ -105,11 +105,41 @@
 }
 
 .DevicePageTitle {
-  font-size: 2rem;
-   word-wrap: break-word;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+@media (max-width: 768px) {
+  .DevicePageCard {
+    text-align: left;
+  }
+
+  .DevicePageTitle {
+    max-width: min(100%, 54ch);
+    font-size: 1.08rem;
+    line-height: 1.4;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+    word-break: normal;
+    overflow-wrap: normal;
+    margin: 0 0 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .DevicePageContent {
+    margin-right: 0;
+    padding: 12px;
+    flex-direction: column;
+  }
+
+  .DevicePageTitle {
+    max-width: 100%;
+    font-size: 1.08rem;
+    line-height: 1.4;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+  }
 }
 
 .DevicePageSelect {
@@ -120,11 +150,11 @@
   font-size: 15px;
   background-color: #fff;
   transition: border-color 0.3s ease;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .DevicePageSelect:focus {
-  border-color: #0072CE;
+  border-color: #0072ce;
   outline: none;
 }
 
@@ -134,7 +164,6 @@
   display: block;
   color: #333;
 }
-
 
 .DevicePagePrice {
   font-size: 1.2rem;
@@ -155,7 +184,7 @@
 }
 
 .DevicePageAddToCart {
-  background-color: #0072CE;
+  background-color: #0072ce;
   color: white;
   border: none;
   padding: 12px 24px;
@@ -185,7 +214,7 @@
   cursor: not-allowed;
 }
 
-.DevicePageInfoDesktop{
+.DevicePageInfoDesktop {
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
@@ -361,7 +390,7 @@
 .DevicePageAddButtonCompact {
   display: flex;
   flex-grow: 1;
-  background: linear-gradient(90deg, #0072CE, #005bb5);
+  background: linear-gradient(90deg, #0072ce, #005bb5);
   color: white;
   border: none;
   padding: 14px 20px;
@@ -419,10 +448,14 @@
 }
 
 @media (max-width: 768px) {
-
- .DevicePageInfoMobile,
+  .DevicePageInfoMobile,
   .DevicePageSpecsMobile {
     display: block;
+    max-width: 100%;
+    font-size: 1.08rem;
+    line-height: 1.4;
+    hyphens: auto;
+    -webkit-hyphens: auto;
   }
 
   .DevicePageInfoDesktop,
@@ -435,22 +468,6 @@
   }
 
   .DevicePageBuyBlockMobile {
-    display: flex;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    padding: 12px 16px;
-    background-color: #fff;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-    justify-content: space-between;
-    align-items: center;
-    z-index: 1000;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-   .DevicePageBuyBlockMobile {
     display: flex;
     position: fixed;
     bottom: 0;
@@ -525,7 +542,7 @@
 
 @media (max-width: 768px) {
   .DevicePageSpecsMobile > .DevicePageSpecRow {
-    margin-left: 10px;    
-    max-width: 600px;     
+    margin-left: 10px;
+    max-width: 600px;
   }
 }
