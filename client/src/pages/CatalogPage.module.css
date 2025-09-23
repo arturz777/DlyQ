@@ -100,6 +100,11 @@
   scroll-margin-top: 13px;
 }
 
+@media (max-width: 768px) {
+  .catalogWrapper { padding: 8px; }       
+  .catalogContent { padding: 12px; }       
+}
+
 @keyframes loadingAnimation {
   0% {
     transform: translateX(-100%);
