@@ -244,12 +244,12 @@
 
 .DevicePageSpecsCard {
   display: block;
-  max-width: 760px;       
+  max-width: 760px;
   margin: 12px auto;
   border: 1px solid #eee;
   border-radius: 12px;
   overflow: hidden;
-  text-align: left;      
+  text-align: left;
 }
 
 .DevicePageSpecRow {
@@ -258,12 +258,12 @@
 }
 
 .DevicePageSpecRow + .DevicePageSpecRow {
-  border-top: 1px solid #eee;
+  border-top: 1px solid #ffffff;
 }
 
 .DevicePageSpecText {
   display: grid;
-  grid-template-columns: minmax(140px, 220px) 1fr; 
+  grid-template-columns: minmax(140px, 220px) 1fr;
   gap: 12px;
   align-items: start;
   color: #333;
@@ -273,7 +273,7 @@
   grid-column: 1;
   font-weight: 600;
   color: #111;
-  min-width: 0;       
+  min-width: 0;
   padding-right: 0;
 }
 
@@ -283,24 +283,24 @@
   line-height: 1.4;
   hyphens: auto;
   -webkit-hyphens: auto;
-  overflow-wrap: anywhere; 
+  overflow-wrap: anywhere;
 }
 
-.DevicePageSpecRow:nth-child(odd) { background: #fafafa; }
 @media (max-width: 768px) {
-  .DevicePageSpecsCard { max-width: 100%; margin: 12px 0; }
-  .DevicePageSpecText { grid-template-columns: 42% 1fr; gap: 10px; }
+  .DevicePageSpecsCard {
+    max-width: 100%;
+    margin: 12px 0;
+  }
+  .DevicePageSpecText {
+    grid-template-columns: 42% 1fr;
+    gap: 10px;
+  }
 }
-
 
 .DevicePageSpecText strong {
   flex: 0 0 30%;
   min-width: 150px;
   padding-right: 10px;
-}
-
-.DevicePageSpecRowEven {
-  background-color: #f9f9f9;
 }
 
 .preorderFields {
@@ -466,6 +466,12 @@
 .DevicePageInfoMobile,
 .DevicePageSpecsMobile {
   display: none;
+}
+
+@media (min-width: 769px) {
+  .DevicePageSelectedOptions {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {
