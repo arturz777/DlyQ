@@ -369,11 +369,15 @@ const DevicePage = ({ id }) => {
             <div className={styles.DevicePageSpecsMobile}>
               {(device.translations?.description?.[currentLang] ||
                 device.description) && (
-                <p className={styles.DevicePageDescription}>
-                  {device.translations?.description?.[currentLang] ||
-                    device.description}
-                </p>
+                <>
+                  <p className={styles.DevicePageDescription}>
+                    {device.translations?.description?.[currentLang] ||
+                      device.description}
+                  </p>
+                  <hr className={styles.Separator} />
+                </>
               )}
+                
               <p className={styles.DevicePageSpecsTitle}>
                 {t("description", { ns: "devicePage" })}
               </p>
