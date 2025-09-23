@@ -210,11 +210,11 @@ const HomePage = () => {
         setSidebarOpen={setSidebarOpen}
       />
 
-      <section className={styles.section}>
-        <h2>{t("new", { ns: "homePage" })}</h2>
+          <section className={styles.section}>
+        <h2>{t("discounts", { ns: "homePage" })}</h2>
         <div className={styles.deviceCarousel}>
-          {newDevices.length > 0 ? (
-            newDevices.map((device) => (
+          {Array.isArray(discountedDevices) && discountedDevices.length > 0 ? (
+            discountedDevices.map((device) => (
               <div key={device.id} className={styles.deviceItem}>
                 <DeviceItem
                   device={device}
@@ -229,10 +229,10 @@ const HomePage = () => {
       </section>
 
       <section className={styles.section}>
-        <h2>{t("discounts", { ns: "homePage" })}</h2>
+        <h2>{t("new", { ns: "homePage" })}</h2>
         <div className={styles.deviceCarousel}>
-          {Array.isArray(discountedDevices) && discountedDevices.length > 0 ? (
-            discountedDevices.map((device) => (
+          {newDevices.length > 0 ? (
+            newDevices.map((device) => (
               <div key={device.id} className={styles.deviceItem}>
                 <DeviceItem
                   device={device}
