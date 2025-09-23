@@ -424,17 +424,23 @@ const DevicePage = ({ id }) => {
           </div>
         </div>
       </div>
-      <div className={styles.DevicePageInfoDesktop}>
+     <div className={styles.DevicePageInfoDesktop}>
+         <hr className={styles.Separator} />
         <p>{t("product photos are provided", { ns: "devicePage" })}</p>
+         <hr className={styles.Separator} />
       </div>
       <div className={styles.DevicePageSpecsDesktop}>
         {(device.translations?.description?.[currentLang] ||
           device.description) && (
+            <>
           <p className={styles.DevicePageDescription}>
             {device.translations?.description?.[currentLang] ||
               device.description}
           </p>
+          <hr className={styles.Separator} />
+          </>
         )}
+          
         <p className={styles.DevicePageSpecsTitle}>
           {t("description", { ns: "devicePage" })}
         </p>
