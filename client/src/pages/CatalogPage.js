@@ -241,73 +241,323 @@ useEffect(() => {
     });
   };
 
-  return (
-    <div className={catalogStyles.catalogWrapper}>
-      <div className={catalogStyles.catalogContent}>
-        <p className={catalogStyles.catalogTitle}>
-          {t("product Catalog", { ns: "deviceList" })}
+ return (
+    <div className={styles.DevicePageContainer}>
+      <div className={styles.DevicePageContent}>
+        <div className={styles.DevicePageColImg}>
+          <div className={styles.DevicePageImageWrapper}>
+            {device.oldPrice && device.oldPrice > device.price && (
+              <div className={styles.DevicePageDiscountBadge}>
+                -
+                {Math.round(
+                  ((device.oldPrice - device.price) / device.oldPrice) * 100
+                )}
+                %
+              </div>
+            )}
+
+            <div className={styles.ImageContainer}>
+              <AnimatePresence mode="wait">
+                {images.map(
+                  (img, index) =>
+                    index === activeIndex && (
+                      <motion.img
+                        key={`${img}-${index}`}
+                        src={img}
+                        alt={device.name}
+                        className={styles.DevicePageMainImage}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        onLoad={() => appStore.stopLoading(false)}
+                        onError={() => appStore.startLoading(false)}
+                      />
+                    )
+                )}
+              </AnimatePresence>
+            </div>
+            {images.length > 1 && (
+              <div className={styles.ArrowButtons}>
+                <button onClick={handlePrev} className={styles.PrevButton}>
+                  ‹
+                </button>
+                <button onClick={handleNext} className={styles.NextButton}>
+                  ›
+                </button>
+              </div>
+            )}
+          </div>
+          {images.length > 1 && (
+            <div className={styles.DevicePageThumbnailContainer}>
+              {images.map((thumb, index) => (
+                <img
+                  key={index}
+                  src={thumb}
+                  className={`${styles.DevicePageThumbnail} ${
+                    index === activeIndex ? styles.ActiveThumbnail : ""
+                  }`}
+                  onClick={() => setActiveIndex(index)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+        <div className={styles.DevicePageDetails}>
+          <div className={styles.DevicePageCard}>
+            <p className={styles.DevicePageTitle} lang={hyphenLang}>
+              {device.translations?.["name"]?.[currentLang] || device.name}
+            </p>
+
+            {device.options?.length > 0 && (
+              <div className={styles.DevicePageSelectedOptions}>
+                {device.options?.map((option, optionIndex) => (
+                  <div key={optionIndex} className={styles.DevicePageOption}>
+                    <select
+                      value={selectedOptions[option.name]?.value || ""}
+                      onChange={(e) => {
+                        const selectedValue = option.values.find(
+                          (v) => v.value === e.target.value
+                        );
+                        handleOptionChange(option.name, selectedValue);
+                      }}
+                      className={styles.DevicePageSelect}
+                    >
+                      <option value="" disabled hidden>
+                        {t("Select", { ns: "devicePage" })}:{" "}
+                        {option.translations?.name?.[currentLang] ||
+                          option.name}
+                      </option>
+                      {option.values.map((valueObj, valueIndex) => (
+                        <option key={valueIndex} value={valueObj.value}>
+                          {option.translations?.values?.[valueIndex]?.[
+                            currentLang
+                          ] || valueObj.value}
+                          {valueObj.quantity <= 0
+                            ? ` (${t("out of stock (Pre-order)", {
+                                ns: "devicePage",
+                              })})`
+                            : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <hr className={styles.Separator} />
+            <div className={styles.DevicePageBuyBlockDesktop}>
+              {device.options?.map((option, optionIndex) => (
+                <div key={optionIndex} className={styles.DevicePageOption}>
+                  <label>
+                    {option.translations?.name?.[currentLang] || option.name}
+                  </label>
+
+                  <select
+                    value={selectedOptions[option.name]?.value || ""}
+                    onChange={(e) => {
+                      const selectedValue = option.values.find(
+                        (v) => v.value === e.target.value
+                      );
+                      handleOptionChange(option.name, selectedValue);
+                    }}
+                    className={styles.DevicePageSelect}
+                  >
+                    <option value="" disabled hidden>
+                      {t("Select", { ns: "devicePage" })}:{" "}
+                      {option.translations?.name?.[currentLang] || option.name}
+                    </option>
+                    {option.values.map((valueObj, valueIndex) => (
+                      <option key={valueIndex} value={valueObj.value}>
+                        {option.translations?.values?.[valueIndex]?.[
+                          currentLang
+                        ] || valueObj.value}
+                        {valueObj.quantity <= 0
+                          ? ` (${t("out of stock (Pre-order)", {
+                              ns: "devicePage",
+                            })})`
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+
+              <div className={styles.DevicePagePriceBlock}>
+                {device.oldPrice &&
+                Number(device.oldPrice) > Number(device.price) ? (
+                  <>
+                    <span className={styles.DevicePageOldPrice}>
+                      {(
+                        Number(device.oldPrice) +
+                        (finalPrice - (Number(device.price) || 0))
+                      ).toFixed(2)}{" "}
+                      €
+                    </span>
+                    <span className={styles.DevicePageNewPrice}>
+                      {finalPrice.toFixed(2)} €
+                    </span>
+                  </>
+                ) : (
+                  <span className={styles.DevicePageRegularPrice}>
+                    {finalPrice.toFixed(2)} €
+                  </span>
+                )}
+              </div>
+
+              <button
+                className={styles.DevicePageAddToCart}
+                onClick={handleAddToBasket}
+              >
+                {availableQuantity <= 0
+                  ? t("out_of_stock", { ns: "devicePage" })
+                  : t("add_to_cart", { ns: "devicePage" })}
+              </button>
+            </div>
+
+            <div className={styles.DevicePageInfoMobile} lang={hyphenLang}>
+              <p>{t("product photos are provided", { ns: "devicePage" })}</p>
+            </div>
+
+            <hr className={styles.Separator} />
+
+            <div className={styles.DevicePageSpecsMobile}>
+              {(device.translations?.description?.[currentLang] ||
+                device.description) && (
+                <>
+                  <p className={styles.DevicePageDescription}>
+                    {device.translations?.description?.[currentLang] ||
+                      device.description}
+                  </p>
+                  <hr className={styles.Separator} />
+                </>
+              )}
+
+              <p className={styles.DevicePageSpecsTitle}>
+                {t("description", { ns: "devicePage" })}
+              </p>
+
+              <div className={styles.DevicePageSpecsCard}>
+                {device.info.map((info, index) => (
+                  <div key={info.id} className={styles.DevicePageSpecRow}>
+                    <span className={styles.DevicePageSpecText}>
+                      <strong>
+                        {info.translations?.title?.[currentLang] || info.title}
+                      </strong>
+                      <span>
+                        {info.translations?.description?.[currentLang] ||
+                          info.description}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+                {device.expiryDate && (
+                  <div className={styles.DevicePageSpecRow}>
+                    <span className={styles.DevicePageSpecText}>
+                      <strong>
+                        {device.expiryKind === "use_by"
+                          ? t("use_by", { ns: "devicePage" })
+                          : device.expiryKind === "best_before"
+                          ? t("best_before", { ns: "devicePage" })
+                          : t("expiry_date", { ns: "devicePage" })}
+                      </strong>
+                      <span>
+                        {new Date(device.expiryDate).toLocaleDateString(
+                          "ru-RU"
+                        )}
+                      </span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className={styles.DevicePageInfoDesktop}>
+        <hr className={styles.Separator} />
+        <p>{t("product photos are provided", { ns: "devicePage" })}</p>
+        <hr className={styles.Separator} />
+      </div>
+      <div className={styles.DevicePageSpecsDesktop}>
+        {(device.translations?.description?.[currentLang] ||
+          device.description) && (
+          <>
+            <p className={styles.DevicePageDescription}>
+              {device.translations?.description?.[currentLang] ||
+                device.description}
+            </p>
+            <hr className={styles.Separator} />
+          </>
+        )}
+
+        <p className={styles.DevicePageSpecsTitle}>
+          {t("description", { ns: "devicePage" })}
         </p>
 
-        <div className={catalogStyles.filters}>
-          <div className={catalogStyles.brandFilter}>
-            <BrandBar />
-          </div>
-          <div className={catalogStyles.typeFilter}>
-            <TypeBar />
-          </div>
-
-          {isAutoType && (
-            <>
-              <div id="make-filter" className={catalogStyles.makeFilter}>
-                <MakeBar />
-              </div>
-
-              <div className={catalogStyles.modelFilter}>
-                <ModelBar />
-              </div>
-            </>
+        <div className={styles.DevicePageSpecsCard}>
+          {device.info.map((info, index) => (
+            <div key={info.id} className={styles.DevicePageSpecRow}>
+              <span className={styles.DevicePageSpecText}>
+                <strong>
+                  {info.translations?.title?.[currentLang] || info.title}
+                </strong>
+                <span>
+                  {info.translations?.description?.[currentLang] ||
+                    info.description}
+                </span>
+              </span>
+            </div>
+          ))}
+          {device.expiryDate && (
+            <div className={styles.DevicePageSpecRow}>
+              <span className={styles.DevicePageSpecText}>
+                <strong>
+                  {device.expiryKind === "use_by"
+                    ? t("use_by", { ns: "devicePage" })
+                    : device.expiryKind === "best_before"
+                    ? t("best_before", { ns: "devicePage" })
+                    : t("expiry_date", { ns: "devicePage" })}
+                </strong>
+                <span>
+                  {new Date(device.expiryDate).toLocaleDateString("ru-RU")}
+                </span>
+              </span>
+            </div>
           )}
-          <div id="subtype-filter" className={catalogStyles.subtypeFilter}>
-            {device.selectedType?.id ? (
-              isAutoType ? (
-                device.selectedModel?.id ? (
-                  <SubTypeBar />
-                ) : null
-              ) : (
-                <SubTypeBar />
-              )
-            ) : null}
-          </div>
         </div>
-
-        <div className={catalogStyles.deviceContainer} 
-        id="catalog-devices"
-        style={{ opacity: device.loading.devices ? 0.3 : 1 }}
-        >
-          <DeviceList onDeviceClick={(id) => setSelectedDeviceId(id)} />
-        </div>
-        {showScrollTop && (
-          <button
-            onClick={scrollToTop}
-            className={catalogStyles.scrollToTopButton}
-          >
-            ↑
-          </button>
-        )}
-        {selectedDeviceId && (
-          <SlideModal onClose={() => setSelectedDeviceId(null)}>
-            <DevicePage id={selectedDeviceId} />
-          </SlideModal>
-        )}
       </div>
-      {device.isLoadingAnything && (
-  <div className={catalogStyles.loadingOverlay}>
-    {t("loading", { ns: "homePage" })}
-  </div>
-)}
-
+      <div className={styles.DevicePageBuyBlockMobile}>
+        <button
+          className={styles.DevicePageAddButtonCompact}
+          onClick={handleAddToBasket}
+        >
+          <span className={styles.AddText}>
+            {t("add_to_cart", { ns: "devicePage" })}
+          </span>
+          <span className={styles.AddPrice}>
+            {device.oldPrice &&
+            Number(device.oldPrice) > Number(device.price) ? (
+              <>
+                <span className={styles.Strike}>
+                  {(
+                    Number(device.oldPrice) +
+                    (finalPrice - (Number(device.price) || 0))
+                  ).toFixed(2)}{" "}
+                  €
+                </span>{" "}
+                {finalPrice.toFixed(2)} €
+              </>
+            ) : (
+              `${finalPrice.toFixed(2)} €`
+            )}
+          </span>
+        </button>
+      </div>
     </div>
   );
-});
+};
 
-export default CatalogPage;
+export default DevicePage;
+
