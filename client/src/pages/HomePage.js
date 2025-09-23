@@ -76,7 +76,7 @@ const HomePage = () => {
             : recommendedData?.devices ?? []
         );
 
-        device.setTypes(
+        setTypes(
           (Array.isArray(typesData) ? typesData : []).map((t) => ({
             ...t,
             translations: t.translations || {},
