@@ -415,12 +415,11 @@
   background: linear-gradient(90deg, #0072ce, #005bb5);
   color: white;
   border: none;
-  padding: 5px 20px;
+  padding: 14px 20px;
   font-size: 16px;
   font-weight: 500;
   border-radius: 12px;
   cursor: pointer;
-  width: 50px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -435,7 +434,7 @@
 }
 
 .DevicePageSelectedOptions {
-  width: 50px;
+  width: 100%;
   font-size: 14px;
   color: #555;
   flex-grow: 1;
