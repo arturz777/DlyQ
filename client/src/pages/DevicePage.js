@@ -222,7 +222,7 @@ const DevicePage = ({ id }) => {
 
   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
-  return (
+ return (
     <div className={styles.DevicePageContainer}>
       <div className={styles.DevicePageContent}>
         <div className={styles.DevicePageColImg}>
@@ -290,7 +290,44 @@ const DevicePage = ({ id }) => {
               {device.translations?.["name"]?.[currentLang] || device.name}
             </p>
 
-               <hr className={styles.Separator} />
+            {device.options?.length > 0 && (
+              <div className={styles.DevicePageSelectedOptions}>
+                {device.options?.map((option, optionIndex) => (
+                  <div key={optionIndex} className={styles.DevicePageOption}>
+                    <select
+                      value={selectedOptions[option.name]?.value || ""}
+                      onChange={(e) => {
+                        const selectedValue = option.values.find(
+                          (v) => v.value === e.target.value
+                        );
+                        handleOptionChange(option.name, selectedValue);
+                      }}
+                      className={styles.DevicePageSelect}
+                    >
+                      <option value="" disabled hidden>
+                        {t("Select", { ns: "devicePage" })}:{" "}
+                        {option.translations?.name?.[currentLang] ||
+                          option.name}
+                      </option>
+                      {option.values.map((valueObj, valueIndex) => (
+                        <option key={valueIndex} value={valueObj.value}>
+                          {option.translations?.values?.[valueIndex]?.[
+                            currentLang
+                          ] || valueObj.value}
+                          {valueObj.quantity <= 0
+                            ? ` (${t("out of stock (Pre-order)", {
+                                ns: "devicePage",
+                              })})`
+                            : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <hr className={styles.Separator} />
             <div className={styles.DevicePageBuyBlockDesktop}>
               {device.options?.map((option, optionIndex) => (
                 <div key={optionIndex} className={styles.DevicePageOption}>
@@ -364,16 +401,20 @@ const DevicePage = ({ id }) => {
               <p>{t("product photos are provided", { ns: "devicePage" })}</p>
             </div>
 
- <hr className={styles.Separator} />
-                    
+            <hr className={styles.Separator} />
+
             <div className={styles.DevicePageSpecsMobile}>
               {(device.translations?.description?.[currentLang] ||
                 device.description) && (
-                <p className={styles.DevicePageDescription}>
-                  {device.translations?.description?.[currentLang] ||
-                    device.description}
-                </p>
+                <>
+                  <p className={styles.DevicePageDescription}>
+                    {device.translations?.description?.[currentLang] ||
+                      device.description}
+                  </p>
+                  <hr className={styles.Separator} />
+                </>
               )}
+
               <p className={styles.DevicePageSpecsTitle}>
                 {t("description", { ns: "devicePage" })}
               </p>
@@ -421,16 +462,22 @@ const DevicePage = ({ id }) => {
         </div>
       </div>
       <div className={styles.DevicePageInfoDesktop}>
+        <hr className={styles.Separator} />
         <p>{t("product photos are provided", { ns: "devicePage" })}</p>
+        <hr className={styles.Separator} />
       </div>
       <div className={styles.DevicePageSpecsDesktop}>
         {(device.translations?.description?.[currentLang] ||
           device.description) && (
-          <p className={styles.DevicePageDescription}>
-            {device.translations?.description?.[currentLang] ||
-              device.description}
-          </p>
+          <>
+            <p className={styles.DevicePageDescription}>
+              {device.translations?.description?.[currentLang] ||
+                device.description}
+            </p>
+            <hr className={styles.Separator} />
+          </>
         )}
+
         <p className={styles.DevicePageSpecsTitle}>
           {t("description", { ns: "devicePage" })}
         </p>
@@ -474,47 +521,7 @@ const DevicePage = ({ id }) => {
           )}
         </div>
       </div>
-      <div
-        className={`${styles.DevicePageBuyBlockMobile} ${
-          device.options?.length ? styles.WithOptions : styles.NoOptions
-        }`}
-      >
-        {device.options?.length > 0 && (
-          <div className={styles.DevicePageSelectedOptions}>
-            {device.options?.map((option, optionIndex) => (
-              <div key={optionIndex} className={styles.DevicePageOption}>
-                <select
-                  value={selectedOptions[option.name]?.value || ""}
-                  onChange={(e) => {
-                    const selectedValue = option.values.find(
-                      (v) => v.value === e.target.value
-                    );
-                    handleOptionChange(option.name, selectedValue);
-                  }}
-                  className={styles.DevicePageSelect}
-                >
-                  <option value="" disabled hidden>
-                    {t("Select", { ns: "devicePage" })}:{" "}
-                    {option.translations?.name?.[currentLang] || option.name}
-                  </option>
-                  {option.values.map((valueObj, valueIndex) => (
-                    <option key={valueIndex} value={valueObj.value}>
-                      {option.translations?.values?.[valueIndex]?.[
-                        currentLang
-                      ] || valueObj.value}
-                      {valueObj.quantity <= 0
-                        ? ` (${t("out of stock (Pre-order)", {
-                            ns: "devicePage",
-                          })})`
-                        : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
-          </div>
-        )}
-
+      <div className={styles.DevicePageBuyBlockMobile}>
         <button
           className={styles.DevicePageAddButtonCompact}
           onClick={handleAddToBasket}
