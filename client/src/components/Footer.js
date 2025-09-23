@@ -36,7 +36,8 @@ const Footer = () => {
           <button
             type="button"
             className={styles.chatLinkButton}
-            onClick={openSupportChat}
+            onClick={(e) => { e.stopPropagation(); console.log('chat click'); openSupportChat(); }}
+
           >
             <svg className={styles.chatIcon} viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
               <path d="M4 5a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H9l-4 4v-4H7a3 3 0 0 1-3-3V5z" fill="currentColor"/>
