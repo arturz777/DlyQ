@@ -26,6 +26,8 @@ const DevicePage = ({ id }) => {
   const deviceName = device.translations?.name?.[currentLang] || device.name;
   const isStoreClosed = !isShopOpenNow();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+   const [[page, direction], setPage] = useState([0, 0]);
+  const imageIndex = activeIndex;
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
@@ -118,13 +120,37 @@ const DevicePage = ({ id }) => {
     return "en"; 
   })();
 
-  const handleNext = () => {
+   const handleNext = () => {
+    setPage(([p]) => [p + 1, +1]);
     setActiveIndex((prev) => (prev + 1) % images.length);
   };
 
   const handlePrev = () => {
+    setPage(([p]) => [p - 1, -1]);
     setActiveIndex((prev) => (prev - 1 + images.length) % images.length);
   };
+
+  const paginate = (newDirection) => {
+    setPage(([p]) => [p + newDirection, newDirection]);
+    if (newDirection > 0) handleNext();
+    else handlePrev();
+  };
+
+  const variants = {
+    enter: (dir) => ({ x: dir > 0 ? 300 : -300, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (dir) => ({ x: dir > 0 ? -300 : 300, opacity: 0 }),
+  };
+
+  const handleThumbClick = (idx) => {
+    if (idx === activeIndex) return;
+    const dir = idx > activeIndex ? +1 : -1;
+    setPage(([p]) => [p + dir, dir]);
+    setActiveIndex(idx);
+  };
+
+  const swipeConfidenceThreshold = 800;
+  const swipePower = (offset, velocity) => Math.abs(offset) * velocity;
 
   const handleOptionChange = (optionName, selectedValue) => {
     setSelectedOptions((prev) => ({
@@ -220,9 +246,6 @@ const DevicePage = ({ id }) => {
     setAvailableQuantity((prev) => prev - 1);
   };
 
-const swipeConfidenceThreshold = 800;
-  const swipePower = (offset, velocity) => Math.abs(offset) * velocity;
-
   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
 return (
@@ -241,41 +264,46 @@ return (
             )}
 
             <div className={styles.ImageContainer}>
-               <motion.div
-                drag="x"
+              <motion.div
+                drag={isMobile && images.length > 1 ? "x" : false}
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.2}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  position: "relative",
+                  touchAction: "pan-y",
+                }}
                 onDragEnd={(e, { offset, velocity }) => {
                   if (images.length <= 1) return;
                   const swipe = swipePower(offset.x, velocity.x);
-                  if (swipe < -swipeConfidenceThreshold) {
-                    handleNext();
-                  } else if (swipe > swipeConfidenceThreshold) {
-                    handlePrev();
-                  }
+                  if (swipe < -swipeConfidenceThreshold) paginate(+1);
+                  else if (swipe > swipeConfidenceThreshold) paginate(-1);
                 }}
-                style={{ width: "100%", height: "100%", position: "relative" }}
               >
-              <AnimatePresence mode="wait">
-                {images.map(
-                  (img, index) =>
-                    index === activeIndex && (
-                      <motion.img
-                        key={`${img}-${index}`}
-                        src={img}
-                        alt={device.name}
-                        className={styles.DevicePageMainImage}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        onLoad={() => appStore.stopLoading(false)}
-                        onError={() => appStore.startLoading(false)}
-                      />
-                    )
-                )}
-              </AnimatePresence>
-                </motion.div>
+                <AnimatePresence custom={direction} mode="popLayout">
+                  {images.map(
+                    (img, index) =>
+                      index === imageIndex && (
+                        <motion.img
+                          key={`${img}-${index}`}
+                          src={img}
+                          alt={device.name}
+                          className={styles.DevicePageMainImage}
+                          custom={direction}
+                          variants={variants}
+                          initial="enter"
+                          animate="center"
+                          exit="exit"
+                          transition={{
+                            x: { type: "spring", stiffness: 300, damping: 35 },
+                            opacity: { duration: 0.18 },
+                          }}
+                        />
+                      )
+                  )}
+                </AnimatePresence>
+              </motion.div>
             </div>
             {images.length > 1 && (
               <div className={styles.ArrowButtons}>
@@ -297,7 +325,7 @@ return (
                   className={`${styles.DevicePageThumbnail} ${
                     index === activeIndex ? styles.ActiveThumbnail : ""
                   }`}
-                  onClick={() => setActiveIndex(index)}
+                  onClick={() => handleThumbClick(index)}
                 />
               ))}
             </div>
@@ -560,4 +588,5 @@ return (
 };
 
 export default DevicePage;
+
 
