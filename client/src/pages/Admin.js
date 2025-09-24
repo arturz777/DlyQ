@@ -781,230 +781,430 @@ const Admin = () => {
           </div>
 
           {types.map((type) => {
-  const subtypesForType = subtypes.filter((s) => s.typeId === type.id);
-  const subtypeIdsOfType = new Set(subtypesForType.map((s) => Number(s.id)));
+            const subtypesForType = subtypes.filter(
+              (s) => s.typeId === type.id
+            );
+            const subtypeIdsOfType = new Set(
+              subtypesForType.map((s) => Number(s.id))
+            );
 
-  const typeDevices = filteredDevices.filter((d) => {
-    const tIds = getDeviceTypeIds(d);
-    const sIds = getDeviceSubtypeIds(d);
-    const viaType = tIds.has(Number(type.id));
-    const viaSubtype = [...sIds].some((id) => subtypeIdsOfType.has(id));
-    return viaType || viaSubtype;
-  });
+            const typeDevices = filteredDevices.filter((d) => {
+              const tIds = getDeviceTypeIds(d);
+              const sIds = getDeviceSubtypeIds(d);
+              const viaType = tIds.has(Number(type.id));
+              const viaSubtype = [...sIds].some((id) =>
+                subtypeIdsOfType.has(id)
+              );
+              return viaType || viaSubtype;
+            });
 
-  const isOpenType = openDeviceTypeIds.includes(type.id);
-  const isAuto = Number(type.id) === Number(autoTypeId); // <-- ВАЖНО
+            const isOpenType = openDeviceTypeIds.includes(type.id);
+            const isAuto = Number(type.id) === Number(autoTypeId); // <-- ВАЖНО
 
-  // ===== СТАРАЯ раскладка для НЕ-авто =====
-  const devicesWithoutSubtypeInThisType = !isAuto
-    ? typeDevices.filter((d) => {
-        const sIds = getDeviceSubtypeIds(d);
-        const hasSubtypeOfThisType = [...sIds].some((id) =>
-          subtypeIdsOfType.has(id)
-        );
-        const belongsViaType = getDeviceTypeIds(d).has(Number(type.id));
-        return belongsViaType && !hasSubtypeOfThisType;
-      })
-    : [];
+            // ===== СТАРАЯ раскладка для НЕ-авто =====
+            const devicesWithoutSubtypeInThisType = !isAuto
+              ? typeDevices.filter((d) => {
+                  const sIds = getDeviceSubtypeIds(d);
+                  const hasSubtypeOfThisType = [...sIds].some((id) =>
+                    subtypeIdsOfType.has(id)
+                  );
+                  const belongsViaType = getDeviceTypeIds(d).has(
+                    Number(type.id)
+                  );
+                  return belongsViaType && !hasSubtypeOfThisType;
+                })
+              : [];
+            const makesMap = new Map();
 
-  // ===== Подготовка авто-групп (марка/модель) ТОЛЬКО ДЛЯ авто =====
-  const makesMap = new Map();
-  const universalDevices = [];
-  const makeIdFrom = (c) => c?.makeId ?? c?.make?.id ?? c?.model?.makeId ?? null;
-  const modelIdFrom = (c) => c?.modelId ?? c?.model?.id ?? null;
+            const universalNoSubtype = [];
+            const universalWithSubtype = [];
 
-  if (isAuto) {
-    for (const d of typeDevices) {
-      const compat = getCompatList(d);
-      if (!compat.length) continue;
+            const makeIdFrom = (c) =>
+              c?.makeId ?? c?.make?.id ?? c?.model?.makeId ?? null;
+            const modelIdFrom = (c) => c?.modelId ?? c?.model?.id ?? null;
 
-      for (const c of compat) {
-        if (c?.isUniversal) {
-          universalDevices.push(d);
-          continue;
-        }
-        const mk = makeIdFrom(c);
-        if (!mk) continue;
+            const hasSubtypeOfThisType = (d) => {
+              const sIds = getDeviceSubtypeIds(d);
+              for (const id of sIds)
+                if (subtypeIdsOfType.has(Number(id))) return true;
+              return false;
+            };
 
-        const md = modelIdFrom(c) ?? "__none__";
-        if (!makesMap.has(mk)) makesMap.set(mk, new Map());
-        const byModel = makesMap.get(mk);
-        if (!byModel.has(md)) byModel.set(md, []);
-        byModel.get(md).push(d);
-      }
-    }
-  }
+            const pushUniversal = (d) => {
+              if (hasSubtypeOfThisType(d)) universalWithSubtype.push(d);
+              else universalNoSubtype.push(d);
+            };
 
-          const uniqueById = (arr) => {
-    const seen = new Set(); const out = [];
-    for (const x of arr) if (!seen.has(x.id)) { seen.add(x.id); out.push(x); }
-    return out;
-  };
+            if (isAuto) {
+              for (const d of typeDevices) {
+                const compat = getCompatList(d);
 
-  const groupBySubtypeWithinType = (list) => {
-    const m = new Map();
-    for (const d of uniqueById(list)) {
-      const sIds = getDeviceSubtypeIds(d);
-      const idsOfThisType = [...sIds].filter((id) => subtypeIdsOfType.has(Number(id)));
-      if (idsOfThisType.length === 0) {
-        if (!m.has("__none__")) m.set("__none__", []);
-        m.get("__none__").push(d);
-      } else {
-        for (const sid of idsOfThisType) {
-          if (!m.has(sid)) m.set(sid, []);
-          m.get(sid).push(d);
-        }
-      }
-    }
-    return m;
-  };
+                if (!compat.length) {
+                  pushUniversal(d);
+                  continue;
+                }
 
-           
-  const DeviceRow = ({ d }) => (
-    <div key={d.id} className={styles.item}>
-      <div>
-        id-{d.id}
-        <Image className={styles.adminDeviceImg} width={50} height={50} src={d.img}/>
-      </div>
-      <span className={styles.adminDeviceName}>{d.name}</span>
-      <div className={styles.buttons}>
-        <div className={styles.adminDevicePrice}>
-          {d.discount ? (<><span className={styles.discountedPrice}>{d.price} €</span>
-          <span className={styles.oldPrice}>{d.oldPrice} €</span></>) : (<span>{d.price} €</span>)}
-        </div>
-        <span className={styles.deviceQuantity}>
-          {d.quantity === 0 ? <span style={{color:'red'}}>Нет в наличии</span> :
-            <span style={{color:'green'}}>В наличии: {d.quantity}</span>}
-        </span>
-        <button className={styles.editButton} onClick={() => handleEditDevice(d)}>Редактировать</button>
-        <button className={styles.deleteButton} onClick={() => { if (window.confirm('Удалить этот девайс?')) handleDeleteDevice(d.id); }}>Удалить</button>
-      </div>
-    </div>
-  );
+                let placed = false;
+
+                for (const c of compat) {
+                  if (c?.isUniversal) {
+                    pushUniversal(d);
+                    placed = true;
+                    continue;
+                  }
+
+                  const mk = makeIdFrom(c);
+                  const mdMaybe = modelIdFrom(c);
+
+                  if (!mk && !mdMaybe) {
+                    pushUniversal(d);
+                    placed = true;
+                    continue;
+                  }
+
+                  if (!mk) continue;
+                  const md = mdMaybe ?? "__none__";
+                  if (!makesMap.has(mk)) makesMap.set(mk, new Map());
+                  const byModel = makesMap.get(mk);
+                  if (!byModel.has(md)) byModel.set(md, []);
+                  byModel.get(md).push(d);
+                  placed = true;
+                }
+
+                if (!placed) pushUniversal(d);
+              }
+            }
+
+            const uniqueById = (arr) => {
+              const seen = new Set();
+              const out = [];
+              for (const x of arr)
+                if (!seen.has(x.id)) {
+                  seen.add(x.id);
+                  out.push(x);
+                }
+              return out;
+            };
+
+            const groupBySubtypeWithinType = (list) => {
+              const m = new Map();
+              for (const d of uniqueById(list)) {
+                const sIds = getDeviceSubtypeIds(d);
+                const idsOfThisType = [...sIds].filter((id) =>
+                  subtypeIdsOfType.has(Number(id))
+                );
+                if (idsOfThisType.length === 0) {
+                  if (!m.has("__none__")) m.set("__none__", []);
+                  m.get("__none__").push(d);
+                } else {
+                  for (const sid of idsOfThisType) {
+                    if (!m.has(sid)) m.set(sid, []);
+                    m.get(sid).push(d);
+                  }
+                }
+              }
+              return m;
+            };
+
+            const DeviceRow = ({ d }) => (
+              <div key={d.id} className={styles.item}>
+                <div>
+                  id-{d.id}
+                  <Image
+                    className={styles.adminDeviceImg}
+                    width={50}
+                    height={50}
+                    src={d.img}
+                  />
+                </div>
+                <span className={styles.adminDeviceName}>{d.name}</span>
+                <div className={styles.buttons}>
+                  <div className={styles.adminDevicePrice}>
+                    {d.discount ? (
+                      <>
+                        <span className={styles.discountedPrice}>
+                          {d.price} €
+                        </span>
+                        <span className={styles.oldPrice}>{d.oldPrice} €</span>
+                      </>
+                    ) : (
+                      <span>{d.price} €</span>
+                    )}
+                  </div>
+                  <span className={styles.deviceQuantity}>
+                    {d.quantity === 0 ? (
+                      <span style={{ color: "red" }}>Нет в наличии</span>
+                    ) : (
+                      <span style={{ color: "green" }}>
+                        В наличии: {d.quantity}
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    className={styles.editButton}
+                    onClick={() => handleEditDevice(d)}
+                  >
+                    Редактировать
+                  </button>
+                  <button
+                    className={styles.deleteButton}
+                    onClick={() => {
+                      if (window.confirm("Удалить этот девайс?"))
+                        handleDeleteDevice(d.id);
+                    }}
+                  >
+                    Удалить
+                  </button>
+                </div>
+              </div>
+            );
 
             return (
-    <div key={type.id} className={styles.typeGroup}>
-      <div
-        className={`${styles.typeHeader} ${styles.typeHeaderType}`}
-        onClick={() => toggleDeviceType(type.id)}
-        style={{cursor:'pointer',display:'flex',justifyContent:'space-between',
-                background:'#e8f0fe',padding:'10px',borderRadius:'5px',marginBottom:'5px'}}
-      >
-        <h5 className={styles.typeTitle}>{type.name}</h5>
-        <span>{isOpenType ? '▲' : '▼'}</span>
-      </div>
-
-      {isOpenType && (
-        <>
-          {!isAuto && (
-            <>
-              {devicesWithoutSubtypeInThisType.length > 0 && (
-                <div className={styles.itemList}>
-                  {devicesWithoutSubtypeInThisType.map((d) => (
-                    <DeviceRow key={d.id} d={d} />
-                  ))}
+              <div key={type.id} className={styles.typeGroup}>
+                <div
+                  className={`${styles.typeHeader} ${styles.typeHeaderType}`}
+                  onClick={() => toggleDeviceType(type.id)}
+                  style={{
+                    cursor: "pointer",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    background: "#e8f0fe",
+                    padding: "10px",
+                    borderRadius: "5px",
+                    marginBottom: "5px",
+                  }}
+                >
+                  <h5 className={styles.typeTitle}>{type.name}</h5>
+                  <span>{isOpenType ? "▲" : "▼"}</span>
                 </div>
-              )}
 
-              {subtypesForType.map((subtype) => {
-                const subtypeDevices = typeDevices.filter((d) =>
-                  getDeviceSubtypeIds(d).has(Number(subtype.id))
-                );
-                if (!subtypeDevices.length) return null;
-                return (
-                  <div key={subtype.id} className={styles.typeGroup}>
-                    <h5 className={styles.subtypeTitle}>{subtype.name}</h5>
-                    <div className={styles.itemList}>
-                      {subtypeDevices.map((d) => <DeviceRow key={d.id} d={d} />)}
-                    </div>
-                  </div>
-                );
-              })}
-            </>
-          )}
-
-          {isAuto && (
-            <>
-              {uniqueById(universalDevices).length > 0 && (
-                <div className={styles.typeGroup} style={{marginTop:8}}>
-                  <h5 className={styles.typeTitle}>Без марки/модели</h5>
-                  {[...groupBySubtypeWithinType(universalDevices)].map(([key, list]) => {
-                    const title = key === '__none__'
-                      ? 'Без подтипа'
-                      : subtypesForType.find((s) => s.id === Number(key))?.name || `Подтип ${key}`;
-                    return (
-                      <div key={`u-${String(key)}`} style={{marginBottom:6}}>
-                        <div className={styles.subtypeTitle}>{title}</div>
-                        <div className={styles.itemList}>
-                          {list.map((d) => <DeviceRow key={d.id} d={d} />)}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {[...makesMap.entries()].map(([makeId, byModel]) => {
-                const mkOpen = isMakeOpen(type.id, makeId);
-                const makeName = getMakeName(makeId);
-                return (
-                  <div key={`mk-${makeId}`} className={styles.typeGroup} style={{marginTop:10}}>
-                    <div className={`${styles.typeHeader} ${styles.typeHeaderMake}`}
-                         onClick={() => toggleMakeInType(type.id, makeId)}
-                         style={{cursor:'pointer',display:'flex',justifyContent:'space-between',
-                                 background:'#f5f7ff',padding:10,borderRadius:5}}>
-                      <h5 className={styles.typeTitle}>{makeName}</h5>
-                      <span>{mkOpen ? '▲' : '▼'}</span>
-                    </div>
-
-                    {mkOpen && (
+                {isOpenType && (
+                  <>
+                    {!isAuto && (
                       <>
-                        {[...byModel.entries()].map(([modelKeyId, list]) => {
-                          const modelId = modelKeyId === '__none__' ? null : Number(modelKeyId);
-                          const mdOpen = isModelOpen(type.id, makeId, modelId);
-                          const modelName = modelId == null ? 'Без модели' : getModelName(makeId, modelId);
+                        {devicesWithoutSubtypeInThisType.length > 0 && (
+                          <div className={styles.itemList}>
+                            {devicesWithoutSubtypeInThisType.map((d) => (
+                              <DeviceRow key={d.id} d={d} />
+                            ))}
+                          </div>
+                        )}
+
+                        {subtypesForType.map((subtype) => {
+                          const subtypeDevices = typeDevices.filter((d) =>
+                            getDeviceSubtypeIds(d).has(Number(subtype.id))
+                          );
+                          if (!subtypeDevices.length) return null;
                           return (
-                            <div key={`md-${makeId}-${modelKeyId}`} className={styles.subtypeTitle} style={{marginTop:6}}>
-                              <div className={`${styles.typeHeader} ${styles.typeHeaderModel}`}
-                                   onClick={() => toggleModelInMakeType(type.id, makeId, modelId)}
-                                   style={{cursor:'pointer',display:'flex',justifyContent:'space-between',
-                                           background:'#eef2ff',padding:8,borderRadius:5}}>
-                                <h6 className={styles.typeTitle} style={{margin:0}}>{modelName}</h6>
-                                <span>{mdOpen ? '▲' : '▼'}</span>
+                            <div key={subtype.id} className={styles.typeGroup}>
+                              <h5 className={styles.subtypeTitle}>
+                                {subtype.name}
+                              </h5>
+                              <div className={styles.itemList}>
+                                {subtypeDevices.map((d) => (
+                                  <DeviceRow key={d.id} d={d} />
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+
+                    {isAuto && (
+                      <>
+                        {uniqueById(universalNoSubtype).length > 0 && (
+                          <div
+                            className={styles.typeGroup}
+                            style={{ marginTop: 8 }}
+                          >
+                            <h5 className={styles.typeTitle}>Без подтипа</h5>
+                            <div className={styles.itemList}>
+                              {uniqueById(universalNoSubtype).map((d) => (
+                                <DeviceRow key={d.id} d={d} />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {uniqueById(universalWithSubtype).length > 0 && (
+                          <div
+                            className={styles.typeGroup}
+                            style={{ marginTop: 8 }}
+                          >
+                            <h5 className={styles.typeTitle}>
+                              Без марки/модели
+                            </h5>
+                            {[
+                              ...groupBySubtypeWithinType(
+                                uniqueById(universalWithSubtype)
+                              ),
+                            ]
+                              .filter(([key]) => key !== "__none__")
+                              .map(([key, list]) => {
+                                const title =
+                                  subtypesForType.find(
+                                    (s) => s.id === Number(key)
+                                  )?.name || `Подтип ${key}`;
+                                return (
+                                  <div
+                                    key={`u-${String(key)}`}
+                                    style={{ marginBottom: 6 }}
+                                  >
+                                    <div className={styles.subtypeTitle}>
+                                      {title}
+                                    </div>
+                                    <div className={styles.itemList}>
+                                      {list.map((d) => (
+                                        <DeviceRow key={d.id} d={d} />
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        )}
+
+                        {[...makesMap.entries()].map(([makeId, byModel]) => {
+                          const mkOpen = isMakeOpen(type.id, makeId);
+                          const makeName = getMakeName(makeId);
+                          return (
+                            <div
+                              key={`mk-${makeId}`}
+                              className={styles.typeGroup}
+                              style={{ marginTop: 10 }}
+                            >
+                              <div
+                                className={`${styles.typeHeader} ${styles.typeHeaderMake}`}
+                                onClick={() =>
+                                  toggleMakeInType(type.id, makeId)
+                                }
+                                style={{
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  background: "#f5f7ff",
+                                  padding: 10,
+                                  borderRadius: 5,
+                                }}
+                              >
+                                <h5 className={styles.typeTitle}>{makeName}</h5>
+                                <span>{mkOpen ? "▲" : "▼"}</span>
                               </div>
 
-                              {mdOpen && (
-                                <div style={{marginTop:6}}>
-                                  {[...groupBySubtypeWithinType(list)].map(([key, items]) => {
-                                    const title = key === '__none__'
-                                      ? 'Без подтипа'
-                                      : subtypesForType.find((s) => s.id === Number(key))?.name || `Подтип ${key}`;
-                                    return (
-                                      <div key={`sg-${modelKeyId}-${String(key)}`} style={{marginBottom:6}}>
-                                        <div style={{fontWeight:600, margin:'6px 0'}}>{title}</div>
-                                        <div className={styles.itemList}>
-                                          {items.map((d) => <DeviceRow key={d.id} d={d} />)}
+                              {mkOpen && (
+                                <>
+                                  {[...byModel.entries()].map(
+                                    ([modelKeyId, list]) => {
+                                      const modelId =
+                                        modelKeyId === "__none__"
+                                          ? null
+                                          : Number(modelKeyId);
+                                      const mdOpen = isModelOpen(
+                                        type.id,
+                                        makeId,
+                                        modelId
+                                      );
+                                      const modelName =
+                                        modelId == null
+                                          ? "Без модели"
+                                          : getModelName(makeId, modelId);
+                                      return (
+                                        <div
+                                          key={`md-${makeId}-${modelKeyId}`}
+                                          className={styles.subtypeTitle}
+                                          style={{ marginTop: 6 }}
+                                        >
+                                          <div
+                                            className={`${styles.typeHeader} ${styles.typeHeaderModel}`}
+                                            onClick={() =>
+                                              toggleModelInMakeType(
+                                                type.id,
+                                                makeId,
+                                                modelId
+                                              )
+                                            }
+                                            style={{
+                                              cursor: "pointer",
+                                              display: "flex",
+                                              justifyContent: "space-between",
+                                              background: "#eef2ff",
+                                              padding: 8,
+                                              borderRadius: 5,
+                                            }}
+                                          >
+                                            <h6
+                                              className={styles.typeTitle}
+                                              style={{ margin: 0 }}
+                                            >
+                                              {modelName}
+                                            </h6>
+                                            <span>{mdOpen ? "▲" : "▼"}</span>
+                                          </div>
+
+                                          {mdOpen && (
+                                            <div style={{ marginTop: 6 }}>
+                                              {[
+                                                ...groupBySubtypeWithinType(
+                                                  list
+                                                ),
+                                              ].map(([key, items]) => {
+                                                const title =
+                                                  key === "__none__"
+                                                    ? "Без подтипа"
+                                                    : subtypesForType.find(
+                                                        (s) =>
+                                                          s.id === Number(key)
+                                                      )?.name ||
+                                                      `Подтип ${key}`;
+                                                return (
+                                                  <div
+                                                    key={`sg-${modelKeyId}-${String(
+                                                      key
+                                                    )}`}
+                                                    style={{ marginBottom: 6 }}
+                                                  >
+                                                    <div
+                                                      style={{
+                                                        fontWeight: 600,
+                                                        margin: "6px 0",
+                                                      }}
+                                                    >
+                                                      {title}
+                                                    </div>
+                                                    <div
+                                                      className={
+                                                        styles.itemList
+                                                      }
+                                                    >
+                                                      {items.map((d) => (
+                                                        <DeviceRow
+                                                          key={d.id}
+                                                          d={d}
+                                                        />
+                                                      ))}
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
                                         </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
+                                      );
+                                    }
+                                  )}
+                                </>
                               )}
                             </div>
                           );
                         })}
                       </>
                     )}
-                  </div>
-                );
-              })}
-            </>
-          )}
-        </>
-      )}
-    </div>
-  );
-})}
+                  </>
+                )}
+              </div>
+            );
+          })}
         </TabPanel>
 
         <TabPanel>
@@ -1665,3 +1865,4 @@ const Admin = () => {
 };
 
 export default Admin;
+
