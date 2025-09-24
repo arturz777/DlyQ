@@ -220,6 +220,9 @@ const DevicePage = ({ id }) => {
     setAvailableQuantity((prev) => prev - 1);
   };
 
+const swipeConfidenceThreshold = 800;
+  const swipePower = (offset, velocity) => Math.abs(offset) * velocity;
+
   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
 return (
@@ -238,6 +241,21 @@ return (
             )}
 
             <div className={styles.ImageContainer}>
+               <motion.div
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.2}
+                onDragEnd={(e, { offset, velocity }) => {
+                  if (images.length <= 1) return;
+                  const swipe = swipePower(offset.x, velocity.x);
+                  if (swipe < -swipeConfidenceThreshold) {
+                    handleNext();
+                  } else if (swipe > swipeConfidenceThreshold) {
+                    handlePrev();
+                  }
+                }}
+                style={{ width: "100%", height: "100%", position: "relative" }}
+              >
               <AnimatePresence mode="wait">
                 {images.map(
                   (img, index) =>
@@ -257,6 +275,7 @@ return (
                     )
                 )}
               </AnimatePresence>
+                </motion.div>
             </div>
             {images.length > 1 && (
               <div className={styles.ArrowButtons}>
