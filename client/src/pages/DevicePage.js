@@ -421,12 +421,7 @@ return (
 
               <div className={styles.DevicePageSpecsCard}>
                 {device.info.map((info, index) => (
-                  <div
-                    key={info.id}
-                    className={`${styles.DevicePageSpecRow} ${
-                      index % 2 === 0 ? styles.DevicePageSpecRowEven : ""
-                    }`}
-                  >
+                  <div key={info.id} className={styles.DevicePageSpecRow}>
                     <span className={styles.DevicePageSpecText}>
                       <strong>
                         {info.translations?.title?.[currentLang] || info.title}
@@ -438,25 +433,25 @@ return (
                     </span>
                   </div>
                 ))}
-              </div>
-              {device.expiryDate && (
-                <div
-                  className={`${styles.DevicePageSpecRow} ${styles.DevicePageSpecRowEven}`}
-                >
-                  <span className={styles.DevicePageSpecText}>
-                    <strong>
-                      {device.expiryKind === "use_by"
-                        ? t("use_by", { ns: "devicePage" })
-                        : device.expiryKind === "best_before"
-                        ? t("best_before", { ns: "devicePage" })
-                        : t("expiry_date", { ns: "devicePage" })}
-                    </strong>
-                    <span>
-                      {new Date(device.expiryDate).toLocaleDateString("ru-RU")}
+                {device.expiryDate && (
+                  <div className={styles.DevicePageSpecRow}>
+                    <span className={styles.DevicePageSpecText}>
+                      <strong>
+                        {device.expiryKind === "use_by"
+                          ? t("use_by", { ns: "devicePage" })
+                          : device.expiryKind === "best_before"
+                          ? t("best_before", { ns: "devicePage" })
+                          : t("expiry_date", { ns: "devicePage" })}
+                      </strong>
+                      <span>
+                        {new Date(device.expiryDate).toLocaleDateString(
+                          "ru-RU"
+                        )}
+                      </span>
                     </span>
-                  </span>
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -484,12 +479,7 @@ return (
 
         <div className={styles.DevicePageSpecsCard}>
           {device.info.map((info, index) => (
-            <div
-              key={info.id}
-              className={`${styles.DevicePageSpecRow} ${
-                index % 2 === 0 ? styles.DevicePageSpecRowEven : ""
-              }`}
-            >
+            <div key={info.id} className={styles.DevicePageSpecRow}>
               <span className={styles.DevicePageSpecText}>
                 <strong>
                   {info.translations?.title?.[currentLang] || info.title}
@@ -502,9 +492,7 @@ return (
             </div>
           ))}
           {device.expiryDate && (
-            <div
-              className={`${styles.DevicePageSpecRow} ${styles.DevicePageSpecRowEven}`}
-            >
+            <div className={styles.DevicePageSpecRow}>
               <span className={styles.DevicePageSpecText}>
                 <strong>
                   {device.expiryKind === "use_by"
@@ -553,3 +541,4 @@ return (
 };
 
 export default DevicePage;
+
