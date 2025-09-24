@@ -332,6 +332,10 @@
   transform: translateY(-50%);
 }
 
+@media (max-width: 768px) {
+  .ArrowButtons { display: none; }
+}
+
 .PrevButton,
 .NextButton {
   color: rgb(128, 128, 128);
