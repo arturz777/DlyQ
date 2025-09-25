@@ -78,18 +78,18 @@ const CatalogPage = observer(() => {
     loadInitialData();
   }, [currentLang, typeIdFromUrl]);
 
-   useEffect(() => {
-  const id = Number(typeIdFromUrl);
-  if (!id) {
-    device.setSelectedType({});
-    return;
-  }
-  const found = device.types?.find((t) => t.id === id);
-  if (found && device.selectedType?.id !== id) {
-    device.setSelectedType(found);
-    device.setPage(1);
-  }
-}, [typeIdFromUrl, device.types]);
+  useEffect(() => {
+    const id = Number(typeIdFromUrl);
+    if (!id) {
+      device.setSelectedType({});
+      return;
+    }
+    const found = device.types?.find((t) => t.id === id);
+    if (found && device.selectedType?.id !== id) {
+      device.setSelectedType(found);
+      device.setPage(1);
+    }
+  }, [typeIdFromUrl, device.types]);
 
   useEffect(() => {
     return () => {
@@ -107,8 +107,8 @@ const CatalogPage = observer(() => {
     device.setLoading("devices", true);
 
     device.setDevices([]);
-device.setTotalCount(0);
-device.setFacets({ subtypes: [], brands: [] });
+    device.setTotalCount(0);
+    device.setFacets({ subtypes: [], brands: [] });
 
     const load = async () => {
       try {
@@ -172,7 +172,7 @@ device.setFacets({ subtypes: [], brands: [] });
           ? await fetchSubtypesByType(device.selectedType.id)
           : await fetchSubtypes();
 
-          if (id !== subtypesReqId.current) return;
+        if (id !== subtypesReqId.current) return;
         device.setSubtypes(
           subtypesData
             .map((subtype) => ({
@@ -185,7 +185,7 @@ device.setFacets({ subtypes: [], brands: [] });
               return ao === bo ? a.id - b.id : ao - bo;
             })
         );
-       } catch (err) {
+      } catch (err) {
         if (id === subtypesReqId.current) {
           console.error("Ошибка при загрузке подтипов:", err);
         }
@@ -219,21 +219,6 @@ device.setFacets({ subtypes: [], brands: [] });
     };
   }, []);
 
-    // Прокрутка к подтипам при выборе типа c учётом фикс-хедера
-useEffect(() => {
-  if (!device.selectedType?.id) return;
-
-  const HEADER_OFFSET = 90; // подгони под высоту твоей шапки
-  // Даем разметке обновиться (подтипы уже вставятся в DOM)
-  const r = requestAnimationFrame(() => {
-    const el = document.getElementById("subtype-filter");
-    if (!el) return;
-    const y = el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET;
-    window.scrollTo({ top: y, behavior: "smooth" });
-  });
-  return () => cancelAnimationFrame(r);
-}, [device.selectedType?.id]);
-
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
@@ -241,7 +226,7 @@ useEffect(() => {
     });
   };
 
- return (
+  return (
     <div className={catalogStyles.catalogWrapper}>
       <div className={catalogStyles.catalogContent}>
         <p className={catalogStyles.catalogTitle}>
@@ -252,12 +237,17 @@ useEffect(() => {
           <div className={catalogStyles.brandFilter}>
             <BrandBar />
           </div>
+
           <div className={catalogStyles.typeFilter}>
             <TypeBar />
           </div>
 
-          {isAutoType && (
+          {isAutoType ? (
             <>
+              <div className={catalogStyles.subtypeFilter}>
+                <SubTypeBar variant="universal" />
+              </div>
+
               <div id="make-filter" className={catalogStyles.makeFilter}>
                 <MakeBar />
               </div>
@@ -265,19 +255,18 @@ useEffect(() => {
               <div className={catalogStyles.modelFilter}>
                 <ModelBar />
               </div>
+
+              <div id="subtype-filter" className={catalogStyles.subtypeFilter}>
+                {device.selectedMake?.id && device.selectedModel?.id ? (
+                  <SubTypeBar variant="mm" />
+                ) : null}
+              </div>
             </>
+          ) : (
+            <div id="subtype-filter" className={catalogStyles.subtypeFilter}>
+              {device.selectedType?.id ? <SubTypeBar /> : null}
+            </div>
           )}
-          <div id="subtype-filter" className={catalogStyles.subtypeFilter}>
-            {device.selectedType?.id ? (
-              isAutoType ? (
-                device.selectedModel?.id ? (
-                  <SubTypeBar />
-                ) : null
-              ) : (
-                <SubTypeBar />
-              )
-            ) : null}
-          </div>
         </div>
 
         <div
@@ -311,5 +300,3 @@ useEffect(() => {
 });
 
 export default CatalogPage;
-
-
