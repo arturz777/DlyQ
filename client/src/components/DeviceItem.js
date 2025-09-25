@@ -18,13 +18,19 @@ const DeviceItem = ({ device, onClick }) => {
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
   const deviceName = device.translations?.name?.[currentLang] || device.name;
-  const oldPrice = Number(device.oldPrice) || 0;
-const newPrice = Number(device.price) || 0;
 
-const discountPercentage =
-device.discount && device.oldPrice > device.price
-  ? Math.round(((device.oldPrice - device.price) / device.oldPrice) * 100)
-  : null;
+const toNum = (v) => {
+    const n = parseFloat(String(v ?? "").replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const oldPrice = toNum(device.oldPrice);
+  const newPrice = toNum(device.price);
+
+  const hasDiscount = oldPrice > 0 && newPrice > 0 && oldPrice > newPrice;
+  const discountPercentage = hasDiscount
+    ? Math.max(1, Math.round(((oldPrice - newPrice) / oldPrice) * 100))
+    : null;
 
   useEffect(() => {
     const itemsInBasket = basket.items.filter((item) => item.id === device.id);
@@ -152,7 +158,7 @@ device.discount && device.oldPrice > device.price
   return (
     <div onClick={() => onClick(device.id)}>
       <Card className={styles.card}>
-        {discountPercentage && (
+        {discountPercentage !== null && (
           <div className={styles.discountBadge}>-{discountPercentage}%</div>
         )}
 
@@ -164,7 +170,7 @@ device.discount && device.oldPrice > device.price
         <div className={styles.info}>
           
           <div className={styles.priceBlock}>
-            {device.discount && device.oldPrice > device.price ? (
+            {hasDiscount ? (
               <>
                 <span className={styles.oldPrice}>{device.oldPrice} €</span>
                 <span className={styles.newPrice}>{device.price} €</span>
