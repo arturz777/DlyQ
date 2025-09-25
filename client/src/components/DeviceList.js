@@ -9,6 +9,10 @@ const DeviceList = observer(({ onDeviceClick }) => {
   const { device } = useContext(Context);
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
+  const selectedSubtypeId = Number(device.selectedSubType?.id) || null;
+
+  const isAutoType =
+    !!device.selectedType?.name && /авто/i.test(device.selectedType.name);
 
   const grouped = useMemo(() => {
     const types = Array.isArray(device.types) ? device.types : [];
@@ -28,8 +32,9 @@ const DeviceList = observer(({ onDeviceClick }) => {
       result[typeId] = {
         typeId,
         typeName,
-        subtypes: {},      
-        noSubtypeDevices: [], 
+        subtypes: {},
+        noSubtypeDevices: [],
+        autoNoMakeModelBySubtype: new Map(),
       };
     });
 
@@ -46,6 +51,33 @@ const DeviceList = observer(({ onDeviceClick }) => {
       };
     });
 
+    const getCompatList = (d) => {
+      if (!d) return [];
+      if (Array.isArray(d.compat)) return d.compat;
+      if (Array.isArray(d.compatibility)) return d.compatibility;
+      if (Array.isArray(d.carCompat)) return d.carCompat;
+      return [];
+    };
+    const hasMakeOrModel = (compatItem) => {
+      const mk =
+        compatItem?.makeId || compatItem?.make?.id || compatItem?.model?.makeId;
+      const md = compatItem?.modelId || compatItem?.model?.id;
+      return !!(mk || md);
+    };
+    const isNoMakeModel = (d) => {
+      const compat = getCompatList(d);
+      if (!compat.length) return true;
+      if (compat.some((c) => c?.isUniversal)) return true;
+      return !compat.some((c) => hasMakeOrModel(c));
+    };
+
+    const subtypeTypeIdById = new Map();
+    subtypes.forEach((st) => {
+      const sid = Number(st.id);
+      const tid = Number(st.typeId);
+      if (sid && tid) subtypeTypeIdById.set(sid, tid);
+    });
+
     devices.forEach((dev) => {
       const primaryTypeId = Number(dev?.typeId) || null;
       const primarySubtypeId = Number(dev?.subtypeId) || null;
@@ -55,7 +87,6 @@ const DeviceList = observer(({ onDeviceClick }) => {
         : [];
 
       const m2mSubtypes = Array.isArray(dev?.subtypes) ? dev.subtypes : [];
-      const m2mSubtypeIds = m2mSubtypes.map((st) => Number(st.id)).filter(Boolean);
       const m2mSubtypeTypeIds = m2mSubtypes
         .map((st) => Number(st.typeId))
         .filter(Boolean);
@@ -64,35 +95,41 @@ const DeviceList = observer(({ onDeviceClick }) => {
         [primaryTypeId, ...m2mTypeIds, ...m2mSubtypeTypeIds].filter(Boolean)
       );
 
-      const allSubtypeIds = new Set(
-        [primarySubtypeId, ...m2mSubtypeIds].filter(Boolean)
-      );
-
-      if (allTypeIds.size === 0) return; 
+      if (allTypeIds.size === 0) return;
 
       allTypeIds.forEach((tid) => {
         const group = result[tid];
-        if (!group) return; 
+        if (!group) return;
 
-        let targetSubtypeIds;
+        const primarySubtypeIdForThisType =
+          primarySubtypeId && subtypeTypeIdById.get(primarySubtypeId) === tid
+            ? primarySubtypeId
+            : null;
+
+        const idsOfThisType = new Set(
+          [
+            primarySubtypeIdForThisType,
+            ...m2mSubtypes
+              .filter((st) => Number(st.typeId) === tid)
+              .map((st) => Number(st.id)),
+          ].filter(Boolean)
+        );
+
         if (selectedSubtypeId) {
-          if (!allSubtypeIds.has(selectedSubtypeId)) {
-            return;
+          if (idsOfThisType.has(selectedSubtypeId)) {
+            const sub = group.subtypes[selectedSubtypeId];
+            if (sub) sub.devices.push(dev);
           }
-          targetSubtypeIds = new Set([selectedSubtypeId]);
-        } else {
-          targetSubtypeIds = allSubtypeIds;
+          return;
         }
-
-        if (targetSubtypeIds.size === 0) {
+        if (idsOfThisType.size === 0) {
           group.noSubtypeDevices.push(dev);
           return;
         }
 
-        targetSubtypeIds.forEach((sid) => {
-          if (group.subtypes[sid]) {
-            group.subtypes[sid].devices.push(dev);
-          }
+        idsOfThisType.forEach((sid) => {
+          const sub = group.subtypes[sid];
+          if (sub) sub.devices.push(dev);
         });
       });
     });
@@ -104,27 +141,46 @@ const DeviceList = observer(({ onDeviceClick }) => {
         }
       });
 
-      const seenNo = new Set();
-      group.noSubtypeDevices = group.noSubtypeDevices.filter((d) => {
-        if (!d || !d.id) return false;
-        if (seenNo.has(d.id)) return false;
-        seenNo.add(d.id);
-        return true;
-      });
-
-      Object.values(group.subtypes).forEach((sub) => {
+      const dedup = (arr) => {
         const seen = new Set();
-        sub.devices = sub.devices.filter((d) => {
+        return arr.filter((d) => {
           if (!d || !d.id) return false;
           if (seen.has(d.id)) return false;
           seen.add(d.id);
           return true;
         });
+      };
+
+      group.noSubtypeDevices = dedup(group.noSubtypeDevices);
+      Object.values(group.subtypes).forEach((sub) => {
+        sub.devices = dedup(sub.devices);
       });
     });
 
+    if (isAutoType) {
+      Object.values(result).forEach((group) => {
+        Object.values(group.subtypes).forEach((sub) => {
+          const noMM = [];
+          const withMM = [];
+          for (const d of sub.devices) {
+            (isNoMakeModel(d) ? noMM : withMM).push(d);
+          }
+          if (noMM.length)
+            group.autoNoMakeModelBySubtype.set(sub.subtypeId, noMM);
+          sub.devices = withMM;
+        });
+      });
+    }
+
     return result;
-  }, [device.types, device.subtypes, device.devices, currentLang]);
+  }, [
+    device.types,
+    device.subtypes,
+    device.devices,
+    currentLang,
+    isAutoType,
+    selectedSubtypeId,
+  ]);
 
   const typeIds = Object.keys(grouped).map(Number);
 
@@ -159,6 +215,13 @@ const DeviceList = observer(({ onDeviceClick }) => {
         );
         if (!hasNoSubtype && !hasAnySubtype) return null;
 
+        const subArr = Object.values(group.subtypes || {}).sort((a, b) => {
+          const ao = Number(a.displayOrder ?? 0);
+          const bo = Number(b.displayOrder ?? 0);
+          if (ao === bo) return a.subtypeId - b.subtypeId;
+          return ao - bo;
+        });
+
         return (
           <div key={tid} className={styles.section}>
             <p className={styles.sectionTitle}>{group.typeName}</p>
@@ -171,34 +234,63 @@ const DeviceList = observer(({ onDeviceClick }) => {
               </div>
             )}
 
-            {Object.values(group.subtypes || {})
-              .sort((a, b) => {
-                const ao = Number(a.displayOrder ?? 0);
-                const bo = Number(b.displayOrder ?? 0);
-                if (ao === bo) return a.subtypeId - b.subtypeId;
-                return ao - bo;
-              })
-              .map((sub) => {
-                if (!sub.devices.length) return null;
-                return (
-                  <div
-                    key={sub.subtypeId}
-                    id={`subtype-${sub.subtypeId}`}
-                    className={styles.subtypeSection}
-                  >
-                    <p className={styles.subtypeTitle}>{sub.subtypeName}</p>
-                    <div className={styles.deviceGrid}>
-                      {sub.devices.map((d) => (
-                        <DeviceItem
-                          key={d.id}
-                          device={d}
-                          onClick={onDeviceClick}
-                        />
-                      ))}
-                    </div>
+            {isAutoType && group.autoNoMakeModelBySubtype && (
+              <>
+                {[...group.autoNoMakeModelBySubtype.entries()]
+                  .filter(([, list]) => list?.length)
+                  .sort(([aId], [bId]) => {
+                    const a = subArr.find((s) => s.subtypeId === aId);
+                    const b = subArr.find((s) => s.subtypeId === bId);
+                    const ao = Number(a?.displayOrder ?? 0);
+                    const bo = Number(b?.displayOrder ?? 0);
+                    if (ao === bo) return (aId || 0) - (bId || 0);
+                    return ao - bo;
+                  })
+                  .map(([sid, list]) => {
+                    const sub = subArr.find((s) => s.subtypeId === sid);
+                    if (!sub || !list?.length) return null;
+                    return (
+                      <div
+                        key={`no-mm-${sid}`}
+                        className={styles.subtypeSection}
+                      >
+                        <p className={styles.subtypeTitle}>{sub.subtypeName}</p>
+                        <div className={styles.deviceGrid}>
+                          {list.map((d) => (
+                            <DeviceItem
+                              key={d.id}
+                              device={d}
+                              onClick={onDeviceClick}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </>
+            )}
+
+            {subArr.map((sub) => {
+              if (!sub.devices.length) return null;
+              return (
+                <div
+                  key={sub.subtypeId}
+                  id={`subtype-${sub.subtypeId}`}
+                  className={styles.subtypeSection}
+                >
+                  <p className={styles.subtypeTitle}>{sub.subtypeName}</p>
+                  <div className={styles.deviceGrid}>
+                    {sub.devices.map((d) => (
+                      <DeviceItem
+                        key={d.id}
+                        device={d}
+                        onClick={onDeviceClick}
+                      />
+                    ))}
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
           </div>
         );
       })}
