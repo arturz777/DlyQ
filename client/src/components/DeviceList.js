@@ -182,10 +182,20 @@ const DeviceList = observer(({ onDeviceClick }) => {
     selectedSubtypeId,
   ]);
 
-  const typeIds = Object.keys(grouped).map(Number);
+  const sortTypes = (a, b) => {
+    const ao = Number(a.displayOrder ?? 0);
+    const bo = Number(b.displayOrder ?? 0);
+    return ao === bo ? Number(a.id) - Number(b.id) : ao - bo;
+  };
 
-  const nothingToShow = typeIds.every((tid) => {
+  const orderedTypeIds = (device.types || [])
+    .slice()
+    .sort(sortTypes)
+    .map((t) => Number(t.id));
+
+  const nothingToShow = orderedTypeIds.every((tid) => {
     const g = grouped[tid];
+    if (!g) return true;
     const hasNoSubtype = g.noSubtypeDevices?.length > 0;
     const hasAnySubtype = Object.values(g.subtypes || {}).some(
       (s) => s.devices?.length > 0
@@ -207,8 +217,10 @@ const DeviceList = observer(({ onDeviceClick }) => {
 
   return (
     <div>
-      {typeIds.map((tid) => {
+      {orderedTypeIds.map((tid) => {
         const group = grouped[tid];
+        if (!group) return null;
+
         const hasNoSubtype = group.noSubtypeDevices?.length > 0;
         const hasAnySubtype = Object.values(group.subtypes || {}).some(
           (s) => s.devices?.length > 0
