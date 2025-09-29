@@ -1,3 +1,11 @@
 {
-  "name": "MobileApp"
+  "name": "MobileApp",
+  "android": {
+    "package": "com.anonymous.mobileapp",
+    "permissions": [
+      "INTERNET",
+      "ACCESS_COARSE_LOCATION",
+      "ACCESS_FINE_LOCATION"
+    ]
+  }
 }
