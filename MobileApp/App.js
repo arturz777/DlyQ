@@ -1,39 +1,39 @@
-import React, { useEffect, useState } from "react";
-import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import CourierScreen from "./src/screens/CourierScreen";
-import LoginScreen from "./src/screens/LoginScreen";
-import { View, ActivityIndicator } from "react-native";
+import React, {useEffect, useState} from 'react';
+import {NavigationContainer} from '@react-navigation/native';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import LoginScreen from './src/screens/LoginScreen';
+import CourierScreen from './src/screens/CourierScreen';
+import {checkAuth} from './src/api/authAPI';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const [booted, setBooted] = useState(false);
+  const [initialRoute, setInitialRoute] = useState('Login');
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = await AsyncStorage.getItem("token");
-      setIsAuthenticated(!!token);
-    };
-    checkAuth();
+    (async () => {
+      try {
+        await checkAuth();
+        setInitialRoute('Courier');
+      } catch {
+        setInitialRoute('Login');
+      } finally {
+        setBooted(true);
+      }
+    })();
   }, []);
 
-  if (isAuthenticated === null) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
+  if (!booted) return null;
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName={isAuthenticated ? "Courier" : "Login"}>
-        <Stack.Screen name="Login" component={LoginScreen} options={{ title: "Вход" }} />
-        <Stack.Screen name="Courier" component={CourierScreen} options={{ title: "Курьер" }} />
+      <Stack.Navigator
+        initialRouteName={initialRoute}
+        screenOptions={{headerShown: false}}>
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Courier" component={CourierScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
-
