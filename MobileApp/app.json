@@ -1,3 +1,6 @@
 {
-  "name": "MobileApp"
+  "name": "MobileApp",
+  "android": {
+    "package": "com.anonymous.mobileapp"
+  }
 }
