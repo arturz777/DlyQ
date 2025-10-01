@@ -76,12 +76,15 @@ const HomePage = () => {
             : recommendedData?.devices ?? []
         );
 
-        setTypes(
-          (Array.isArray(typesData) ? typesData : []).map((t) => ({
+         const typesEnriched = (Array.isArray(typesData) ? typesData : []).map(
+          (t) => ({
             ...t,
             translations: t.translations || {},
-          }))
+          })
         );
+        setTypes(typesEnriched);
+        device.setTypes(typesEnriched);
+        
         device.setSubtypes(
           (Array.isArray(subtypesData) ? subtypesData : []).map((s) => ({
             ...s,
@@ -91,6 +94,7 @@ const HomePage = () => {
 
         device.setDevices(catalogData.rows || []);
         device.setTotalCount(catalogData.count || 0);
+         device.setFacets?.(catalogData?.facets ?? { subtypes: [], brands: [] });
         device.setSelectedType({});
         device.setSelectedSubType({});
         device.setSelectedBrand({});
