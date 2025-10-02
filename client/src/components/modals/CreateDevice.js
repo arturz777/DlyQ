@@ -1615,19 +1615,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                   Добавить опцию
                 </Button>
 
-                <Tabs
-                  id="options-lang-tabs"
-                  activeKey={activeOptionsLang}
-                  onSelect={(k) => {
-                    if (k) setActiveOptionsLang(k);
-                  }}
-                  className="mb-3"
-                >
-                  <Tab eventKey="ru" title="RU" />
-                  <Tab eventKey="en" title="EN" />
-                  <Tab eventKey="est" title="EST" />
-                </Tabs>
-
                 {options.map((option, optionIndex) => (
                   <div
                     key={optionIndex}
@@ -1739,6 +1726,19 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                     </Button>
                   </div>
                 ))}
+
+                  <Tabs
+                  id="options-lang-tabs"
+                  activeKey={activeOptionsLang}
+                  onSelect={(k) => {
+                    if (k) setActiveOptionsLang(k);
+                  }}
+                  className="mb-3"
+                >
+                  <Tab eventKey="ru" title="RU" />
+                  <Tab eventKey="en" title="EN" />
+                  <Tab eventKey="est" title="EST" />
+                </Tabs>
               </>
             )}
           </div>
