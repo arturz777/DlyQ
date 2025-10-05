@@ -18,14 +18,15 @@ const Basket = sequelize.define("basket", {
 const BasketDevice = sequelize.define("basket_device", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   selectedOptions: { type: DataTypes.JSONB, allowNull: true },
+  variantId: { type: DataTypes.INTEGER, allowNull: true },
 });
 
 const Device = sequelize.define("device", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   name: { type: DataTypes.STRING, unique: true, allowNull: false },
   price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
-oldPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
-   purchasePrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
+  oldPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
+  purchasePrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
   purchaseHasVAT: { type: DataTypes.BOOLEAN, defaultValue: false },
   rating: { type: DataTypes.INTEGER, defaultValue: 0 },
   img: { type: DataTypes.STRING, allowNull: false },
@@ -42,30 +43,64 @@ oldPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
   snoozeUntil: { type: DataTypes.DATEONLY, allowNull: true },
 });
 
-const DeviceSubType = sequelize.define('device_subtype', {
-  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  deviceId: { type: DataTypes.INTEGER, allowNull: false },
-  subtypeId: { type: DataTypes.INTEGER, allowNull: false },
-  isPrimary: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
-}, {
-  indexes: [
-    { fields: ['deviceId'] },
-    { fields: ['subtypeId'] },
-    { unique: true, fields: ['deviceId', 'subtypeId'] },
-    { fields: ['isPrimary'] },
-  ],
-});
+const DeviceVariant = sequelize.define(
+  "device_variant",
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    deviceId: { type: DataTypes.INTEGER, allowNull: false },
+    key: { type: DataTypes.STRING, allowNull: false },
+    selected: { type: DataTypes.JSONB, allowNull: false, defaultValue: {} },
+    sku: { type: DataTypes.STRING, allowNull: true },
+    price: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
+    oldPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
+    quantity: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    image: { type: DataTypes.STRING, allowNull: true },
+    isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+  },
+  {
+    indexes: [
+      { fields: ["deviceId"] },
+      { unique: true, fields: ["deviceId", "key"] },
+    ],
+  }
+);
 
-const DeviceType = sequelize.define('device_type', {
-  deviceId: { type: DataTypes.INTEGER, allowNull: false },
-  typeId:   { type: DataTypes.INTEGER, allowNull: false },
-}, {
-  indexes: [
-    { fields: ['deviceId'] },
-    { fields: ['typeId'] },
-    { unique: true, fields: ['deviceId','typeId'] },
-  ],
-});
+const DeviceSubType = sequelize.define(
+  "device_subtype",
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    deviceId: { type: DataTypes.INTEGER, allowNull: false },
+    subtypeId: { type: DataTypes.INTEGER, allowNull: false },
+    isPrimary: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+  },
+  {
+    indexes: [
+      { fields: ["deviceId"] },
+      { fields: ["subtypeId"] },
+      { unique: true, fields: ["deviceId", "subtypeId"] },
+      { fields: ["isPrimary"] },
+    ],
+  }
+);
+
+const DeviceType = sequelize.define(
+  "device_type",
+  {
+    deviceId: { type: DataTypes.INTEGER, allowNull: false },
+    typeId: { type: DataTypes.INTEGER, allowNull: false },
+  },
+  {
+    indexes: [
+      { fields: ["deviceId"] },
+      { fields: ["typeId"] },
+      { unique: true, fields: ["deviceId", "typeId"] },
+    ],
+  }
+);
 
 const Type = sequelize.define("type", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -174,9 +209,9 @@ const Order = sequelize.define(
     },
     productName: { type: DataTypes.STRING, allowNull: false },
     receiptUrl: {
-  type: DataTypes.STRING,
-  allowNull: true,
-},
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     downloadToken: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -184,8 +219,6 @@ const Order = sequelize.define(
   },
   {
     timestamps: true,
-    createdAt: "createdAt", 
-  updatedAt: "updatedAt",
   }
 );
 
@@ -295,6 +328,13 @@ BasketDevice.belongsTo(Device);
 Device.hasMany(DeviceInfo, { as: "info" });
 DeviceInfo.belongsTo(Device);
 
+Device.hasMany(DeviceVariant, {
+  as: "variants",
+  foreignKey: "deviceId",
+  onDelete: "CASCADE",
+});
+DeviceVariant.belongsTo(Device, { foreignKey: "deviceId" });
+
 Type.belongsToMany(Brand, { through: TypeBrand });
 Brand.belongsToMany(Type, { through: TypeBrand });
 
@@ -303,30 +343,30 @@ SubType.belongsTo(Type, { foreignKey: "typeId", as: "type" });
 
 Device.belongsToMany(SubType, {
   through: DeviceSubType,
-  as: 'subtypes',           
-  foreignKey: 'deviceId',
-  otherKey: 'subtypeId',
+  as: "subtypes",
+  foreignKey: "deviceId",
+  otherKey: "subtypeId",
 });
 
 SubType.belongsToMany(Device, {
   through: DeviceSubType,
-  as: 'm2mDevices',        
-  foreignKey: 'subtypeId',
-  otherKey: 'deviceId',
+  as: "m2mDevices",
+  foreignKey: "subtypeId",
+  otherKey: "deviceId",
 });
 
 Device.belongsToMany(Type, {
   through: DeviceType,
-  as: 'types',
-  foreignKey: 'deviceId',
-  otherKey: 'typeId',
+  as: "types",
+  foreignKey: "deviceId",
+  otherKey: "typeId",
 });
 
 Type.belongsToMany(Device, {
   through: DeviceType,
-  as: 'devicesM2M',
-  foreignKey: 'typeId',
-  otherKey: 'deviceId',
+  as: "devicesM2M",
+  foreignKey: "typeId",
+  otherKey: "deviceId",
 });
 
 VehicleMake.hasMany(VehicleModel, {
@@ -374,6 +414,7 @@ module.exports = {
   Basket,
   BasketDevice,
   Device,
+  DeviceVariant,
   DeviceSubType,
   Type,
   DeviceType,
