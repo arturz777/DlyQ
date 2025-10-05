@@ -2,6 +2,7 @@ const uuid = require("uuid");
 const path = require("path");
 const {
   Device,
+  DeviceVariant,
   DeviceInfo,
   DeviceSubType,
   SubType,
@@ -16,6 +17,39 @@ const ApiError = require("../error/ApiError");
 const { Op, fn, col, literal } = require("sequelize");
 const fs = require("fs");
 const { supabase } = require("../config/supabaseClient");
+
+const getVal = (x) =>
+  x && typeof x === "object" && "value" in x ? x.value : x;
+
+const makeVariantKey = (selected = {}) =>
+  Object.keys(selected)
+    .sort()
+    .map((k) => `${k}:${String(getVal(selected[k]))}`)
+    .join("|");
+
+const parseMaybeJSON = (x) => {
+  if (x == null) return {};
+  if (typeof x === "string") {
+    try {
+      return JSON.parse(x);
+    } catch {
+      return {};
+    }
+  }
+  return x;
+};
+
+const resolveVariantImage = (imgToken, mainUrl, thumbs = []) => {
+  if (!imgToken) return null;
+  const s = String(imgToken);
+  if (s === "gallery:main") return mainUrl;
+  const m = s.match(/^gallery:thumb:(\d+)$/);
+  if (m) {
+    const idx = Number(m[1]);
+    return thumbs[idx] || null;
+  }
+  return s; 
+};
 
 class DeviceController {
   async create(req, res, next) {
@@ -49,7 +83,6 @@ class DeviceController {
 
       const { img } = req.files;
       const fileName = `${uuid.v4()}${path.extname(img.name)}`;
-
       const { data, error } = await supabase.storage
         .from("images")
         .upload(fileName, img.data, { contentType: img.mimetype });
@@ -88,18 +121,29 @@ class DeviceController {
         thumbnails = thumbnails.filter((url) => url !== null);
       }
 
-      options = options ? JSON.parse(options) : [];
+      let parsedOptions = options ? JSON.parse(options) : [];
+      let parsedVariants = req.body.variants
+        ? JSON.parse(req.body.variants)
+        : [];
 
-      if (options.length > 0) {
-        quantity = options.reduce((sum, option) => {
-          return (
+      let totalQty;
+      if (Array.isArray(parsedVariants) && parsedVariants.length) {
+        totalQty = parsedVariants.reduce(
+          (s, v) => s + (Number(v.quantity) || 0),
+          0
+        );
+      } else if (Array.isArray(parsedOptions) && parsedOptions.length) {
+        totalQty = parsedOptions.reduce(
+          (sum, option) =>
             sum +
-            option.values.reduce(
+            (option.values || []).reduce(
               (optSum, v) => optSum + (Number(v.quantity) || 0),
               0
-            )
-          );
-        }, 0);
+            ),
+          0
+        );
+      } else {
+        totalQty = Number(quantity) || 0;
       }
 
       if (discount === "true" && !oldPrice) {
@@ -133,8 +177,8 @@ class DeviceController {
         subtypeId: subtypeId || null,
         img: publicURL,
         thumbnails,
-        options,
-        quantity: quantity || 0,
+        options: parsedOptions,
+        quantity: totalQty,
         description,
         expiryKind,
         expiryDate,
@@ -146,7 +190,7 @@ class DeviceController {
         purchaseHasVAT: req.body.purchaseHasVAT === "true",
       });
 
-       const primaryId = subtypeId || null;
+      const primaryId = subtypeId || null;
       let subtypeIdsArr = [];
       if (req.body.subtypeIds) {
         try {
@@ -163,6 +207,7 @@ class DeviceController {
           subtypeId: Number(stId),
           isPrimary: primaryId ? Number(stId) === Number(primaryId) : false,
         }));
+
         await DeviceSubType.bulkCreate(rows, { ignoreDuplicates: true });
       }
 
@@ -313,7 +358,7 @@ class DeviceController {
         }
       }
 
-try {
+      try {
         const { compat, isUniversal } = req.body;
 
         if (isUniversal === "true") {
@@ -348,13 +393,33 @@ try {
         console.error("Ошибка сохранения совместимости:", e.message);
       }
 
+      if (Array.isArray(parsedVariants) && parsedVariants.length) {
+        const rows = parsedVariants.map((v) => {
+          const normalizedSelected = Object.fromEntries(
+            Object.entries(v.selected || {}).map(([k, val]) => [k, getVal(val)])
+          );
+          return {
+            deviceId: device.id,
+            key: makeVariantKey(normalizedSelected),
+            selected: JSON.stringify(normalizedSelected),
+            sku: v.sku || null,
+            price: v.price === "" ? null : v.price ?? null,
+            oldPrice: v.oldPrice === "" ? null : v.oldPrice ?? null,
+            quantity: Number(v.quantity) || 0,
+            image: resolveVariantImage(v.image, publicURL, thumbnails),
+            isActive: v.isActive !== false,
+          };
+        });
+        await DeviceVariant.bulkCreate(rows, { ignoreDuplicates: true });
+      }
+
       return res.json(device);
     } catch (e) {
       next(ApiError.badRequest(e.message));
     }
   }
 
- async getAll(req, res) {
+  async getAll(req, res) {
     try {
       let {
         brandId,
@@ -390,6 +455,7 @@ try {
       if (recommended !== undefined) where.recommended = recommended === "true";
 
       const include = [
+        { model: DeviceVariant, as: "variants", required: false },
         { model: SubType, as: "subtype" },
         { model: Type },
         { model: DeviceInfo, as: "info" },
@@ -456,6 +522,13 @@ try {
         include,
         distinct: true,
         subQuery: false,
+      });
+
+      devices.rows.forEach((d) => {
+        const vars = d.dataValues.variants || d.variants || [];
+        vars.forEach((v) => {
+          v.dataValues.selected = parseMaybeJSON(v.dataValues.selected);
+        });
       });
 
       const todayStr = new Date().toISOString().slice(0, 10);
@@ -554,6 +627,7 @@ try {
       const device = await Device.findOne({
         where: { id },
         include: [
+          { model: DeviceVariant, as: "variants" },
           { model: DeviceInfo, as: "info" },
           { model: SubType, as: "subtype" },
           { model: Type },
@@ -670,6 +744,12 @@ try {
         });
       }
 
+      if (device && Array.isArray(device.dataValues.variants)) {
+        device.dataValues.variants.forEach((v) => {
+          v.dataValues.selected = parseMaybeJSON(v.dataValues.selected);
+        });
+      }
+
       return res.json({
         ...device.dataValues,
         translations: translatedSpecs || {},
@@ -730,7 +810,10 @@ try {
       if (!device)
         return res.status(404).json({ message: "Устройство не найдено" });
 
-      options = options ? JSON.parse(options) : [];
+      let parsedOptions = options ? JSON.parse(options) : [];
+      let parsedVariants = req.body.variants
+        ? JSON.parse(req.body.variants)
+        : [];
 
       if (discount === "true" && !oldPrice) {
         oldPrice = price;
@@ -814,16 +897,24 @@ try {
         ];
       }
 
-      if (options.length > 0) {
-        quantity = options.reduce((sum, option) => {
-          return (
+      let totalQty;
+      if (Array.isArray(parsedVariants) && parsedVariants.length) {
+        totalQty = parsedVariants.reduce(
+          (s, v) => s + (Number(v.quantity) || 0),
+          0
+        );
+      } else if (Array.isArray(parsedOptions) && parsedOptions.length) {
+        totalQty = parsedOptions.reduce(
+          (sum, option) =>
             sum +
-            option.values.reduce(
+            (option.values || []).reduce(
               (optSum, v) => optSum + (Number(v.quantity) || 0),
               0
-            )
-          );
-        }, 0);
+            ),
+          0
+        );
+      } else {
+        totalQty = Number(quantity) || 0;
       }
 
       await Translation.destroy({
@@ -935,8 +1026,8 @@ try {
           subtypeId: subtypeId || null,
           img: fileName,
           thumbnails,
-          options,
-          quantity: quantity || 0,
+          options: parsedOptions,
+          quantity: totalQty,
           description,
           expiryKind,
           expiryDate,
@@ -1057,6 +1148,27 @@ try {
         }
       } catch (e) {
         console.error("Ошибка обновления совместимости:", e.message);
+      }
+
+      await DeviceVariant.destroy({ where: { deviceId: id } });
+      if (Array.isArray(parsedVariants) && parsedVariants.length) {
+        const rows = parsedVariants.map((v) => {
+          const normalizedSelected = Object.fromEntries(
+            Object.entries(v.selected || {}).map(([k, val]) => [k, getVal(val)])
+          );
+          return {
+            deviceId: Number(id),
+            key: makeVariantKey(normalizedSelected),
+            selected: JSON.stringify(normalizedSelected),
+            sku: v.sku || null,
+            price: v.price === "" ? null : v.price ?? null,
+            oldPrice: v.oldPrice === "" ? null : v.oldPrice ?? null,
+            quantity: Number(v.quantity) || 0,
+            image: resolveVariantImage(v.image, fileName, thumbnails),
+            isActive: v.isActive !== false,
+          };
+        });
+        await DeviceVariant.bulkCreate(rows, { ignoreDuplicates: true });
       }
 
       return res.json(updatedDevice);
@@ -1523,7 +1635,7 @@ try {
     }
   }
   
-  async adjustStock(req, res) {
+   async adjustStock(req, res) {
     try {
       const { id } = req.params;
       const { delta, selectedOptions } = req.body;
@@ -1537,6 +1649,47 @@ try {
 
       const device = await Device.findByPk(id);
       if (!device) return res.status(404).json({ message: "Товар не найден" });
+
+      const variants = await DeviceVariant.findAll({ where: { deviceId: id } });
+      if (variants.length > 0) {
+        if (!selectedOptions || Object.keys(selectedOptions).length === 0) {
+          return res
+            .status(400)
+            .json({ message: "Нужно selectedOptions для варианта" });
+        }
+
+        const clean = Object.fromEntries(
+          Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
+        );
+        const key = makeVariantKey(clean);
+
+        const variant = variants.find((v) => v.key === key);
+        if (!variant) {
+          return res
+            .status(400)
+            .json({ message: "Такого варианта не существует" });
+        }
+
+        const newQty = (Number(variant.quantity) || 0) + deltaInt;
+        if (newQty < 0) {
+          return res
+            .status(400)
+            .json({ message: "Недостаточно остатка у выбранного варианта" });
+        }
+
+        variant.quantity = newQty;
+        await variant.save();
+
+        const totalQty = variants.reduce(
+          (s, v) =>
+            s + (Number(v.id === variant.id ? newQty : v.quantity) || 0),
+          0
+        );
+        device.quantity = totalQty;
+        await device.save();
+
+        return res.json({ device, updatedVariant: variant });
+      }
 
       let options = [];
       const raw = device.options;
@@ -1561,23 +1714,25 @@ try {
         const selValue = sel && typeof sel === "object" ? sel.value : sel;
 
         const opt = options.find((o) => o.name === optName);
-        if (!opt)
+        if (!opt) {
           return res
             .status(400)
             .json({ message: `Опция "${optName}" не найдена` });
+        }
 
-           const val = (opt.values || []).find((v) => v.value === selValue);
-        if (!val)
+        const val = (opt.values || []).find((v) => v.value === selValue);
+        if (!val) {
           return res.status(400).json({
             message: `Значение "${selValue}" в опции "${optName}" не найдено`,
           });
+        }
 
         const newQty = (Number(val.quantity) || 0) + deltaInt;
-        if (newQty < 0)
+        if (newQty < 0) {
           return res
             .status(400)
             .json({ message: "Недостаточно остатка по выбранной опции" });
-
+        }
         val.quantity = newQty;
 
         const totalQty = options.reduce((sum, o) => {
@@ -1589,21 +1744,23 @@ try {
 
         device.options = options;
         device.quantity = totalQty;
+        await device.save();
+        return res.json(device);
       } else {
         const newQty = (Number(device.quantity) || 0) + deltaInt;
-        if (newQty < 0)
+        if (newQty < 0) {
           return res.status(400).json({ message: "Недостаточно остатка" });
+        }
         device.quantity = newQty;
+        await device.save();
+        return res.json(device);
       }
-
-      await device.save();
-      return res.json(device);
     } catch (e) {
       console.error("adjustStock error:", e);
       return res.status(500).json({ message: "Ошибка изменения остатков" });
     }
   }
-
+    
    async search(req, res, next) {
     try {
       const { q } = req.query;
