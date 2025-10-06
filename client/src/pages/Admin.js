@@ -578,7 +578,7 @@ const Admin = () => {
     );
   };
 
- return (
+  return (
     <div className={styles.adminPanelContainer}>
       <Tabs>
         <TabList>
@@ -791,70 +791,6 @@ const Admin = () => {
               subtypesForType.map((s) => Number(s.id))
             );
 
-              // ==== DEBUG #2: покажем, какие сабтипы реально относятся к этому типу
-  console.log(
-    "%c[DBG] Subtypes for type",
-    "color:#8A2BE2",
-    { typeId: type.id, typeName: type.name, subtypes: subtypesForType.map(s => ({ id: s.id, name: s.name, typeId: s.typeId })) }
-  );
-
-  // ==== DEBUG #3: пройдёмся по всем подозрительным девайсам
-  const rx = /заряд|кабель/i;
-  filteredDevices.forEach((d) => {
-    if (!rx.test(String(d.name))) return;
-
-    const tIds = [...getDeviceTypeIds(d)];
-    const sIds = [...getDeviceSubtypeIds(d)];
-    const viaType = tIds.includes(Number(type.id));
-    const viaSubtype = sIds.some((id) => subtypeIdsOfType.has(Number(id)));
-
-    // Дополнительно покажем typeId у каждого сабтипа девайса (если объекты)
-    const devSubtypesVerbose = (d.subtypes ?? []).map((s) => {
-      if (s && typeof s === "object") {
-        return { id: s.id ?? s, name: s.name, typeId: s.typeId };
-      }
-      return { id: s, typeId: null };
-    });
-
-    if (!viaType && !viaSubtype) {
-      console.warn(
-        "%c[DBG] DEVICE SKIPPED FOR TYPE",
-        "color:#d9534f;font-weight:bold",
-        {
-          typeId: type.id,
-          typeName: type.name,
-          id: d.id,
-          name: d.name,
-          tIds,
-          sIds,
-          viaType,
-          viaSubtype,
-          typeId_raw: d.typeId,
-          subtypeId_raw: d.subtypeId,
-          type_obj: d.type?.id ?? null,
-          subtype_obj: d.subtype?.id ?? null,
-          devSubtypesVerbose,
-        }
-      );
-    } else {
-      console.log(
-        "%c[DBG] DEVICE OK FOR TYPE",
-        "color:#5cb85c",
-        {
-          typeId: type.id,
-          typeName: type.name,
-          id: d.id,
-          name: d.name,
-          tIds,
-          sIds,
-          viaType,
-          viaSubtype,
-        }
-      );
-    }
-  });
-
-
             const typeDevices = filteredDevices.filter((d) => {
               const tIds = getDeviceTypeIds(d);
               const sIds = getDeviceSubtypeIds(d);
@@ -864,12 +800,6 @@ const Admin = () => {
               );
               return viaType || viaSubtype;
             });
-
-             console.log(
-    "%c[DBG] TYPE GROUP RESULT",
-    "color:#0275d8",
-    { typeId: type.id, typeName: type.name, count: typeDevices.length, ids: typeDevices.map(d => d.id) }
-  );
 
             const isOpenType = openDeviceTypeIds.includes(type.id);
             const isAuto = Number(type.id) === Number(autoTypeId); // <-- ВАЖНО
