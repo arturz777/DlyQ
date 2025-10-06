@@ -138,7 +138,7 @@ const Admin = () => {
     fetchAllCouriers().then(setCouriers).catch(console.error);
   }, []);
 
-   const filteredDevices = React.useMemo(() => {
+    const filteredDevices = React.useMemo(() => {
     return devices
       .filter((d) => d.name.toLowerCase().includes(searchQuery.toLowerCase()))
       .sort((a, b) => {
@@ -148,9 +148,6 @@ const Admin = () => {
         if (sortOption === "nameDesc") return b.name.localeCompare(a.name);
         return 0;
       });
-     if (typeof window !== "undefined") {
-  window.__dbgDevs = filteredDevices;
-}
   }, [devices, searchQuery, sortOption]);
 
   useEffect(() => {
