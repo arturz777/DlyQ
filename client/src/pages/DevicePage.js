@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useMemo } from "react";
 import { fetchOneDevice, fetchRecommendedDevices } from "../http/deviceAPI";
 import { Context } from "../index";
 import { toast } from "react-toastify";
@@ -7,6 +7,27 @@ import { motion, AnimatePresence } from "framer-motion";
 import { isShopOpenNow } from "../utils/workHours";
 import appStore from "../store/appStore";
 import styles from "./DevicePage.module.css";
+
+const getVal = (x) =>
+  x && typeof x === "object" && "value" in x ? x.value : x;
+
+const makeVariantKey = (selected = {}) =>
+  Object.keys(selected)
+    .sort()
+    .map((k) => `${k}:${String(getVal(selected[k]))}`)
+    .join("|");
+
+const parseMaybeJSON = (v) => {
+  if (!v) return v;
+  if (typeof v === "string") {
+    try {
+      return JSON.parse(v);
+    } catch {
+      return v;
+    }
+  }
+  return v;
+};
 
 const DevicePage = ({ id }) => {
   const { basket } = useContext(Context);
@@ -17,6 +38,7 @@ const DevicePage = ({ id }) => {
   });
   const [recommendedDevices, setRecommendedDevices] = useState([]);
   const [selectedOptions, setSelectedOptions] = useState({});
+  const [selectedVariant, setSelectedVariant] = useState(null);
   const [finalPrice, setFinalPrice] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [availableQuantity, setAvailableQuantity] = useState(0);
@@ -31,24 +53,36 @@ const DevicePage = ({ id }) => {
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
+      const cleanSelected = {};
+      Object.entries(selectedOptions || {}).forEach(([k, v]) => {
+        cleanSelected[k] = getVal(v);
+      });
+      const variantKey =
+        device.variants?.length && Object.keys(cleanSelected).length
+          ? makeVariantKey(cleanSelected)
+          : null;
+
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/device/check-stock`,
+        `${process.env.REACT_APP_API_URL}api/device/check-stock`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ deviceId, quantity, selectedOptions }),
+          body: JSON.stringify({
+            deviceId,
+            quantity,
+            selectedOptions: cleanSelected,
+            variantKey,
+          }),
         }
       );
 
       const data = await response.json();
-
       if (data.status === "error") {
         toast.error(`❌ ${data.message}`);
         return false;
       }
-
       return data.quantity >= quantity;
     } catch (error) {
       console.error("Ошибка при проверке наличия товара:", error);
@@ -56,40 +90,45 @@ const DevicePage = ({ id }) => {
     }
   };
 
-   useEffect(() => {
+  useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
     };
-
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-   useEffect(() => {
+  useEffect(() => {
     const fetchData = async () => {
       appStore.startLoading();
       try {
         const deviceData = await fetchOneDevice(id);
-        setDevice(deviceData);
-        setFinalPrice(Number(deviceData.price) || 0);
+
+        const normalizedVariants = (deviceData.variants || []).map((v) => {
+          const sel = parseMaybeJSON(v.selected) || {};
+          return {
+            ...v,
+            selected: sel,
+            key: v.key || makeVariantKey(sel),
+          };
+        });
+
+        const normalized = { ...deviceData, variants: normalizedVariants };
+        setDevice(normalized);
+        setFinalPrice(Number(normalized.price) || 0);
         setActiveIndex(0);
 
         const itemInBasket = basket.items.find(
-          (item) => item.id === deviceData.id
+          (item) => item.id === normalized.id
         );
         const quantityInBasket = itemInBasket ? itemInBasket.count : 0;
-        setAvailableQuantity(deviceData.quantity - quantityInBasket);
-
-        const initialOptions = {};
-        deviceData.options?.forEach((option) => {
-          if (option.values.length > 0) {
-            initialOptions[option.name] = option.values[0];
-          }
-        });
+        setAvailableQuantity(
+          (Number(normalized.quantity) || 0) - quantityInBasket
+        );
 
         setSelectedOptions({});
 
-        const recommended = await fetchRecommendedDevices(deviceData.type);
+        const recommended = await fetchRecommendedDevices(normalized.type);
         setRecommendedDevices(recommended);
       } catch (error) {
         toast.error("❌ Ошибка загрузки устройства");
@@ -103,14 +142,110 @@ const DevicePage = ({ id }) => {
   }, [id, basket.items]);
 
   useEffect(() => {
-    const additionalPrice = Object.values(selectedOptions).reduce(
-      (total, option) => total + (Number(option?.price) || 0),
+    if (
+      (device.variants?.length || 0) > 0 &&
+      (device.options?.length || 0) > 0
+    ) {
+      const haveAll = device.options.every(
+        (o) => selectedOptions[o.name]?.value
+      );
+      if (haveAll) {
+        const sel = {};
+        device.options.forEach(
+          (o) => (sel[o.name] = getVal(selectedOptions[o.name]))
+        );
+        const key = makeVariantKey(sel);
+        const v =
+          device.variants.find(
+            (x) => (x.key || makeVariantKey(x.selected || {})) === key
+          ) || null;
+
+        setSelectedVariant(v);
+
+        const base = Number(device.price) || 0;
+        const add = Object.values(selectedOptions).reduce(
+          (s, o) => s + (Number(o?.price) || 0),
+          0
+        );
+        const price = v && v.price != null ? Number(v.price) : base + add;
+        setFinalPrice(price);
+        return;
+      }
+    }
+
+    const add = Object.values(selectedOptions).reduce(
+      (s, o) => s + (Number(o?.price) || 0),
       0
     );
-    setFinalPrice((Number(device.price) || 0) + additionalPrice);
-  }, [selectedOptions, device.price]);
+    setSelectedVariant(null);
+    setFinalPrice((Number(device.price) || 0) + add);
+  }, [selectedOptions, device.price, device.options, device.variants]);
 
-  const images = [device.img, ...(device.thumbnails || [])];
+  useEffect(() => {
+    if (!device) return;
+
+    if (
+      (device.variants?.length || 0) > 0 &&
+      (device.options?.length || 0) > 0
+    ) {
+      const haveAll = device.options.every(
+        (o) => selectedOptions[o.name]?.value
+      );
+      if (haveAll && selectedVariant) {
+        const cleanSelected = Object.fromEntries(
+          Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
+        );
+        const key = makeVariantKey(cleanSelected);
+        const existingItem = basket.items.find(
+          (item) => item.id === device.id && item.variantKey === key
+        );
+
+        const inCart = existingItem ? existingItem.count : 0;
+        const variantQty = Number(selectedVariant.quantity) || 0;
+        setAvailableQuantity(variantQty - inCart);
+        return;
+      }
+    }
+
+    const existingItem = basket.items.find((item) => item.id === device.id);
+    const inCart = existingItem ? existingItem.count : 0;
+    setAvailableQuantity((Number(device.quantity) || 0) - inCart);
+  }, [device, selectedOptions, selectedVariant, basket.items]);
+
+  const baseImages = useMemo(
+    () => [device.img, ...(device.thumbnails || [])].filter(Boolean),
+    [device.img, device.thumbnails]
+  );
+
+  const images = useMemo(() => {
+    const vUrl = selectedVariant?.image || null;
+    if (!vUrl) return baseImages;
+    const idx = baseImages.indexOf(vUrl);
+    if (idx === -1) return [vUrl, ...baseImages];
+    return baseImages;
+  }, [baseImages, selectedVariant?.image]);
+
+const firstOptionName = device.options?.[0]?.name || null;
+
+const firstOptionPreviewMap = useMemo(() => {
+  if (!firstOptionName) return {};
+  const map = {};
+  (device.variants || []).forEach(v => {
+    const val = v?.selected?.[firstOptionName];
+    if (!val || map[val]) return;
+    if (v.image && baseImages.includes(v.image)) {
+      map[val] = v.image;
+    }
+  });
+  return map;
+}, [firstOptionName, device.variants, baseImages]);
+
+
+  useEffect(() => {
+    if (!selectedVariant?.image) return;
+    const idx = images.indexOf(selectedVariant.image);
+    setActiveIndex(idx !== -1 ? idx : 0);
+  }, [selectedVariant?.image, images]);
 
   const hyphenLang = (() => {
     const l = (i18n.language || "ru").toLowerCase();
@@ -119,8 +254,8 @@ const DevicePage = ({ id }) => {
     if (l.startsWith("et") || l === "est") return "et";
     return "en";
   })();
-  
- const handleNext = () => {
+
+  const handleNext = () => {
     setPage(([p]) => [p + 1, +1]);
     setActiveIndex((prev) => (prev + 1) % images.length);
   };
@@ -159,11 +294,6 @@ const DevicePage = ({ id }) => {
     }));
   };
 
-  const availableOptions = device.options.map((option) => ({
-    ...option,
-    values: option.values.filter((v) => v.quantity > 0),
-  }));
-
   const handleAddToBasket = async () => {
     if (!isShopOpenNow() && !isPreorder) {
       toast.error(
@@ -175,20 +305,41 @@ const DevicePage = ({ id }) => {
       return;
     }
 
+    if ((device.variants?.length || 0) > 0) {
+      if ((device.options?.length || 0) === 0) {
+        toast.error("❌ Для товара с вариантами должны быть настроены опции.");
+        return;
+      }
+      const allChosen = device.options.every(
+        (o) => selectedOptions[o.name]?.value
+      );
+      if (!allChosen) {
+        toast.error(`❌ ${t("Select product options!", { ns: "devicePage" })}`);
+        return;
+      }
+      if (!selectedVariant) {
+        toast.error("❌ Такой комбинации вариантов не существует.");
+        return;
+      }
+    }
+
+    const cleanSelected = Object.fromEntries(
+      Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
+    );
+    const variantKey = device.variants?.length
+      ? makeVariantKey(cleanSelected)
+      : null;
+
     const existingItem = basket.items.find(
       (item) =>
         item.id === device.id &&
-        JSON.stringify(item.selectedOptions) === JSON.stringify(selectedOptions)
+        ((variantKey && item.variantKey === variantKey) ||
+          (!variantKey &&
+            JSON.stringify(item.selectedOptions) ===
+              JSON.stringify(selectedOptions)))
     );
-    const newCount = (existingItem?.count || 0) + 1;
 
-    if (
-      device.options?.length > 0 &&
-      Object.keys(selectedOptions).length === 0
-    ) {
-      toast.error(`❌ ${t("Select product options!", { ns: "devicePage" })}`);
-      return;
-    }
+    const newCount = (existingItem?.count || 0) + 1;
 
     const isAvailable = await checkStock(device.id, newCount, selectedOptions);
     const isThisPreorder = !isAvailable;
@@ -223,8 +374,12 @@ const DevicePage = ({ id }) => {
     const newItem = {
       ...device,
       selectedOptions,
+      variantKey,
       isPreorder: isThisPreorder,
-      stockQuantity: device.quantity,
+      stockQuantity:
+        selectedVariant && (device.variants?.length || 0) > 0
+          ? Number(selectedVariant.quantity) || 0
+          : Number(device.quantity) || 0,
       isStoreClosed,
     };
 
@@ -248,16 +403,162 @@ const DevicePage = ({ id }) => {
 
   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
 
-return (
+  const showOldPriceValue =
+    selectedVariant && selectedVariant.oldPrice != null
+      ? Number(selectedVariant.oldPrice)
+      : device.oldPrice != null
+      ? Number(device.oldPrice)
+      : null;
+
+  const showOld =
+    showOldPriceValue != null ? showOldPriceValue > (finalPrice || 0) : false;
+
+  const needToSelectAllOptions =
+    (device.variants?.length || 0) > 0 &&
+    (device.options?.length || 0) > 0 &&
+    !device.options.every((o) => selectedOptions[o.name]?.value);
+
+const variantsActive = (device.variants || []).filter(
+  (v) => v?.isActive !== false
+);
+
+const isValueAvailable = (optName, valueObj) => {
+  if (!device.variants?.length) return true;
+
+  const partial = Object.fromEntries(
+    Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
+  );
+  partial[optName] = getVal(valueObj);
+
+  return variantsActive.some((v) =>
+    Object.entries(partial).every(([k, val]) => (v.selected || {})[k] === val)
+  );
+};
+
+const isValueOutOfStock = (optName, valueObj) => {
+  if (!device.variants?.length) {
+    return (Number(valueObj.quantity) || 0) === 0;
+  }
+  const partial = Object.fromEntries(
+    Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
+  );
+  partial[optName] = getVal(valueObj);
+
+  const exists = variantsActive.some((v) =>
+    Object.entries(partial).every(([k, val]) => (v.selected || {})[k] === val)
+  );
+  if (!exists) return false;
+
+  const anyInStock = variantsActive.some(
+    (v) =>
+      Object.entries(partial).every(([k, val]) => (v.selected || {})[k] === val) &&
+      (Number(v.quantity) || 0) > 0
+  );
+  return !anyInStock;
+};
+
+  const OptionSelector = ({ option, index }) => {
+  const isFirst = index === 0;
+  const selected = selectedOptions[option.name];
+
+  if (isFirst && Object.keys(firstOptionPreviewMap).length > 0) {
+    return (
+      <div className={styles.OptionGroup} role="radiogroup" aria-label={option.name}>
+        <div className={styles.OptionLabel}>
+          {option.translations?.name?.[currentLang] || option.name}
+        </div>
+
+        <div className={styles.OptionThumbGrid}>
+          {option.values.map((valueObj, idx) => {
+            const val = valueObj.value;
+            const isSelected = selected?.value === val;
+            const available = isValueAvailable(option.name, valueObj);
+            const oos = isValueOutOfStock(option.name, valueObj);
+            const imgUrl = firstOptionPreviewMap[val] || null;
+            
+
+            return (
+              <button
+                key={idx}
+                type="button"
+                className={[
+        styles.OptionThumb,
+        isSelected ? styles.OptionThumbSelected : "",
+        !available ? styles.OptionThumbDisabled : oos ? styles.OptionThumbOut : "",
+      ].join(" ")}
+      onClick={() => {
+        if (!available) return; 
+        handleOptionChange(option.name, valueObj);
+        if (imgUrl) {
+          const i = baseImages.indexOf(imgUrl);
+          if (i !== -1) setActiveIndex(i);
+        }
+      }}
+      disabled={!available}
+      aria-pressed={isSelected}
+      title={option.translations?.values?.[idx]?.[currentLang] || val}
+    >
+                {imgUrl ? (
+                  <img src={imgUrl} alt="" className={styles.OptionThumbImg} />
+                ) : (
+                  <div className={styles.OptionThumbImgFallback}>
+                    {option.translations?.values?.[idx]?.[currentLang] || val}
+                  </div>
+                )}
+                <span className={styles.OptionThumbLabel}>
+                  {option.translations?.values?.[idx]?.[currentLang] || val}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.OptionGroup} role="radiogroup" aria-label={option.name}>
+      <div className={styles.OptionLabel}>
+        {option.translations?.name?.[currentLang] || option.name}
+      </div>
+
+      <div className={styles.OptionGrid}>
+        {option.values.map((valueObj, idx) => {
+          const isSelected = selected?.value === valueObj.value;
+          const available = isValueAvailable(option.name, valueObj);
+          const oos = isValueOutOfStock(option.name, valueObj);
+          return (
+            <button
+              key={idx}
+              type="button"
+               className={[
+        styles.OptionBtn,
+        isSelected ? styles.OptionBtnSelected : "",
+        !available ? styles.OptionBtnDisabled : oos ? styles.OptionBtnOut : "",
+      ].join(" ")}
+      onClick={() => available && handleOptionChange(option.name, valueObj)}
+      disabled={!available}
+      aria-pressed={isSelected}
+    >
+              {option.translations?.values?.[idx]?.[currentLang] || valueObj.value}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+  return (
     <div className={styles.DevicePageContainer}>
       <div className={styles.DevicePageContent}>
         <div className={styles.DevicePageColImg}>
           <div className={styles.DevicePageImageWrapper}>
-            {device.oldPrice && device.oldPrice > device.price && (
+            {showOld && (
               <div className={styles.DevicePageDiscountBadge}>
                 -
                 {Math.round(
-                  ((device.oldPrice - device.price) / device.oldPrice) * 100
+                  ((showOldPriceValue - finalPrice) / showOldPriceValue) * 100
                 )}
                 %
               </div>
@@ -340,36 +641,7 @@ return (
             {device.options?.length > 0 && (
               <div className={styles.DevicePageSelectedOptions}>
                 {device.options?.map((option, optionIndex) => (
-                  <div key={optionIndex} className={styles.DevicePageOption}>
-                    <select
-                      value={selectedOptions[option.name]?.value || ""}
-                      onChange={(e) => {
-                        const selectedValue = option.values.find(
-                          (v) => v.value === e.target.value
-                        );
-                        handleOptionChange(option.name, selectedValue);
-                      }}
-                      className={styles.DevicePageSelect}
-                    >
-                      <option value="" disabled hidden>
-                        {t("Select", { ns: "devicePage" })}:{" "}
-                        {option.translations?.name?.[currentLang] ||
-                          option.name}
-                      </option>
-                      {option.values.map((valueObj, valueIndex) => (
-                        <option key={valueIndex} value={valueObj.value}>
-                          {option.translations?.values?.[valueIndex]?.[
-                            currentLang
-                          ] || valueObj.value}
-                          {valueObj.quantity <= 0
-                            ? ` (${t("out of stock (Pre-order)", {
-                                ns: "devicePage",
-                              })})`
-                            : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <OptionSelector key={optionIndex} option={option} index={optionIndex} />
                 ))}
               </div>
             )}
@@ -377,51 +649,14 @@ return (
             <hr className={styles.Separator} />
             <div className={styles.DevicePageBuyBlockDesktop}>
               {device.options?.map((option, optionIndex) => (
-                <div key={optionIndex} className={styles.DevicePageOption}>
-                  <label>
-                    {option.translations?.name?.[currentLang] || option.name}
-                  </label>
-
-                  <select
-                    value={selectedOptions[option.name]?.value || ""}
-                    onChange={(e) => {
-                      const selectedValue = option.values.find(
-                        (v) => v.value === e.target.value
-                      );
-                      handleOptionChange(option.name, selectedValue);
-                    }}
-                    className={styles.DevicePageSelect}
-                  >
-                    <option value="" disabled hidden>
-                      {t("Select", { ns: "devicePage" })}:{" "}
-                      {option.translations?.name?.[currentLang] || option.name}
-                    </option>
-                    {option.values.map((valueObj, valueIndex) => (
-                      <option key={valueIndex} value={valueObj.value}>
-                        {option.translations?.values?.[valueIndex]?.[
-                          currentLang
-                        ] || valueObj.value}
-                        {valueObj.quantity <= 0
-                          ? ` (${t("out of stock (Pre-order)", {
-                              ns: "devicePage",
-                            })})`
-                          : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <OptionSelector key={optionIndex} option={option} index={optionIndex} />
               ))}
 
               <div className={styles.DevicePagePriceBlock}>
-                {device.oldPrice &&
-                Number(device.oldPrice) > Number(device.price) ? (
+                {showOld ? (
                   <>
                     <span className={styles.DevicePageOldPrice}>
-                      {(
-                        Number(device.oldPrice) +
-                        (finalPrice - (Number(device.price) || 0))
-                      ).toFixed(2)}{" "}
-                      €
+                      {showOldPriceValue.toFixed(2)} €
                     </span>
                     <span className={styles.DevicePageNewPrice}>
                       {finalPrice.toFixed(2)} €
@@ -437,8 +672,11 @@ return (
               <button
                 className={styles.DevicePageAddToCart}
                 onClick={handleAddToBasket}
+                disabled={needToSelectAllOptions}
               >
-                {availableQuantity <= 0
+                {needToSelectAllOptions
+                  ? t("Select product options!", { ns: "devicePage" })
+                  : availableQuantity <= 0
                   ? t("out_of_stock", { ns: "devicePage" })
                   : t("add_to_cart", { ns: "devicePage" })}
               </button>
@@ -467,7 +705,7 @@ return (
               </p>
 
               <div className={styles.DevicePageSpecsCard}>
-                {device.info.map((info, index) => (
+                {device.info.map((info) => (
                   <div key={info.id} className={styles.DevicePageSpecRow}>
                     <span className={styles.DevicePageSpecText}>
                       <strong>
@@ -525,7 +763,7 @@ return (
         </p>
 
         <div className={styles.DevicePageSpecsCard}>
-          {device.info.map((info, index) => (
+          {device.info.map((info) => (
             <div key={info.id} className={styles.DevicePageSpecRow}>
               <span className={styles.DevicePageSpecText}>
                 <strong>
@@ -560,20 +798,16 @@ return (
         <button
           className={styles.DevicePageAddButtonCompact}
           onClick={handleAddToBasket}
+          disabled={needToSelectAllOptions}
         >
           <span className={styles.AddText}>
             {t("add_to_cart", { ns: "devicePage" })}
           </span>
           <span className={styles.AddPrice}>
-            {device.oldPrice &&
-            Number(device.oldPrice) > Number(device.price) ? (
+            {showOld ? (
               <>
                 <span className={styles.Strike}>
-                  {(
-                    Number(device.oldPrice) +
-                    (finalPrice - (Number(device.price) || 0))
-                  ).toFixed(2)}{" "}
-                  €
+                  {showOldPriceValue.toFixed(2)} €
                 </span>{" "}
                 {finalPrice.toFixed(2)} €
               </>
@@ -588,5 +822,3 @@ return (
 };
 
 export default DevicePage;
-
-
