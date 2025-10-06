@@ -419,404 +419,349 @@ class DeviceController {
     }
   }
 
- async getAll(req, res) {
-  try {
-    let {
-      brandId,
-      typeId,
-      subtypeId,
-      limit,
-      page,
-      isNew,
-      discount,
-      recommended,
-      makeId,
-      modelId,
-    } = req.query;
+   async getAll(req, res) {
+    try {
+      let {
+        brandId,
+        typeId,
+        subtypeId,
+        limit,
+        page,
+        isNew,
+        discount,
+        recommended,
+        makeId,
+        modelId,
+      } = req.query;
 
-    const toInt = (v) => {
-      const n = Number(v);
-      return Number.isInteger(n) && n > 0 ? n : undefined;
-    };
+      const toInt = (v) => {
+        const n = Number(v);
+        return Number.isInteger(n) && n > 0 ? n : undefined;
+      };
 
-    brandId = toInt(brandId);
-    typeId = toInt(typeId);
-    subtypeId = toInt(subtypeId);
-    makeId = toInt(makeId);
-    modelId = toInt(modelId);
-    page = Number(page) || 1;
-    limit = Number(limit) || 9;
-    const offset = page * limit - limit;
+      brandId = toInt(brandId);
+      typeId = toInt(typeId);
+      subtypeId = toInt(subtypeId);
+      makeId = toInt(makeId);
+      modelId = toInt(modelId);
+      page = Number(page) || 1;
+      limit = Number(limit) || 9;
+      const offset = page * limit - limit;
 
-    const where = {};
-    if (brandId != null) where.brandId = brandId;
-    if (isNew !== undefined) where.isNew = isNew === "true";
-    if (discount !== undefined) where.discount = discount === "true";
-    if (recommended !== undefined) where.recommended = recommended === "true";
+      const where = {};
+      if (brandId != null) where.brandId = brandId;
+      if (isNew !== undefined) where.isNew = isNew === "true";
+      if (discount !== undefined) where.discount = discount === "true";
+      if (recommended !== undefined) where.recommended = recommended === "true";
 
-    const include = [
-      { model: DeviceVariant, as: "variants", required: false },
-      { model: SubType, as: "subtype" },
-      { model: Type },
-      { model: DeviceInfo, as: "info" },
-      {
-        model: Type,
-        as: "types",
-        through: { attributes: [] },
-        required: false,
-      },
-      {
-        model: SubType,
-        as: "subtypes",
-        through: { attributes: [] },
-        required: false,
-      },
-    ];
-
-    if (typeId != null) {
-      where[Op.and] = where[Op.and] || [];
-      where[Op.and].push({
-        [Op.or]: [
-          { typeId },
-          { "$types.id$": typeId },
-          { "$subtypes.typeId$": typeId },
-        ],
-      });
-    }
-
-    if (subtypeId != null) {
-      where[Op.and] = where[Op.and] || [];
-      where[Op.and].push({
-        [Op.or]: [{ subtypeId }, { "$subtypes.id$": subtypeId }],
-      });
-    }
-
-    // Совместимость (авто)
-    const compatInclude = {
-      model: DeviceCompatibility,
-      as: "compat",
-      required: false,
-      include: [
-        { model: VehicleMake, as: "make", attributes: ["id", "name"] },
-        {
-          model: VehicleModel,
-          as: "model",
-          attributes: ["id", "name", "makeId"],
-        },
-      ],
-    };
-    if (modelId != null) {
-      compatInclude.required = true;
-      compatInclude.where = { [Op.or]: [{ modelId }, { isUniversal: true }] };
-    } else if (makeId != null) {
-      compatInclude.required = true;
-      compatInclude.where = { [Op.or]: [{ makeId }, { isUniversal: true }] };
-    }
-    include.push(compatInclude);
-
-    // Выборка
-    const devices = await Device.findAndCountAll({
-      where,
-      limit,
-      offset,
-      include,
-      distinct: true,
-      subQuery: false,
-    });
-
-    // DEBUG: смотрим «заряд/кабель»
-    const rxDbg = /заряд|кабель/i;
-    devices.rows
-      .filter((d) => rxDbg.test(String(d.name)))
-      .forEach((d) => {
-        const dv = d.dataValues || d;
-        const typesIds = (dv.types || []).map((t) => t.id);
-        const subtypesIds = (dv.subtypes || []).map((s) => s.id);
-        console.log(
-          "[DBG getAll] id=%s name=%s | typeId=%s, types=%j | subtypeId=%s, subtypes=%j",
-          dv.id,
-          dv.name,
-          dv.typeId,
-          typesIds,
-          dv.subtypeId,
-          subtypesIds
-        );
-      });
-
-    // Нормализация variants.selected
-    devices.rows.forEach((d) => {
-      const vars = d.dataValues.variants || d.variants || [];
-      vars.forEach((v) => {
-        v.dataValues.selected = parseMaybeJSON(v.dataValues.selected);
-      });
-    });
-
-    // daysToExpire + НОРМАЛИЗАЦИЯ types/subtypes
-    const todayStr = new Date().toISOString().slice(0, 10);
-    devices.rows.forEach((d) => {
-      const v = d.dataValues || d;
-
-      // daysToExpire
-      if (v.expiryDate) {
-        const ms = new Date(v.expiryDate) - new Date(todayStr);
-        v.daysToExpire = Math.floor(ms / 86400000);
-      } else {
-        v.daysToExpire = null;
-      }
-
-      // subtypes: гарантируем, что primary `subtype` присутствует в массиве `subtypes`
-      const subs = Array.isArray(v.subtypes) ? [...v.subtypes] : [];
-      if (v.subtype && !subs.some((s) => Number(s.id) === Number(v.subtype.id))) {
-        subs.push(v.subtype);
-      }
-      v.subtypes = subs;
-
-      // types: гарантируем, что primary `type` присутствует в массиве `types`
-      const tys = Array.isArray(v.types) ? [...v.types] : [];
-      if (v.type && !tys.some((t) => Number(t.id) === Number(v.type.id))) {
-        tys.push(v.type);
-      }
-      v.types = tys;
-    });
-
-const WATCH_ID = 183; // поменяй на нужный id товара
-devices.rows.forEach((d) => {
-  const v = d.dataValues || d;
-  if (v.id === WATCH_ID) {
-    console.log("[DBG getAll WATCH]", {
-      id: v.id,
-      name: v.name,
-      typeId: v.typeId,
-      types: (v.types || []).map((t) => t.id),
-      subtypeId: v.subtypeId,
-      subtypes: (v.subtypes || []).map((s) => s.id),
-    });
-  }
-});
-    
-    // Переводы
-    const deviceIds = devices.rows.map((d) => d.id);
-    let translations = [];
-    if (deviceIds.length > 0) {
-      translations = await Translation.findAll({
-        where: {
-          key: {
-            [Op.or]: deviceIds.map((id) => ({ [Op.like]: `device_${id}.%` })),
-          },
-        },
-      });
-    }
-
-    const translatedSpecs = {};
-    translations.forEach((t) => {
-      const keyParts = t.key.split(".");
-      const deviceId = keyParts[0].replace("device_", "");
-      const section = keyParts[1];
-      const optionIndex = keyParts[2];
-      const field = keyParts[3];
-      const valueIndex = keyParts[4];
-
-      if (!translatedSpecs[deviceId]) translatedSpecs[deviceId] = {};
-
-      if (section === "info") {
-        if (!translatedSpecs[deviceId].info)
-          translatedSpecs[deviceId].info = [];
-        if (!translatedSpecs[deviceId].info[optionIndex]) {
-          translatedSpecs[deviceId].info[optionIndex] = {
-            title: {},
-            description: {},
-          };
-        }
-        translatedSpecs[deviceId].info[optionIndex][field][t.lang] = t.text;
-      } else if (section === "option") {
-        if (!translatedSpecs[deviceId].options)
-          translatedSpecs[deviceId].options = [];
-        if (!translatedSpecs[deviceId].options[optionIndex]) {
-          translatedSpecs[deviceId].options[optionIndex] = {
-            name: {},
-            values: [],
-          };
-        }
-        if (field === "name") {
-          translatedSpecs[deviceId].options[optionIndex].name[t.lang] = t.text;
-        } else if (field === "value" && valueIndex !== undefined) {
-          if (!translatedSpecs[deviceId].options[optionIndex].values[valueIndex]) {
-            translatedSpecs[deviceId].options[optionIndex].values[valueIndex] = {};
-          }
-          translatedSpecs[deviceId].options[optionIndex].values[valueIndex][t.lang] = t.text;
-        }
-      } else {
-        if (!translatedSpecs[deviceId][section]) translatedSpecs[deviceId][section] = {};
-        translatedSpecs[deviceId][section][t.lang] = t.text;
-      }
-    });
-
-    devices.rows.forEach((device) => {
-      device.dataValues.translations = translatedSpecs[device.id] || {};
-    });
-
-    return res.json(devices);
-  } catch (error) {
-    console.error("❌ Ошибка при получении устройств:", error.message);
-    return res.status(500).json({ message: "Ошибка при получении устройств" });
-  }
-}
-
-  async getOne(req, res) {
-  try {
-    const { id } = req.params;
-
-    const device = await Device.findOne({
-      where: { id },
-      include: [
-        { model: DeviceVariant, as: "variants" },
-        { model: DeviceInfo, as: "info" },
+      const include = [
+        { model: DeviceVariant, as: "variants", required: false },
         { model: SubType, as: "subtype" },
         { model: Type },
-        { model: Type, as: "types", through: { attributes: [] } },
+        { model: DeviceInfo, as: "info" },
+        {
+          model: Type,
+          as: "types",
+          through: { attributes: [] },
+          required: false,
+        },
         {
           model: SubType,
           as: "subtypes",
-          through: { attributes: ["isPrimary"] },
+          through: { attributes: [] },
+          required: false,
         },
-        {
-          model: DeviceCompatibility,
-          as: "compat",
-          include: [
-            { model: VehicleMake, as: "make", attributes: ["id", "name"] },
-            { model: VehicleModel, as: "model", attributes: ["id", "name"] },
+      ];
+
+      if (typeId != null) {
+        where[Op.and] = where[Op.and] || [];
+        where[Op.and].push({
+          [Op.or]: [
+            { typeId },
+            { "$types.id$": typeId },
+            { "$subtypes.typeId$": typeId },
           ],
-        },
-      ],
-    });
-
-    if (!device) {
-      return res.status(404).json({ message: "Устройство не найдено" });
-    }
-
-    // daysToExpire
-    const todayStr = new Date().toISOString().slice(0, 10);
-    if (device.dataValues.expiryDate) {
-      const ms = new Date(device.dataValues.expiryDate) - new Date(todayStr);
-      device.dataValues.daysToExpire = Math.floor(ms / 86400000);
-    } else {
-      device.dataValues.daysToExpire = null;
-    }
-
-    // Нормализация types/subtypes (primary → в массивы)
-    {
-      const v = device.dataValues;
-
-      const subs = Array.isArray(v.subtypes) ? [...v.subtypes] : [];
-      if (v.subtype && !subs.some((s) => Number(s.id) === Number(v.subtype.id))) {
-        subs.push(v.subtype);
+        });
       }
-      v.subtypes = subs;
 
-      const tys = Array.isArray(v.types) ? [...v.types] : [];
-      if (v.type && !tys.some((t) => Number(t.id) === Number(v.type.id))) {
-        tys.push(v.type);
+      if (subtypeId != null) {
+        where[Op.and] = where[Op.and] || [];
+        where[Op.and].push({
+          [Op.or]: [{ subtypeId }, { "$subtypes.id$": subtypeId }],
+        });
       }
-      v.types = tys;
-    }
 
-    // Переводы (как у тебя)
-    const translations = await Translation.findAll({
-      where: { key: { [Op.like]: `device_${id}.%` } },
-    });
+      const compatInclude = {
+        model: DeviceCompatibility,
+        as: "compat",
+        required: false,
+        include: [
+          { model: VehicleMake, as: "make", attributes: ["id", "name"] },
+          {
+            model: VehicleModel,
+            as: "model",
+            attributes: ["id", "name", "makeId"],
+          },
+        ],
+      };
 
-    const translatedSpecs = {};
-    translations.forEach((t) => {
-      const key = t.key.replace(`device_${id}.`, "");
-      const keyParts = key.split(".");
-
-      if (key.startsWith("info")) {
-        const index = keyParts[1];
-        const type = keyParts[2];
-
-        if (!translatedSpecs.info) translatedSpecs.info = {};
-        if (!translatedSpecs.info[index]) {
-          translatedSpecs.info[index] = { title: {}, description: {} };
-        }
-
-        if (type === "title") {
-          translatedSpecs.info[index].title[t.lang] = t.text;
-        } else if (type === "description") {
-          translatedSpecs.info[index].description[t.lang] = t.text;
-        }
-      } else if (key.startsWith("option")) {
-        const optionIndex = keyParts[1];
-        const type = keyParts[2];
-        const valueIndex = keyParts[3];
-
-        if (!translatedSpecs.options) translatedSpecs.options = {};
-        if (!translatedSpecs.options[optionIndex]) {
-          translatedSpecs.options[optionIndex] = { name: {}, values: [] };
-        }
-
-        if (type === "name") {
-          translatedSpecs.options[optionIndex].name[t.lang] = t.text;
-        } else if (type === "value" && valueIndex !== undefined) {
-          if (!translatedSpecs.options[optionIndex].values[valueIndex]) {
-            translatedSpecs.options[optionIndex].values[valueIndex] = {};
-          }
-          translatedSpecs.options[optionIndex].values[valueIndex][t.lang] = t.text;
-        }
-      } else {
-        if (!translatedSpecs[key]) translatedSpecs[key] = {};
-        translatedSpecs[key][t.lang] = t.text;
+      if (modelId != null) {
+        compatInclude.required = true;
+        compatInclude.where = { [Op.or]: [{ modelId }, { isUniversal: true }] };
+      } else if (makeId != null) {
+        compatInclude.required = true;
+        compatInclude.where = { [Op.or]: [{ makeId }, { isUniversal: true }] };
       }
-    });
 
-    // Проставляем переводы в info/options (как у тебя)
-    if (device.info && Array.isArray(device.info)) {
-      device.info.forEach((infoItem, index) => {
-        if (!translatedSpecs.info) return;
-        const translatedItem = translatedSpecs.info[index];
-        if (translatedItem) {
-          infoItem.dataValues.translations = {
-            title: translatedItem?.title || {},
-            description: translatedItem?.description || {},
-          };
+      include.push(compatInclude);
+
+      const devices = await Device.findAndCountAll({
+        where,
+        limit,
+        offset,
+        include,
+        distinct: true,
+        subQuery: true,   
+        order: [['id', 'ASC']],
+      });
+
+      devices.rows.forEach((d) => {
+        const vars = d.dataValues.variants || d.variants || [];
+        vars.forEach((v) => {
+          v.dataValues.selected = parseMaybeJSON(v.dataValues.selected);
+        });
+      });
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      devices.rows.forEach((d) => {
+        const v = d.dataValues;
+        if (v.expiryDate) {
+          const ms = new Date(v.expiryDate) - new Date(todayStr);
+          v.daysToExpire = Math.floor(ms / 86400000);
         } else {
-          infoItem.translations = { title: {}, description: {} };
+          v.daysToExpire = null;
         }
       });
-    }
 
-    if (device.options && Array.isArray(device.options)) {
-      device.options.forEach((option, optionIndex) => {
-        if (translatedSpecs.options && translatedSpecs.options[optionIndex]) {
-          option.translations = {
-            name: translatedSpecs.options[optionIndex].name || {},
-            values: [],
-          };
-          option.values.forEach((value, valueIndex) => {
-            if (translatedSpecs.options[optionIndex].values[valueIndex]) {
-              option.translations.values[valueIndex] =
-                translatedSpecs.options[optionIndex].values[valueIndex];
+      const deviceIds = devices.rows.map((d) => d.id);
+      let translations = [];
+      if (deviceIds.length > 0) {
+        translations = await Translation.findAll({
+          where: {
+            key: {
+              [Op.or]: deviceIds.map((id) => ({ [Op.like]: `device_${id}.%` })),
+            },
+          },
+        });
+      }
+
+      const translatedSpecs = {};
+      translations.forEach((t) => {
+        const keyParts = t.key.split(".");
+        const deviceId = keyParts[0].replace("device_", "");
+        const section = keyParts[1];
+        const optionIndex = keyParts[2];
+        const field = keyParts[3];
+        const valueIndex = keyParts[4];
+
+        if (!translatedSpecs[deviceId]) translatedSpecs[deviceId] = {};
+
+        if (section === "info") {
+          if (!translatedSpecs[deviceId].info)
+            translatedSpecs[deviceId].info = [];
+          if (!translatedSpecs[deviceId].info[optionIndex]) {
+            translatedSpecs[deviceId].info[optionIndex] = {
+              title: {},
+              description: {},
+            };
+          }
+          translatedSpecs[deviceId].info[optionIndex][field][t.lang] = t.text;
+        } else if (section === "option") {
+          if (!translatedSpecs[deviceId].options)
+            translatedSpecs[deviceId].options = [];
+          if (!translatedSpecs[deviceId].options[optionIndex]) {
+            translatedSpecs[deviceId].options[optionIndex] = {
+              name: {},
+              values: [],
+            };
+          }
+
+          if (field === "name") {
+            translatedSpecs[deviceId].options[optionIndex].name[t.lang] =
+              t.text;
+          } else if (field === "value" && valueIndex !== undefined) {
+            if (
+              !translatedSpecs[deviceId].options[optionIndex].values[valueIndex]
+            ) {
+              translatedSpecs[deviceId].options[optionIndex].values[
+                valueIndex
+              ] = {};
             }
-          });
+            translatedSpecs[deviceId].options[optionIndex].values[valueIndex][
+              t.lang
+            ] = t.text;
+          }
+        } else {
+          if (!translatedSpecs[deviceId][section])
+            translatedSpecs[deviceId][section] = {};
+          translatedSpecs[deviceId][section][t.lang] = t.text;
         }
       });
-    }
 
-    // JSON для variants.selected
-    if (device && Array.isArray(device.dataValues.variants)) {
-      device.dataValues.variants.forEach((v) => {
-        v.dataValues.selected = parseMaybeJSON(v.dataValues.selected);
+      devices.rows.forEach((device) => {
+        device.dataValues.translations = translatedSpecs[device.id] || {};
       });
-    }
 
-    return res.json({
-      ...device.dataValues,
-      translations: translatedSpecs || {},
-    });
-  } catch (error) {
-    console.error("❌ Ошибка при получении устройства:", error.message);
-    return res.status(500).json({ message: "Ошибка при получении устройства" });
+      return res.json(devices);
+    } catch (error) {
+      console.error("❌ Ошибка при получении устройств:", error.message);
+      return res
+        .status(500)
+        .json({ message: "Ошибка при получении устройств" });
+    }
   }
-}
+
+  async getOne(req, res) {
+    try {
+      const { id } = req.params;
+
+      const device = await Device.findOne({
+        where: { id },
+        include: [
+          { model: DeviceVariant, as: "variants" },
+          { model: DeviceInfo, as: "info" },
+          { model: SubType, as: "subtype" },
+          { model: Type },
+          { model: Type, as: "types", through: { attributes: [] } },
+          {
+            model: SubType,
+            as: "subtypes",
+            through: { attributes: ["isPrimary"] },
+          },
+          {
+            model: DeviceCompatibility,
+            as: "compat",
+            include: [
+              { model: VehicleMake, as: "make", attributes: ["id", "name"] },
+              { model: VehicleModel, as: "model", attributes: ["id", "name"] },
+            ],
+          },
+        ],
+      });
+
+      if (!device) {
+        return res.status(404).json({ message: "Устройство не найдено" });
+      }
+
+      const allSubtypeIds = (device.subtypes || []).map((s) => s.id);
+
+      const translations = await Translation.findAll({
+        where: { key: { [Op.like]: `device_${id}.%` } },
+      });
+
+      const translatedSpecs = {};
+      translations.forEach((t) => {
+        const key = t.key.replace(`device_${id}.`, "");
+        const keyParts = key.split(".");
+
+        if (key.startsWith("info")) {
+          const index = keyParts[1];
+          const type = keyParts[2];
+
+          if (!translatedSpecs.info) {
+            translatedSpecs.info = {};
+          }
+
+          if (!translatedSpecs.info[index]) {
+            translatedSpecs.info[index] = { title: {}, description: {} };
+          }
+
+          if (type === "title") {
+            translatedSpecs.info[index].title[t.lang] = t.text;
+          } else if (type === "description") {
+            translatedSpecs.info[index].description[t.lang] = t.text;
+          }
+        } else if (key.startsWith("option")) {
+          const optionIndex = keyParts[1];
+          const type = keyParts[2];
+          const valueIndex = keyParts[3];
+
+          if (!translatedSpecs.options) {
+            translatedSpecs.options = {};
+          }
+          if (!translatedSpecs.options[optionIndex]) {
+            translatedSpecs.options[optionIndex] = { name: {}, values: [] };
+          }
+
+          if (type === "name") {
+            translatedSpecs.options[optionIndex].name[t.lang] = t.text;
+          } else if (type === "value" && valueIndex !== undefined) {
+            if (!translatedSpecs.options[optionIndex].values[valueIndex]) {
+              translatedSpecs.options[optionIndex].values[valueIndex] = {};
+            }
+            translatedSpecs.options[optionIndex].values[valueIndex][t.lang] =
+              t.text;
+          }
+        } else {
+          if (!translatedSpecs[key]) {
+            translatedSpecs[key] = {};
+          }
+          translatedSpecs[key][t.lang] = t.text;
+        }
+      });
+
+      if (device.info && Array.isArray(device.info)) {
+        device.info.forEach((infoItem, index) => {
+          if (!translatedSpecs.info) return;
+
+          const translatedItem = translatedSpecs.info[index];
+
+          if (translatedItem) {
+            infoItem.dataValues.translations = {
+              title: translatedItem?.title || {},
+              description: translatedItem?.description || {},
+            };
+          } else {
+            infoItem.translations = { title: {}, description: {} };
+          }
+        });
+      }
+
+      if (device.options && Array.isArray(device.options)) {
+        device.options.forEach((option, optionIndex) => {
+          if (translatedSpecs.options && translatedSpecs.options[optionIndex]) {
+            option.translations = {
+              name: translatedSpecs.options[optionIndex].name || {},
+              values: [],
+            };
+
+            option.values.forEach((value, valueIndex) => {
+              if (translatedSpecs.options[optionIndex].values[valueIndex]) {
+                option.translations.values[valueIndex] =
+                  translatedSpecs.options[optionIndex].values[valueIndex];
+              }
+            });
+          }
+        });
+      }
+
+      if (device && Array.isArray(device.dataValues.variants)) {
+        device.dataValues.variants.forEach((v) => {
+          v.dataValues.selected = parseMaybeJSON(v.dataValues.selected);
+        });
+      }
+
+      return res.json({
+        ...device.dataValues,
+        translations: translatedSpecs || {},
+      });
+    } catch (error) {
+      console.error("❌ Ошибка при получении устройства:", error.message);
+      return res
+        .status(500)
+        .json({ message: "Ошибка при получении устройства" });
+    }
+  }
 
   async update(req, res, next) {
     try {
