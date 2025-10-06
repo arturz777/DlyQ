@@ -28,6 +28,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [existingImages, setExistingImages] = useState([]);
   const [info, setInfo] = useState([]);
   const [options, setOptions] = useState([]);
+  const [variants, setVariants] = useState([]);
   const [description, setDescription] = useState("");
   const [isEditMode, setIsEditMode] = useState(false);
   const [errors, setErrors] = useState({});
@@ -52,6 +53,82 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [extraTypeIds, setExtraTypeIds] = useState(new Set());
   const [extraSubtypeIds, setExtraSubtypeIds] = useState(new Set());
   const [visibleSubtypes, setVisibleSubtypes] = useState([]);
+  const [pickerOpenFor, setPickerOpenFor] = useState(null);
+
+  const galleryItems = () => {
+    const slots = images.filter(Boolean);
+    return slots.map((slot, idx) => {
+      const isMain = idx === 0;
+      const token = isMain ? "gallery:main" : `gallery:thumb:${idx - 1}`;
+      const url = typeof slot === "string" ? slot : URL.createObjectURL(slot);
+      return { token, url, isMain, idx };
+    });
+  };
+
+  const applyVariantImageToken = (variantIdx, tokenOrUrl) => {
+    setVariants((prev) => {
+      const next = [...prev];
+      if (!next[variantIdx]) return prev;
+      next[variantIdx].image = tokenOrUrl;
+      return next;
+    });
+    setPickerOpenFor(null);
+  };
+
+  const getVal = (x) =>
+    x && typeof x === "object" && "value" in x ? x.value : x;
+  const makeVariantKey = (selected = {}) =>
+    Object.keys(selected)
+      .sort()
+      .map((k) => `${k}:${String(getVal(selected[k]))}`)
+      .join("|");
+
+  const cartesian = (arrays) =>
+    arrays.reduce(
+      (acc, arr) => acc.flatMap((a) => arr.map((b) => [...a, b])),
+      [[]]
+    );
+
+  const generateVariantsFromOptions = (options) => {
+    if (!Array.isArray(options) || options.length === 0) return [];
+
+    const clean = (options || [])
+      .map((o) => ({
+        name: (o.name || "").trim(),
+        values: (o.values || []).map((v) => v.value).filter(Boolean),
+      }))
+      .filter((o) => o.name && o.values.length);
+
+    if (!clean.length) return [];
+
+    const names = clean.map((o) => o.name);
+    const lists = clean.map((o) => o.values);
+
+    const cartesian = (arrays) =>
+      arrays.reduce(
+        (acc, arr) => acc.flatMap((a) => arr.map((b) => [...a, b])),
+        [[]]
+      );
+
+    const combos = cartesian(lists);
+
+    return combos.map((combo) => {
+      const selected = {};
+      names.forEach((n, i) => {
+        selected[n] = combo[i];
+      });
+      return {
+        selected,
+        sku: "",
+        price: "",
+        oldPrice: "",
+        quantity: 0,
+        image: "",
+        isActive: true,
+        key: makeVariantKey(selected),
+      };
+    });
+  };
 
   const [translations, setTranslations] = useState({
     name: { en: "", ru: "", est: "" },
@@ -62,10 +139,20 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     basic: true,
     price: false,
     images: false,
-    options: false,
     description: false,
     info: false,
+    optsAndVars: true,
   });
+
+  const regenerateVariantsWithMerge = () => {
+    const fresh = generateVariantsFromOptions(options);
+    const prevByKey = new Map(variants.map((v) => [v.key, v]));
+    const merged = fresh.map((f) => {
+      const keep = prevByKey.get(f.key);
+      return keep ? { ...keep, selected: f.selected, key: f.key } : f;
+    });
+    setVariants(merged);
+  };
 
   const currentYear = new Date().getFullYear();
   const YEARS = Array.from(
@@ -77,6 +164,13 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const toggleSection = (key) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
+  useEffect(() => {
+    if (variants.length) {
+      const total = variants.reduce((s, v) => s + (Number(v.quantity) || 0), 0);
+      setQuantity(total);
+    }
+  }, [variants]);
 
   useEffect(() => {
     if (editableDevice) {
@@ -142,6 +236,24 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       setRecommended(editableDevice.recommended || false);
       setInfo(editableDevice.info || []);
       setOptions(editableDevice.options || []);
+
+      setVariants(
+        Array.isArray(editableDevice.variants)
+          ? editableDevice.variants.map((v) => ({
+              selected: v.selected || {},
+              sku: v.sku || "",
+              // превратим null в "" для контролируемых инпутов
+              price: (v.price ?? "") === null ? "" : v.price ?? "",
+              oldPrice: (v.oldPrice ?? "") === null ? "" : v.oldPrice ?? "",
+              quantity: Number(v.quantity) || 0,
+              image: v.image || "",
+              isActive: v.isActive !== false,
+              // если бек не вернул key — пересоберём
+              key: v.key || makeVariantKey(v.selected || {}),
+            }))
+          : []
+      );
+
       setIsEditMode(true);
       setExistingImages([editableDevice.img, ...editableDevice.thumbnails]);
       setQuantity(
@@ -326,12 +438,14 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     setPrice("");
     setInfo([]);
     setOptions([]);
+    setVariants([]);
     setMainImage(null);
     setImages(Array(5).fill(null));
     setImagePreviews([]);
     setExistingImages([]);
     setIsEditMode(false);
     setQuantity("");
+    device.setSelectedBrand(null);
   };
 
   const handleImageChange = (index, e) => {
@@ -344,9 +458,15 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   };
 
   const removeImage = (index) => {
-    setImages((prev) => prev.map((img, i) => (i === index ? null : img)));
-
-    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+    setImages((prev) => {
+      const target = prev[index];
+      if (typeof target === "string") {
+        setExistingImages((old) => old.filter((url) => url !== target));
+      }
+      const next = [...prev];
+      next[index] = null;
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -803,6 +923,10 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       errors.quantity = "Количество не может быть отрицательным";
     }
 
+    if (options.length >= 2 && variants.length === 0) {
+      errors.variants = "Сгенерируйте варианты для комбинаций опций";
+    }
+
     options.forEach((option, index) => {
       if (!option.name.trim()) {
         errors[`option_${index}`] = `Введите название для опции ${index + 1}`;
@@ -849,16 +973,16 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     }
 
     const formData = new FormData();
-    formData.append("isNew", isNew);
-    formData.append("discount", discount);
-    formData.append("recommended", recommended);
+    formData.append("isNew", String(isNew));
+    formData.append("discount", String(discount));
+    formData.append("recommended", String(recommended));
     formData.append("name", name);
     formData.append("price", price);
     formData.append(
       "purchasePrice",
       purchasePrice === "" ? "" : String(purchasePrice)
     );
-    formData.append("purchaseHasVAT", purchaseHasVAT);
+    formData.append("purchaseHasVAT", String(purchaseHasVAT));
     formData.append("quantity", quantity);
     formData.append("description", description || "");
     formData.append("isUniversal", isUniversal ? "true" : "false");
@@ -894,10 +1018,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
     formData.append("existingImages", JSON.stringify(existingImages));
 
-    formData.append(
-      "brandId",
-      device.selectedBrand?.id || editableDevice?.brandId || ""
-    );
+    formData.append("brandId", device.selectedBrand?.id ?? "");
 
     const primarySubtypeId =
       Number(device.selectedSubType?.id ?? editableDevice?.subtypeId ?? 0) ||
@@ -922,6 +1043,31 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
     formData.append("info", JSON.stringify(info));
     formData.append("options", JSON.stringify(options));
+
+    const normVariants = (variants || []).map((v) => {
+      const selected = Object.fromEntries(
+        Object.entries(v.selected || {}).map(([k, val]) => [
+          k,
+          val && typeof val === "object" && "value" in val ? val.value : val,
+        ])
+      );
+
+      const toNumOrNull = (x) =>
+        x === "" || x === null || x === undefined ? null : Number(x);
+
+      return {
+        selected,
+        sku: v.sku || null,
+        price: toNumOrNull(v.price),
+        oldPrice: toNumOrNull(v.oldPrice),
+        quantity: Number(v.quantity) || 0,
+        image: v.image || null,
+        isActive: v.isActive !== false,
+        key: v.key || makeVariantKey(selected),
+      };
+    });
+
+    formData.append("variants", JSON.stringify(normVariants));
     formData.append("translations", JSON.stringify(translations));
     formData.append("expiryKind", expiryKind || "");
     formData.append("expiryDate", expiryDate || "");
@@ -1008,10 +1154,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
     setImages((prevImages) => [...prevImages, ...files]);
     setImagePreviews((prevPreviews) => [...prevPreviews, ...previews]);
-  };
-
-  const removeExistingImage = (index) => {
-    setExistingImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const addInfo = () => {
@@ -1376,20 +1518,15 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
                 <Dropdown className="mt-2 mb-2">
                   <Dropdown.Toggle>
-                    {device.selectedBrand.name || "Выберите бренд"}
+                    {device.selectedBrand?.name ||
+                      "Выберите бренд (необязательно)"}
                   </Dropdown.Toggle>
-                  {isSubmitted && !device.selectedBrand?.id && (
-                    <span
-                      style={{
-                        color: "red",
-                        display: "block",
-                        marginTop: "5px",
-                      }}
-                    >
-                      {errors.brand}
-                    </span>
-                  )}
                   <Dropdown.Menu className={styles.scrollableDropdownMenu}>
+                    <Dropdown.Item
+                      onClick={() => device.setSelectedBrand(null)}
+                    >
+                      Без бренда
+                    </Dropdown.Item>
                     {device.brands.map((brand) => (
                       <Dropdown.Item
                         onClick={() => device.setSelectedBrand(brand)}
@@ -1484,7 +1621,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                       setDiscount(e.target.checked);
                       if (!e.target.checked) {
                         setOldPrice("");
-                        setPrice("");
                       }
                     }}
                   />
@@ -1603,143 +1739,395 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
           </div>
           <div className="mb-4">
             <h5
-              onClick={() => toggleSection("options")}
               style={{ cursor: "pointer" }}
+              onClick={() => toggleSection("optsAndVars")}
             >
-              🧩 Опции {openSections.options ? "▲" : "▼"}
+              🧩 Опции и варианты {openSections.optsAndVars ? "▲" : "▼"}
             </h5>
-            {openSections.options && (
-              <>
-                <hr />
-                <Button variant="outline-dark" onClick={addOption}>
-                  Добавить опцию
-                </Button>
 
-                {options.map((option, optionIndex) => (
-                  <div
-                    key={optionIndex}
-                    className="option-container border p-3 rounded mb-3"
-                  >
-                    <Form.Control
-                      value={getOptionNameByLang(optionIndex)}
-                      onChange={(e) =>
-                        updateOptionNameByLang(optionIndex, e.target.value)
-                      }
-                      placeholder={
-                        activeOptionsLang === "ru"
-                          ? "Название опции (например, Цвет)"
-                          : activeOptionsLang === "en"
-                          ? "Option name (e.g., Color)"
-                          : "Valiku nimi (nt Värv)"
-                      }
-                      className="mb-2"
-                    />
-                    {optionErrors[`option_${optionIndex}`] && (
-                      <span style={{ color: "red", fontSize: "12px" }}>
-                        {optionErrors[`option_${optionIndex}`]}
-                      </span>
-                    )}
+            {openSections.optsAndVars && (
+              <Row className="g-3">
+                <Col md={5}>
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <Button variant="outline-dark" onClick={addOption}>
+                      + Добавить опцию
+                    </Button>
 
-                    {option.values.map((value, valueIndex) => (
-                      <div
-                        key={valueIndex}
-                        className="option-container border p-3 rounded mb-3"
-                      >
-                        <Form.Control
-                          value={getOptionValueLabelByLang(
-                            optionIndex,
-                            valueIndex
-                          )}
-                          onChange={(e) =>
-                            updateOptionValueLabelByLang(
-                              optionIndex,
-                              valueIndex,
-                              e.target.value
-                            )
-                          }
-                          placeholder={
-                            activeOptionsLang === "ru"
-                              ? "Значение (например, Красный)"
-                              : activeOptionsLang === "en"
-                              ? "Value (e.g., Red)"
-                              : "Väärtus (nt Punane)"
-                          }
-                          className="me-2 mb-2"
-                        />
-                        <p>Цена</p>
-                        <Form.Control
-                          type="number"
-                          value={value.price}
-                          onChange={(e) =>
-                            updateOptionValue(
-                              optionIndex,
-                              valueIndex,
-                              "price",
-                              parseFloat(e.target.value)
-                            )
-                          }
-                          placeholder="Цена"
-                          className="me-2 mb-2"
-                        />
-                        <p>Количество</p>
-                        <Form.Control
-                          type="number"
-                          value={value.quantity}
-                          onChange={(e) => {
-                            const newValue =
-                              e.target.value === ""
-                                ? ""
-                                : parseInt(e.target.value, 10);
-                            updateOptionValue(
-                              optionIndex,
-                              valueIndex,
-                              "quantity",
-                              newValue
-                            );
-                          }}
-                          placeholder="Количество"
-                          className="me-2 mb-2"
-                        />
-
-                        <Button
-                          variant="outline-danger"
-                          onClick={() =>
-                            removeOptionValue(optionIndex, valueIndex)
-                          }
+                    <div className="btn-group">
+                      {["ru", "en", "est"].map((l) => (
+                        <button
+                          key={l}
+                          type="button"
+                          className={`btn btn-sm ${
+                            activeOptionsLang === l
+                              ? "btn-dark"
+                              : "btn-outline-dark"
+                          }`}
+                          onClick={() => setActiveOptionsLang(l)}
                         >
-                          Удалить
-                        </Button>
-                      </div>
-                    ))}
+                          {l.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {options.length === 0 ? (
+                    <div className="text-muted">
+                      Опций пока нет — добавьте первую.
+                    </div>
+                  ) : (
+                    <div className="border rounded p-2">
+                      {options.map((option, optionIndex) => (
+                        <div key={optionIndex} className="mb-3">
+                          <div className="d-flex gap-2">
+                            <Form.Control
+                              value={getOptionNameByLang(optionIndex)}
+                              onChange={(e) =>
+                                updateOptionNameByLang(
+                                  optionIndex,
+                                  e.target.value
+                                )
+                              }
+                              placeholder={
+                                activeOptionsLang === "ru"
+                                  ? "Название опции (напр. Цвет)"
+                                  : activeOptionsLang === "en"
+                                  ? "Option name (e.g. Color)"
+                                  : "Valiku nimi (nt Värv)"
+                              }
+                            />
+                            <Button
+                              variant="outline-danger"
+                              onClick={() => removeOption(optionIndex)}
+                              title="Удалить опцию"
+                            >
+                              ✖
+                            </Button>
+                          </div>
+                          {optionErrors[`option_${optionIndex}`] && (
+                            <div className="text-danger small mt-1">
+                              {optionErrors[`option_${optionIndex}`]}
+                            </div>
+                          )}
+
+                          <div className="table-responsive mt-2">
+                            <table className="table table-sm align-middle mb-2">
+                              <thead>
+                                <tr>
+                                  <th style={{ minWidth: 160 }}>
+                                    {activeOptionsLang === "ru"
+                                      ? "Значение"
+                                      : activeOptionsLang === "en"
+                                      ? "Value"
+                                      : "Väärtus"}
+                                  </th>
+                                  <th style={{ width: 120 }}>Цена</th>
+                                  <th style={{ width: 120 }}>Кол-во</th>
+                                  <th style={{ width: 1 }}></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(option.values || []).map(
+                                  (value, valueIndex) => (
+                                    <tr key={valueIndex}>
+                                      <td>
+                                        <Form.Control
+                                          value={getOptionValueLabelByLang(
+                                            optionIndex,
+                                            valueIndex
+                                          )}
+                                          onChange={(e) =>
+                                            updateOptionValueLabelByLang(
+                                              optionIndex,
+                                              valueIndex,
+                                              e.target.value
+                                            )
+                                          }
+                                          placeholder={
+                                            activeOptionsLang === "ru"
+                                              ? "напр. Красный"
+                                              : activeOptionsLang === "en"
+                                              ? "e.g. Red"
+                                              : "nt Punane"
+                                          }
+                                        />
+                                      </td>
+                                      <td>
+                                        <Form.Control
+                                          type="number"
+                                          step="0.01"
+                                          value={value.price}
+                                          onChange={(e) =>
+                                            updateOptionValue(
+                                              optionIndex,
+                                              valueIndex,
+                                              "price",
+                                              e.target.value === ""
+                                                ? ""
+                                                : parseFloat(e.target.value)
+                                            )
+                                          }
+                                          placeholder="0.00"
+                                        />
+                                      </td>
+                                      <td>
+                                        <Form.Control
+                                          type="number"
+                                          value={value.quantity}
+                                          onChange={(e) =>
+                                            updateOptionValue(
+                                              optionIndex,
+                                              valueIndex,
+                                              "quantity",
+                                              e.target.value === ""
+                                                ? ""
+                                                : parseInt(e.target.value, 10)
+                                            )
+                                          }
+                                          placeholder="0"
+                                        />
+                                      </td>
+                                      <td>
+                                        <Button
+                                          variant="outline-danger"
+                                          size="sm"
+                                          onClick={() =>
+                                            removeOptionValue(
+                                              optionIndex,
+                                              valueIndex
+                                            )
+                                          }
+                                          title="Удалить значение"
+                                        >
+                                          ✖
+                                        </Button>
+                                      </td>
+                                    </tr>
+                                  )
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <Button
+                            variant="outline-dark"
+                            size="sm"
+                            onClick={() => addOptionValue(optionIndex)}
+                          >
+                            + Добавить значение
+                          </Button>
+                          {optionErrors[`option_values_${optionIndex}`] && (
+                            <div className="text-danger small mt-1">
+                              {optionErrors[`option_values_${optionIndex}`]}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="d-flex gap-2 mt-3">
                     <Button
-                      variant="outline-dark"
-                      onClick={() => addOptionValue(optionIndex)}
+                      variant="dark"
+                      onClick={regenerateVariantsWithMerge}
                     >
-                      Добавить значение
+                      🔁 Сгенерировать/обновить варианты
                     </Button>
                     <Button
-                      variant="outline-danger"
-                      className="ms-2"
-                      onClick={() => removeOption(optionIndex)}
+                      variant="outline-secondary"
+                      onClick={() => setVariants([])}
                     >
-                      Удалить опцию
+                      Очистить варианты
                     </Button>
                   </div>
-                ))}
 
-                  <Tabs
-                  id="options-lang-tabs"
-                  activeKey={activeOptionsLang}
-                  onSelect={(k) => {
-                    if (k) setActiveOptionsLang(k);
-                  }}
-                  className="mb-3"
-                >
-                  <Tab eventKey="ru" title="RU" />
-                  <Tab eventKey="en" title="EN" />
-                  <Tab eventKey="est" title="EST" />
-                </Tabs>
-              </>
+                  {optionErrors.variants && (
+                    <div className="text-danger mt-2">
+                      {optionErrors.variants}
+                    </div>
+                  )}
+                </Col>
+
+                <Col md={7}>
+                  {variants.length === 0 ? (
+                    <div className="text-muted">
+                      Вариантов пока нет. Нажмите «Сгенерировать/обновить
+                      варианты».
+                    </div>
+                  ) : (
+                    <div className="table-responsive">
+                      <table className="table table-sm align-middle">
+                        <thead>
+                          <tr>
+                            {options.map((o, i) => (
+                              <th key={`h-opt-${i}`}>
+                                {o.name || `Опция ${i + 1}`}
+                              </th>
+                            ))}
+                            <th>SKU</th>
+                            <th>Цена (override)</th>
+                            <th>Старая цена</th>
+                            <th>Кол-во</th>
+                            <th>Активен</th>
+                            <th>Изобр. URL</th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {variants.map((v, idx) => (
+                            <tr key={v.key}>
+                              {options.map((o, i) => (
+                                <td key={`v-${idx}-${i}`}>
+                                  {v.selected[o.name] ?? "-"}
+                                </td>
+                              ))}
+                              <td style={{ minWidth: 120 }}>
+                                <Form.Control
+                                  value={v.sku || ""}
+                                  onChange={(e) => {
+                                    const next = [...variants];
+                                    next[idx].sku = e.target.value;
+                                    setVariants(next);
+                                  }}
+                                  placeholder="SKU"
+                                />
+                              </td>
+                              <td style={{ minWidth: 140 }}>
+                                <Form.Control
+                                  type="number"
+                                  step="0.01"
+                                  value={v.price ?? ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const next = [...variants];
+                                    next[idx].price =
+                                      val === "" ? "" : Number(val);
+                                    setVariants(next);
+                                  }}
+                                  placeholder="пусто = базовая"
+                                />
+                              </td>
+                              <td style={{ minWidth: 140 }}>
+                                <Form.Control
+                                  type="number"
+                                  step="0.01"
+                                  value={v.oldPrice ?? ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const next = [...variants];
+                                    next[idx].oldPrice =
+                                      val === "" ? "" : Number(val);
+                                    setVariants(next);
+                                  }}
+                                />
+                              </td>
+                              <td style={{ minWidth: 110 }}>
+                                <Form.Control
+                                  type="number"
+                                  value={v.quantity}
+                                  onChange={(e) => {
+                                    const n =
+                                      e.target.value === ""
+                                        ? ""
+                                        : parseInt(e.target.value, 10);
+                                    const next = [...variants];
+                                    next[idx].quantity = isNaN(n) ? 0 : n;
+                                    setVariants(next);
+                                  }}
+                                />
+                              </td>
+                              <td>
+                                <Form.Check
+                                  type="checkbox"
+                                  checked={v.isActive !== false}
+                                  onChange={(e) => {
+                                    const next = [...variants];
+                                    next[idx].isActive = e.target.checked;
+                                    setVariants(next);
+                                  }}
+                                />
+                              </td>
+                              <td style={{ minWidth: 240 }}>
+                                <div className="d-flex align-items-center gap-2">
+                                  {v.image ? (
+                                    <img
+                                      src={
+                                        v.image.startsWith("gallery:")
+                                          ? galleryItems().find(
+                                              (g) => g.token === v.image
+                                            )?.url || ""
+                                          : v.image
+                                      }
+                                      alt=""
+                                      style={{
+                                        width: 36,
+                                        height: 36,
+                                        objectFit: "cover",
+                                        borderRadius: 6,
+                                        border: "1px solid #ddd",
+                                      }}
+                                    />
+                                  ) : (
+                                    <div
+                                      style={{
+                                        width: 36,
+                                        height: 36,
+                                        border: "1px dashed #bbb",
+                                        borderRadius: 6,
+                                      }}
+                                    />
+                                  )}
+                                  <Form.Control
+                                    value={v.image || ""}
+                                    onChange={(e) => {
+                                      const next = [...variants];
+                                      next[idx].image = e.target.value; // можно вручную вставить URL
+                                      setVariants(next);
+                                    }}
+                                    placeholder="gallery:main / gallery:thumb:0 / https://..."
+                                  />
+                                  <Button
+                                    variant="outline-dark"
+                                    size="sm"
+                                    onClick={() => setPickerOpenFor(idx)}
+                                    title="Выбрать из галереи товара"
+                                  >
+                                    🖼
+                                  </Button>
+                                </div>
+                              </td>
+                              <td>
+                                <Button
+                                  variant="outline-danger"
+                                  size="sm"
+                                  onClick={() => {
+                                    const next = variants.filter(
+                                      (_, i) => i !== idx
+                                    );
+                                    setVariants(next);
+                                  }}
+                                >
+                                  ✖
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      <div className="mt-2">
+                        Сумма остатков по вариантам:&nbsp;
+                        <strong>
+                          {variants.reduce(
+                            (s, v) => s + (Number(v.quantity) || 0),
+                            0
+                          )}
+                        </strong>
+                      </div>
+                    </div>
+                  )}
+                </Col>
+              </Row>
             )}
           </div>
 
@@ -1988,6 +2376,72 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
             : "Добавить устройство"}
         </Button>
       </Modal.Footer>
+      <Modal
+        show={pickerOpenFor !== null}
+        onHide={() => setPickerOpenFor(null)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Выбрать фото из галереи товара</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {galleryItems().length === 0 ? (
+            <div className="text-muted">
+              Сначала загрузите изображения товара во вкладке «🖼 Изображения».
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, 120px)",
+                gap: 12,
+              }}
+            >
+              {galleryItems().map((g) => (
+                <button
+                  key={g.token}
+                  type="button"
+                  onClick={() => applyVariantImageToken(pickerOpenFor, g.token)}
+                  style={{
+                    border: "1px solid #ddd",
+                    borderRadius: 8,
+                    padding: 6,
+                    background: "#fff",
+                    cursor: "pointer",
+                  }}
+                  title={g.isMain ? "Главное фото" : g.token}
+                >
+                  <img
+                    src={g.url}
+                    alt=""
+                    style={{
+                      width: "100%",
+                      height: 90,
+                      objectFit: "cover",
+                      borderRadius: 6,
+                    }}
+                  />
+                  <div
+                    style={{ fontSize: 12, marginTop: 6, textAlign: "center" }}
+                  >
+                    {g.isMain
+                      ? "Главное"
+                      : g.token.replace("gallery:thumb:", "thumb:")}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="outline-secondary"
+            onClick={() => setPickerOpenFor(null)}
+          >
+            Отмена
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Modal>
   );
 });
