@@ -1826,20 +1826,45 @@ class DeviceController {
   async checkStock(req, res) {
     try {
       const { deviceId, quantity, selectedOptions } = req.body;
-      const device = await Device.findByPk(deviceId);
+      const device = await Device.findByPk(deviceId, {
+        include: [{ model: DeviceVariant, as: "variants" }],
+      });
 
-      if (!device) {
+      if (!device)
         return res.json({ status: "error", message: "Товар не найден" });
+      if (Array.isArray(device.variants) && device.variants.length) {
+        if (!selectedOptions || !Object.keys(selectedOptions).length) {
+          return res.json({ status: "error", message: "Нужно выбрать опции" });
+        }
+        const key = makeVariantKey(selectedOptions);
+        const variant = device.variants.find((v) => v.key === key);
+        if (!variant)
+          return res.json({
+            status: "error",
+            message: "Такой вариант недоступен",
+          });
+
+        const available = Number(variant.quantity) || 0;
+        if (available < Number(quantity)) {
+          return res.json({
+            status: "error",
+            message: "Недостаточно на складе",
+            quantity: available,
+          });
+        }
+        return res.json({
+          status: "success",
+          message: "Товар в наличии",
+          quantity: available,
+          variantId: variant.id,
+        });
       }
 
-      let availableQuantity = device.quantity;
+      let availableQuantity = Number(device.quantity) || 0;
       let parsedOptions = [];
-
-      if (typeof device.options === "string") {
+      if (typeof device.options === "string")
         parsedOptions = JSON.parse(device.options);
-      } else if (Array.isArray(device.options)) {
-        parsedOptions = device.options;
-      }
+      else if (Array.isArray(device.options)) parsedOptions = device.options;
 
       if (parsedOptions.length > 0 && selectedOptions) {
         for (const [optionName, selectedValue] of Object.entries(
@@ -1847,21 +1872,24 @@ class DeviceController {
         )) {
           const option = parsedOptions.find((opt) => opt.name === optionName);
           if (!option) continue;
-
           const value = option.values.find(
             (val) => val.value === selectedValue.value
           );
-          if (!value) {
+          if (!value)
             return res.json({
               status: "error",
               message: `Опция ${selectedValue.value} не найдена.`,
             });
-          }
-          availableQuantity = value.quantity;
+          availableQuantity = Number(value.quantity) || 0;
         }
       }
 
-      if (availableQuantity < quantity) {
+      if (availableQuantity < Number(quantity)) {
+        return res.json({
+          status: "error",
+          message: "Недостаточно на складе",
+          quantity: availableQuantity,
+        });
       }
 
       return res.json({
