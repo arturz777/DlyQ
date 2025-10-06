@@ -579,6 +579,21 @@ class DeviceController {
       v.types = tys;
     });
 
+const WATCH_ID = 196; // поменяй на нужный id товара
+devices.rows.forEach((d) => {
+  const v = d.dataValues || d;
+  if (v.id === WATCH_ID) {
+    console.log("[DBG getAll WATCH]", {
+      id: v.id,
+      name: v.name,
+      typeId: v.typeId,
+      types: (v.types || []).map((t) => t.id),
+      subtypeId: v.subtypeId,
+      subtypes: (v.subtypes || []).map((s) => s.id),
+    });
+  }
+});
+    
     // Переводы
     const deviceIds = devices.rows.map((d) => d.id);
     let translations = [];
