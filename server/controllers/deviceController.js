@@ -579,7 +579,7 @@ class DeviceController {
       v.types = tys;
     });
 
-const WATCH_ID = 196; // поменяй на нужный id товара
+const WATCH_ID = 183; // поменяй на нужный id товара
 devices.rows.forEach((d) => {
   const v = d.dataValues || d;
   if (v.id === WATCH_ID) {
