@@ -1443,7 +1443,8 @@ class DeviceController {
         offset,
         include: baseInclude,
         distinct: true,
-        subQuery: false,
+         subQuery: true,     
+  order: [['id','ASC']],
       });
 
       const todayStr = new Date().toISOString().slice(0, 10);
