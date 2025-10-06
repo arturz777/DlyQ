@@ -101,15 +101,35 @@ const Admin = () => {
     return () => socket.disconnect();
   }, []);
   
-  useEffect(() => {
-    fetchTypes().then(setTypes);
-    fetchSubtypes().then(setSubtypes);
-    fetchBrands().then(setBrands);
-    fetchDevices(undefined, undefined, undefined, 1, 1000).then((data) =>
-      setDevices(data.rows || data)
+ useEffect(() => {
+  fetchTypes().then(setTypes);
+  fetchSubtypes().then(setSubtypes);
+  fetchBrands().then(setBrands);
+
+  fetchDevices(undefined, undefined, undefined, 1, 1000).then((data) => {
+    const arr = data.rows || data || [];
+    setDevices(arr);
+
+    // ==== DEBUG #1: смотрим сырой ответ по «заряд/кабел»
+    const rx = /заряд|кабель/i;
+    console.table(
+      arr
+        .filter(d => rx.test(String(d.name)))
+        .map(d => ({
+          id: d.id,
+          name: d.name,
+          typeId: d.typeId,
+          subtypeId: d.subtypeId,
+          type_obj: d.type?.id ?? null,
+          subtype_obj: d.subtype?.id ?? null,
+          types_arr: JSON.stringify(d.types ?? []),
+          subtypes_arr: JSON.stringify(d.subtypes ?? []),
+        }))
     );
-    fetchTranslations().then(setTranslations);
-  }, []);
+  });
+
+  fetchTranslations().then(setTranslations);
+}, []);
 
   useEffect(() => {
     fetchAllOrdersForAdmin().then(setAllOrders);
@@ -457,37 +477,30 @@ const Admin = () => {
   const twoMonthsFromToday = new Date(today);
   twoMonthsFromToday.setMonth(twoMonthsFromToday.getMonth() + 2);
 
-const num = (v) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-};
-const idOf = (x) => {
-  if (x == null) return null;
-  if (typeof x === "object" && "id" in x) return num(x.id);
-  return num(x);
-};
+  const getDeviceTypeIds = (d) => {
+    const ids = new Set();
+    if (d.typeId) ids.add(Number(d.typeId));
+    if (d.type?.id) ids.add(Number(d.type.id));
+    if (Array.isArray(d.types)) {
+      d.types.forEach((t) => t?.id && ids.add(Number(t.id)));
+    }
+    return ids;
+  };
 
-const getDeviceTypeIds = (d) => {
-  const ids = new Set();
-  const push = (v) => { const n = idOf(v); if (n != null) ids.add(n); };
+  const getDeviceSubtypeIds = (d) => {
+    const ids = new Set();
+    if (d.subtypeId) ids.add(Number(d.subtypeId));
+    if (d.subtype?.id) ids.add(Number(d.subtype.id));
+    if (Array.isArray(d.subtypes)) {
+      d.subtypes.forEach((s) => s?.id && ids.add(Number(s.id)));
+    }
+    return ids;
+  };
 
-  push(d.typeId);
-  push(d.type);            
-  if (Array.isArray(d.types)) d.types.forEach(push);
-
-  return ids;
-};
-
-const getDeviceSubtypeIds = (d) => {
-  const ids = new Set();
-  const push = (v) => { const n = idOf(v); if (n != null) ids.add(n); };
-
-  push(d.subtypeId);
-  push(d.subtype);          
-  if (Array.isArray(d.subtypes)) d.subtypes.forEach(push);
-
-  return ids;
-};
+   if (typeof window !== "undefined") {
+  window.__getTypeIds = getDeviceTypeIds;
+  window.__getSubtypeIds = getDeviceSubtypeIds;
+}
   
   const isExpiringWithin2Months = (d) => {
     if (!d.expiryDate) return false;
@@ -587,7 +600,7 @@ const getDeviceSubtypeIds = (d) => {
     );
   };
 
-  return (
+ return (
     <div className={styles.adminPanelContainer}>
       <Tabs>
         <TabList>
@@ -800,6 +813,70 @@ const getDeviceSubtypeIds = (d) => {
               subtypesForType.map((s) => Number(s.id))
             );
 
+              // ==== DEBUG #2: покажем, какие сабтипы реально относятся к этому типу
+  console.log(
+    "%c[DBG] Subtypes for type",
+    "color:#8A2BE2",
+    { typeId: type.id, typeName: type.name, subtypes: subtypesForType.map(s => ({ id: s.id, name: s.name, typeId: s.typeId })) }
+  );
+
+  // ==== DEBUG #3: пройдёмся по всем подозрительным девайсам
+  const rx = /заряд|кабель/i;
+  filteredDevices.forEach((d) => {
+    if (!rx.test(String(d.name))) return;
+
+    const tIds = [...getDeviceTypeIds(d)];
+    const sIds = [...getDeviceSubtypeIds(d)];
+    const viaType = tIds.includes(Number(type.id));
+    const viaSubtype = sIds.some((id) => subtypeIdsOfType.has(Number(id)));
+
+    // Дополнительно покажем typeId у каждого сабтипа девайса (если объекты)
+    const devSubtypesVerbose = (d.subtypes ?? []).map((s) => {
+      if (s && typeof s === "object") {
+        return { id: s.id ?? s, name: s.name, typeId: s.typeId };
+      }
+      return { id: s, typeId: null };
+    });
+
+    if (!viaType && !viaSubtype) {
+      console.warn(
+        "%c[DBG] DEVICE SKIPPED FOR TYPE",
+        "color:#d9534f;font-weight:bold",
+        {
+          typeId: type.id,
+          typeName: type.name,
+          id: d.id,
+          name: d.name,
+          tIds,
+          sIds,
+          viaType,
+          viaSubtype,
+          typeId_raw: d.typeId,
+          subtypeId_raw: d.subtypeId,
+          type_obj: d.type?.id ?? null,
+          subtype_obj: d.subtype?.id ?? null,
+          devSubtypesVerbose,
+        }
+      );
+    } else {
+      console.log(
+        "%c[DBG] DEVICE OK FOR TYPE",
+        "color:#5cb85c",
+        {
+          typeId: type.id,
+          typeName: type.name,
+          id: d.id,
+          name: d.name,
+          tIds,
+          sIds,
+          viaType,
+          viaSubtype,
+        }
+      );
+    }
+  });
+
+
             const typeDevices = filteredDevices.filter((d) => {
               const tIds = getDeviceTypeIds(d);
               const sIds = getDeviceSubtypeIds(d);
@@ -809,6 +886,12 @@ const getDeviceSubtypeIds = (d) => {
               );
               return viaType || viaSubtype;
             });
+
+             console.log(
+    "%c[DBG] TYPE GROUP RESULT",
+    "color:#0275d8",
+    { typeId: type.id, typeName: type.name, count: typeDevices.length, ids: typeDevices.map(d => d.id) }
+  );
 
             const isOpenType = openDeviceTypeIds.includes(type.id);
             const isAuto = Number(type.id) === Number(autoTypeId); // <-- ВАЖНО
@@ -1877,4 +1960,3 @@ const getDeviceSubtypeIds = (d) => {
 };
 
 export default Admin;
-
