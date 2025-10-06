@@ -455,10 +455,10 @@ class DeviceController {
       if (recommended !== undefined) where.recommended = recommended === "true";
 
       const include = [
-        { model: DeviceVariant, as: "variants", required: false },
+         { model: DeviceVariant, as: "variants", required: false, separate: true },
         { model: SubType, as: "subtype" },
         { model: Type },
-        { model: DeviceInfo, as: "info" },
+        { model: DeviceInfo, as: "info", required: false, separate: true },
         {
           model: Type,
           as: "types",
@@ -521,8 +521,8 @@ class DeviceController {
         offset,
         include,
         distinct: true,
-        subQuery: true,   
-        order: [['id', 'ASC']],
+        subQuery: false,
+        order: [[col('device.id'), 'ASC']],
       });
 
       devices.rows.forEach((d) => {
@@ -1443,8 +1443,7 @@ class DeviceController {
         offset,
         include: baseInclude,
         distinct: true,
-         subQuery: true,     
-  order: [['id','ASC']],
+         subQuery: false,
       });
 
       const todayStr = new Date().toISOString().slice(0, 10);
