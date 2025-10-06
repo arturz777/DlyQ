@@ -101,36 +101,16 @@ const Admin = () => {
     return () => socket.disconnect();
   }, []);
   
- useEffect(() => {
-  fetchTypes().then(setTypes);
-  fetchSubtypes().then(setSubtypes);
-  fetchBrands().then(setBrands);
-
-  fetchDevices(undefined, undefined, undefined, 1, 1000).then((data) => {
-    const arr = data.rows || data || [];
-    setDevices(arr);
-
-    // ==== DEBUG #1: смотрим сырой ответ по «заряд/кабел»
-    const rx = /заряд|кабель/i;
-    console.table(
-      arr
-        .filter(d => rx.test(String(d.name)))
-        .map(d => ({
-          id: d.id,
-          name: d.name,
-          typeId: d.typeId,
-          subtypeId: d.subtypeId,
-          type_obj: d.type?.id ?? null,
-          subtype_obj: d.subtype?.id ?? null,
-          types_arr: JSON.stringify(d.types ?? []),
-          subtypes_arr: JSON.stringify(d.subtypes ?? []),
-        }))
+   useEffect(() => {
+    fetchTypes().then(setTypes);
+    fetchSubtypes().then(setSubtypes);
+    fetchBrands().then(setBrands);
+    fetchDevices(undefined, undefined, undefined, 1, 1000).then((data) =>
+      setDevices(data.rows || data)
     );
-  });
-
-  fetchTranslations().then(setTranslations);
-}, []);
-
+    fetchTranslations().then(setTranslations);
+  }, []);
+  
   useEffect(() => {
     fetchAllOrdersForAdmin().then(setAllOrders);
     fetchMakes().then(setMakes).catch(console.error);
@@ -168,6 +148,9 @@ const Admin = () => {
         if (sortOption === "nameDesc") return b.name.localeCompare(a.name);
         return 0;
       });
+     if (typeof window !== "undefined") {
+  window.__dbgDevs = filteredDevices;
+}
   }, [devices, searchQuery, sortOption]);
 
   useEffect(() => {
@@ -477,7 +460,7 @@ const Admin = () => {
   const twoMonthsFromToday = new Date(today);
   twoMonthsFromToday.setMonth(twoMonthsFromToday.getMonth() + 2);
 
-  const getDeviceTypeIds = (d) => {
+ const getDeviceTypeIds = (d) => {
     const ids = new Set();
     if (d.typeId) ids.add(Number(d.typeId));
     if (d.type?.id) ids.add(Number(d.type.id));
@@ -496,11 +479,6 @@ const Admin = () => {
     }
     return ids;
   };
-
-   if (typeof window !== "undefined") {
-  window.__getTypeIds = getDeviceTypeIds;
-  window.__getSubtypeIds = getDeviceSubtypeIds;
-}
   
   const isExpiringWithin2Months = (d) => {
     if (!d.expiryDate) return false;
