@@ -225,21 +225,20 @@ const DevicePage = ({ id }) => {
     return baseImages;
   }, [baseImages, selectedVariant?.image]);
 
-const firstOptionName = device.options?.[0]?.name || null;
+  const firstOptionName = device.options?.[0]?.name || null;
 
-const firstOptionPreviewMap = useMemo(() => {
-  if (!firstOptionName) return {};
-  const map = {};
-  (device.variants || []).forEach(v => {
-    const val = v?.selected?.[firstOptionName];
-    if (!val || map[val]) return;
-    if (v.image && baseImages.includes(v.image)) {
-      map[val] = v.image;
-    }
-  });
-  return map;
-}, [firstOptionName, device.variants, baseImages]);
-
+  const firstOptionPreviewMap = useMemo(() => {
+    if (!firstOptionName) return {};
+    const map = {};
+    (device.variants || []).forEach((v) => {
+      const val = v?.selected?.[firstOptionName];
+      if (!val || map[val]) return;
+      if (v.image && baseImages.includes(v.image)) {
+        map[val] = v.image;
+      }
+    });
+    return map;
+  }, [firstOptionName, device.variants, baseImages]);
 
   useEffect(() => {
     if (!selectedVariant?.image) return;
@@ -418,136 +417,161 @@ const firstOptionPreviewMap = useMemo(() => {
     (device.options?.length || 0) > 0 &&
     !device.options.every((o) => selectedOptions[o.name]?.value);
 
-const variantsActive = (device.variants || []).filter(
-  (v) => v?.isActive !== false
-);
-
-const isValueAvailable = (optName, valueObj) => {
-  if (!device.variants?.length) return true;
-
-  const partial = Object.fromEntries(
-    Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
+  const variantsActive = (device.variants || []).filter(
+    (v) => v?.isActive !== false
   );
-  partial[optName] = getVal(valueObj);
 
-  return variantsActive.some((v) =>
-    Object.entries(partial).every(([k, val]) => (v.selected || {})[k] === val)
-  );
-};
+  const isValueAvailable = (optName, valueObj) => {
+    if (!device.variants?.length) return true;
 
-const isValueOutOfStock = (optName, valueObj) => {
-  if (!device.variants?.length) {
-    return (Number(valueObj.quantity) || 0) === 0;
-  }
-  const partial = Object.fromEntries(
-    Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
-  );
-  partial[optName] = getVal(valueObj);
+    const partial = Object.fromEntries(
+      Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
+    );
+    partial[optName] = getVal(valueObj);
 
-  const exists = variantsActive.some((v) =>
-    Object.entries(partial).every(([k, val]) => (v.selected || {})[k] === val)
-  );
-  if (!exists) return false;
+    return variantsActive.some((v) =>
+      Object.entries(partial).every(([k, val]) => (v.selected || {})[k] === val)
+    );
+  };
 
-  const anyInStock = variantsActive.some(
-    (v) =>
-      Object.entries(partial).every(([k, val]) => (v.selected || {})[k] === val) &&
-      (Number(v.quantity) || 0) > 0
-  );
-  return !anyInStock;
-};
+  const isValueOutOfStock = (optName, valueObj) => {
+    if (!device.variants?.length) {
+      return (Number(valueObj.quantity) || 0) === 0;
+    }
+    const partial = Object.fromEntries(
+      Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
+    );
+    partial[optName] = getVal(valueObj);
+
+    const exists = variantsActive.some((v) =>
+      Object.entries(partial).every(([k, val]) => (v.selected || {})[k] === val)
+    );
+    if (!exists) return false;
+
+    const anyInStock = variantsActive.some(
+      (v) =>
+        Object.entries(partial).every(
+          ([k, val]) => (v.selected || {})[k] === val
+        ) && (Number(v.quantity) || 0) > 0
+    );
+    return !anyInStock;
+  };
 
   const OptionSelector = ({ option, index }) => {
-  const isFirst = index === 0;
-  const selected = selectedOptions[option.name];
+    const isFirst = index === 0;
+    const selected = selectedOptions[option.name];
 
-  if (isFirst && Object.keys(firstOptionPreviewMap).length > 0) {
+    if (isFirst && Object.keys(firstOptionPreviewMap).length > 0) {
+      return (
+        <div
+          className={styles.OptionGroup}
+          role="radiogroup"
+          aria-label={option.name}
+        >
+          <div className={styles.OptionLabel}>
+            {option.translations?.name?.[currentLang] || option.name}
+          </div>
+
+          <div className={styles.OptionThumbGrid}>
+            {option.values.map((valueObj, idx) => {
+              const val = valueObj.value;
+              const isSelected = selected?.value === val;
+              const available = isValueAvailable(option.name, valueObj);
+              const oos = isValueOutOfStock(option.name, valueObj);
+              const imgUrl = firstOptionPreviewMap[val] || null;
+
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  className={[
+                    styles.OptionThumb,
+                    isSelected ? styles.OptionThumbSelected : "",
+                    !available
+                      ? styles.OptionThumbDisabled
+                      : oos
+                      ? styles.OptionThumbOut
+                      : "",
+                  ].join(" ")}
+                  onClick={() => {
+                    if (!available) return;
+                    handleOptionChange(option.name, valueObj);
+                    if (imgUrl) {
+                      const i = baseImages.indexOf(imgUrl);
+                      if (i !== -1) setActiveIndex(i);
+                    }
+                  }}
+                  disabled={!available}
+                  aria-pressed={isSelected}
+                  title={
+                    option.translations?.values?.[idx]?.[currentLang] || val
+                  }
+                >
+                  {imgUrl ? (
+                    <img
+                      src={imgUrl}
+                      alt=""
+                      className={styles.OptionThumbImg}
+                    />
+                  ) : (
+                    <div className={styles.OptionThumbImgFallback}>
+                      {option.translations?.values?.[idx]?.[currentLang] || val}
+                    </div>
+                  )}
+                  <span className={styles.OptionThumbLabel}>
+                    {option.translations?.values?.[idx]?.[currentLang] || val}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className={styles.OptionGroup} role="radiogroup" aria-label={option.name}>
+      <div
+        className={styles.OptionGroup}
+        role="radiogroup"
+        aria-label={option.name}
+      >
         <div className={styles.OptionLabel}>
           {option.translations?.name?.[currentLang] || option.name}
         </div>
 
-        <div className={styles.OptionThumbGrid}>
+        <div className={styles.OptionGrid}>
           {option.values.map((valueObj, idx) => {
-            const val = valueObj.value;
-            const isSelected = selected?.value === val;
+            const isSelected = selected?.value === valueObj.value;
             const available = isValueAvailable(option.name, valueObj);
             const oos = isValueOutOfStock(option.name, valueObj);
-            const imgUrl = firstOptionPreviewMap[val] || null;
-            
-
             return (
               <button
                 key={idx}
                 type="button"
                 className={[
-        styles.OptionThumb,
-        isSelected ? styles.OptionThumbSelected : "",
-        !available ? styles.OptionThumbDisabled : oos ? styles.OptionThumbOut : "",
-      ].join(" ")}
-      onClick={() => {
-        if (!available) return; 
-        handleOptionChange(option.name, valueObj);
-        if (imgUrl) {
-          const i = baseImages.indexOf(imgUrl);
-          if (i !== -1) setActiveIndex(i);
-        }
-      }}
-      disabled={!available}
-      aria-pressed={isSelected}
-      title={option.translations?.values?.[idx]?.[currentLang] || val}
-    >
-                {imgUrl ? (
-                  <img src={imgUrl} alt="" className={styles.OptionThumbImg} />
-                ) : (
-                  <div className={styles.OptionThumbImgFallback}>
-                    {option.translations?.values?.[idx]?.[currentLang] || val}
-                  </div>
-                )}
-                <span className={styles.OptionThumbLabel}>
-                  {option.translations?.values?.[idx]?.[currentLang] || val}
-                </span>
+                  styles.OptionBtn,
+                  isSelected ? styles.OptionBtnSelected : "",
+                  !available
+                    ? styles.OptionBtnDisabled
+                    : oos
+                    ? styles.OptionBtnOut
+                    : "",
+                ].join(" ")}
+                onClick={() =>
+                  available && handleOptionChange(option.name, valueObj)
+                }
+                disabled={!available}
+                aria-pressed={isSelected}
+              >
+                {option.translations?.values?.[idx]?.[currentLang] ||
+                  valueObj.value}
               </button>
             );
           })}
         </div>
       </div>
     );
-  }
-
-  return (
-    <div className={styles.OptionGroup} role="radiogroup" aria-label={option.name}>
-      <div className={styles.OptionLabel}>
-        {option.translations?.name?.[currentLang] || option.name}
-      </div>
-
-      <div className={styles.OptionGrid}>
-        {option.values.map((valueObj, idx) => {
-          const isSelected = selected?.value === valueObj.value;
-          const available = isValueAvailable(option.name, valueObj);
-          const oos = isValueOutOfStock(option.name, valueObj);
-          return (
-            <button
-              key={idx}
-              type="button"
-               className={[
-        styles.OptionBtn,
-        isSelected ? styles.OptionBtnSelected : "",
-        !available ? styles.OptionBtnDisabled : oos ? styles.OptionBtnOut : "",
-      ].join(" ")}
-      onClick={() => available && handleOptionChange(option.name, valueObj)}
-      disabled={!available}
-      aria-pressed={isSelected}
-    >
-              {option.translations?.values?.[idx]?.[currentLang] || valueObj.value}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
+  };
 
   return (
     <div className={styles.DevicePageContainer}>
@@ -641,7 +665,11 @@ const isValueOutOfStock = (optName, valueObj) => {
             {device.options?.length > 0 && (
               <div className={styles.DevicePageSelectedOptions}>
                 {device.options?.map((option, optionIndex) => (
-                  <OptionSelector key={optionIndex} option={option} index={optionIndex} />
+                  <OptionSelector
+                    key={optionIndex}
+                    option={option}
+                    index={optionIndex}
+                  />
                 ))}
               </div>
             )}
@@ -649,7 +677,11 @@ const isValueOutOfStock = (optName, valueObj) => {
             <hr className={styles.Separator} />
             <div className={styles.DevicePageBuyBlockDesktop}>
               {device.options?.map((option, optionIndex) => (
-                <OptionSelector key={optionIndex} option={option} index={optionIndex} />
+                <OptionSelector
+                  key={optionIndex}
+                  option={option}
+                  index={optionIndex}
+                />
               ))}
 
               <div className={styles.DevicePagePriceBlock}>
