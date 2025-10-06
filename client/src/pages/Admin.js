@@ -457,25 +457,37 @@ const Admin = () => {
   const twoMonthsFromToday = new Date(today);
   twoMonthsFromToday.setMonth(twoMonthsFromToday.getMonth() + 2);
 
-const getDeviceTypeIds = (d) => {
-    const ids = new Set();
-    if (d.typeId) ids.add(Number(d.typeId));
-    if (d.type?.id) ids.add(Number(d.type.id));
-    if (Array.isArray(d.types)) {
-      d.types.forEach((t) => t?.id && ids.add(Number(t.id)));
-    }
-    return ids;
-  };
+const num = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+const idOf = (x) => {
+  if (x == null) return null;
+  if (typeof x === "object" && "id" in x) return num(x.id);
+  return num(x);
+};
 
-  const getDeviceSubtypeIds = (d) => {
-    const ids = new Set();
-    if (d.subtypeId) ids.add(Number(d.subtypeId));
-    if (d.subtype?.id) ids.add(Number(d.subtype.id));
-    if (Array.isArray(d.subtypes)) {
-      d.subtypes.forEach((s) => s?.id && ids.add(Number(s.id)));
-    }
-    return ids;
-  };
+const getDeviceTypeIds = (d) => {
+  const ids = new Set();
+  const push = (v) => { const n = idOf(v); if (n != null) ids.add(n); };
+
+  push(d.typeId);
+  push(d.type);            
+  if (Array.isArray(d.types)) d.types.forEach(push);
+
+  return ids;
+};
+
+const getDeviceSubtypeIds = (d) => {
+  const ids = new Set();
+  const push = (v) => { const n = idOf(v); if (n != null) ids.add(n); };
+
+  push(d.subtypeId);
+  push(d.subtype);          
+  if (Array.isArray(d.subtypes)) d.subtypes.forEach(push);
+
+  return ids;
+};
   
   const isExpiringWithin2Months = (d) => {
     if (!d.expiryDate) return false;
