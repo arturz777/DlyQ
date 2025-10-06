@@ -12,7 +12,7 @@
   width: 100%;
   max-width: 600px;
   margin: 10px auto;
-  padding: 16px;
+  padding: 12px;
   border: 1px solid #ddd;
   border-radius: 8px;
   background-color: #fff;
@@ -22,7 +22,6 @@
 .firstCard {
   margin-top: 70px;
 }
-
 .otherCards {
   margin-top: 10px;
 }
@@ -30,13 +29,19 @@
 .cardContent {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
-
 .topRow {
   display: flex;
-  gap: 12px;
-  align-items: center; 
+  gap: 10px;
+  align-items: flex-start;
+}
+.topInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .image {
@@ -45,20 +50,13 @@
   object-fit: cover;
   border-radius: 8px;
   flex-shrink: 0;
-}
-
-.topInfo {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
+  cursor: pointer;
 }
 
 .title {
   font-size: 16px;
-  white-space: nowrap;  
-  overflow: hidden;          
+  white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
 }
 
@@ -69,12 +67,10 @@
   font-size: 14px;
   flex-wrap: wrap;
 }
-
 .optionLabel {
   flex-shrink: 0;
   min-width: 80px;
 }
-
 .select {
   flex: 1 1 auto;
   min-width: 120px;
@@ -83,7 +79,6 @@
   border: 1px solid #ccc;
   border-radius: 6px;
 }
-
 .unselectedOption {
   border: 2px solid red;
   background-color: #ffe6e6;
@@ -94,8 +89,8 @@
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
-  padding-top: 4px;
+  gap: 8px;
+  padding-top: 2px;
   border-top: 1px solid #f0f0f0;
 }
 
@@ -104,7 +99,6 @@
   align-items: center;
   gap: 6px;
 }
-
 .count {
   min-width: 24px;
   text-align: center;
@@ -121,7 +115,7 @@
 .buttonDelete {
   padding: 6px 10px;
   font-size: 13px;
-  background-color: #0072CE;
+  background-color: #0072ce;
   color: white;
   border: none;
   border-radius: 6px;
@@ -134,8 +128,150 @@
   text-align: right;
   margin-top: 8px;
 }
-
 .totalPrice {
   font-size: 15px;
   text-align: right;
+}
+
+.warningBox {
+  margin: 10px auto;
+  max-width: 600px;
+  background: #fff7f7;
+  border: 1px solid #ffdede;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.preorderSection {
+  margin-top: 12px;
+}
+.preorderCheckbox {
+  margin-bottom: 8px;
+}
+.dateInput,
+.commentInput {
+  margin-bottom: 8px;
+}
+
+.OptionGroup {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  column-gap: 10px;
+  align-items: start;
+  margin: 4px 0;
+}
+.OptionLabel {
+  margin: 0;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 28px;
+}
+
+.OptionGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.OptionBtn {
+  border: 1px solid #d3d7df;
+  background: #fff;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.05s ease, border-color 0.15s ease,
+    background 0.15s ease;
+}
+.OptionBtn:hover {
+  border-color: #111;
+}
+.OptionBtnSelected {
+  border-color: #111;
+  box-shadow: inset 0 0 0 2px #111;
+}
+.OptionBtnDisabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.OptionThumbGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.OptionThumb {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #d3d7df;
+  background: #fff;
+  padding: 4px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.05s ease, border-color 0.15s ease,
+    background 0.15s ease;
+}
+.OptionThumb:hover {
+  border-color: #111;
+}
+.OptionThumbSelected {
+  border-color: #111;
+  box-shadow: inset 0 0 0 2px #111;
+}
+.OptionThumbDisabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.OptionThumbImg {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+}
+.OptionThumbImgFallback {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  background: #f4f6fb;
+  font-size: 11px;
+  color: #333;
+  padding: 2px;
+  text-align: center;
+}
+.OptionThumbLabel {
+  font-size: 12px;
+  line-height: 1.1;
+  color: #333;
+}
+
+.OptionBtnOut {
+  opacity: 0.5;
+}
+.OptionThumbOut {
+  opacity: 0.5;
+}
+
+@media (max-width: 480px) {
+  .OptionGroup {
+    grid-template-columns: 58px 1fr;
+  }
+  .OptionLabel {
+    font-size: 12px;
+    line-height: 24px;
+  }
+  .OptionBtn {
+    font-size: 12px;
+    padding: 5px 7px;
+  }
+  .OptionThumbImg,
+  .OptionThumbImgFallback {
+    width: 28px;
+    height: 28px;
+  }
 }
