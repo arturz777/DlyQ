@@ -1,16 +1,47 @@
 import React, { useContext, useState, useEffect } from "react";
 import { Context } from "../index";
 import { observer } from "mobx-react-lite";
-import { Container, Button, Image, Card, Form } from "react-bootstrap";
+import { Container, Image, Card, Form } from "react-bootstrap";
 import { toast } from "react-toastify";
 import PaymentForm from "../components/PaymentForm";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom";
+import SlideModal from "../components/modals/SlideModal";
+import DevicePage from "../pages/DevicePage";
 import { useTranslation } from "react-i18next";
 import styles from "./Basket.module.css";
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
+
+const getVal = (x) =>
+  x && typeof x === "object" && "value" in x ? x.value : x;
+
+const makeVariantKey = (selected = {}) =>
+  Object.keys(selected)
+    .sort()
+    .map((k) => `${k}:${String(getVal(selected[k]))}`)
+    .join("|");
+
+const parseMaybeJSON = (v) => {
+  if (!v) return v;
+  if (typeof v === "string") {
+    try {
+      return JSON.parse(v);
+    } catch {
+      return v;
+    }
+  }
+  return v;
+};
+
+const normalizeVariants = (item) => {
+  const arr = parseMaybeJSON(item.variants) || [];
+  return (arr || []).map((v) => {
+    const sel = parseMaybeJSON(v.selected) || {};
+    return { ...v, selected: sel, key: v.key || makeVariantKey(sel) };
+  });
+};
 
 const Basket = observer(() => {
   const { basket } = useContext(Context);
@@ -20,7 +51,8 @@ const Basket = observer(() => {
   const [deliveryDate, setDeliveryDate] = useState("");
   const [isPreorder, setIsPreorder] = useState(false);
   const [preferredTime, setPreferredTime] = useState("");
-   const { t, i18n } = useTranslation();
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+  const { t, i18n } = useTranslation();
 
    const hasOnlyPreorders =
     basket.items.length > 0 && basket.items.every((item) => item.isPreorder);
@@ -36,9 +68,7 @@ const Basket = observer(() => {
         `${process.env.REACT_APP_API_URL}/device/check-stock`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ deviceId, quantity, selectedOptions }),
         }
       );
@@ -70,11 +100,17 @@ const Basket = observer(() => {
           const response = await fetch(
             `${process.env.REACT_APP_API_URL}/device/check-stock`,
             {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ deviceId: item.id }),
+  method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                deviceId: item.id,
+                selectedOptions: Object.fromEntries(
+                  Object.entries(item.selectedOptions || {}).map(([k, v]) => [
+                    k,
+                    getVal(v),
+                  ])
+                ),
+              }),
             }
           );
 
@@ -123,7 +159,7 @@ const Basket = observer(() => {
       item.selectedOptions
     );
 
-    if (!isAvailable) {
+    if (!isAvailable && !item.isPreorder) {
       toast.error(t("not enough stock", { ns: "basket" }));
       return;
     }
@@ -153,10 +189,9 @@ const Basket = observer(() => {
         )
     );
 
-    if (isPreorder) {
+   if (isPreorder) {
       if (!deliveryDate || !preferredTime.trim()) {
         toast.error(t("please fill in all delivery fields", { ns: "basket" }));
-        setLoading(false);
         return;
       }
     }
@@ -166,11 +201,11 @@ const Basket = observer(() => {
       return;
     }
 
-   const dataToSend = {
+  const dataToSend = {
       formData,
       paymentMethodId: paymentMethod.id,
       totalPrice: basket.getTotalPrice(),
-       language: i18n.language, 
+      language: i18n.language,
       orderDetails: basket.items.map((item, index) => ({
         translations: item.translations,
         name: item.name,
@@ -178,7 +213,7 @@ const Basket = observer(() => {
         count: item.count,
         deviceId: item.id,
         image: item.img,
-       selectedOptions: item.selectedOptions || {},
+        selectedOptions: item.selectedOptions || {},
         isPreorder: item.isPreorder || isPreorder,
         preferredTime:
           index === 0 && (item.isPreorder || isPreorder) ? preferredTime : null,
@@ -223,7 +258,8 @@ const Basket = observer(() => {
     const item = basket.items.find((i) => i.uniqueKey === itemUniqueKey);
     if (!item) return;
 
-    const updatedOption = item.options
+   const optionsArr = parseMaybeJSON(item.options) || [];
+    const updatedOption = optionsArr
       ?.find((opt) => opt.name === optionName)
       ?.values.find((val) => val.value === selectedValue);
 
@@ -236,45 +272,36 @@ const Basket = observer(() => {
     }
 
     const newOptions = {
-    ...item.selectedOptions,
-    [optionName]: updatedOption,
-  };
+      ...item.selectedOptions,
+      [optionName]: updatedOption,
+    };
 
-     const isAvailable = await checkStock(item.id, item.count, newOptions);
-  const isThisPreorder = !isAvailable;
-
+    const isAvailable = await checkStock(item.id, item.count, newOptions);
+    const isThisPreorder = !isAvailable;
     item.isPreorder = isThisPreorder;
 
-     const otherItems = basket.items.filter((i) => {
-    if (i.uniqueKey === itemUniqueKey) return false;
-    return (
-      i.selectedOptions &&
-      Object.values(i.selectedOptions).every(
-        (opt) => opt.value && opt.value !== "__UNSELECTED__"
-      )
+    const otherItems = basket.items.filter(
+      (i) => i.uniqueKey !== itemUniqueKey
     );
-  });
-
-  const hasPreorders = otherItems.some((i) => i.isPreorder);
-  const hasStocks = otherItems.some((i) => !i.isPreorder);
+    const hasPreorders = otherItems.some((i) => i.isPreorder);
+    const hasStocks = otherItems.some((i) => !i.isPreorder);
 
     if (hasPreorders && !isThisPreorder) {
-       toast.error(`❌ ${t("you cannot add a regular item to the cart with a pre-order", { ns: "deviceItem" })}`);
+      toast.error(
+        `❌ ${t("you cannot add a regular item to the cart with a pre-order", {
+          ns: "deviceItem",
+        })}`
+      );
       return;
     }
-
-
-
-
-
-      if (hasStocks && isThisPreorder) {
-      toast.error(`❌ ${t("you cannot add a pre-order to the cart with regular items", { ns: "deviceItem" })}`);
+    if (hasStocks && isThisPreorder) {
+      toast.error(
+        `❌ ${t("you cannot add a pre-order to the cart with regular items", {
+          ns: "deviceItem",
+        })}`
+      );
       return;
     }
-
-
-
-
 
     basket.updateSelectedOption(itemUniqueKey, optionName, updatedOption);
 
@@ -282,151 +309,298 @@ const Basket = observer(() => {
       toast.error(
         `${t(
           "product is out of stock, but has been added to the cart as a pre-order",
-          {
-            ns: "basket",
-          }
+          { ns: "basket" }
         )}`
       );
     }
   };
 
- return (
+  const OptionPicker = ({ item, option, index }) => {
+    const lang = i18n.language || "en";
+    const variants = normalizeVariants(item);
+    const selected = item.selectedOptions?.[option.name];
+    const isFirst = index === 0;
+
+    const variantsActive = variants.filter((v) => v?.isActive !== false);
+
+    const existsCombination = (optName, valueObj) => {
+      if (!variants.length) return true;
+      const partial = Object.fromEntries(
+        Object.entries(item.selectedOptions || {}).map(([k, v]) => [
+          k,
+          getVal(v),
+        ])
+      );
+      partial[optName] = getVal(valueObj);
+
+      return variantsActive.some((v) =>
+        Object.entries(partial).every(
+          ([k, val]) => (v.selected || {})[k] === val
+        )
+      );
+    };
+
+    const isOutOfStock = (optName, valueObj) => {
+      if (!variants.length) {
+        return (Number(valueObj.quantity) || 0) === 0;
+      }
+      const partial = Object.fromEntries(
+        Object.entries(item.selectedOptions || {}).map(([k, v]) => [
+          k,
+          getVal(v),
+        ])
+      );
+      partial[optName] = getVal(valueObj);
+
+      const exists = existsCombination(optName, valueObj);
+      if (!exists) return false;
+
+      const anyInStock = variantsActive.some(
+        (v) =>
+          Object.entries(partial).every(
+            ([k, val]) => (v.selected || {})[k] === val
+          ) && (Number(v.quantity) || 0) > 0
+      );
+      return !anyInStock;
+    };
+
+    const baseImages = [item.img, ...(item.thumbnails || [])].filter(Boolean);
+    let firstOptionPreviewMap = {};
+    if (isFirst) {
+      for (const v of variants) {
+        const val = v?.selected?.[option.name];
+        if (!val || firstOptionPreviewMap[val]) continue;
+        if (v.image && baseImages.includes(v.image)) {
+          firstOptionPreviewMap[val] = v.image;
+        }
+      }
+    }
+
+    const labelOfOption = option.translations?.name?.[lang] || option.name;
+    const valueLabel = (idx, valObj) =>
+      option.translations?.values?.[idx]?.[lang] || valObj.value;
+
+    const pick = (valObj) =>
+      handleOptionChange(item.uniqueKey, option.name, valObj.value);
+
+    if (isFirst && Object.keys(firstOptionPreviewMap).length > 0) {
+      return (
+        <div
+          className={styles.OptionGroup}
+          role="radiogroup"
+          aria-label={labelOfOption}
+        >
+          <div className={styles.OptionLabel}>{labelOfOption}</div>
+          <div className={styles.OptionThumbGrid}>
+            {option.values.map((valObj, idx) => {
+              const val = valObj.value;
+              const isSelected = selected?.value === val;
+              const exists = existsCombination(option.name, valObj);
+              const oos = isOutOfStock(option.name, valObj);
+              const imgUrl = firstOptionPreviewMap[val] || null;
+
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  className={[
+                    styles.OptionThumb,
+                    isSelected ? styles.OptionThumbSelected : "",
+                    !exists
+                      ? styles.OptionThumbDisabled
+                      : oos
+                      ? styles.OptionThumbOut
+                      : "",
+                  ].join(" ")}
+                  onClick={() => {
+                    if (!exists) return;
+                    pick(valObj);
+                  }}
+                  disabled={!exists}
+                  aria-pressed={isSelected}
+                  title={valueLabel(idx, valObj)}
+                >
+                  {imgUrl ? (
+                    <img
+                      alt=""
+                      src={imgUrl}
+                      className={styles.OptionThumbImg}
+                    />
+                  ) : (
+                    <div className={styles.OptionThumbImgFallback}>
+                      {valueLabel(idx, valObj)}
+                    </div>
+                  )}
+                  <span className={styles.OptionThumbLabel}>
+                    {valueLabel(idx, valObj)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={styles.OptionGroup}
+        role="radiogroup"
+        aria-label={labelOfOption}
+      >
+        <div className={styles.OptionLabel}>{labelOfOption}</div>
+        <div className={styles.OptionGrid}>
+          {option.values.map((valObj, idx) => {
+            const isSelected = selected?.value === valObj.value;
+            const exists = existsCombination(option.name, valObj);
+            const oos = isOutOfStock(option.name, valObj);
+
+            return (
+              <button
+                key={idx}
+                type="button"
+                className={[
+                  styles.OptionBtn,
+                  isSelected ? styles.OptionBtnSelected : "",
+                  !exists
+                    ? styles.OptionBtnDisabled
+                    : oos
+                    ? styles.OptionBtnOut
+                    : "",
+                ].join(" ")}
+                onClick={() => exists && pick(valObj)}
+                disabled={!exists}
+                aria-pressed={isSelected}
+              >
+                {valueLabel(idx, valObj)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  return (
     <Container className={styles.container}>
       {basket.items.length === 0 ? (
         <h2 className={styles.basketEmpty}>
           {t("cart is empty", { ns: "basket" })}
         </h2>
       ) : (
-        basket.items.map((item, index) => (
-          <Card
-            key={item.uniqueKey}
-            className={`${styles.card} ${
-              index === 0 ? styles.firstCard : styles.otherCards
-            }`}
-          >
-            <div className={styles.cardContent}>
-              <div className={styles.topRow}>
-                <Image className={styles.image} src={item.img} />
-                <div className={styles.topInfo}>
-                  <div className={styles.title}>
-                    {item.translations?.name?.[i18n.language] || item.name}
+        basket.items.map((item, index) => {
+          const variants = normalizeVariants(item);
+          const baseImages = [item.img, ...(item.thumbnails || [])].filter(
+            Boolean
+          );
+          const selectedKey = makeVariantKey(
+            Object.fromEntries(
+              Object.entries(item.selectedOptions || {}).map(([k, v]) => [
+                k,
+                getVal(v),
+              ])
+            )
+          );
+          const selectedVariant =
+            variants.find(
+              (v) => (v.key || makeVariantKey(v.selected || {})) === selectedKey
+            ) || null;
+
+          const displayImg =
+            selectedVariant?.image && baseImages.includes(selectedVariant.image)
+              ? selectedVariant.image
+              : item.img;
+
+          const optionsArr = parseMaybeJSON(item.options) || [];
+
+          return (
+            <Card
+              key={item.uniqueKey}
+              className={`${styles.card} ${
+                index === 0 ? styles.firstCard : styles.otherCards
+              }`}
+            >
+              <div className={styles.cardContent}>
+                <div className={styles.topRow}>
+                  <Image
+                    className={styles.image}
+                    src={displayImg}
+                    alt={item.translations?.name?.[i18n.language] || item.name}
+                    onClick={() => setSelectedDeviceId(item.id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ")
+                        setSelectedDeviceId(item.id);
+                    }}
+                    style={{ cursor: "pointer" }}
+                  />
+
+                  <div className={styles.topInfo}>
+                    <div className={styles.title}>
+                      {item.translations?.name?.[i18n.language] || item.name}
+                    </div>
+
+                    {optionsArr.map((opt, optIndex) => (
+                      <OptionPicker
+                        key={`${item.uniqueKey}-opt-${optIndex}`}
+                        item={item}
+                        option={opt}
+                        index={optIndex}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className={styles.bottomRow}>
+                  <div className={styles.counter}>
+                    <button onClick={() => handleDecrement(item.uniqueKey)}>
+                      -
+                    </button>
+                    <span className={styles.count}>
+                      {basket.getItemCount(item.uniqueKey)}
+                    </span>
+                    <button
+                      onClick={() => handleIncrement(item.uniqueKey)}
+                      disabled={
+                        basket.getItemCount(item.uniqueKey) >=
+                        (availableQuantities[item.uniqueKey] || 0)
+                      }
+                    >
+                      +
+                    </button>
                   </div>
 
-                  {item.selectedOptions &&
-                    Object.entries(item.selectedOptions).map(
-                      ([key, option]) => (
-                        <div
-                          key={`${item.uniqueKey}-${key}`}
-                          className={styles.optionRow}
-                        >
-                          <label className={styles.optionLabel}>
-                            {(item.translations?.options &&
-                              Object.values(item.translations.options).find(
-                                (opt) => opt.name?.[i18n.language]
-                              )?.name?.[i18n.language]) ||
-                              key}
-                            :
-                          </label>
-                          <select
-                            value={option.value}
-                            onChange={(e) =>
-                              handleOptionChange(
-                                item.uniqueKey,
-                                key,
-                                e.target.value
-                              )
-                            }
-                            className={`${styles.select} ${
-                              option.value === "__UNSELECTED__" ||
-                              option.value ===
-                                t("select an option", { ns: "basket" })
-                                ? styles.unselectedOption
-                                : ""
-                            }`}
-                          >
-                            <option value="__UNSELECTED__" disabled hidden>
-                              {t("select an option", { ns: "basket" })}
-                            </option>
-                            {item.options
-                              .find((opt) => opt.name === key)
-                              ?.values.map((valueObj) => {
-                                const translated =
-                                  item.translations?.options?.[
-                                    Object.keys(item.translations?.options)[0]
-                                  ]?.values?.find(
-                                    (v) => v.ru === valueObj.value
-                                  )?.[i18n.language] || valueObj.value;
+                  <div className={styles.price}>
+                    €
+                    {(
+                      (item.price +
+                        Object.values(item.selectedOptions || {}).reduce(
+                          (sum, opt) => sum + (opt?.price || 0),
+                          0
+                        )) *
+                      item.count
+                    ).toFixed(2)}
+                  </div>
 
-                                const label =
-                                  valueObj.quantity === 0
-                                    ? `${translated} (${t(
-                                        "Not in stock (Pre-order)",
-                                        { ns: "basket" }
-                                      )})`
-                                    : translated;
-
-                                return (
-                                  <option
-                                    key={`${key}-${valueObj.value}`}
-                                    value={valueObj.value}
-                                  >
-                                    {label}
-                                  </option>
-                                );
-                              })}
-                          </select>
-                        </div>
-                      )
-                    )}
-                </div>
-              </div>
-              <div className={styles.bottomRow}>
-                <div className={styles.counter}>
-                  <button onClick={() => handleDecrement(item.uniqueKey)}>
-                    -
-                  </button>
-                  <span className={styles.count}>
-                    {basket.getItemCount(item.uniqueKey)}
-                  </span>
                   <button
-                    onClick={() => handleIncrement(item.uniqueKey)}
-                    disabled={
-                      basket.getItemCount(item.uniqueKey) >=
-                      (availableQuantities[item.uniqueKey] || 0)
-                    }
+                    className={styles.buttonDelete}
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        t("are you sure you want to delete this item", {
+                          ns: "basket",
+                        })
+                      );
+                      if (confirmed) handleRemove(item.uniqueKey);
+                    }}
                   >
-                    +
+                    {t("delete", { ns: "basket" })}
                   </button>
                 </div>
-
-                <div className={styles.price}>
-                  €
-                  {(item.price +
-                    Object.values(item.selectedOptions || {}).reduce(
-                      (sum, opt) => sum + (opt?.price || 0),
-                      0
-                    )) *
-                    item.count}
-                </div>
-
-                <button
-                  className={styles.buttonDelete}
-                  variant="danger"
-                   onClick={() => {
-                    const confirmed = window.confirm(
-                      t("are you sure you want to delete this item", { ns: "basket" })
-                    );
-                    if (confirmed) {
-                      handleRemove(item.uniqueKey);
-                    }
-                  }}
-                >
-                  {t("delete", { ns: "basket" })}
-                </button>
               </div>
-            </div>
-          </Card>
-        ))
+            </Card>
+          );
+        })
       )}
 
       {hasMixedItems && (
@@ -495,6 +669,7 @@ const Basket = observer(() => {
           </h3>
         </>
       )}
+
       {basket.items.length > 0 && !hasMixedItems && (
         <Elements stripe={stripePromise}>
           <PaymentForm
@@ -503,6 +678,12 @@ const Basket = observer(() => {
             onDeliveryCostChange={setDeliveryCost}
           />
         </Elements>
+      )}
+
+      {selectedDeviceId && (
+        <SlideModal onClose={() => setSelectedDeviceId(null)}>
+          <DevicePage id={selectedDeviceId} />
+        </SlideModal>
       )}
     </Container>
   );
