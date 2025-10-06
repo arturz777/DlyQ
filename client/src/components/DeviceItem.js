@@ -1,8 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
-import { Card, Col, Button, Row, Form } from "react-bootstrap";
+import { Card } from "react-bootstrap";
 import Image from "react-bootstrap/Image";
 import { useNavigate } from "react-router-dom";
-import { DEVICE_ROUTE } from "../utils/consts";
 import { Context } from "../index";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
@@ -14,17 +13,42 @@ const DeviceItem = ({ device, onClick }) => {
   const navigate = useNavigate();
   const [availableQuantity, setAvailableQuantity] = useState(device.quantity);
   const [isPreorder, setIsPreorder] = useState(false);
-  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
   const deviceName = device.translations?.name?.[currentLang] || device.name;
-  const oldPrice = Number(device.oldPrice) || 0;
-const newPrice = Number(device.price) || 0;
 
-const discountPercentage =
-device.discount && device.oldPrice > device.price
-  ? Math.round(((device.oldPrice - device.price) / device.oldPrice) * 100)
-  : null;
+  const parseMaybeJSON = (v) => {
+    if (typeof v === "string") {
+      try {
+        return JSON.parse(v);
+      } catch {
+        return v;
+      }
+    }
+    return v;
+  };
+  const optionsArr = parseMaybeJSON(device.options) || [];
+  const variantsArr = parseMaybeJSON(device.variants) || [];
+
+  const hasOptions = Array.isArray(optionsArr) && optionsArr.length > 0;
+  const hasVariants = Array.isArray(variantsArr) && variantsArr.length > 0;
+
+  const goToDevicePage = () =>
+    typeof onClick === "function"
+      ? onClick(device.id)
+      : navigate(`/device/${device.id}`);
+
+  const toNum = (v) => {
+    const n = parseFloat(String(v ?? "").replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const oldPrice = toNum(device.oldPrice);
+  const newPrice = toNum(device.price);
+  const hasDiscount = oldPrice > 0 && newPrice > 0 && oldPrice > newPrice;
+  const discountPercentage = hasDiscount
+    ? Math.max(1, Math.round(((oldPrice - newPrice) / oldPrice) * 100))
+    : null;
 
   useEffect(() => {
     const itemsInBasket = basket.items.filter((item) => item.id === device.id);
@@ -32,38 +56,33 @@ device.discount && device.oldPrice > device.price
       (sum, item) => sum + (item.count || 0),
       0
     );
-
-    const newAvailable = Math.max(0, device.quantity - totalInBasket);
-
-    setAvailableQuantity(newAvailable);
+    setAvailableQuantity(Math.max(0, device.quantity - totalInBasket));
   }, [basket.items, device.quantity]);
 
   const checkStock = async (deviceId, quantity) => {
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/device/check-stock`,
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}api/device/check-stock`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ deviceId, quantity }),
         }
       );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Ошибка проверки наличия товара");
-      }
-
-      const data = await response.json();
-      return data.quantity >= quantity;
-    } catch (error) {
-      console.error("Ошибка при проверке наличия товара:", error.message);
+      const data = await res.json();
+      return res.ok && data.quantity >= quantity;
+    } catch {
       return false;
     }
   };
 
   const handleAddToBasket = async (e) => {
     e.stopPropagation();
+
+    if (hasOptions || hasVariants) {
+      goToDevicePage();
+      return;
+    }
 
     if (!isShopOpenNow() && !isPreorder) {
       toast.error(
@@ -77,7 +96,7 @@ device.discount && device.oldPrice > device.price
 
     const itemsInBasket = basket.items.filter((item) => item.id === device.id);
     const totalInBasket = itemsInBasket.reduce(
-      (sum, item) => sum + (item.count || 0),
+      (s, it) => s + (it.count || 0),
       0
     );
     const newCount = totalInBasket + 1;
@@ -85,7 +104,7 @@ device.discount && device.oldPrice > device.price
     const isAvailable = await checkStock(device.id, newCount);
     const isThisPreorder = !isAvailable;
 
-    if (basket.items.some((item) => item.isPreorder) && !isThisPreorder) {
+    if (basket.items.some((it) => it.isPreorder) && !isThisPreorder) {
       toast.error(
         `❌ ${t("you cannot add a regular item to the cart with a pre-order", {
           ns: "deviceItem",
@@ -93,8 +112,7 @@ device.discount && device.oldPrice > device.price
       );
       return;
     }
-
-    if (basket.items.some((item) => !item.isPreorder) && isThisPreorder) {
+    if (basket.items.some((it) => !it.isPreorder) && isThisPreorder) {
       toast.error(
         `❌ ${t("you cannot add a pre-order to the cart with regular items", {
           ns: "deviceItem",
@@ -102,7 +120,6 @@ device.discount && device.oldPrice > device.price
       );
       return;
     }
-
     if (!isAvailable) {
       toast.error(
         `❗ ${t(
@@ -112,59 +129,43 @@ device.discount && device.oldPrice > device.price
       );
     }
 
-    let defaultOptions = {};
-    if (device.options?.length > 0) {
-      device.options.forEach((option) => {
-        defaultOptions[option.name] = {
-          value: "__UNSELECTED__",
-          price: 0,
-        };
-      });
-    }
-
     basket.addItem({
       ...device,
-      selectedOptions: defaultOptions,
+      selectedOptions: {}, 
       isPreorder: isThisPreorder || !isShopOpenNow(),
       stockQuantity: Math.max(0, device.quantity - totalInBasket),
     });
+
     toast.success(
       <>
         <strong className={styles.toastTitle}>{deviceName}</strong>
         <span className={styles.toastSubtitle}>
           {t("Added to cart!", { ns: "devicePage" })}
-          {(!isShopOpenNow() || isPreorder) && (
-            <div style={{ fontSize: "0.8em", marginTop: "5px" }}>
-            </div>
-          )}
         </span>
       </>,
-      {
-        style: {
-          maxWidth: "400px",
-        },
-      }
+      { style: { maxWidth: "400px" } }
     );
 
     setAvailableQuantity((prev) => Math.max(0, prev - 1));
   };
 
   return (
-    <div onClick={() => onClick(device.id)}>
+    <div onClick={() => goToDevicePage()}>
       <Card className={styles.card}>
-        {discountPercentage && (
+        {discountPercentage !== null && (
           <div className={styles.discountBadge}>-{discountPercentage}%</div>
         )}
 
         <div className={styles.imageWrapper}>
-        <Image className={styles.image} src={device.img} />
-         <div className={styles.addButton} onClick={handleAddToBasket}>+</div>
+          <Image className={styles.image} src={device.img} alt={deviceName} />
+          <div className={styles.addButton} onClick={handleAddToBasket}>
+            +
+          </div>
         </div>
 
         <div className={styles.info}>
-          
           <div className={styles.priceBlock}>
-            {device.discount && device.oldPrice > device.price ? (
+            {hasDiscount ? (
               <>
                 <span className={styles.oldPrice}>{device.oldPrice} €</span>
                 <span className={styles.newPrice}>{device.price} €</span>
