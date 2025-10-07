@@ -4,7 +4,7 @@ import jwt_decode from "jwt-decode";
 export const fetchNewDevices = async (limit = 100) => {
   try {
     const { data } = await $host.get("/device", {
-      params: { isNew: true, limit }
+      params: { isNew: true, limit, onlyVisible: true },
     });
     return data.rows || [];
   } catch (error) {
@@ -16,7 +16,7 @@ export const fetchNewDevices = async (limit = 100) => {
 export const fetchDiscountedDevices = async (limit = 100) => {
   try {
     const { data } = await $host.get("/device", {
-      params: { discount: true, limit },
+      params: { discount: true, limit, onlyVisible: true },
     });
     
     return data.rows || []; 
@@ -29,7 +29,7 @@ export const fetchDiscountedDevices = async (limit = 100) => {
 export const fetchRecommendedDevices = async (deviceType, limit = 100) => {
   try {
     const { data } = await $host.get("/device", {
-      params: { type: deviceType, recommended: true, limit },
+      params: { typeId, recommended: true, limit, onlyVisible: true },
     });
     return data.rows || [];
   } catch (error) {
@@ -171,6 +171,16 @@ export const fetchFilter = async (
   };
   const { data } = await $host.get("/device/filter", { params });
   return data; 
+};
+
+export const updateDeviceVisibility = async (id, isVisible) => {
+  const res = await fetch(`${process.env.REACT_APP_API_URL}api/device/${id}/visibility`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ isVisible }),
+  });
+  if (!res.ok) throw new Error('Failed to update visibility');
+  return res.json();
 };
 
 export const fetchDevices = async (
