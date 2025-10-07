@@ -950,13 +950,22 @@ class DeviceController {
         ];
       }
 
-      let totalQty;
-      if (Array.isArray(parsedVariants) && parsedVariants.length) {
+      let totalQty = device.quantity;
+
+      if (
+        hasVariantsPayload &&
+        Array.isArray(parsedVariants) &&
+        parsedVariants.length
+      ) {
         totalQty = parsedVariants.reduce(
           (s, v) => s + (Number(v.quantity) || 0),
           0
         );
-      } else if (Array.isArray(parsedOptions) && parsedOptions.length) {
+      } else if (
+        hasOptionsPayload &&
+        Array.isArray(parsedOptions) &&
+        parsedOptions.length
+      ) {
         totalQty = parsedOptions.reduce(
           (sum, option) =>
             sum +
@@ -966,18 +975,17 @@ class DeviceController {
             ),
           0
         );
-      } else {
+      } else if (hasQuantityPayload) {
         totalQty = Number(quantity) || 0;
       }
 
-      await Translation.destroy({
-        where: { key: { [Op.like]: `device_${id}.%` } },
-      });
+      if (hasTranslationsPayload) {
+        await Translation.destroy({
+          where: { key: { [Op.like]: `device_${id}.%` } },
+        });
 
-      let translationEntries = [];
-
-      if (translations) {
-        const parsedTranslations = JSON.parse(translations);
+        let translationEntries = [];
+        const parsedTranslations = translations ? JSON.parse(translations) : {};
 
         Object.entries(parsedTranslations.name || {}).forEach(
           ([lang, text]) => {
@@ -1056,10 +1064,10 @@ class DeviceController {
             });
           });
         }
-      }
 
-      if (translationEntries.length > 0) {
-        await Translation.bulkCreate(translationEntries);
+        if (translationEntries.length > 0) {
+          await Translation.bulkCreate(translationEntries);
+        }
       }
 
       const purchasePriceNum =
@@ -1075,11 +1083,11 @@ class DeviceController {
           price,
           oldPrice,
           brandId: brandId || null,
-          typeId,
-          subtypeId: subtypeId || null,
+          typeId: typeId ?? device.typeId,
+          subtypeId: hasSubtypePayload ? subtypeId || null : device.subtypeId,
           img: fileName,
           thumbnails,
-          options: parsedOptions,
+          options: hasOptionsPayload ? parsedOptions : device.options,
           quantity: totalQty,
           description,
           expiryKind,
@@ -1090,70 +1098,87 @@ class DeviceController {
           recommended: recommended === "true",
           purchasePrice: purchasePriceNum,
           purchaseHasVAT: req.body.purchaseHasVAT === "true",
+          isVisible: nextIsVisible,
         },
         { where: { id } }
       );
 
-      const primaryId = subtypeId || null;
-      let subtypeIdsArr = [];
-      if (req.body.subtypeIds) {
+      if (hasSubtypePayload) {
+        const primaryId = subtypeId || null;
+        let subtypeIdsArr = [];
+        if (req.body.subtypeIds) {
+          try {
+            subtypeIdsArr = JSON.parse(req.body.subtypeIds) || [];
+          } catch {}
+        }
+        const allSubtypes = new Set(subtypeIdsArr.filter(Boolean));
+        if (primaryId) allSubtypes.add(Number(primaryId));
+
+        await DeviceSubType.destroy({ where: { deviceId: id } });
+
+        if (allSubtypes.size) {
+          const rows = Array.from(allSubtypes).map((stId) => ({
+            deviceId: Number(id),
+            subtypeId: Number(stId),
+            isPrimary: primaryId ? Number(stId) === Number(primaryId) : false,
+          }));
+          await DeviceSubType.bulkCreate(rows);
+        }
+      }
+
+      if (hasTypeIdsPayload || hasSubtypePayload) {
         try {
-          subtypeIdsArr = JSON.parse(req.body.subtypeIds) || [];
-        } catch {}
-      }
-      const allSubtypes = new Set(subtypeIdsArr.filter(Boolean));
-      if (primaryId) allSubtypes.add(Number(primaryId));
+          const parsedTypeIds = req.body.typeIds
+            ? JSON.parse(req.body.typeIds)
+            : [];
+          const extraTypeIds = new Set(
+            (Array.isArray(parsedTypeIds) ? parsedTypeIds : [])
+              .map(Number)
+              .filter(Number.isInteger)
+          );
 
-      await DeviceSubType.destroy({ where: { deviceId: id } });
+          if (hasSubtypePayload) {
+            const primaryId = subtypeId || null;
+            let subtypeIdsArr = [];
+            if (req.body.subtypeIds) {
+              try {
+                subtypeIdsArr = JSON.parse(req.body.subtypeIds) || [];
+              } catch {}
+            }
+            const allSubtypes = new Set(subtypeIdsArr.filter(Boolean));
+            if (primaryId) allSubtypes.add(Number(primaryId));
 
-      if (allSubtypes.size) {
-        const rows = Array.from(allSubtypes).map((stId) => ({
-          deviceId: Number(id),
-          subtypeId: Number(stId),
-          isPrimary: primaryId ? Number(stId) === Number(primaryId) : false,
-        }));
-        await DeviceSubType.bulkCreate(rows);
-      }
+            const allSubtypeIdsArr = Array.from(allSubtypes);
+            if (allSubtypeIdsArr.length) {
+              const subtypesRows = await SubType.findAll({
+                where: { id: allSubtypeIdsArr },
+              });
+              const subtypeTypeIds = new Set(subtypesRows.map((s) => s.typeId));
 
-      try {
-        const parsedTypeIds = req.body.typeIds
-          ? JSON.parse(req.body.typeIds)
-          : [];
-        const extraTypeIds = new Set(
-          (Array.isArray(parsedTypeIds) ? parsedTypeIds : [])
-            .map(Number)
-            .filter(Number.isInteger)
-        );
-
-        const allSubtypeIdsArr = Array.from(allSubtypes);
-        if (allSubtypeIdsArr.length) {
-          const subtypesRows = await SubType.findAll({
-            where: { id: allSubtypeIdsArr },
-          });
-          const subtypeTypeIds = new Set(subtypesRows.map((s) => s.typeId));
-
-          const primaryTypeId = typeId ? Number(typeId) : null;
-          for (const tid of subtypeTypeIds) {
-            if (tid && tid !== primaryTypeId) extraTypeIds.add(tid);
+              const primaryTypeId = typeId ? Number(typeId) : null;
+              for (const tid of subtypeTypeIds) {
+                if (tid && tid !== primaryTypeId) extraTypeIds.add(tid);
+              }
+            }
           }
-        }
 
-        if (typeof device.setTypes === "function") {
-          await device.setTypes([...extraTypeIds]);
-        } else {
-          await DeviceType.destroy({ where: { deviceId: id } });
-          if (extraTypeIds.size) {
-            await DeviceType.bulkCreate(
-              [...extraTypeIds].map((tid) => ({
-                deviceId: Number(id),
-                typeId: tid,
-              })),
-              { ignoreDuplicates: true }
-            );
+          if (typeof device.setTypes === "function") {
+            await device.setTypes([...extraTypeIds]);
+          } else {
+            await DeviceType.destroy({ where: { deviceId: id } });
+            if (extraTypeIds.size) {
+              await DeviceType.bulkCreate(
+                [...extraTypeIds].map((tid) => ({
+                  deviceId: Number(id),
+                  typeId: tid,
+                })),
+                { ignoreDuplicates: true }
+              );
+            }
           }
+        } catch (e) {
+          console.error("Не удалось обновить доп. типы:", e.message);
         }
-      } catch (e) {
-        console.error("Не удалось обновить доп. типы:", e.message);
       }
 
       if (info) {
@@ -1166,62 +1191,69 @@ class DeviceController {
 
       const updatedDevice = await Device.findOne({ where: { id } });
 
-      try {
-        await DeviceCompatibility.destroy({ where: { deviceId: id } });
+      if (hasCompatPayload) {
+        try {
+          await DeviceCompatibility.destroy({ where: { deviceId: id } });
 
-        const { compat, isUniversal } = req.body;
+          const { compat, isUniversal } = req.body;
 
-        if (isUniversal === "true") {
-          await DeviceCompatibility.create({
-            deviceId: id,
-            isUniversal: true,
-            makeId: null,
-            modelId: null,
-            yearFrom: null,
-            yearTo: null,
-          });
-        } else if (compat) {
-          let arr = [];
-          try {
-            arr = JSON.parse(compat);
-          } catch {
-            arr = [];
-          }
-          if (Array.isArray(arr) && arr.length) {
-            const rows = arr.map((c) => ({
+          if (isUniversal === "true") {
+            await DeviceCompatibility.create({
               deviceId: id,
-              makeId: c.makeId ?? null,
-              modelId: c.modelId ?? null,
-              yearFrom: c.yearFrom ?? null,
-              yearTo: c.yearTo ?? null,
-              isUniversal: false,
-            }));
-            await DeviceCompatibility.bulkCreate(rows);
+              isUniversal: true,
+              makeId: null,
+              modelId: null,
+              yearFrom: null,
+              yearTo: null,
+            });
+          } else if (compat) {
+            let arr = [];
+            try {
+              arr = JSON.parse(compat);
+            } catch {
+              arr = [];
+            }
+            if (Array.isArray(arr) && arr.length) {
+              const rows = arr.map((c) => ({
+                deviceId: id,
+                makeId: c.makeId ?? null,
+                modelId: c.modelId ?? null,
+                yearFrom: c.yearFrom ?? null,
+                yearTo: c.yearTo ?? null,
+                isUniversal: false,
+              }));
+              await DeviceCompatibility.bulkCreate(rows);
+            }
           }
+        } catch (e) {
+          console.error("Ошибка обновления совместимости:", e.message);
         }
-      } catch (e) {
-        console.error("Ошибка обновления совместимости:", e.message);
       }
 
-      await DeviceVariant.destroy({ where: { deviceId: id } });
-      if (Array.isArray(parsedVariants) && parsedVariants.length) {
-        const rows = parsedVariants.map((v) => {
-          const normalizedSelected = Object.fromEntries(
-            Object.entries(v.selected || {}).map(([k, val]) => [k, getVal(val)])
-          );
-          return {
-            deviceId: Number(id),
-            key: makeVariantKey(normalizedSelected),
-            selected: JSON.stringify(normalizedSelected),
-            sku: v.sku || null,
-            price: v.price === "" ? null : v.price ?? null,
-            oldPrice: v.oldPrice === "" ? null : v.oldPrice ?? null,
-            quantity: Number(v.quantity) || 0,
-            image: resolveVariantImage(v.image, fileName, thumbnails),
-            isActive: v.isActive !== false,
-          };
-        });
-        await DeviceVariant.bulkCreate(rows, { ignoreDuplicates: true });
+      if (hasVariantsPayload) {
+        await DeviceVariant.destroy({ where: { deviceId: id } });
+        if (Array.isArray(parsedVariants) && parsedVariants.length) {
+          const rows = parsedVariants.map((v) => {
+            const normalizedSelected = Object.fromEntries(
+              Object.entries(v.selected || {}).map(([k, val]) => [
+                k,
+                getVal(val),
+              ])
+            );
+            return {
+              deviceId: Number(id),
+              key: makeVariantKey(normalizedSelected),
+              selected: JSON.stringify(normalizedSelected),
+              sku: v.sku || null,
+              price: v.price === "" ? null : v.price ?? null,
+              oldPrice: v.oldPrice === "" ? null : v.oldPrice ?? null,
+              quantity: Number(v.quantity) || 0,
+              image: resolveVariantImage(v.image, fileName, thumbnails),
+              isActive: v.isActive !== false,
+            };
+          });
+          await DeviceVariant.bulkCreate(rows, { ignoreDuplicates: true });
+        }
       }
 
       return res.json(updatedDevice);
@@ -1230,7 +1262,7 @@ class DeviceController {
       next(ApiError.badRequest(error.message));
     }
   }
-
+  
   async getNewDevices(req, res) {
     try {
       let { limit = 50 } = req.query;
