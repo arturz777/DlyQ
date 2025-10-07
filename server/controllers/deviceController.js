@@ -1181,11 +1181,16 @@ class DeviceController {
 
   async getNewDevices(req, res) {
     try {
-      const { limit = 10 } = req.query;
+      let { limit = 50 } = req.query;
+      limit = parseInt(limit, 10) || 50;
+
+      const onlyVisible = req.query.onlyVisible !== "false";
+      const where = { isNew: true };
+      if (onlyVisible) where.isVisible = true;
 
       const devices = await Device.findAll({
-        where: { isNew: true },
-        limit: parseInt(limit),
+        where,
+        limit,
         order: [["createdAt", "DESC"]],
         include: [
           { model: SubType, as: "subtype" },
@@ -1200,7 +1205,7 @@ class DeviceController {
       const translations = await Translation.findAll({
         where: {
           key: {
-            [Op.or]: deviceIds.map((id) => `device_${id}.%`),
+            [Op.or]: deviceIds.map((id) => ({ [Op.like]: `device_${id}.%` })),
           },
         },
       });
@@ -1250,10 +1255,14 @@ class DeviceController {
   async getDiscountedDevices(req, res) {
     try {
       let { limit } = req.query;
-      limit = limit ? parseInt(limit) : 10;
+     limit = limit ? parseInt(limit, 10) : 50;
+
+      const onlyVisible = req.query.onlyVisible !== "false";
+      const where = { discount: true };
+      if (onlyVisible) where.isVisible = true;
 
       const devices = await Device.findAndCountAll({
-        where: { discount: true },
+        where,
         limit,
         order: [["createdAt", "DESC"]],
       });
@@ -1270,10 +1279,14 @@ class DeviceController {
   async getRecommendedDevices(req, res) {
     try {
       let { limit } = req.query;
-      limit = limit ? parseInt(limit) : 10;
+     limit = limit ? parseInt(limit, 10) : 50;
+
+      const onlyVisible = req.query.onlyVisible !== "false";
+      const where = { recommended: true };
+      if (onlyVisible) where.isVisible = true;
 
       const devices = await Device.findAndCountAll({
-        where: { recommended: true },
+        where,
         limit,
         order: [["createdAt", "DESC"]],
       });
@@ -1334,7 +1347,7 @@ class DeviceController {
     }
   }
 
-   async filter(req, res) {
+  async filter(req, res) {
     try {
       const toInt = (v) => {
         const n = Number(v);
@@ -1378,6 +1391,9 @@ class DeviceController {
       if (discount !== undefined) baseWhere.discount = discount === "true";
       if (recommended !== undefined)
         baseWhere.recommended = recommended === "true";
+
+      const onlyVisible = req.query.onlyVisible !== "false";
+      if (onlyVisible) baseWhere.isVisible = true;
 
       if (typeId != null) {
         baseWhere[Op.and] = baseWhere[Op.and] || [];
@@ -1636,7 +1652,30 @@ class DeviceController {
     }
   }
 
-    async adjustStock(req, res) {
+  async updateVisibility(req, res) {
+    try {
+      const { id } = req.params;
+      const { isVisible } = req.body;
+      const device = await Device.findByPk(id);
+      if (!device) return res.status(404).json({ message: "Товар не найден" });
+
+       const next =
+      typeof isVisible === "boolean"
+        ? isVisible
+        : typeof isVisible === "string"
+        ? isVisible === "true"
+        : Boolean(isVisible);
+
+      device.isVisible = !!isVisible;
+      await device.save();
+      return res.json({ id: device.id, isVisible: device.isVisible });
+    } catch (e) {
+      console.error("updateVisibility error:", e);
+      return res.status(500).json({ message: "Не удалось обновить видимость" });
+    }
+  }
+
+  async adjustStock(req, res) {
     try {
       const { id } = req.params;
       const { delta, selectedOptions } = req.body;
@@ -1763,18 +1802,23 @@ class DeviceController {
   }
 
   async search(req, res, next) {
-    try {
-      const { q } = req.query;
-      if (!q)
-        return res.status(400).json({ message: "Параметр поиска не указан" });
+  try {
+    const { q } = req.query;
+    const onlyVisible = req.query.onlyVisible !== "false";
+    if (!q) return res.status(400).json({ message: "Параметр поиска не указан" });
 
-     const devices = await Device.findAll({
-        where: { name: { [Op.iLike]: `%${q}%` } },
-        order: [
-          [literal(`CASE WHEN "name" ILIKE '${q}%' THEN 0 ELSE 1 END`), "ASC"],
-          ["name", "ASC"],
-        ],
-      });
+        const baseWhere = { name: { [Op.iLike]: `%${q}%` } };
+    if (onlyVisible) baseWhere.isVisible = true;
+
+    const qEsc = String(q).replace(/'/g, "''"); // ЭКРАНИРУЕМ!
+
+    const devices = await Device.findAll({
+      where: baseWhere,
+      order: [
+        [literal(`CASE WHEN "name" ILIKE '${qEsc}%' THEN 0 ELSE 1 END`), "ASC"],
+        ["name", "ASC"],
+      ],
+    });
 
       const translations = await Translation.findAll({
         where: {
@@ -1789,40 +1833,39 @@ class DeviceController {
         attributes: ["key", "lang", "text"],
       });
 
-      const translationMap = {};
-      translations.forEach(({ key, lang, text }) => {
-        const deviceId = key.match(/\d+/)?.[0];
-        if (!deviceId) return;
+        const translationMap = {};
+    translations.forEach(({ key, lang, text }) => {
+      const deviceId = key.match(/\d+/)?.[0];
+      if (!deviceId) return;
+      if (!translationMap[deviceId]) translationMap[deviceId] = { name: {} };
+      translationMap[deviceId].name[lang] = text;
+    });
 
-        if (!translationMap[deviceId]) translationMap[deviceId] = { name: {} };
-        translationMap[deviceId].name[lang] = text;
-      });
+        const translatedDeviceIds = Object.keys(translationMap).map(Number);
+    const whereTranslated = { id: { [Op.in]: translatedDeviceIds } };
+    if (onlyVisible) whereTranslated.isVisible = true;
 
-      const translatedDeviceIds = Object.keys(translationMap);
+        const translatedDevices = translatedDeviceIds.length
+      ? await Device.findAll({ where: whereTranslated })
+      : [];
 
-      const translatedDevices = await Device.findAll({
-        where: { id: { [Op.in]: translatedDeviceIds } },
-      });
+       translatedDevices.forEach((d) => {
+      d.dataValues.translations = translationMap[d.id] || {};
+    });
+    devices.forEach((d) => {
+      d.dataValues.translations = translationMap[d.id] || {};
+    });
 
-      translatedDevices.forEach((device) => {
-        device.dataValues.translations = translationMap[device.id] || {};
-      });
+        const allDevices = [...devices, ...translatedDevices].filter(
+      (value, index, self) => index === self.findIndex((d) => d.id === value.id)
+    );
 
-      devices.forEach((device) => {
-        device.dataValues.translations = translationMap[device.id] || {};
-      });
-
-      const allDevices = [...devices, ...translatedDevices].filter(
-        (value, index, self) =>
-          index === self.findIndex((d) => d.id === value.id)
-      );
-
-      return res.json(allDevices);
-    } catch (error) {
-      console.error("❌ Ошибка при поиске:", error);
-      next(ApiError.internal("Ошибка сервера при выполнении поиска"));
-    }
+    return res.json(allDevices);
+  } catch (error) {
+    console.error("❌ Ошибка при поиске:", error);
+    next(ApiError.internal("Ошибка сервера при выполнении поиска"));
   }
+}
 
   async checkStock(req, res) {
     try {
