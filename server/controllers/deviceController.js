@@ -121,8 +121,14 @@ class DeviceController {
         thumbnails = thumbnails.filter((url) => url !== null);
       }
 
-      let parsedOptions = options ? JSON.parse(options) : [];
-      let parsedVariants = req.body.variants
+    let parsedOptions = Array.isArray(options)
+        ? options
+        : options
+        ? JSON.parse(options)
+        : [];
+      let parsedVariants = Array.isArray(req.body.variants)
+        ? req.body.variants
+        : req.body.variants
         ? JSON.parse(req.body.variants)
         : [];
 
@@ -168,6 +174,8 @@ class DeviceController {
         });
       }
 
+      const isVisible = req.body.isVisible === "false" ? false : true;
+
       const device = await Device.create({
         name,
         price,
@@ -188,6 +196,7 @@ class DeviceController {
         recommended: recommended === "true",
         purchasePrice: purchasePriceNum,
         purchaseHasVAT: req.body.purchaseHasVAT === "true",
+        isVisible,
       });
 
       const primaryId = subtypeId || null;
@@ -419,7 +428,7 @@ class DeviceController {
     }
   }
 
-   async getAll(req, res) {
+  async getAll(req, res) {
     try {
       let {
         brandId,
@@ -448,14 +457,22 @@ class DeviceController {
       limit = Number(limit) || 9;
       const offset = page * limit - limit;
 
+      const onlyVisible = String(req.query.onlyVisible).toLowerCase() === "true";
+
       const where = {};
+      if (onlyVisible) where.isVisible = true;
       if (brandId != null) where.brandId = brandId;
       if (isNew !== undefined) where.isNew = isNew === "true";
       if (discount !== undefined) where.discount = discount === "true";
       if (recommended !== undefined) where.recommended = recommended === "true";
 
       const include = [
-         { model: DeviceVariant, as: "variants", required: false, separate: true },
+        {
+          model: DeviceVariant,
+          as: "variants",
+          required: false,
+          separate: true,
+        },
         { model: SubType, as: "subtype" },
         { model: Type },
         { model: DeviceInfo, as: "info", required: false, separate: true },
@@ -522,7 +539,7 @@ class DeviceController {
         include,
         distinct: true,
         subQuery: false,
-        order: [[col('device.id'), 'ASC']],
+        order: [["id", "ASC"]],
       });
 
       devices.rows.forEach((d) => {
