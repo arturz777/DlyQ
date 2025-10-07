@@ -29,4 +29,6 @@ router.get('/:id', deviceController.getOne)
 router.put('/:id', deviceController.update);
 router.delete('/:id', deviceController.delete);
 
+router.patch('/:id/visibility', deviceController.updateVisibility);
+
 module.exports = router
