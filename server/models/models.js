@@ -41,6 +41,7 @@ const Device = sequelize.define("device", {
   expiryKind: { type: DataTypes.STRING, allowNull: true, defaultValue: null },
   expiryDate: { type: DataTypes.DATEONLY, allowNull: true },
   snoozeUntil: { type: DataTypes.DATEONLY, allowNull: true },
+  isVisible: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
 });
 
 const DeviceVariant = sequelize.define(
