@@ -780,7 +780,7 @@ class DeviceController {
     }
   }
 
-  async update(req, res, next) {
+   async update(req, res, next) {
     try {
       const { id } = req.params;
       let {
@@ -828,8 +828,43 @@ class DeviceController {
       if (!device)
         return res.status(404).json({ message: "Устройство не найдено" });
 
-      let parsedOptions = options ? JSON.parse(options) : [];
-      let parsedVariants = req.body.variants
+      const hasVariantsPayload = Object.prototype.hasOwnProperty.call(
+        req.body,
+        "variants"
+      );
+      const hasOptionsPayload = Object.prototype.hasOwnProperty.call(
+        req.body,
+        "options"
+      );
+      const hasQuantityPayload = Object.prototype.hasOwnProperty.call(
+        req.body,
+        "quantity"
+      );
+      const hasSubtypePayload =
+        typeof subtypeId !== "undefined" ||
+        typeof req.body.subtypeIds !== "undefined";
+      const hasTypeIdsPayload = typeof req.body.typeIds !== "undefined";
+      const hasCompatPayload =
+        typeof req.body.isUniversal !== "undefined" ||
+        typeof req.body.compat !== "undefined";
+      const hasTranslationsPayload = typeof translations !== "undefined";
+
+      const rawIsVisible = req.body.isVisible;
+      const nextIsVisible =
+        typeof rawIsVisible === "boolean"
+          ? rawIsVisible
+          : typeof rawIsVisible === "string"
+          ? rawIsVisible === "true"
+          : device.isVisible;
+
+      let parsedOptions = Array.isArray(options)
+        ? options
+        : options
+        ? JSON.parse(options)
+        : [];
+      let parsedVariants = Array.isArray(req.body.variants)
+        ? req.body.variants
+        : req.body.variants
         ? JSON.parse(req.body.variants)
         : [];
 
