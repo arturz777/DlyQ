@@ -174,7 +174,7 @@ export const fetchFilter = async (
 };
 
 export const updateDeviceVisibility = async (id, isVisible) => {
-  const res = await fetch(`${process.env.REACT_APP_API_URL}api/device/${id}/visibility`, {
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/device/${id}/visibility`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ isVisible }),
