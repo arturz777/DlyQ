@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { Context } from "../index";
+import { updateDeviceVisibility } from "../http/deviceAPI";
 import { fetchAllCouriers } from "../http/courierAPI";
 import CreateBrand from "../components/modals/CreateBrand";
 import CreateDevice from "../components/modals/CreateDevice";
@@ -198,6 +199,20 @@ const Admin = () => {
 
     fetchData();
   }, []);
+
+  const handleToggleVisibility = async (id, next) => {
+    const prev = devices;
+    setDevices((p) =>
+      p.map((d) => (d.id === id ? { ...d, isVisible: next } : d))
+    );
+    try {
+      await updateDeviceVisibility(id, next);
+    } catch (e) {
+      console.error(e);
+      setDevices(prev);
+      alert("Не удалось обновить видимость");
+    }
+  };
 
   const handleAssignCourier = async (orderId, courierId) => {
     if (!courierId) {
@@ -521,7 +536,7 @@ const Admin = () => {
   const twoMonthsFromToday = new Date(today);
   twoMonthsFromToday.setMonth(twoMonthsFromToday.getMonth() + 2);
 
- const getDeviceTypeIds = (d) => {
+const getDeviceTypeIds = (d) => {
     const ids = new Set();
     if (d.typeId) ids.add(Number(d.typeId));
     if (d.type?.id) ids.add(Number(d.type.id));
@@ -540,7 +555,7 @@ const Admin = () => {
     }
     return ids;
   };
-  
+
   const isExpiringWithin2Months = (d) => {
     if (!d.expiryDate) return false;
     const ed = dayStart(d.expiryDate);
@@ -612,7 +627,7 @@ const Admin = () => {
             (modelId
               ? makeId
                 ? getModelName(makeId, modelId)
-                : getModelNameAny(modelId) // см. ниже, если добавлял
+                : getModelNameAny(modelId)
               : "");
 
           const years =
@@ -643,7 +658,7 @@ const Admin = () => {
     );
   };
 
-return (
+  return (
     <div className={styles.adminPanelContainer}>
       <Tabs>
         <TabList>
@@ -831,6 +846,25 @@ return (
                           <span>{device.price} €</span>
                         )}
                       </div>
+
+                      <label
+                        className={styles.toggleWrap}
+                        title="Показывать на витрине"
+                        style={{ marginRight: 12 }}
+                      >
+                        <input
+                          type="checkbox"
+                          className={styles.toggleInput}
+                          checked={!!device.isVisible}
+                          onChange={(e) =>
+                            handleToggleVisibility(device.id, e.target.checked)
+                          }
+                        />
+                        <span className={styles.toggleSlider} />
+                        <span className={styles.toggleLabel}>
+                          {device.isVisible ? "Витрина: вкл" : "Витрина: выкл"}
+                        </span>
+                      </label>
 
                       <button
                         className={styles.editButton}
@@ -1045,6 +1079,23 @@ return (
                   >
                     Удалить
                   </button>
+                  <label
+                    className={styles.toggleWrap}
+                    title="Показывать на витрине"
+                  >
+                    <input
+                      type="checkbox"
+                      className={styles.toggleInput}
+                      checked={!!d.isVisible}
+                      onChange={(e) =>
+                        handleToggleVisibility(d.id, e.target.checked)
+                      }
+                    />
+                    <span className={styles.toggleSlider} />
+                    <span className={styles.toggleLabel}>
+                      {d.isVisible ? "Витрина: вкл" : "Витрина: выкл"}
+                    </span>
+                  </label>
                 </div>
               </div>
             );
