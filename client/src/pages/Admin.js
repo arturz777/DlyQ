@@ -761,7 +761,7 @@ const Admin = () => {
               <h3 style={{ color: "red", marginTop: 0 }}>Нет в наличии</h3>
 
               <div className={styles.itemList}>
-                {outOfStockDevices.map((device) => (
+                {outOfStockDevices.map(({ device, zeros }) => (
                   <div
                     key={device.id}
                     className={styles.item}
@@ -780,6 +780,28 @@ const Admin = () => {
                     <span className={styles.adminDeviceName}>
                       {device.name}
                     </span>
+
+                    {zeros.length > 0 && (
+                      <div className={styles.zerosBlock}>
+                        <div className={styles.zerosTitle}>Закончились:</div>
+                        <div className={styles.zerosChips}>
+                          {zeros.slice(0, 10).map((z, i) => (
+                            <span
+                              key={i}
+                              className={styles.zeroChip}
+                              title={z.kind === "variant" ? "Вариант" : "Опция"}
+                            >
+                              {z.label}
+                            </span>
+                          ))}
+                          {zeros.length > 10 && (
+                            <span className={styles.zerosMore}>
+                              …и ещё {zeros.length - 10}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     <div className={styles.buttons}>
                       <span
@@ -1933,4 +1955,3 @@ const Admin = () => {
 };
 
 export default Admin;
-
