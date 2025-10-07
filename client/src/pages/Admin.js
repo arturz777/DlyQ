@@ -546,16 +546,6 @@ const Admin = () => {
     return ids;
   };
 
- const getDeviceTypeIds = (d) => {
-    const ids = new Set();
-    if (d.typeId) ids.add(Number(d.typeId));
-    if (d.type?.id) ids.add(Number(d.type.id));
-    if (Array.isArray(d.types)) {
-      d.types.forEach((t) => t?.id && ids.add(Number(t.id)));
-    }
-    return ids;
-  };
-
   const getDeviceSubtypeIds = (d) => {
     const ids = new Set();
     if (d.subtypeId) ids.add(Number(d.subtypeId));
