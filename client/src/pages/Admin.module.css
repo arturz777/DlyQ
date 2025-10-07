@@ -35,14 +35,17 @@
 
 .item {
   display: grid;
-  grid-template-columns: 200px 1fr auto; 
-  align-items: center;
+  grid-template-columns: 170px 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: start;          /* было center */
   gap: 12px;
-  padding: 8px 10px;
+  row-gap: 6px;
+  padding: 10px 12px;
   border-top: 1px solid #e5e7eb;
   background: #fff;
 }
 
+/* левый блок (id + картинка) остаётся как есть */
 .item > div:first-child {
   display: flex;
   align-items: center;
@@ -53,6 +56,7 @@
 .adminDeviceImg { margin-left: 0; }
 
 .adminDeviceName {
+  grid-column: 2 / 3;
   min-width: 0;
   font-weight: 500;
   white-space: nowrap;
@@ -69,7 +73,44 @@
   font-size: 0.9em;
 }
 
-.buttons { display: flex; gap: 8px; align-items: center; }
+.zerosBlock {
+  grid-column: 2 / 3;          /* ключевое изменение */
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+.zerosTitle {
+  font-weight: 600;
+  color: #6b7280;
+  margin-right: 4px;
+}
+.zerosChips { display: flex; flex-wrap: wrap; gap: 6px; }
+.zeroChip {
+  padding: 2px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  background: #eefafc;
+  font-size: 12px;
+  line-height: 18px;
+}
+.zerosMore { font-size: 12px; color: #6b7280; }
+
+.buttons {
+  grid-column: 3 / 4;
+  justify-self: end;
+  align-self: start;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .item { grid-template-columns: 120px 1fr; }
+  .buttons { grid-column: 2 / 3; justify-self: start; margin-top: 6px; }
+  .zerosBlock { grid-column: 2 / 3; }
+}
 
 .actionButton {
   padding: 10px 20px;
