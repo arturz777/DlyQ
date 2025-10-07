@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { Context } from "../index";
+import { updateDeviceVisibility } from "../http/deviceAPI";
 import { fetchAllCouriers } from "../http/courierAPI";
 import CreateBrand from "../components/modals/CreateBrand";
 import CreateDevice from "../components/modals/CreateDevice";
@@ -78,7 +79,7 @@ const Admin = () => {
   const [makes, setMakes] = useState([]);
   const [modelsByMake, setModelsByMake] = useState({});
   const [openMakeIds, setOpenMakeIds] = useState([]);
-   const [openMakeInType, setOpenMakeInType] = useState(new Set());
+  const [openMakeInType, setOpenMakeInType] = useState(new Set());
   const [openModelInMakeType, setOpenModelInMakeType] = useState(new Set());
 
   useEffect(() => {
@@ -198,6 +199,20 @@ const Admin = () => {
 
     fetchData();
   }, []);
+
+    const handleToggleVisibility = async (id, next) => {
+    const prev = devices;
+    setDevices((p) =>
+      p.map((d) => (d.id === id ? { ...d, isVisible: next } : d))
+    );
+    try {
+      await updateDeviceVisibility(id, next);
+    } catch (e) {
+      console.error(e);
+      setDevices(prev);
+      alert("Не удалось обновить видимость");
+    }
+  };
 
   const handleAssignCourier = async (orderId, courierId) => {
     if (!courierId) {
@@ -531,6 +546,16 @@ const Admin = () => {
     return ids;
   };
 
+ const getDeviceTypeIds = (d) => {
+    const ids = new Set();
+    if (d.typeId) ids.add(Number(d.typeId));
+    if (d.type?.id) ids.add(Number(d.type.id));
+    if (Array.isArray(d.types)) {
+      d.types.forEach((t) => t?.id && ids.add(Number(t.id)));
+    }
+    return ids;
+  };
+
   const getDeviceSubtypeIds = (d) => {
     const ids = new Set();
     if (d.subtypeId) ids.add(Number(d.subtypeId));
@@ -566,7 +591,7 @@ const Admin = () => {
     )
     .sort((a, b) => (daysToExpire(a) ?? 9e9) - (daysToExpire(b) ?? 9e9));
 
-   const outOfStockDevices = filteredDevices
+  const outOfStockDevices = filteredDevices
     .filter((d) => (d.quantity ?? 0) <= 0 && !isSnoozed(d))
     .map((d) => ({
       device: d,
@@ -612,7 +637,7 @@ const Admin = () => {
             (modelId
               ? makeId
                 ? getModelName(makeId, modelId)
-                : getModelNameAny(modelId) // см. ниже, если добавлял
+                : getModelNameAny(modelId)
               : "");
 
           const years =
@@ -832,6 +857,25 @@ const Admin = () => {
                         )}
                       </div>
 
+                      <label
+                        className={styles.toggleWrap}
+                        title="Показывать на витрине"
+                        style={{ marginRight: 12 }}
+                      >
+                        <input
+                          type="checkbox"
+                          className={styles.toggleInput}
+                          checked={!!device.isVisible}
+                          onChange={(e) =>
+                            handleToggleVisibility(device.id, e.target.checked)
+                          }
+                        />
+                        <span className={styles.toggleSlider} />
+                        <span className={styles.toggleLabel}>
+                          {device.isVisible ? "Витрина: вкл" : "Витрина: выкл"}
+                        </span>
+                      </label>
+
                       <button
                         className={styles.editButton}
                         onClick={() => handleEditDevice(device)}
@@ -1045,6 +1089,23 @@ const Admin = () => {
                   >
                     Удалить
                   </button>
+                  <label
+                    className={styles.toggleWrap}
+                    title="Показывать на витрине"
+                  >
+                    <input
+                      type="checkbox"
+                      className={styles.toggleInput}
+                      checked={!!d.isVisible}
+                      onChange={(e) =>
+                        handleToggleVisibility(d.id, e.target.checked)
+                      }
+                    />
+                    <span className={styles.toggleSlider} />
+                    <span className={styles.toggleLabel}>
+                      {d.isVisible ? "Витрина: вкл" : "Витрина: выкл"}
+                    </span>
+                  </label>
                 </div>
               </div>
             );
