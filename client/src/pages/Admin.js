@@ -254,6 +254,70 @@ const Admin = () => {
     setMakes(m);
   };
 
+  const parseMaybeJSON = (v) => {
+    if (typeof v === "string") {
+      try {
+        return JSON.parse(v);
+      } catch {
+        return v;
+      }
+    }
+    return v;
+  };
+
+  const normVal = (x) =>
+    x && typeof x === "object" && "value" in x ? x.value : x;
+
+  const asPlain = (x) =>
+    x && typeof x === "object" ? x.ru || x.en || Object.values(x)[0] || "" : x;
+
+  const formatSelectedLabel = (selected = {}) => {
+    const entries = Object.entries(selected).map(([k, v]) => {
+      const val = normVal(v);
+      return `${k}: ${val}`;
+    });
+    return entries.length ? entries.join(", ") : "Вариант";
+  };
+
+  const getZeroVariants = (d) => {
+    const vars = Array.isArray(d.variants)
+      ? d.variants
+      : parseMaybeJSON(d.variants) || [];
+    return vars
+      .filter((v) => (v?.isActive ?? true) && (Number(v?.quantity) || 0) <= 0)
+      .map((v) => ({
+        kind: "variant",
+        label: formatSelectedLabel(parseMaybeJSON(v.selected)),
+        raw: v,
+      }));
+  };
+
+  const getZeroOptions = (d) => {
+    let opts = [];
+    if (Array.isArray(d.options)) opts = d.options;
+    else if (typeof d.options === "string") {
+      try {
+        opts = JSON.parse(d.options) || [];
+      } catch {}
+    }
+    const zeros = [];
+    (opts || []).forEach((opt) => {
+      const optName = asPlain(opt?.name) || opt?.name || "Опция";
+      (opt.values || []).forEach((val) => {
+        const q = Number(val?.quantity) || 0;
+        if (q <= 0) {
+          const textOrValue = asPlain(val?.text) || val?.value;
+          zeros.push({
+            kind: "option",
+            label: `${optName}: ${textOrValue}`,
+            raw: { opt, val },
+          });
+        }
+      });
+    });
+    return zeros;
+  };
+
   const loadModelsForMake = async (makeId) => {
     const list = await fetchModelsByMake(makeId);
     setModelsByMake((prev) => ({ ...prev, [makeId]: list }));
@@ -502,9 +566,13 @@ const Admin = () => {
     )
     .sort((a, b) => (daysToExpire(a) ?? 9e9) - (daysToExpire(b) ?? 9e9));
 
-  const outOfStockDevices = filteredDevices
+   const outOfStockDevices = filteredDevices
     .filter((d) => (d.quantity ?? 0) <= 0 && !isSnoozed(d))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .map((d) => ({
+      device: d,
+      zeros: [...getZeroVariants(d), ...getZeroOptions(d)],
+    }))
+    .sort((a, b) => a.device.name.localeCompare(b.device.name));
 
   const getCompatList = (d) => {
     if (!d) return [];
