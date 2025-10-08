@@ -1,6 +1,15 @@
 import React, { useContext, useEffect, useState } from "react";
 import Modal from "react-bootstrap/Modal";
-import { Button, Dropdown, Form, Row, Col, Tab, Tabs } from "react-bootstrap";
+import {
+  Button,
+  Dropdown,
+  Form,
+  Row,
+  Col,
+  Tab,
+  Tabs,
+  InputGroup,
+} from "react-bootstrap";
 import { Context } from "../../index";
 import {
   createDevice,
@@ -54,15 +63,40 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [extraSubtypeIds, setExtraSubtypeIds] = useState(new Set());
   const [visibleSubtypes, setVisibleSubtypes] = useState([]);
   const [pickerOpenFor, setPickerOpenFor] = useState(null);
+  const [newValueText, setNewValueText] = useState({});
+
+  const addValueQuick = (optionIndex) => {
+    const text = (newValueText[optionIndex] || "").trim();
+    if (!text) return;
+    const nextIndex = options?.[optionIndex]?.values?.length || 0;
+    setOptions((prev) => {
+      const next = [...prev];
+      if (!Array.isArray(next[optionIndex].values))
+        next[optionIndex].values = [];
+      next[optionIndex].values.push({
+        value: activeOptionsLang === "ru" ? text : "",
+      });
+      return next;
+    });
+    setTranslations((prev) => {
+      const t = { ...prev };
+      ensureOptionValueTrans(t, optionIndex, nextIndex);
+      t.options[optionIndex].values[nextIndex][activeOptionsLang] = text;
+      return t;
+    });
+    setNewValueText((p) => ({ ...p, [optionIndex]: "" }));
+  };
 
   const galleryItems = () => {
-    const slots = images.filter(Boolean);
-    return slots.map((slot, idx) => {
-      const isMain = idx === 0;
-      const token = isMain ? "gallery:main" : `gallery:thumb:${idx - 1}`;
-      const url = typeof slot === "string" ? slot : URL.createObjectURL(slot);
-      return { token, url, isMain, idx };
-    });
+    return images
+      .map((slot, idx) => ({ slot, idx }))
+      .filter(({ slot }) => !!slot)
+      .map(({ slot, idx }) => {
+        const isMain = idx === 0;
+        const token = isMain ? "gallery:main" : `gallery:thumb:${idx - 1}`;
+        const url = typeof slot === "string" ? slot : URL.createObjectURL(slot);
+        return { token, url, isMain, idx };
+      });
   };
 
   const applyVariantImageToken = (variantIdx, tokenOrUrl) => {
@@ -103,12 +137,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
     const names = clean.map((o) => o.name);
     const lists = clean.map((o) => o.values);
-
-    const cartesian = (arrays) =>
-      arrays.reduce(
-        (acc, arr) => acc.flatMap((a) => arr.map((b) => [...a, b])),
-        [[]]
-      );
 
     const combos = cartesian(lists);
 
@@ -242,13 +270,11 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
           ? editableDevice.variants.map((v) => ({
               selected: v.selected || {},
               sku: v.sku || "",
-              // превратим null в "" для контролируемых инпутов
               price: (v.price ?? "") === null ? "" : v.price ?? "",
               oldPrice: (v.oldPrice ?? "") === null ? "" : v.oldPrice ?? "",
               quantity: Number(v.quantity) || 0,
               image: v.image || "",
               isActive: v.isActive !== false,
-              // если бек не вернул key — пересоберём
               key: v.key || makeVariantKey(v.selected || {}),
             }))
           : []
@@ -917,13 +943,16 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     if (!images.some((img) => img) && !isEditMode) {
       errors.img = "Загрузите хотя бы одно изображение";
     }
-    if (quantity === "" || quantity === null || quantity === undefined) {
-      errors.quantity = "Введите количество товара";
-    } else if (quantity < 0) {
-      errors.quantity = "Количество не может быть отрицательным";
+
+    if (variants.length === 0) {
+      if (quantity === "" || quantity === null || quantity === undefined) {
+        errors.quantity = "Введите количество товара";
+      } else if (Number(quantity) < 0) {
+        errors.quantity = "Количество не может быть отрицательным";
+      }
     }
 
-    if (options.length >= 2 && variants.length === 0) {
+    if (options.length >= 1 && variants.length === 0) {
       errors.variants = "Сгенерируйте варианты для комбинаций опций";
     }
 
@@ -1178,10 +1207,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     );
   };
 
-  const addOption = () => {
-    setOptions([...options, { name: "", values: [] }]);
-  };
-
   const updateOptionName = (index, value) => {
     const updatedOptions = [...options];
     updatedOptions[index].name = value;
@@ -1190,43 +1215,48 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
   const addOptionValue = (optionIndex) => {
     const updatedOptions = [...options];
-    updatedOptions[optionIndex].values.push({
-      value: "",
-      price: 0,
-      quantity: 0,
-    });
+    updatedOptions[optionIndex].values.push({ value: "" });
     setOptions(updatedOptions);
   };
 
-  const updateOptionValue = (optionIndex, valueIndex, key, value) => {
+  const updateOptionValue = (optionIndex, valueIndex, _key, value) => {
     const updatedOptions = [...options];
-    updatedOptions[optionIndex].values[valueIndex][key] = value;
-
+    updatedOptions[optionIndex].values[valueIndex].value = value;
     setOptions(updatedOptions);
-
-    if (key === "quantity") {
-      const totalQuantity = updatedOptions.reduce((sum, option) => {
-        return (
-          sum +
-          option.values.reduce(
-            (optSum, v) => optSum + (Number(v.quantity) || 0),
-            0
-          )
-        );
-      }, 0);
-
-      setQuantity(totalQuantity);
-    }
   };
 
   const removeOptionValue = (optionIndex, valueIndex) => {
-    const updatedOptions = [...options];
-    updatedOptions[optionIndex].values.splice(valueIndex, 1);
-    setOptions(updatedOptions);
+    setOptions((prev) => {
+      const next = [...prev];
+      next[optionIndex].values.splice(valueIndex, 1);
+      return next;
+    });
+    setTranslations((prev) => {
+      const t = { ...prev };
+      if (Array.isArray(t.options?.[optionIndex]?.values)) {
+        t.options[optionIndex].values.splice(valueIndex, 1);
+      }
+      return t;
+    });
   };
 
   const removeOption = (index) => {
-    setOptions(options.filter((_, i) => i !== index));
+    setOptions((prev) => prev.filter((_, i) => i !== index));
+    setTranslations((prev) => {
+      const t = { ...prev };
+      if (Array.isArray(t.options)) t.options.splice(index, 1);
+      return t;
+    });
+  };
+
+  const addOption = () => {
+    setOptions((prev) => [...prev, { name: "", values: [] }]);
+    setTranslations((prev) => {
+      const t = { ...prev };
+      if (!Array.isArray(t.options)) t.options = [];
+      t.options.push({ name: {}, values: [] });
+      return t;
+    });
   };
 
   return (
@@ -1652,12 +1682,14 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                 )}
 
                 <Form.Group className="mt-3">
-                  <Form.Label>Новая цена (со скидкой)</Form.Label>
+                  <Form.Label>
+                    {discount ? "Новая цена (со скидкой)" : "Цена"}
+                  </Form.Label>
                   <Form.Control
                     type="number"
                     value={price || ""}
                     onChange={(e) => setPrice(Number(e.target.value))}
-                    placeholder="Новая цена (со скидкой)"
+                    placeholder={discount ? "Новая цена (со скидкой)" : "Цена"}
                   />
                   {((isSubmitted && !price) || isNaN(price)) && (
                     <span
@@ -1776,10 +1808,10 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                       Опций пока нет — добавьте первую.
                     </div>
                   ) : (
-                    <div className="border rounded p-2">
+                    <div className={styles.optionsBox}>
                       {options.map((option, optionIndex) => (
                         <div key={optionIndex} className="mb-3">
-                          <div className="d-flex gap-2">
+                          <div className={styles.optionHeader}>
                             <Form.Control
                               value={getOptionNameByLang(optionIndex)}
                               onChange={(e) =>
@@ -1798,6 +1830,8 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                             />
                             <Button
                               variant="outline-danger"
+                              size="sm"
+                              className={styles.iconBtn}
                               onClick={() => removeOption(optionIndex)}
                               title="Удалить опцию"
                             >
@@ -1810,103 +1844,61 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                             </div>
                           )}
 
-                          <div className="table-responsive mt-2">
-                            <table className="table table-sm align-middle mb-2">
-                              <thead>
-                                <tr>
-                                  <th style={{ minWidth: 160 }}>
-                                    {activeOptionsLang === "ru"
-                                      ? "Значение"
-                                      : activeOptionsLang === "en"
-                                      ? "Value"
-                                      : "Väärtus"}
-                                  </th>
-                                  <th style={{ width: 120 }}>Цена</th>
-                                  <th style={{ width: 120 }}>Кол-во</th>
-                                  <th style={{ width: 1 }}></th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {(option.values || []).map(
-                                  (value, valueIndex) => (
-                                    <tr key={valueIndex}>
-                                      <td>
-                                        <Form.Control
-                                          value={getOptionValueLabelByLang(
-                                            optionIndex,
-                                            valueIndex
-                                          )}
-                                          onChange={(e) =>
-                                            updateOptionValueLabelByLang(
-                                              optionIndex,
-                                              valueIndex,
-                                              e.target.value
-                                            )
-                                          }
-                                          placeholder={
-                                            activeOptionsLang === "ru"
-                                              ? "напр. Красный"
-                                              : activeOptionsLang === "en"
-                                              ? "e.g. Red"
-                                              : "nt Punane"
-                                          }
-                                        />
-                                      </td>
-                                      <td>
-                                        <Form.Control
-                                          type="number"
-                                          step="0.01"
-                                          value={value.price}
-                                          onChange={(e) =>
-                                            updateOptionValue(
-                                              optionIndex,
-                                              valueIndex,
-                                              "price",
-                                              e.target.value === ""
-                                                ? ""
-                                                : parseFloat(e.target.value)
-                                            )
-                                          }
-                                          placeholder="0.00"
-                                        />
-                                      </td>
-                                      <td>
-                                        <Form.Control
-                                          type="number"
-                                          value={value.quantity}
-                                          onChange={(e) =>
-                                            updateOptionValue(
-                                              optionIndex,
-                                              valueIndex,
-                                              "quantity",
-                                              e.target.value === ""
-                                                ? ""
-                                                : parseInt(e.target.value, 10)
-                                            )
-                                          }
-                                          placeholder="0"
-                                        />
-                                      </td>
-                                      <td>
-                                        <Button
-                                          variant="outline-danger"
-                                          size="sm"
-                                          onClick={() =>
-                                            removeOptionValue(
-                                              optionIndex,
-                                              valueIndex
-                                            )
-                                          }
-                                          title="Удалить значение"
-                                        >
-                                          ✖
-                                        </Button>
-                                      </td>
-                                    </tr>
-                                  )
-                                )}
-                              </tbody>
-                            </table>
+                          <div className={styles.valuesCompact}>
+                            <InputGroup size="sm" className={styles.valueAdder}>
+                              <Form.Control
+                                value={newValueText[optionIndex] || ""}
+                                onChange={(e) =>
+                                  setNewValueText((p) => ({
+                                    ...p,
+                                    [optionIndex]: e.target.value,
+                                  }))
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    addValueQuick(optionIndex);
+                                  }
+                                }}
+                                placeholder={
+                                  activeOptionsLang === "ru"
+                                    ? "Добавить значение и Enter"
+                                    : activeOptionsLang === "en"
+                                    ? "Add value & Enter"
+                                    : "Lisa väärtus ja Enter"
+                                }
+                              />
+                              <Button
+                                variant="outline-dark"
+                                onClick={() => addValueQuick(optionIndex)}
+                                title="Добавить значение"
+                              >
+                                ＋
+                              </Button>
+                            </InputGroup>
+
+                            <div className={styles.pillsWrap}>
+                              {(option.values || []).map((_, valueIndex) => (
+                                <span className={styles.pill} key={valueIndex}>
+                                  <span className={styles.pillText}>
+                                    {getOptionValueLabelByLang(
+                                      optionIndex,
+                                      valueIndex
+                                    )}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className={styles.pillDel}
+                                    onClick={() =>
+                                      removeOptionValue(optionIndex, valueIndex)
+                                    }
+                                    title="Удалить"
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
                           </div>
 
                           <Button
@@ -2081,7 +2073,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                                     value={v.image || ""}
                                     onChange={(e) => {
                                       const next = [...variants];
-                                      next[idx].image = e.target.value; // можно вручную вставить URL
+                                      next[idx].image = e.target.value;
                                       setVariants(next);
                                     }}
                                     placeholder="gallery:main / gallery:thumb:0 / https://..."
@@ -2354,8 +2346,16 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
           value={quantity}
           onChange={(e) => setQuantity(Number(e.target.value))}
           min="0"
+          disabled={variants.length > 0}
         />
-        {errors.quantity && <p className="text-danger">{errors.quantity}</p>}
+        {variants.length > 0 && (
+          <div className="form-text">
+            Количество считается автоматически как сумма по вариантам.
+          </div>
+        )}
+        {errors.quantity && variants.length === 0 && (
+          <p className="text-danger">{errors.quantity}</p>
+        )}
       </Form.Group>
 
       <Modal.Footer>
