@@ -64,6 +64,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [visibleSubtypes, setVisibleSubtypes] = useState([]);
   const [pickerOpenFor, setPickerOpenFor] = useState(null);
   const [newValueText, setNewValueText] = useState({});
+  const [valueDrafts, setValueDrafts] = useState({});
 
   const addValueQuick = (optionIndex) => {
     const text = (newValueText[optionIndex] || "").trim();
@@ -1207,6 +1208,33 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     );
   };
 
+  // Добавить значение только в RU
+  const commitValueRu = (optionIndex) => {
+    const text = (valueDrafts[optionIndex] || "").trim();
+    if (!text) return;
+    const next = [...options];
+    next[optionIndex] = next[optionIndex] || { name: "", values: [] };
+    // Проверка на дубли по RU
+    const exists = (next[optionIndex].values || []).some(
+      (v) => (v.value || "").trim().toLowerCase() === text.toLowerCase()
+    );
+    if (!exists) {
+      next[optionIndex].values = [
+        ...(next[optionIndex].values || []),
+        { value: text },
+      ];
+      setOptions(next);
+    }
+    setValueDrafts((prev) => ({ ...prev, [optionIndex]: "" }));
+  };
+
+  const onValueInputKeyDown = (e, optionIndex) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeOptionsLang === "ru") commitValueRu(optionIndex);
+    }
+  };
+
   const updateOptionName = (index, value) => {
     const updatedOptions = [...options];
     updatedOptions[index].name = value;
@@ -1228,14 +1256,19 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const removeOptionValue = (optionIndex, valueIndex) => {
     setOptions((prev) => {
       const next = [...prev];
+      next[optionIndex] = { ...next[optionIndex] };
+      next[optionIndex].values = [...(next[optionIndex].values || [])];
       next[optionIndex].values.splice(valueIndex, 1);
       return next;
     });
     setTranslations((prev) => {
       const t = { ...prev };
-      if (Array.isArray(t.options?.[optionIndex]?.values)) {
-        t.options[optionIndex].values.splice(valueIndex, 1);
-      }
+      if (!Array.isArray(t.options)) return t;
+      if (!t.options[optionIndex]) return t;
+      if (!Array.isArray(t.options[optionIndex].values)) return t;
+      t.options[optionIndex] = { ...t.options[optionIndex] };
+      t.options[optionIndex].values = [...t.options[optionIndex].values];
+      t.options[optionIndex].values.splice(valueIndex, 1);
       return t;
     });
   };
@@ -1244,7 +1277,9 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     setOptions((prev) => prev.filter((_, i) => i !== index));
     setTranslations((prev) => {
       const t = { ...prev };
-      if (Array.isArray(t.options)) t.options.splice(index, 1);
+      if (Array.isArray(t.options)) {
+        t.options = t.options.filter((_, i) => i !== index);
+      }
       return t;
     });
   };
@@ -1254,7 +1289,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     setTranslations((prev) => {
       const t = { ...prev };
       if (!Array.isArray(t.options)) t.options = [];
-      t.options.push({ name: {}, values: [] });
+      t.options = [...t.options, { name: {}, values: [] }];
       return t;
     });
   };
@@ -1808,10 +1843,11 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                       Опций пока нет — добавьте первую.
                     </div>
                   ) : (
-                    <div className={styles.optionsBox}>
+                    <div className="border rounded p-2">
                       {options.map((option, optionIndex) => (
                         <div key={optionIndex} className="mb-3">
-                          <div className={styles.optionHeader}>
+                          {/* Имя опции */}
+                          <div className="d-flex gap-2 mb-2">
                             <Form.Control
                               value={getOptionNameByLang(optionIndex)}
                               onChange={(e) =>
@@ -1822,92 +1858,94 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                               }
                               placeholder={
                                 activeOptionsLang === "ru"
-                                  ? "Название опции (напр. Цвет)"
+                                  ? "Название опции (напр. Тип)"
                                   : activeOptionsLang === "en"
-                                  ? "Option name (e.g. Color)"
-                                  : "Valiku nimi (nt Värv)"
+                                  ? "Option name (e.g. Type)"
+                                  : "Valiku nimi (nt Tüüp)"
                               }
                             />
                             <Button
                               variant="outline-danger"
-                              size="sm"
-                              className={styles.iconBtn}
                               onClick={() => removeOption(optionIndex)}
                               title="Удалить опцию"
                             >
                               ✖
                             </Button>
                           </div>
+
+                          {/* Инпут добавления значения: только RU */}
+                          <div className="d-flex gap-2 mb-2">
+                            <Form.Control
+                              value={valueDrafts[optionIndex] || ""}
+                              onChange={(e) =>
+                                setValueDrafts((prev) => ({
+                                  ...prev,
+                                  [optionIndex]: e.target.value,
+                                }))
+                              }
+                              onKeyDown={(e) =>
+                                onValueInputKeyDown(e, optionIndex)
+                              }
+                              placeholder={
+                                activeOptionsLang === "ru"
+                                  ? "Добавить значение и Enter"
+                                  : "Переводы редактируются ниже"
+                              }
+                              disabled={activeOptionsLang !== "ru"}
+                            />
+                            <Button
+                              variant="outline-secondary"
+                              disabled={activeOptionsLang !== "ru"}
+                              onClick={() => commitValueRu(optionIndex)}
+                            >
+                              +
+                            </Button>
+                          </div>
+
+                          {/* Чипы значений с переводами */}
+                          <div className="d-flex flex-wrap gap-2">
+                            {(option.values || []).map((v, valueIndex) => (
+                              <div
+                                key={valueIndex}
+                                className="d-inline-flex align-items-center gap-2 px-2 py-1 border rounded-pill"
+                                style={{ background: "#f7f7f8" }}
+                              >
+                                <Form.Control
+                                  size="sm"
+                                  value={getOptionValueLabelByLang(
+                                    optionIndex,
+                                    valueIndex
+                                  )}
+                                  onChange={(e) =>
+                                    updateOptionValueLabelByLang(
+                                      optionIndex,
+                                      valueIndex,
+                                      e.target.value
+                                    )
+                                  }
+                                  style={{ width: "16ch" }}
+                                />
+
+                                <Button
+                                  variant="outline-danger"
+                                  size="sm"
+                                  onClick={() =>
+                                    removeOptionValue(optionIndex, valueIndex)
+                                  }
+                                  title="Удалить значение"
+                                >
+                                  ×
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Валидация под опцией */}
                           {optionErrors[`option_${optionIndex}`] && (
                             <div className="text-danger small mt-1">
                               {optionErrors[`option_${optionIndex}`]}
                             </div>
                           )}
-
-                          <div className={styles.valuesCompact}>
-                            <InputGroup size="sm" className={styles.valueAdder}>
-                              <Form.Control
-                                value={newValueText[optionIndex] || ""}
-                                onChange={(e) =>
-                                  setNewValueText((p) => ({
-                                    ...p,
-                                    [optionIndex]: e.target.value,
-                                  }))
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    addValueQuick(optionIndex);
-                                  }
-                                }}
-                                placeholder={
-                                  activeOptionsLang === "ru"
-                                    ? "Добавить значение и Enter"
-                                    : activeOptionsLang === "en"
-                                    ? "Add value & Enter"
-                                    : "Lisa väärtus ja Enter"
-                                }
-                              />
-                              <Button
-                                variant="outline-dark"
-                                onClick={() => addValueQuick(optionIndex)}
-                                title="Добавить значение"
-                              >
-                                ＋
-                              </Button>
-                            </InputGroup>
-
-                            <div className={styles.pillsWrap}>
-                              {(option.values || []).map((_, valueIndex) => (
-                                <span className={styles.pill} key={valueIndex}>
-                                  <span className={styles.pillText}>
-                                    {getOptionValueLabelByLang(
-                                      optionIndex,
-                                      valueIndex
-                                    )}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    className={styles.pillDel}
-                                    onClick={() =>
-                                      removeOptionValue(optionIndex, valueIndex)
-                                    }
-                                    title="Удалить"
-                                  >
-                                    ×
-                                  </button>
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-
-                          <Button
-                            variant="outline-dark"
-                            size="sm"
-                            onClick={() => addOptionValue(optionIndex)}
-                          >
-                            + Добавить значение
-                          </Button>
                           {optionErrors[`option_values_${optionIndex}`] && (
                             <div className="text-danger small mt-1">
                               {optionErrors[`option_values_${optionIndex}`]}
