@@ -1633,8 +1633,7 @@ const getCompatList = (d) => {
                     {subtypesForType.map((subtype) => (
                       <div key={subtype.id} className={styles.item}>
                         <span>
-                          {subtype.name} (Тип:{" "}
-                          {typesMap.get(subtype.typeId)?.name || "N/A"})
+                          {subtype.name}
                         </span>
                         <div className={styles.buttons}>
                           <button
