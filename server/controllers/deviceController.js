@@ -1263,7 +1263,7 @@ class DeviceController {
     }
   }
   
-  async getNewDevices(req, res) {
+   async getNewDevices(req, res) {
     try {
       let { limit = 50 } = req.query;
       limit = parseInt(limit, 10) || 50;
