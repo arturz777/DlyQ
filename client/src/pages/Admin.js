@@ -102,7 +102,7 @@ const Admin = () => {
     return () => socket.disconnect();
   }, []);
   
-   useEffect(() => {
+  useEffect(() => {
     fetchTypes().then(setTypes);
     fetchSubtypes().then(setSubtypes);
     fetchBrands().then(setBrands);
@@ -111,7 +111,7 @@ const Admin = () => {
     );
     fetchTranslations().then(setTranslations);
   }, []);
-  
+
   useEffect(() => {
     fetchAllOrdersForAdmin().then(setAllOrders);
     fetchMakes().then(setMakes).catch(console.error);
@@ -139,7 +139,7 @@ const Admin = () => {
     fetchAllCouriers().then(setCouriers).catch(console.error);
   }, []);
 
-    const filteredDevices = React.useMemo(() => {
+  const filteredDevices = React.useMemo(() => {
     return devices
       .filter((d) => d.name.toLowerCase().includes(searchQuery.toLowerCase()))
       .sort((a, b) => {
@@ -175,7 +175,7 @@ const Admin = () => {
       }
     });
   }, [devices]);
-  
+
   useEffect(() => {
     const fetchData = async () => {
       const typesData = await fetchTypes();
@@ -254,7 +254,7 @@ const Admin = () => {
   useEffect(() => {
     const socket = io(`https://zang-4.onrender.com`);
 
-    if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
+   if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
       socket.emit("joinAdminNotifications");
       console.log("🔔 Админ подключен к admin_notifications");
     }
@@ -264,7 +264,7 @@ const Admin = () => {
     };
   }, [user]);
 
-   const reloadMakes = async () => {
+  const reloadMakes = async () => {
     const m = await fetchMakes();
     setMakes(m);
   };
@@ -411,7 +411,7 @@ const Admin = () => {
   };
 
   const autoTypeId = React.useMemo(() => {
-    return types.find((t) => /Автотовары/i.test(t.name))?.id ?? null;
+    return types.find((t) => /автомоб/i.test(t.name))?.id ?? null;
   }, [types]);
 
   const toggleDeviceType = (typeId) => {
@@ -536,7 +536,7 @@ const Admin = () => {
   const twoMonthsFromToday = new Date(today);
   twoMonthsFromToday.setMonth(twoMonthsFromToday.getMonth() + 2);
 
-const getDeviceTypeIds = (d) => {
+  const getDeviceTypeIds = (d) => {
     const ids = new Set();
     if (d.typeId) ids.add(Number(d.typeId));
     if (d.type?.id) ids.add(Number(d.type.id));
@@ -2006,3 +2006,4 @@ const getDeviceTypeIds = (d) => {
 };
 
 export default Admin;
+
