@@ -520,7 +520,7 @@ const Admin = () => {
   const typesMap = new Map(types.map((type) => [type.id, type]));
   const subtypesMap = new Map(subtypes.map((subtype) => [subtype.id, subtype]));
 
- const today = new Date();
+  const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const dayStart = (dateStr) => {
@@ -582,11 +582,48 @@ const Admin = () => {
     .sort((a, b) => (daysToExpire(a) ?? 9e9) - (daysToExpire(b) ?? 9e9));
 
   const outOfStockDevices = filteredDevices
-    .filter((d) => (d.quantity ?? 0) <= 0 && !isSnoozed(d))
-    .map((d) => ({
-      device: d,
-      zeros: [...getZeroVariants(d), ...getZeroOptions(d)],
-    }))
+    .map((d) => {
+      const zerosVariants = getZeroVariants(d);
+      const zerosOptions = getZeroOptions(d);
+      const zeros = [...zerosVariants, ...zerosOptions];
+
+      const rawVariants = Array.isArray(d.variants)
+        ? d.variants
+        : parseMaybeJSON(d.variants) || [];
+      const activeVariants = rawVariants.filter((v) => v?.isActive ?? true);
+
+      let optionValues = [];
+      if (Array.isArray(d.options)) {
+        optionValues = d.options.flatMap((o) => o.values || []);
+      } else if (typeof d.options === "string") {
+        try {
+          const parsed = JSON.parse(d.options) || [];
+          optionValues = parsed.flatMap((o) => o.values || []);
+        } catch {}
+      }
+      const activeOptionValues = optionValues.filter(
+        (v) => v?.isActive !== false
+      );
+
+      let completelyOut = false;
+      if (activeVariants.length) {
+        completelyOut = activeVariants.every(
+          (v) => (Number(v?.quantity) || 0) <= 0
+        );
+      } else if (activeOptionValues.length) {
+        completelyOut = activeOptionValues.every(
+          (v) => (Number(v?.quantity) || 0) <= 0
+        );
+      } else {
+        completelyOut = (Number(d.quantity) || 0) <= 0;
+      }
+
+      const hasAnyZeros = zeros.length > 0;
+
+      const show = !isSnoozed(d) && (completelyOut || hasAnyZeros);
+      return show ? { device: d, zeros } : null;
+    })
+    .filter(Boolean)
     .sort((a, b) => a.device.name.localeCompare(b.device.name));
 
   const getCompatList = (d) => {
