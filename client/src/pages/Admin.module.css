@@ -75,6 +75,7 @@
 .zerosBlock {
   grid-column: 2 / 3;        
   display: flex;
+  align-items: flex-start;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
@@ -85,8 +86,18 @@
   color: #6b7280;
   margin-right: 4px;
 }
-.zerosChips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.zerosChips {
+  flex: 1 1 auto;            
+  display: flex;
+  flex-wrap: wrap;         
+  gap: 6px;
+  max-width: 100%;
+}
+
 .zeroChip {
+    display: inline-flex;      
+  white-space: nowrap; 
   padding: 2px 8px;
   border: 1px solid #e5e7eb;
   border-radius: 9999px;
@@ -137,6 +148,50 @@
   padding: 6px 10px;
 }
 .deleteButton:hover { background: #c82333; }
+
+.outBlock {
+  border: 2px solid #fecaca;
+  background: #fff5f5;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+}
+
+.outHeader {
+  background: #ffe5e5;
+}
+
+.outCount {
+  font-size: 12px;
+  color: #6b7280;
+  padding: 2px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  background: #fff;
+  font-weight: 600;
+}
+
+.expBlock {
+  border: 2px solid #fed7aa;    
+  background: #fff7ed;          
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+}
+
+.expHeader {
+  background: #ffedd5;          
+}
+
+.expCount {
+  font-size: 12px;
+  color: #6b7280;
+  padding: 2px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  background: #fff;
+  font-weight: 600;
+}
 
 .adminPanelContainer {
   display: flex; flex-direction: column;
