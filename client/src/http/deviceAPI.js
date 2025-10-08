@@ -26,7 +26,7 @@ export const fetchDiscountedDevices = async (limit = 100) => {
   }
 };
 
-export const fetchRecommendedDevices = async (deviceType, limit = 100) => {
+export const fetchRecommendedDevices = async (typeId, limit = 100) => {
   try {
     const { data } = await $host.get("/device", {
       params: { typeId, recommended: true, limit, onlyVisible: true },
