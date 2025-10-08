@@ -628,7 +628,7 @@ const Admin = () => {
     .filter(Boolean)
     .sort((a, b) => a.device.name.localeCompare(b.device.name));
 
-  const getCompatList = (d) => {
+ const getCompatList = (d) => {
     if (!d) return [];
     if (Array.isArray(d.compat)) return d.compat;
     if (Array.isArray(d.compatibility)) return d.compatibility;
@@ -637,67 +637,62 @@ const Admin = () => {
   };
 
   const renderCompat = (d) => {
-    if (!d) return null;
-
     const compat = getCompatList(d);
-
     if (!compat.length) return null;
-
-    const isUniversal = compat.some((c) => c?.isUniversal);
-    if (isUniversal) {
-      return (
-        <div style={{ color: "#666", fontStyle: "italic" }}>Универсальный</div>
-      );
-    }
 
     const makeIdFrom = (c) =>
       c?.makeId ?? c?.make?.id ?? c?.model?.makeId ?? null;
     const modelIdFrom = (c) => c?.modelId ?? c?.model?.id ?? null;
 
-    return (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
-        {compat.map((c, i) => {
-          const makeId = makeIdFrom(c);
-          const modelId = modelIdFrom(c);
-
-          const mk = c?.make?.name || (makeId ? getMakeName(makeId) : "");
-          const md =
-            c?.model?.name ||
-            (modelId
-              ? makeId
-                ? getModelName(makeId, modelId)
-                : getModelNameAny(modelId)
-              : "");
-
-          const years =
-            c?.yearFrom || c?.yearTo
-              ? ` (${c.yearFrom || "…"}–${c.yearTo || "…"})`
-              : "";
-
-          const label = [mk, md].filter(Boolean).join(" ");
-          if (!label && !years) return null;
-
-          return (
-            <span
-              key={i}
-              style={{
-                padding: "2px 8px",
-                border: "1px solid #e1e4e8",
-                borderRadius: 12,
-                fontSize: 12,
-                background: "#f8f9fb",
-              }}
-            >
-              {label}
-              {years}
+    const isUniversal = compat.some((c) => c?.isUniversal);
+    if (isUniversal) {
+      return (
+        <div className={styles.compatRow}>
+          <div className={styles.compatChips}>
+            <span className={`${styles.compatChip} ${styles.compatUniversal}`}>
+              Универсальный
             </span>
-          );
-        })}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className={styles.compatRow}>
+        <div className={styles.compatChips}>
+          {compat.map((c, i) => {
+            const makeId = makeIdFrom(c);
+            const modelId = modelIdFrom(c);
+            const mk = c?.make?.name || (makeId ? getMakeName(makeId) : "");
+            const md =
+              c?.model?.name ||
+              (modelId
+                ? makeId
+                  ? getModelName(makeId, modelId)
+                  : getModelNameAny(modelId)
+                : "");
+
+            const years =
+              c?.yearFrom || c?.yearTo
+                ? ` (${c.yearFrom || "…"}–${c.yearTo || "…"})`
+                : "";
+
+            const label = [mk, md].filter(Boolean).join(" ");
+            if (!label && !years) return null;
+
+            return (
+              <span key={i} className={styles.compatChip}>
+                {label}
+                {years}
+              </span>
+            );
+          })}
+        </div>
       </div>
     );
   };
 
- return (
+  return (
     <div className={styles.adminPanelContainer}>
       <Tabs>
         <TabList>
@@ -734,153 +729,229 @@ const Admin = () => {
           </div>
 
           {attentionDevices.length > 0 && (
-  <div className={styles.expBlock}>
-    <div
-      className={`${styles.typeHeader} ${styles.expHeader}`}
-      onClick={() => setExpireOpen(v => !v)}
-      title="Показать/скрыть"
-    >
-      <h3 className={styles.typeTitle} style={{ margin: 0, color: "#b45309" }}>
-        Просрочено / истечёт ≤ 2 мес.
-      </h3>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span className={styles.expCount}>{attentionDevices.length}</span>
-        <span>{expireOpen ? "▲" : "▼"}</span>
-      </div>
-    </div>
-
-    {expireOpen && (
-      <div className={styles.itemList}>
-        {attentionDevices.map((device) => (
-          <div
-            key={device.id}
-            className={styles.item}
-            style={{ background: "#fff7ed" }}
-          >
-            <div>
-              id-{device.id}
-              <Image
-                className={styles.adminDeviceImg}
-                width={50}
-                height={50}
-                src={device.img}
-              />
-            </div>
-
-            <span className={styles.adminDeviceName}>
-              {device.name}
-            </span>
-
-            <div className={styles.buttons}>
-              <span
-                style={{ color: "#b45309", fontWeight: 600, marginRight: 8 }}
+            <div className={styles.expBlock}>
+              <div
+                className={`${styles.typeHeader} ${styles.expHeader}`}
+                onClick={() => setExpireOpen((v) => !v)}
+                title="Показать/скрыть"
               >
-                {expiryBadge(device)}
-              </span>
-              {device.expiryDate && (
-                <span style={{ color: "#666", marginRight: 12 }}>
-                  до {new Date(device.expiryDate).toLocaleDateString("ru-RU")}
-                </span>
-              )}
-
-              <button
-                className={styles.editButton}
-                onClick={() => handleEditDevice(device)}
-              >
-                Редактировать
-              </button>
-              <button
-                className={styles.deleteButton}
-                onClick={() => {
-                  if (window.confirm("Удалить этот товар?"))
-                    handleDeleteDevice(device.id);
-                }}
-              >
-                Удалить
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-)}
-
-
-          {outOfStockDevices.length > 0 && (
-  <div className={styles.outBlock}>
-    <div
-      className={`${styles.typeHeader} ${styles.outHeader}`}
-      onClick={() => setOutOfOpen(v => !v)}
-      title="Показать/скрыть"
-    >
-      <h3 className={styles.typeTitle} style={{ margin: 0, color: "#b91c1c" }}>
-        Нет в наличии
-      </h3>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span className={styles.outCount}>{outOfStockDevices.length}</span>
-        <span>{outOfOpen ? "▲" : "▼"}</span>
-      </div>
-    </div>
-
-    {outOfOpen && (
-      <div className={styles.itemList}>
-        {outOfStockDevices.map(({ device, zeros }) => (
-          <div key={device.id} className={styles.item} style={{ background: "#ffe5e5" }}>
-            <div>
-              id-{device.id}
-              <Image className={styles.adminDeviceImg} width={50} height={50} src={device.img} />
-            </div>
-
-            <span className={styles.adminDeviceName}>{device.name}</span>
-
-            {zeros.length > 0 && (
-              <div className={styles.zerosBlock}>
-                <div className={styles.zerosTitle}>Закончились:</div>
-                <div className={styles.zerosChips}>
-                  {zeros.slice(0, 10).map((z, i) => (
-                    <span key={i} className={styles.zeroChip} title={z.kind === "variant" ? "Вариант" : "Опция"}>
-                      {z.label}
-                    </span>
-                  ))}
-                  {zeros.length > 10 && (
-                    <span className={styles.zerosMore}>…и ещё {zeros.length - 10}</span>
-                  )}
+                <h3
+                  className={styles.typeTitle}
+                  style={{ margin: 0, color: "#b45309" }}
+                >
+                  Просрочено / истечёт ≤ 2 мес.
+                </h3>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span className={styles.expCount}>
+                    {attentionDevices.length}
+                  </span>
+                  <span>{expireOpen ? "▲" : "▼"}</span>
                 </div>
               </div>
-            )}
 
-            <div className={styles.buttons}>
-              <span style={{ color: "red", fontWeight: 600, marginRight: 12 }}>нет в наличии</span>
-              <div className={styles.adminDevicePrice} style={{ marginRight: 12 }}>
-                {device.discount ? (
-                  <>
-                    <span className={styles.discountedPrice}>{device.price} €</span>
-                    <span className={styles.oldPrice}>{device.oldPrice} €</span>
-                  </>
-                ) : (
-                  <span>{device.price} €</span>
-                )}
-              </div>
-              <label className={styles.toggleWrap} title="Показывать на витрине" style={{ marginRight: 12 }}>
-                <input
-                  type="checkbox"
-                  className={styles.toggleInput}
-                  checked={!!device.isVisible}
-                  onChange={(e) => handleToggleVisibility(device.id, e.target.checked)}
-                />
-                <span className={styles.toggleSlider} />
-                <span className={styles.toggleLabel}>{device.isVisible ? "Витрина: вкл" : "Витрина: выкл"}</span>
-              </label>
-              <button className={styles.editButton} onClick={() => handleEditDevice(device)}>Редактировать</button>
-              <button className={styles.deleteButton} onClick={() => { if (window.confirm("Удалить этот товар?")) handleDeleteDevice(device.id); }}>Удалить</button>
+              {expireOpen && (
+                <div className={styles.itemList}>
+                  {attentionDevices.map((device) => (
+                    <div
+                      key={device.id}
+                      className={styles.item}
+                      style={{ background: "#fff7ed" }}
+                    >
+                      <div>
+                        id-{device.id}
+                        <Image
+                          className={styles.adminDeviceImg}
+                          width={50}
+                          height={50}
+                          src={device.img}
+                        />
+                      </div>
+
+                      <span className={styles.adminDeviceName}>
+                        {device.name}
+                      </span>
+
+                      <div className={styles.buttons}>
+                        <span
+                          style={{
+                            color: "#b45309",
+                            fontWeight: 600,
+                            marginRight: 8,
+                          }}
+                        >
+                          {expiryBadge(device)}
+                        </span>
+                        {device.expiryDate && (
+                          <span style={{ color: "#666", marginRight: 12 }}>
+                            до{" "}
+                            {new Date(device.expiryDate).toLocaleDateString(
+                              "ru-RU"
+                            )}
+                          </span>
+                        )}
+
+                        <button
+                          className={styles.editButton}
+                          onClick={() => handleEditDevice(device)}
+                        >
+                          Редактировать
+                        </button>
+                        <button
+                          className={styles.deleteButton}
+                          onClick={() => {
+                            if (window.confirm("Удалить этот товар?"))
+                              handleDeleteDevice(device.id);
+                          }}
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-)}
+          )}
+
+          {outOfStockDevices.length > 0 && (
+            <div className={styles.outBlock}>
+              <div
+                className={`${styles.typeHeader} ${styles.outHeader}`}
+                onClick={() => setOutOfOpen((v) => !v)}
+                title="Показать/скрыть"
+              >
+                <h3
+                  className={styles.typeTitle}
+                  style={{ margin: 0, color: "#b91c1c" }}
+                >
+                  Нет в наличии
+                </h3>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span className={styles.outCount}>
+                    {outOfStockDevices.length}
+                  </span>
+                  <span>{outOfOpen ? "▲" : "▼"}</span>
+                </div>
+              </div>
+
+              {outOfOpen && (
+                <div className={styles.itemList}>
+                  {outOfStockDevices.map(({ device, zeros }) => (
+                    <div
+                      key={device.id}
+                      className={styles.item}
+                      style={{ background: "#ffe5e5" }}
+                    >
+                      <div>
+                        id-{device.id}
+                        <Image
+                          className={styles.adminDeviceImg}
+                          width={50}
+                          height={50}
+                          src={device.img}
+                        />
+                      </div>
+
+                      <span className={styles.adminDeviceName}>
+                        {device.name}
+                      </span>
+                      {renderCompat(device)}
+                      {zeros.length > 0 && (
+                        <div className={styles.zerosBlock}>
+                          <div className={styles.zerosTitle}>Закончились:</div>
+                          <div className={styles.zerosChips}>
+                            {zeros.slice(0, 10).map((z, i) => (
+                              <span
+                                key={i}
+                                className={styles.zeroChip}
+                                title={
+                                  z.kind === "variant" ? "Вариант" : "Опция"
+                                }
+                              >
+                                {z.label}
+                              </span>
+                            ))}
+                            {zeros.length > 10 && (
+                              <span className={styles.zerosMore}>
+                                …и ещё {zeros.length - 10}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className={styles.buttons}>
+                        <span
+                          style={{
+                            color: "red",
+                            fontWeight: 600,
+                            marginRight: 12,
+                          }}
+                        >
+                          нет в наличии
+                        </span>
+                        <div
+                          className={styles.adminDevicePrice}
+                          style={{ marginRight: 12 }}
+                        >
+                          {device.discount ? (
+                            <>
+                              <span className={styles.discountedPrice}>
+                                {device.price} €
+                              </span>
+                              <span className={styles.oldPrice}>
+                                {device.oldPrice} €
+                              </span>
+                            </>
+                          ) : (
+                            <span>{device.price} €</span>
+                          )}
+                        </div>
+                        <label
+                          className={styles.toggleWrap}
+                          title="Показывать на витрине"
+                          style={{ marginRight: 12 }}
+                        >
+                          <input
+                            type="checkbox"
+                            className={styles.toggleInput}
+                            checked={!!device.isVisible}
+                            onChange={(e) =>
+                              handleToggleVisibility(
+                                device.id,
+                                e.target.checked
+                              )
+                            }
+                          />
+                          <span className={styles.toggleSlider} />
+                          <span className={styles.toggleLabel}>
+                            {device.isVisible
+                              ? "Витрина: вкл"
+                              : "Витрина: выкл"}
+                          </span>
+                        </label>
+                        <button
+                          className={styles.editButton}
+                          onClick={() => handleEditDevice(device)}
+                        >
+                          Редактировать
+                        </button>
+                        <button
+                          className={styles.deleteButton}
+                          onClick={() => {
+                            if (window.confirm("Удалить этот товар?"))
+                              handleDeleteDevice(device.id);
+                          }}
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className={styles.filterContainer}>
             <input
@@ -1035,6 +1106,7 @@ const Admin = () => {
                   />
                 </div>
                 <span className={styles.adminDeviceName}>{d.name}</span>
+                {renderCompat(d)}
                 <div className={styles.buttons}>
                   <div className={styles.adminDevicePrice}>
                     {d.discount ? (
@@ -1999,5 +2071,6 @@ const Admin = () => {
 };
 
 export default Admin;
+
 
 
