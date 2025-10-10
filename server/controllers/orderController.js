@@ -1,4 +1,4 @@
- const sendEmail = require("../services/emailService");
+const sendEmail = require("../services/emailService");
 const { Order, Device, Translation, Courier } = require("../models/models");
 const { Op } = require("sequelize");
 const { t } = require("../utils/translations");
@@ -43,13 +43,13 @@ const downloadReceipt = async (req, res) => {
               ? Object.entries(item.selectedOptions)
                   .map(([key, value]) => `${key}: ${value}`)
                   .join(", ")
-              : "";
+              : "Без опций";
 
           return `
             <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
               <div>
-              ${item.name}
-              ${options && `<div style="font-size:0.85em; color:#777;">${options}</div>`}
+                ${item.name}
+                <div style="font-size:0.85em; color:#777;">${options}</div>
               </div>
                 <div style="white-space:nowrap;"><strong>${item.price} €</strong></div>
             </div>
@@ -216,7 +216,7 @@ const createOrder = async (req, res) => {
         if (error) {
           console.error("❌ Ошибка загрузки изображения в Supabase:", error);
         } else {
-          deviceImageUrl = `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${fileName}`;
+          deviceImageUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
         }
       } catch (error) {
         console.error("❌ Ошибка обработки изображения:", error);
@@ -317,13 +317,13 @@ const createOrder = async (req, res) => {
               ? Object.entries(item.selectedOptions)
                   .map(([k, v]) => `${k}: ${v}`)
                   .join(", ")
-              : "";
+              : "Без опций";
 
           return `
         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
           <div>
-          ${item.name}
-          ${options && `<div style="font-size:0.85em; color:#777;">${options}</div>`}
+            ${item.name}
+            <div style="font-size:0.85em; color:#777;">${options}</div>
           </div>
           <div><strong>${item.price} €</strong></div>
         </div>
