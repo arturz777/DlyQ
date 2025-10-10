@@ -12,19 +12,15 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendEmail = async (to, subject, html, attachments = []) => {
-  try {
-    await transporter.sendMail({
-      from: '"DlyQ" <margo310507@gmail.com>',
-      to,
-      subject,
-      html,
-      attachments,
-    });
-    console.log("✅ Письмо отправлено на:", to);
-  } catch (error) {
-    console.error("❌ Ошибка отправки письма:", error);
-  }
+  const info = await transporter.sendMail({
+    from: '"DlyQ" <margo310507@gmail.com>',
+    to,
+    subject,
+    html,
+    attachments,
+  });
+  console.log('Email accepted:', info.accepted, 'rejected:', info.rejected, 'response:', info.response);
+  return info;
 };
-
 
 module.exports = sendEmail;
