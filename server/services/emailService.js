@@ -1,26 +1,27 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: 'margo310507@gmail.com', 
-    pass: 'xbiw laxs btvo khhr', 
-  },
-  tls: {
-    rejectUnauthorized: false, 
-  },
+  host: 'smtp.zoho.eu',
+  port: 465,
+  secure: true,
+  auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
+  tls: { servername: 'smtp.zoho.eu' }
 });
 
+
 const sendEmail = async (to, subject, html, attachments = []) => {
+ 
   try {
+     if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
+    throw new Error('MAIL_USER / MAIL_PASS не заданы в окружении');
+  }
     await transporter.sendMail({
-      from: '"DlyQ" <margo310507@gmail.com>',
+      from: `"DLYQ OÜ" <${process.env.MAIL_USER}>`,
       to,
       subject,
       html,
       attachments,
     });
-    console.log("✅ Письмо отправлено на:", to);
   } catch (error) {
     console.error("❌ Ошибка отправки письма:", error);
   }
