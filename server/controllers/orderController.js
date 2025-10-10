@@ -389,17 +389,50 @@ const createOrder = async (req, res) => {
   </div>
 `;
 
-    const subject = t("greetings", language);
+   const subject = t("greetings", language);
 
- try {
-      await Promise.all([
-        sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
-        sendEmail(email, subject, emailHTML),
-      ]);
-      console.log("✅ Письма успешно отправлены.");
-    } catch (emailError) {
-      console.error("❌ Ошибка при отправке писем:", emailError.message);
-    }
+// полезно видеть, какой email у клиента реально получился
+console.log('[order#create] email targets:', {
+  admin: 'ms.margo07@mail.ru',
+  customerFromFormData: formData?.email || null,
+  customerFromReqUser: req.user?.email || null,
+  finalCustomerEmail: email || null,
+  language,
+});
+
+try {
+  const [adminInfo, customerInfo] = await Promise.all([
+    sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
+    sendEmail(email, subject, emailHTML),
+  ]);
+
+  console.log('[order#create] admin mail response:', {
+    messageId: adminInfo?.messageId,
+    accepted: adminInfo?.accepted,
+    rejected: adminInfo?.rejected,
+    response: adminInfo?.response,
+  });
+
+  console.log('[order#create] customer mail response:', {
+    to: email,
+    messageId: customerInfo?.messageId,
+    accepted: customerInfo?.accepted,
+    rejected: customerInfo?.rejected,
+    response: customerInfo?.response,
+  });
+
+  console.log("✅ Письма успешно отправлены.");
+} catch (emailError) {
+  // сюда попадём, если ЛЮБОЕ из двух писем упадёт
+  console.error('[order#create] sendEmail failed:', {
+    message: emailError.message,
+    code: emailError.code,
+    command: emailError.command,
+    response: emailError.response,
+    stack: emailError.stack,
+  });
+}
+
 
     res.status(201).json({
       message: "Заказ успешно оформлен",
