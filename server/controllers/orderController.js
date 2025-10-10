@@ -391,19 +391,15 @@ const createOrder = async (req, res) => {
 
     const subject = t("greetings", language);
 
-    const tasks = [
-  sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
-];
-
-if (email) {
-  tasks.push(sendEmail(email, subject, emailHTML));
-} else {
-  console.warn('Нет email покупателя — письмо клиенту не отправляем');
-}
-
-const results = await Promise.all(tasks);
-console.log('SMTP responses:', results.map(r => r && r.response));
-
+ try {
+      await Promise.all([
+        sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
+        sendEmail(email, subject, emailHTML),
+      ]);
+      console.log("✅ Письма успешно отправлены.");
+    } catch (emailError) {
+      console.error("❌ Ошибка при отправке писем:", emailError.message);
+    }
 
     res.status(201).json({
       message: "Заказ успешно оформлен",
