@@ -2,7 +2,10 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,              // можно попробовать 465 + secure:true, если 587 не пускает
+  secure: false,
+  requireTLS: true,
   auth: {
     user: 'margo310507@gmail.com',
     pass: 'xbiw laxs btvo khhr',
@@ -13,14 +16,14 @@ const transporter = nodemailer.createTransport({
   connectionTimeout: 10000,
   greetingTimeout: 10000,
   socketTimeout: 15000,
-  logger: true, // печатает служебные логи нодемайлера
+  logger: true,
 });
 
 const sendEmail = async (to, subject, html, attachments = []) => {
   try {
-    console.log('[mail] Gmail(service) verify...');
+    console.log('[mail] Gmail(smtp587) verify...');
     await transporter.verify();
-    console.log('[mail] Gmail(service) verified OK');
+    console.log('[mail] Gmail(smtp587) verified OK');
 
     const info = await transporter.sendMail({
       from: '"DlyQ" <margo310507@gmail.com>',
@@ -30,9 +33,9 @@ const sendEmail = async (to, subject, html, attachments = []) => {
       attachments,
     });
 
-    console.log('[mail] sent via Gmail(service) →', to, info.messageId || '');
+    console.log('[mail] sent via Gmail(smtp587) →', to, info.messageId || '');
   } catch (error) {
-    console.error('[mail] Gmail(service) error:', {
+    console.error('[mail] Gmail(smtp587) error:', {
       message: error.message,
       code: error.code,
       command: error.command,
