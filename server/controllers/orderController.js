@@ -224,7 +224,7 @@ const createOrder = async (req, res) => {
         if (error) {
           console.error("❌ Ошибка загрузки изображения в Supabase:", error);
         } else {
-          deviceImageUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
+          deviceImageUrl = `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${fileName}`;
         }
       } catch (error) {
         console.error("❌ Ошибка обработки изображения:", error);
@@ -343,7 +343,7 @@ const createOrder = async (req, res) => {
         .join("");
     };
 
-    const localReceiptUrl = `http://localhost:5000/static/receipts/receipt-${order.id}.pdf`;
+      const downloadLink = `https://zang-4.onrender.com/api/order/${order.id}/receipt?token=${downloadToken}`;
     receiptUrl = localReceiptUrl;
     order.receiptUrl = receiptUrl;
     await order.save();
