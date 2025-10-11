@@ -1,31 +1,55 @@
 // services/emailService.js
-const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
+// Для Node 18+ глобальный fetch уже есть; для Node <18 подключим node-fetch на лету
+const fetchFn = (...args) => (typeof fetch !== 'undefined' ? fetch(...args) : require('node-fetch')(...args));
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.zoho.eu',
-  port: 465,             // SMTPS
-  secure: true,          // на 465 всегда true
-  auth: {
-    user: 'info@dlyq.ee',
-    pass: 'EDBdhGEtAnG0',
-  }
-});
+const BREVO_API_KEY = process.env.BREVO_API_KEY;         // добавь в Render
+const FROM_EMAIL    = process.env.MAIL_FROM || 'info@dlyq.ee';
+const FROM_NAME     = process.env.MAIL_FROM_NAME || 'DlyQ OÜ';
 
+async function sendEmail(to, subject, html, attachments = []) {
+  if (!BREVO_API_KEY) throw new Error('BREVO_API_KEY не задан в окружении');
 
-const sendEmail = async (to, subject, html, attachments = []) => {
-  try {
-    await transporter.verify(); // быстрый чек соединения
-    await transporter.sendMail({
-      from: '"DLYQ OÜ" <info@dlyq.ee>',
-      to,
-      subject,
-      html,
-      attachments,
+  const toArr = Array.isArray(to) ? to.map(email => ({ email })) : [{ email: to }];
+
+  const attachment = attachments
+    .filter(a => a && a.path)
+    .map(a => {
+      const full = path.resolve(a.path);
+      const buf = fs.readFileSync(full);
+      return {
+        name: a.filename || path.basename(full),
+        content: buf.toString('base64'),
+      };
     });
-    console.log('[mail][zoho587] sent ->', to);
-  } catch (error) {
-    console.error('[mail][zoho587] send error:', error);
+
+  const payload = {
+    sender: { email: FROM_EMAIL, name: FROM_NAME },
+    to: toArr,
+    subject,
+    htmlContent: html,
+  };
+  if (attachment.length) payload.attachment = attachment;
+
+  const res = await fetchFn('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': BREVO_API_KEY,
+      'content-type': 'application/json',
+      'accept': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Brevo API ${res.status}: ${text}`);
   }
-};
+
+  const data = await res.json().catch(() => ({}));
+  console.log('[mail][brevo] sent ->', toArr.map(t => t.email).join(', '), 'messageId:', data?.messageId || data?.messageIds);
+  return data;
+}
 
 module.exports = sendEmail;
