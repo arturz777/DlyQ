@@ -1,4 +1,4 @@
- const sendEmail = require("../services/emailService");
+const sendEmail = require("../services/emailService");
 const { Order, Device, Translation, Courier } = require("../models/models");
 const { Op } = require("sequelize");
 const { t } = require("../utils/translations");
