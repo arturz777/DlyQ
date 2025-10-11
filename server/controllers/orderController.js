@@ -1,14 +1,10 @@
 const sendEmail = require("../services/emailService");
 const { Order, Device, Translation, Courier } = require("../models/models");
 const { Op } = require("sequelize");
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
-const pdfPath = path.join(__dirname, "../temp/receipt.pdf");
 const { t } = require("../utils/translations");
 const getDistanceFromWarehouse = require("../utils/distance");
-const generatePDFReceipt = require("../services/generatePDFReceipt");
 const { supabase } = require("../config/supabaseClient");
+const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");
 const uuid = require("uuid");
 
 const calculateDeliveryCost = (totalPrice, distance) => {
@@ -31,10 +27,6 @@ const downloadReceipt = async (req, res) => {
       return res.status(403).json({ message: "Нет доступа к чеку." });
     }
 
-    if (!tokenFromQuery || tokenFromQuery !== order.downloadToken) {
-      return res.status(403).json({ message: "Нет доступа к чеку." });
-    }
-
     const orderDetails = JSON.parse(order.orderDetails || "[]");
     const formData = JSON.parse(order.formData || "{}");
     const subtotal = parseFloat(order.totalPrice) || 0;
@@ -43,7 +35,7 @@ const downloadReceipt = async (req, res) => {
     const priceWithoutVAT = totalWithVAT / (1 + vatRate);
     const vatAmount = totalWithVAT - priceWithoutVAT;
 
-    const generateSummaryItems = (items, orderDetails, language) => {
+    const generateSummaryItems = (items) => {
       return items
         .map((item) => {
           const options =
@@ -56,26 +48,28 @@ const downloadReceipt = async (req, res) => {
           return `
             <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
               <div>
-               ${item.name}
-                ${
-                  options &&
-                  `<div style="font-size:0.85em; color:#777;">${options}</div>`
-                }
-                </div>
-                <div style="white-space:nowrap;"><strong>${
-                  item.price
-                } €</strong></div>
+              ${item.name}
+              ${options && `<div style="font-size:0.85em; color:#777;">${options}</div>`}
+              </div>
+                <div style="white-space:nowrap;"><strong>${item.price} €</strong></div>
             </div>
           `;
         })
         .join("");
     };
 
+    const deliveryPrice = parseFloat(order.deliveryPrice) || 0;
+
     const receiptHTML = `
+    <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Receipt</title>
+  </head>
+  <body>
       <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
-
   <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">kviitung DlyQ</h2>
-
   <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
     <div style="width:48%;">
       <strong>Ostja:</strong><br>
@@ -98,7 +92,7 @@ const downloadReceipt = async (req, res) => {
   </div>
 
   <div style="border-top:1px solid #ccc; padding-top:15px; margin-top:15px;">
-    ${generateSummaryItems(localizedOrderDetails)}
+    ${generateSummaryItems(orderDetails)}
   </div>
 
   <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
@@ -113,26 +107,26 @@ const downloadReceipt = async (req, res) => {
   </div>
 
 </div>
+</body>
+</html>
 `;
 
-    const tempDir = path.join(__dirname, "../temp");
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
-    const tempPath = path.join(tempDir, `receipt-${orderId}.pdf`);
-    await generatePDFReceipt(receiptHTML, tempPath);
+    const buffer = await generatePDFShiftBuffer(receiptHTML);
 
-    res.download(tempPath, `dlyq-receipt-${orderId}.pdf`, (err) => {
-      fs.unlink(tempPath, () => {});
-      if (err) console.error("Ошибка отправки чека:", err);
-    });
-  } catch (error) {
-    console.error("Ошибка генерации PDF-чека:", error);
-    res.status(500).json({ message: "Ошибка при скачивании чека" });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="dlyq-receipt-${orderId}.pdf"`
+    );
+    res.send(buffer);
+  } catch (err) {
+    console.error("❌ Ошибка генерации PDF:", err.message);
+    res.status(500).json({ message: "Не удалось сгенерировать чек." });
   }
 };
 
 const createOrder = async (req, res) => {
   try {
-    let receiptUrl = null;
     const {
       formData,
       totalPrice,
@@ -147,8 +141,6 @@ const createOrder = async (req, res) => {
       phone,
       address,
       apartment,
-      floor,
-      entrance,
       comment,
       latitude,
       longitude,
@@ -323,18 +315,15 @@ const createOrder = async (req, res) => {
           const options =
             item.selectedOptions && Object.keys(item.selectedOptions).length > 0
               ? Object.entries(item.selectedOptions)
-                  .map(([key, value]) => `${key}: ${value}`)
+                  .map(([k, v]) => `${k}: ${v}`)
                   .join(", ")
               : "";
 
           return `
         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
           <div>
-            ${item.name}
-           ${
-             options &&
-             `<div style="font-size:0.85em; color:#777;">${options}</div>`
-           }
+          ${item.name}
+          ${options && `<div style="font-size:0.85em; color:#777;">${options}</div>`}
           </div>
           <div><strong>${item.price} €</strong></div>
         </div>
@@ -343,149 +332,85 @@ const createOrder = async (req, res) => {
         .join("");
     };
 
-      const downloadLink = `https://zang-4.onrender.com/api/order/${order.id}/receipt?token=${downloadToken}`;
-    receiptUrl = localReceiptUrl;
-    order.receiptUrl = receiptUrl;
-    await order.save();
-
-    const emailHTML = `
-<div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; padding:20px; border:1px solid #e0e0e0; border-radius:10px; background:#fff;">
-  <div style="background:#f2f2f2; padding:15px 20px; border-radius:8px; display:flex; align-items:center;">
-    <div style="flex:1;">
-      <h2 style="margin:0; font-size:1.4em;">${t("hello", language)}, ${
-      firstName || ""
-    } ${lastName || ""}!</h2>
-      <p style="margin:0; color:#777;">${t(
-        "this_is_your_receipt",
-        language
-      )}</p>
-    </div>
-  </div>
-
-  <div style="padding:20px 0;">
-    <h3 style="margin:5px 0;">DlyQ</h3>
-    
-<strong>${t("buyer", language)}</strong><br>
-${formData.firstName || ""} ${formData.lastName || ""}<br>
-${formData.email || ""}<br>
-${formData.phone || ""}<br>
-${t("address", language)}: ${formData.address || ""}<br>
-${
-  formData.apartment
-    ? `${t("apartment", language)}: ${formData.apartment}<br>`
-    : ""
-}
-${
-  formData.entrance
-    ? `${t("entrance", language)}: ${formData.entrance}<br>`
-    : ""
-}
-${formData.floor ? `${t("floor", language)}: ${formData.floor}<br>` : ""}
-${formData.comment ? `${t("comment", language)}: ${formData.comment}<br>` : ""}
-
-  </div>
-
-  <div style="border-top:1px solid #eee; padding-top:15px; margin-top:15px;">
-    ${generateSummaryItems(localizedOrderDetails)}
-  </div>
-
-  <div style="border-top:1px solid #eee; margin-top:20px; padding-top:15px;">
-    <p style="margin:5px 0; font-size:1em;"><strong>${t(
-      "total_charged",
-      language
-    )}</strong></p>
-    <p style="font-size:1.2em;"><strong>${(totalPrice + deliveryPrice).toFixed(
-      2
-    )} €</strong></p>
-  </div>
-
-  <hr style="margin-top:30px;">
-  <p style="font-size:0.85em; color:#666; line-height:1.6;">
-    💼 DLYQ OÜ<br>
-    ${t("download_invoice", language)} info@dlyq.ee
-  </p>
-  <p style="margin-top:20px;">
-<a href="${receiptUrl}" target="_blank">
-  ${t("contacts", language)}
-</a>
-</div>
-`;
-
     const subtotal = parseFloat(totalPrice) || 0;
     const totalWithVAT = subtotal + deliveryPrice;
     const vatRate = 0.22;
     const priceWithoutVAT = totalWithVAT / (1 + vatRate);
     const vatAmount = totalWithVAT - priceWithoutVAT;
 
-    const receiptHTML = `
-  <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
+    const downloadLink = `https://zang-4.onrender.com/api/order/${order.id}/receipt?token=${downloadToken}`;
 
-  <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">Kviitung DlyQ</h2>
-
-  <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
-    <div style="width:48%;">
-      <strong>Ostja:</strong><br>
+    const emailHTML = `
+  <div style="max-width:600px; margin:0 auto; font-family:Arial,sans-serif; padding:20px; border:1px solid #e0e0e0; border-radius:10px; background:#fff;">
+    <div style="background:#f2f2f2; padding:15px 20px; border-radius:8px; display:flex; align-items:center;">
+      <div style="flex:1;">
+        <h2 style="margin:0; font-size:1.4em;">${t("hello", language)}, ${
+      firstName || ""
+    } ${lastName || ""}!</h2>
+        <p style="margin:0; color:#777;">${t(
+          "this_is_your_receipt",
+          language
+        )}</p>
+      </div>
+    </div>
+    <div style="padding:20px 0;">
+      <h3 style="margin:5px 0;">DlyQ</h3>
+      <p style="margin:0; font-size:0.9em; color:#888;">
+        ${formData.address || ""}, ${formData.apartment || ""}
+      </p>
+      <strong>${t("buyer", language)}</strong><br>
       ${formData.firstName || ""} ${formData.lastName || ""}<br>
       ${formData.email || ""}<br>
       ${formData.phone || ""}<br>
-      Aadress: ${formData.address || ""}, ${formData.apartment || ""}
+      ${t("address", language)} ${formData.address || ""}, ${
+      formData.apartment || ""
+    }
     </div>
-    <div style="width:48%; text-align:right;">
-      <strong>Müüja:</strong><br>
-      DLYQ OÜ<br>
-      Kviitungi number: #${order.id}<br>
-      Kuupäev: ${new Date(order.createdAt).toLocaleString("et-EE")}<br>
-      Tallinn, Eesti<br>
-      Registrikood: <strong>17268052</strong><br>
-      KMKR:<strong>EE102873957</strong><br>
-      info@dlyq.ee<br>
-      dlyq.ee
+    <div style="border-top:1px solid #eee; padding-top:15px;">
+      ${generateSummaryItems(orderDetails)}
     </div>
+    <div style="border-top:1px solid #eee; margin-top:20px; padding-top:15px;">
+      <p style="margin:5px 0; font-size:1em;"><strong>${t(
+        "total_charged",
+        language
+      )}</strong></p>
+      <p style="font-size:1.2em;"><strong>${totalWithVAT.toFixed(
+        2
+      )} €</strong></p>
+    </div>
+    <hr style="margin-top:30px;">
+    <p style="font-size:0.85em; color:#666; line-height:1.6;">
+      💼 DLYQ OÜ<br>
+     ${t(
+       "download_invoice",
+       language
+     )}: <a href="${downloadLink}" target="_blank">PDF</a>
+    </p>
   </div>
-
-  <div style="border-top:1px solid #ccc; padding-top:15px; margin-top:15px;">
-    ${generateSummaryItems(localizedOrderDetails)}
-  </div>
-
-  <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
-    <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
-    <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
-    <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
-    <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(2)} €</p>
-  </div>
-
-  <div style="margin-top:30px; font-size:0.85em; color:#666;">
-    See dokument tõendab makset ja on automaatselt koostatud.
-  </div>
-
-</div>
 `;
 
-    const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
-    await generatePDFReceipt(receiptHTML, tempPath);
+   const subject = t("greetings", language);
 
-    const publicDir = path.join(__dirname, "../public/static/receipts");
-    if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
-    const finalPath = path.join(publicDir, `receipt-${order.id}.pdf`);
-    fs.renameSync(tempPath, finalPath);
+    try {
+      await Promise.all([
+        sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
+        sendEmail(email, subject, emailHTML),
+      ]);
+      console.log("✅ Письма успешно отправлены.");
+    } catch (emailError) {
+      console.error("❌ Ошибка при отправке писем:", emailError.message);
+    }
 
-    const subject = t("greetings", language);
-
-    await Promise.all([
-      sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
-      sendEmail(email, subject, emailHTML, [
-        {
-          filename: "receipt.pdf",
-          path: finalPath,
-        },
-      ]),
-    ]);
-
-    res.status(201).json({ message: "Заказ успешно оформлен" });
+    res.status(201).json({
+      message: "Заказ успешно оформлен",
+      receipt: downloadLink,
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Ошибка при оформлении заказа", error: error.message });
+    console.error("❌ Ошибка на этапе оформления заказа:", error.message);
+    res.status(500).json({
+      message: "Ошибка при оформлении заказа",
+      error: error.message,
+    });
   }
 };
 
