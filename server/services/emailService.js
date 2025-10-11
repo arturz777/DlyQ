@@ -1,13 +1,18 @@
 // services/emailService.js
 const nodemailer = require('nodemailer');
 
+/**
+ * SMTP 2525 (Brevo). Обычно порт 2525 открыт на PaaS.
+ * ВСТАВЬ свои креды от Brevo ниже.
+ */
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp-relay.brevo.com',
+  port: 2525,
+  secure: false,
   auth: {
-    user: 'margo310507@gmail.com',
-    pass: 'xbiw laxs btvo khhr', // твой app password
+    user: 'margo310507@gmail.com',   // <-- вставь логин Brevo
+    pass: 'xbiw laxs btvo khhr',       // <-- вставь SMTP Key (из Brevo)
   },
-  tls: { rejectUnauthorized: false },
   pool: true,
   maxConnections: 1,
   maxMessages: 50,
@@ -17,19 +22,21 @@ const transporter = nodemailer.createTransport({
   logger: true,
 });
 
-const sendEmail = async (to, subject, html, attachments = []) => {
-  console.log('[mail][gmail] sending:', { to, subject, from: 'DlyQ <margo310507@gmail.com>' });
+async function sendEmail(to, subject, html, attachments = []) {
+  const from = 'DlyQ <margo310507@gmail.com>'; // лучше в Brevo верифицировать отправителя/домен
+  console.log('[mail][brevo2525] sending:', { to, subject, from });
+
   try {
     const info = await transporter.sendMail({
-      from: 'DlyQ <margo310507@gmail.com>',
+      from,
       to,
       subject,
       html,
-      attachments,
+      attachments, // Brevo нормально шлёт вложения по SMTP
     });
-    console.log('[mail][gmail] sent ok:', info.messageId || '(no id)');
+    console.log('[mail][brevo2525] sent ok:', info.messageId || '(no id)');
   } catch (error) {
-    console.error('❌ [mail][gmail] send error:', {
+    console.error('❌ [mail][brevo2525] send error:', {
       message: error.message,
       code: error.code,
       command: error.command,
@@ -37,6 +44,6 @@ const sendEmail = async (to, subject, html, attachments = []) => {
     });
     throw error;
   }
-};
+}
 
 module.exports = sendEmail;
