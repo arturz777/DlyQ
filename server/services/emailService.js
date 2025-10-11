@@ -1,40 +1,50 @@
 // services/emailService.js
 const nodemailer = require('nodemailer');
 
-/**
- * SMTP 2525 (Brevo). Обычно порт 2525 открыт на PaaS.
- * ВСТАВЬ свои креды от Brevo ниже.
- */
+// ⚠️ ВСТАВЬ СЮДА СВОИ ДАННЫЕ ОТ BREVO:
+const BREVO_USER = 'YOUR_BREVO_LOGIN_EMAIL';   // логин в Brevo (обычно твой e-mail)
+const BREVO_SMTP_KEY = 'YOUR_BREVO_SMTP_KEY';  // SMTP key из Brevo → SMTP & API → SMTP
+
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com',
-  port: 2525,
-  secure: false,
+  port: 2525,           // рекомендованный порт (обычно открыт)
+  secure: false,        // STARTTLS
   auth: {
-    user: 'margo310507@gmail.com',   // <-- вставь логин Brevo
-    pass: 'xbiw laxs btvo khhr',       // <-- вставь SMTP Key (из Brevo)
+    user: BREVO_USER,
+    pass: BREVO_SMTP_KEY,
   },
   pool: true,
-  maxConnections: 1,
-  maxMessages: 50,
+  maxConnections: 2,
+  maxMessages: 100,
   connectionTimeout: 10000,
   greetingTimeout: 10000,
-  socketTimeout: 15000,
-  logger: true,
+  socketTimeout: 20000,
+  logger: true,         // подробные логи в консоли
 });
 
-async function sendEmail(to, subject, html, attachments = []) {
-  const from = 'DlyQ <margo310507@gmail.com>'; // лучше в Brevo верифицировать отправителя/домен
+const sendEmail = async (to, subject, html, attachments = []) => {
+  const from = 'DlyQ <margo310507@gmail.com>'; // твой текущий "From"
   console.log('[mail][brevo2525] sending:', { to, subject, from });
 
   try {
+    // быстрая проверка соединения (можно один раз при старте вынести)
+    await transporter.verify().catch(err => {
+      console.error('[mail][brevo2525] verify error:', {
+        message: err.message, code: err.code, command: err.command, response: err.response
+      });
+      throw err;
+    });
+
     const info = await transporter.sendMail({
       from,
       to,
       subject,
       html,
-      attachments, // Brevo нормально шлёт вложения по SMTP
+      attachments,
     });
-    console.log('[mail][brevo2525] sent ok:', info.messageId || '(no id)');
+
+    console.log('[mail][brevo2525] sent ok:', info && (info.messageId || info.response));
+    return info;
   } catch (error) {
     console.error('❌ [mail][brevo2525] send error:', {
       message: error.message,
@@ -44,6 +54,6 @@ async function sendEmail(to, subject, html, attachments = []) {
     });
     throw error;
   }
-}
+};
 
 module.exports = sendEmail;
