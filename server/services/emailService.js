@@ -2,12 +2,12 @@
 const nodemailer = require('nodemailer');
 
 // ⚠️ ВСТАВЬ СЮДА СВОИ ДАННЫЕ ОТ BREVO:
-const BREVO_USER = 'YOUR_BREVO_LOGIN_EMAIL';   // логин в Brevo (обычно твой e-mail)
-const BREVO_SMTP_KEY = 'YOUR_BREVO_SMTP_KEY';  // SMTP key из Brevo → SMTP & API → SMTP
+const BREVO_USER = '990886001@smtp-brevo.com';   // логин в Brevo (обычно твой e-mail)
+const BREVO_SMTP_KEY = 'H3V9n6Z2bNsw0zdc';  // SMTP key из Brevo → SMTP & API → SMTP
 
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com',
-  port: 2525,           // рекомендованный порт (обычно открыт)
+  port: 587,           // рекомендованный порт (обычно открыт)
   secure: false,        // STARTTLS
   auth: {
     user: BREVO_USER,
