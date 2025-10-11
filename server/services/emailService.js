@@ -1,31 +1,45 @@
-// server/services/emailService.js
+// services/emailService.js
 const nodemailer = require('nodemailer');
 
-// Настройка почтового клиента
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // Можно использовать другой почтовый сервис (например, Mailgun, Yandex)
+  service: 'gmail',
   auth: {
-    user: 'margo310507@gmail.com', // Ваш email
-    pass: 'xbiw laxs btvo khhr', // Пароль или "App Password" для Gmail
+    user: 'margo310507@gmail.com',
+    pass: 'xbiw laxs btvo khhr',
   },
-  tls: {
-    rejectUnauthorized: false, // Игнорировать самоподписанные сертификаты
-  },
+  pool: true,
+  maxConnections: 1,
+  maxMessages: 50,
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
+  logger: true, // печатает служебные логи нодемайлера
 });
 
-// Функция отправки письма
-const sendMail = async (to, subject, htmlContent) => {
+const sendEmail = async (to, subject, html, attachments = []) => {
   try {
-    await transporter.sendMail({
-      from: '"Ваш магазин" <margo310507@gmail.com>', // От кого
-	    to: "ms.margo07@mail.ru",
+    console.log('[mail] Gmail(service) verify...');
+    await transporter.verify();
+    console.log('[mail] Gmail(service) verified OK');
+
+    const info = await transporter.sendMail({
+      from: '"DlyQ" <margo310507@gmail.com>',
+      to,
       subject,
-      html: htmlContent,
+      html,
+      attachments,
     });
-    console.log('Письмо отправлено!');
+
+    console.log('[mail] sent via Gmail(service) →', to, info.messageId || '');
   } catch (error) {
-    console.error('Ошибка отправки письма:', error);
+    console.error('[mail] Gmail(service) error:', {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+    });
+    throw error;
   }
 };
 
-module.exports = sendMail;
+module.exports = sendEmail;
