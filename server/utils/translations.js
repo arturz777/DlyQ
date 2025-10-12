@@ -2,44 +2,63 @@ const translations = {
   total_charged: {
     en: "Total charged:",
     est: "Kokku tasutud:",
-    ru: "Всего списано:"
+    ru: "Всего списано:",
   },
   hello: {
     en: "Hello",
     est: "Tere",
-    ru: "Здравствуйте"
+    ru: "Здравствуйте",
   },
   this_is_your_receipt: {
     en: "This is your receipt.",
     est: "See on teie kviitung.",
-    ru: "Это ваша квитанция."
+    ru: "Это ваша квитанция.",
   },
   buyer: {
     en: "Buyer",
     est: "Ostja",
-    ru: "Покупатель"
+    ru: "Покупатель",
   },
   address: {
     en: "Address",
     est: "Aadress",
-    ru: "Адрес"
+    ru: "Адрес",
+  },
+  apartment: {
+    en: "Apartment",
+    est: "Korter",
+    ru: "Квартира",
+  },
+  entrance: {
+    en: "Entrance",
+    est: "Trepikoda",
+    ru: "Подъезд",
+  },
+  floor: {
+    en: "Floor",
+    est: "Korrus",
+    ru: "Этаж",
+  },
+  comment: {
+    en: "Comment",
+    est: "Märkus",
+    ru: "Комментарий",
   },
   contacts: {
     en: "📞 Contacts:",
     est: "📞 Kontaktid:",
-    ru: "📞 Контакты:"
+    ru: "📞 Контакты:",
   },
   download_invoice: {
     en: "Download receipt (PDF)",
     est: "Laadi alla kviitung (PDF)",
-    ru: "Скачать квитанцию (PDF)"
+    ru: "Скачать квитанцию (PDF)",
   },
   greetings: {
-  en: "🧾 Order paid at dlyq.ee",
-  est: "🧾 Tellimus on tasutud lehel dlyq.ee",
-  ru: "🧾 Заказ оплачен в dlyq.ee",
+    en: "🧾 Order paid at dlyq.ee",
+    est: "🧾 Tellimus on tasutud lehel dlyq.ee",
+    ru: "🧾 Заказ оплачен в dlyq.ee",
   },
- 
 };
 
 function t(key, lang = "est") {
