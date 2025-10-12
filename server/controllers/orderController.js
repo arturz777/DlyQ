@@ -1,11 +1,31 @@
 const sendEmail = require("../services/emailService");
 const { Order, Device, Translation, Courier } = require("../models/models");
 const { Op } = require("sequelize");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const { t } = require("../utils/translations");
 const getDistanceFromWarehouse = require("../utils/distance");
+const generatePDFReceipt = require("../services/generatePDFReceipt");
 const { supabase } = require("../config/supabaseClient");
-const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");
 const uuid = require("uuid");
+
+function mustEnv(name) {
+  const v = (process.env[name] ?? "").trim();
+  if (!v) throw new Error(`${name} is not set`);
+  return v;
+}
+
+const PUBLIC_URL = mustEnv("PUBLIC_URL").replace(/\/+$/, "");
+const COMPANY = {
+  email: mustEnv("COMPANY_EMAIL"),
+  site: (process.env.COMPANY_SITE || process.env.SITE_URL || "dlyq.ee").trim(),
+};
+const SUPABASE_IMAGE_BUCKET =
+  process.env.SUPABASE_IMAGE_BUCKET || process.env.SUPABASE_BUCKET || "images";
+const SUPABASE_URL = mustEnv("SUPABASE_URL");
+const PLACEHOLDER_IMG =
+  process.env.PLACEHOLDER_IMG || `${PUBLIC_URL}/static/placeholder.png`;
 
 const calculateDeliveryCost = (totalPrice, distance) => {
   let baseCost = 2;
@@ -29,8 +49,9 @@ const downloadReceipt = async (req, res) => {
 
     const orderDetails = JSON.parse(order.orderDetails || "[]");
     const formData = JSON.parse(order.formData || "{}");
-    const subtotal = parseFloat(order.totalPrice) || 0;
-    const totalWithVAT = parseFloat(order.totalPrice);
+
+    const totalWithVAT = parseFloat(order.totalPrice) || 0;
+    const deliveryPrice = parseFloat(order.deliveryPrice) || 0;
     const vatRate = 0.22;
     const priceWithoutVAT = totalWithVAT / (1 + vatRate);
     const vatAmount = totalWithVAT - priceWithoutVAT;
@@ -41,87 +62,97 @@ const downloadReceipt = async (req, res) => {
           const options =
             item.selectedOptions && Object.keys(item.selectedOptions).length > 0
               ? Object.entries(item.selectedOptions)
-                  .map(([key, value]) => `${key}: ${value}`)
+                  .map(([k, v]) => `${k}: ${v}`)
                   .join(", ")
               : "";
 
+          const qty = Number(item.count ?? item.quantity ?? 1) || 1;
+
+          const unitPrice =
+            Number(
+              typeof item.price === "string"
+                ? item.price.replace(/[^\d.,-]/g, "").replace(",", ".")
+                : item.price
+            ) || 0;
+
+          const lineTotal = unitPrice * qty;
+
           return `
-            <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-              <div>
-              ${item.name}
-              ${options && `<div style="font-size:0.85em; color:#777;">${options}</div>`}
-              </div>
-                <div style="white-space:nowrap;"><strong>${item.price} €</strong></div>
-            </div>
-          `;
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;">
+          <div style="flex:1; min-width:0;">
+            ${item.name}
+            ${
+              options &&
+              `<div style="font-size:0.85em; color:#777;">${options}</div>`
+            }
+          </div>
+          <div style="width:60px; text-align:center; white-space:nowrap;">× ${qty}</div>
+          <div style="white-space:nowrap;"><strong>${lineTotal.toFixed(
+            2
+          )} €</strong></div>
+        </div>
+      `;
         })
         .join("");
     };
 
-    const deliveryPrice = parseFloat(order.deliveryPrice) || 0;
-
     const receiptHTML = `
-    <!DOCTYPE html>
-  <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Receipt</title>
-  </head>
-  <body>
       <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
-  <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">kviitung DlyQ</h2>
-  <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
-    <div style="width:48%;">
-      <strong>Ostja:</strong><br>
-      ${formData.firstName || ""} ${formData.lastName || ""}<br>
-      ${formData.email || ""}<br>
-      ${formData.phone || ""}<br>
-      Адрес: ${formData.address || ""}, ${formData.apartment || ""}
-    </div>
-    <div style="width:48%; text-align:right;">
-        <strong>Müüja:</strong><br>
-      DLYQ OÜ<br>
-      Kviitungi number: #${order.id}<br>
-      Kuupäev: ${new Date(order.createdAt).toLocaleString("et-EE")}<br>
-      Tallinn, Eesti<br>
-      Registrikood: <strong>17268052</strong><br>
-      KMKR: <strong>EE102873957</strong><br>
-      info@dlyq.ee<br>
-      dlyq.ee
-    </div>
-  </div>
 
-  <div style="border-top:1px solid #ccc; padding-top:15px; margin-top:15px;">
-    ${generateSummaryItems(orderDetails)}
-  </div>
+        <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">kviitung DlyQ</h2>
 
-  <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
-    <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
-    <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
-    <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
-    <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(2)} €</p>
-  </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
+          <div style="width:48%;">
+            <strong>Ostja:</strong><br>
+            ${formData.firstName || ""} ${formData.lastName || ""}<br>
+            ${formData.email || ""}<br>
+            ${formData.phone || ""}<br>
+            Адрес: ${formData.address || ""}, ${formData.apartment || ""}
+          </div>
+          <div style="width:48%; text-align:right;">
+            <strong>Müüja:</strong><br>
+            DLYQ OÜ<br>
+            Kviitungi number: #${order.id}<br>
+            Kuupäev: ${new Date(order.createdAt).toLocaleString("et-EE")}<br>
+            Tallinn, Eesti<br>
+            Registrikood: <strong>17268052</strong><br>
+            KMKR: <strong>EE102873957</strong><br>
+            ${COMPANY.email}<br>
+            ${COMPANY.site}
+          </div>
+        </div>
 
-  <div style="margin-top:30px; font-size:0.85em; color:#666;">
-    See dokument tõendab makset ja on automaatselt koostatud.
-  </div>
+        <div style="border-top:1px solid #ccc; padding-top:15px; margin-top:15px;">
+          ${generateSummaryItems(orderDetails)}
+        </div>
 
-</div>
-</body>
-</html>
-`;
+        <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
+          <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
+          <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
+          <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
+          <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(
+            2
+          )} €</p>
+        </div>
 
-    const buffer = await generatePDFShiftBuffer(receiptHTML);
+        <div style="margin-top:30px; font-size:0.85em; color:#666;">
+          See dokument tõendab makset ja on automaatselt koostatud.
+        </div>
+      </div>
+    `;
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="dlyq-receipt-${orderId}.pdf"`
-    );
-    res.send(buffer);
-  } catch (err) {
-    console.error("❌ Ошибка генерации PDF:", err.message);
-    res.status(500).json({ message: "Не удалось сгенерировать чек." });
+    const tempDir = path.join(__dirname, "../temp");
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+    const tempPath = path.join(tempDir, `receipt-${orderId}.pdf`);
+    await generatePDFReceipt(receiptHTML, tempPath);
+
+    res.download(tempPath, `dlyq-receipt-${orderId}.pdf`, (err) => {
+      fs.unlink(tempPath, () => {});
+      if (err) console.error("Ошибка отправки чека:", err);
+    });
+  } catch (error) {
+    console.error("Ошибка генерации PDF-чека:", error);
+    res.status(500).json({ message: "Ошибка при скачивании чека" });
   }
 };
 
@@ -141,13 +172,14 @@ const createOrder = async (req, res) => {
       phone,
       address,
       apartment,
+      floor,
+      entrance,
       comment,
       latitude,
       longitude,
     } = formData;
 
     let email = formData.email;
-
     if ((!email || email.trim() === "") && req.user && req.user.email) {
       email = req.user.email;
     }
@@ -174,52 +206,48 @@ const createOrder = async (req, res) => {
           .status(400)
           .json({ message: `Товар "${item.name}" не найден.` });
       }
-
       if (device.quantity < item.count && !item.isPreorder) {
         return res.status(400).json({
           message: `Недостаточно товара: ${item.name}. Осталось ${device.quantity} шт.`,
         });
       }
 
-      if (device.quantity < item.count) {
-        isPreorder = true;
-      }
-
-      if (device.quantity >= item.count) {
+      if (device.quantity < item.count) isPreorder = true;
+      if (device.quantity >= item.count)
         devicesToUpdate.push({ device, count: item.count });
-      }
     }
 
-    let status = "Pending";
-    if (isPreorder || desiredDeliveryDate) {
-      status = "preorder";
-    }
+    let status = isPreorder || desiredDeliveryDate ? "preorder" : "Pending";
 
-    let deviceImageUrl =
-      orderDetails[0]?.image || "https://example.com/placeholder.png";
+    let deviceImageUrl = orderDetails[0]?.image || PLACEHOLDER_IMG;
 
-    if (deviceImageUrl.startsWith("http")) {
+    if (
+      deviceImageUrl?.startsWith("http") &&
+      !deviceImageUrl.startsWith(SUPABASE_URL)
+    ) {
       try {
         const response = await fetch(deviceImageUrl);
         if (!response.ok) throw new Error("Ошибка загрузки изображения с URL");
         const buffer = await response.arrayBuffer();
-        const fileName = `orders/${uuid.v4()}${deviceImageUrl.substring(
-          deviceImageUrl.lastIndexOf(".")
-        )}`;
 
-        const { data, error } = await supabase.storage
-          .from("images")
-          .upload(fileName, Buffer.from(buffer), {
-            contentType: "image/jpeg",
-          });
+        const dot = deviceImageUrl.lastIndexOf(".");
+        const ext = dot !== -1 ? deviceImageUrl.substring(dot) : ".jpg";
+        const fileName = `orders/${uuid.v4()}${ext}`;
 
-        if (error) {
-          console.error("❌ Ошибка загрузки изображения в Supabase:", error);
+        const { error: upErr } = await supabase.storage
+          .from(SUPABASE_IMAGE_BUCKET)
+          .upload(fileName, Buffer.from(buffer), { contentType: "image/jpeg" });
+
+        if (!upErr) {
+          const { data: pub } = supabase.storage
+            .from(SUPABASE_IMAGE_BUCKET)
+            .getPublicUrl(fileName);
+          if (pub?.publicUrl) deviceImageUrl = pub.publicUrl;
         } else {
-          deviceImageUrl = `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${fileName}`;
+          console.error("❌ Ошибка загрузки изображения в Supabase:", upErr);
         }
-      } catch (error) {
-        console.error("❌ Ошибка обработки изображения:", error);
+      } catch (err) {
+        console.error("❌ Ошибка обработки изображения:", err);
       }
     }
 
@@ -230,7 +258,6 @@ const createOrder = async (req, res) => {
       const translatedName = item.translations?.name?.[lang] || item.name;
 
       const localizedOptions = {};
-
       if (item.selectedOptions && Array.isArray(item.translations?.options)) {
         for (const [rawOptionKey, val] of Object.entries(
           item.selectedOptions
@@ -238,7 +265,6 @@ const createOrder = async (req, res) => {
           const optionTranslation = item.translations.options.find((opt) =>
             Object.values(opt.name || {}).includes(rawOptionKey)
           );
-
           const label = optionTranslation?.name?.[lang] || rawOptionKey;
 
           const valueToMatch = val.value?.trim();
@@ -256,7 +282,6 @@ const createOrder = async (req, res) => {
           }
 
           const value = matchedValue?.[lang] || val.value;
-
           localizedOptions[label] = value;
         }
       }
@@ -272,7 +297,7 @@ const createOrder = async (req, res) => {
       userId,
       totalPrice: totalPrice + deliveryPrice,
       deliveryPrice,
-      status: "Pending",
+      status,
       warehouseStatus: "pending",
       warehouseId,
       courierId: null,
@@ -298,39 +323,110 @@ const createOrder = async (req, res) => {
     const io = req.app.get("io");
     io.emit("newOrder", order);
 
-    const preorderAvailable = orderDetails.filter(
-      (item) => item.isPreorder && item.desiredDeliveryDate && item.count > 0
-    );
+   const generateSummaryItems = (items) => {
+  return items
+    .map((item) => {
+      const options =
+        item.selectedOptions && Object.keys(item.selectedOptions).length > 0
+          ? Object.entries(item.selectedOptions)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(", ")
+          : "";
 
-    const preorderOutOfStock = orderDetails.filter(
-      (item) =>
-        item.isPreorder && (!item.desiredDeliveryDate || item.count === 0)
-    );
+      const qty = Number(item.count ?? item.quantity ?? 1) || 1;
 
-    const regularItems = orderDetails.filter((item) => !item.isPreorder);
+      // цена может приходить строкой — аккуратно приводим к числу
+      const unitPrice = Number(
+        typeof item.price === "string" ? item.price.replace(/[^\d.,-]/g, "").replace(",", ".") : item.price
+      ) || 0;
 
-    const generateSummaryItems = (items) => {
-      return items
-        .map((item) => {
-          const options =
-            item.selectedOptions && Object.keys(item.selectedOptions).length > 0
-              ? Object.entries(item.selectedOptions)
-                  .map(([k, v]) => `${k}: ${v}`)
-                  .join(", ")
-              : "";
+      const lineTotal = unitPrice * qty;
 
-          return `
-        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-          <div>
-          ${item.name}
-          ${options && `<div style="font-size:0.85em; color:#777;">${options}</div>`}
+      return `
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;">
+          <div style="flex:1; min-width:0;">
+            ${item.name}
+            ${options && `<div style="font-size:0.85em; color:#777;">${options}</div>`}
           </div>
-          <div><strong>${item.price} €</strong></div>
+          <div style="width:60px; text-align:center; white-space:nowrap;">× ${qty}</div>
+          <div style="white-space:nowrap;"><strong>${lineTotal.toFixed(2)} €</strong></div>
         </div>
       `;
-        })
-        .join("");
-    };
+    })
+    .join("");
+};
+
+    const receiptUrl = `${PUBLIC_URL}/static/receipts/receipt-${order.id}.pdf`;
+    order.receiptUrl = receiptUrl;
+    await order.save();
+
+    const emailHTML = `
+  <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; padding:20px; border:1px solid #e0e0e0; border-radius:10px; background:#fff;">
+        <div style="background:#f2f2f2; padding:15px 20px; border-radius:8px; display:flex; align-items:center;">
+          <div style="flex:1;">
+            <h2 style="margin:0; font-size:1.4em;">${t("hello", language)}, ${
+      firstName || ""
+    } ${lastName || ""}!</h2>
+            <p style="margin:0; color:#777;">${t(
+              "this_is_your_receipt",
+              language
+            )}</p>
+          </div>
+        </div>
+
+   <div style="padding:20px 0;">
+          <h3 style="margin:5px 0;">DlyQ</h3>
+          <strong>${t("buyer", language)}</strong><br>
+          ${formData.firstName || ""} ${formData.lastName || ""}<br>
+          ${formData.email || ""}<br>
+          ${formData.phone || ""}<br>
+          ${t("address", language)}: ${formData.address || ""}<br>
+          ${
+            formData.apartment
+              ? `${t("apartment", language)}: ${formData.apartment}<br>`
+              : ""
+          }
+          ${
+            formData.entrance
+              ? `${t("entrance", language)}: ${formData.entrance}<br>`
+              : ""
+          }
+          ${
+            formData.floor
+              ? `${t("floor", language)}: ${formData.floor}<br>`
+              : ""
+          }
+          ${
+            formData.comment
+              ? `${t("comment", language)}: ${formData.comment}<br>`
+              : ""
+          }
+        </div>
+
+        <div style="border-top:1px solid #eee; padding-top:15px; margin-top:15px;">
+          ${generateSummaryItems(localizedOrderDetails)}
+        </div>
+
+        <div style="border-top:1px solid #eee; margin-top:20px; padding-top:15px;">
+          <p style="margin:5px 0; font-size:1em;"><strong>${t(
+            "total_charged",
+            language
+          )}</strong></p>
+          <p style="font-size:1.2em;"><strong>${(
+            Number(totalPrice) + deliveryPrice
+          ).toFixed(2)} €</strong></p>
+        </div>
+
+        <hr style="margin-top:30px;">
+        <p style="font-size:0.85em; color:#666; line-height:1.6;">
+          💼 DLYQ OÜ<br>
+          ${t("download_invoice", language)} ${COMPANY.email}
+        </p>
+        <p style="margin-top:20px;">
+          <a href="${receiptUrl}" target="_blank">${t("contacts", language)}</a>
+        </p>
+      </div>
+    `;
 
     const subtotal = parseFloat(totalPrice) || 0;
     const totalWithVAT = subtotal + deliveryPrice;
@@ -338,79 +434,76 @@ const createOrder = async (req, res) => {
     const priceWithoutVAT = totalWithVAT / (1 + vatRate);
     const vatAmount = totalWithVAT - priceWithoutVAT;
 
-    const downloadLink = `https://zang-4.onrender.com/api/order/${order.id}/receipt?token=${downloadToken}`;
+    const receiptHTML = `
+      <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
 
-    const emailHTML = `
-  <div style="max-width:600px; margin:0 auto; font-family:Arial,sans-serif; padding:20px; border:1px solid #e0e0e0; border-radius:10px; background:#fff;">
-    <div style="background:#f2f2f2; padding:15px 20px; border-radius:8px; display:flex; align-items:center;">
-      <div style="flex:1;">
-        <h2 style="margin:0; font-size:1.4em;">${t("hello", language)}, ${
-      firstName || ""
-    } ${lastName || ""}!</h2>
-        <p style="margin:0; color:#777;">${t(
-          "this_is_your_receipt",
-          language
-        )}</p>
+        <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">Kviitung DlyQ</h2>
+
+        <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
+          <div style="width:48%;">
+            <strong>Ostja:</strong><br>
+            ${formData.firstName || ""} ${formData.lastName || ""}<br>
+            ${formData.email || ""}<br>
+            ${formData.phone || ""}<br>
+            Aadress: ${formData.address || ""}, ${formData.apartment || ""}
+          </div>
+          <div style="width:48%; text-align:right;">
+            <strong>Müüja:</strong><br>
+            DLYQ OÜ<br>
+            Kviitungi number: #${order.id}<br>
+            Kuupäev: ${new Date(order.createdAt).toLocaleString("et-EE")}<br>
+            Tallinn, Eesti<br>
+            Registrikood: <strong>17268052</strong><br>
+            KMKR:<strong>EE102873957</strong><br>
+            ${COMPANY.email}<br>
+            ${COMPANY.site}
+          </div>
+        </div>
+
+        <div style="border-top:1px solid #ccc; padding-top:15px; margin-top:15px;">
+          ${generateSummaryItems(localizedOrderDetails)}
+        </div>
+
+        <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
+          <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
+          <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
+          <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
+          <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(
+            2
+          )} €</p>
+        </div>
+
+        <div style="margin-top:30px; font-size:0.85em; color:#666;">
+          See dokument tõendab makset ja on automaatselt koostatud.
+        </div>
       </div>
-    </div>
-    <div style="padding:20px 0;">
-      <h3 style="margin:5px 0;">DlyQ</h3>
-      <p style="margin:0; font-size:0.9em; color:#888;">
-        ${formData.address || ""}, ${formData.apartment || ""}
-      </p>
-      <strong>${t("buyer", language)}</strong><br>
-      ${formData.firstName || ""} ${formData.lastName || ""}<br>
-      ${formData.email || ""}<br>
-      ${formData.phone || ""}<br>
-      ${t("address", language)} ${formData.address || ""}, ${
-      formData.apartment || ""
-    }
-    </div>
-    <div style="border-top:1px solid #eee; padding-top:15px;">
-      ${generateSummaryItems(orderDetails)}
-    </div>
-    <div style="border-top:1px solid #eee; margin-top:20px; padding-top:15px;">
-      <p style="margin:5px 0; font-size:1em;"><strong>${t(
-        "total_charged",
-        language
-      )}</strong></p>
-      <p style="font-size:1.2em;"><strong>${totalWithVAT.toFixed(
-        2
-      )} €</strong></p>
-    </div>
-    <hr style="margin-top:30px;">
-    <p style="font-size:0.85em; color:#666; line-height:1.6;">
-      💼 DLYQ OÜ<br>
-     ${t(
-       "download_invoice",
-       language
-     )}: <a href="${downloadLink}" target="_blank">PDF</a>
-    </p>
-  </div>
-`;
+    `;
 
-   const subject = t("greetings", language);
+    const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
+    await generatePDFReceipt(receiptHTML, tempPath);
 
-    try {
-      await Promise.all([
-        sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
-        sendEmail(email, subject, emailHTML),
-      ]);
-      console.log("✅ Письма успешно отправлены.");
-    } catch (emailError) {
-      console.error("❌ Ошибка при отправке писем:", emailError.message);
-    }
+    const publicDir = path.join(__dirname, "../public/static/receipts");
+    if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
+    const finalPath = path.join(publicDir, `receipt-${order.id}.pdf`);
+    fs.renameSync(tempPath, finalPath);
 
-    res.status(201).json({
-      message: "Заказ успешно оформлен",
-      receipt: downloadLink,
-    });
+    const subject = t("greetings", language);
+
+    await Promise.all([
+      sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
+      sendEmail(email, subject, emailHTML, [
+        {
+          filename: "receipt.pdf",
+          path: finalPath,
+        },
+      ]),
+    ]);
+
+    res.status(201).json({ message: "Заказ успешно оформлен" });
   } catch (error) {
-    console.error("❌ Ошибка на этапе оформления заказа:", error.message);
-    res.status(500).json({
-      message: "Ошибка при оформлении заказа",
-      error: error.message,
-    });
+    res
+      .status(500)
+      .json({ message: "Ошибка при оформлении заказа", error: error.message });
   }
 };
 
