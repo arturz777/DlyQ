@@ -175,7 +175,7 @@ const PaymentForm = ({
 
     try {
       const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/geo/search?q=${formData.address}`
+        `${process.env.REACT_APP_API_URL}/geo/search?q=${formData.address}`
       );
       const data = await res.json();
 
