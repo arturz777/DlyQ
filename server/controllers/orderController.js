@@ -6,7 +6,7 @@ const os = require("os");
 const path = require("path");
 const { t } = require("../utils/translations");
 const getDistanceFromWarehouse = require("../utils/distance");
-const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");  //Proda
+const generatePDFReceipt = require("../services/generatePDFReceipt");  // Local
 const { supabase } = require("../config/supabaseClient");
 const uuid = require("uuid");
 
