@@ -6,7 +6,7 @@ const os = require("os");
 const path = require("path");
 const { t } = require("../utils/translations");
 const getDistanceFromWarehouse = require("../utils/distance");
-const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");
+const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");  //Proda
 const { supabase } = require("../config/supabaseClient");
 const uuid = require("uuid");
 
@@ -65,53 +65,62 @@ const downloadReceipt = async (req, res) => {
                   .map(([key, value]) => `${key}: ${value}`)
                   .join(", ")
               : "";
-
+// Proda
           const qty = item.count ?? item.quantity ?? 1;
           const unitPrice = Number(item.price) || 0;
           const lineTotal = unitPrice * qty;
-
+// Proda
+// Proda
+// Proda
+// Proda
+// Proda
+// Proda
+// Proda
+// Proda
           return `
-            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;">
-              <div style="flex:1; min-width:0;">
-                ${item.name}
-                ${options && `<div style="font-size:0.85em; color:#777;">${options}</div>`}
-              </div>
-              <div style="width:60px; text-align:center; white-space:nowrap;">× ${qty}</div>
-              <div style="white-space:nowrap;"><strong>${lineTotal.toFixed(2)} €</strong></div>
-            </div>
-          `;
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;">
+          <div style="flex:1; min-width:0;">
+            ${item.name}
+            ${
+              options &&
+              `<div style="font-size:0.85em; color:#777;">${options}</div>`
+            }
+          </div>
+          <div style="width:60px; text-align:center; white-space:nowrap;">× ${qty}</div>
+          <div style="white-space:nowrap;"><strong>${lineTotal.toFixed(
+            2
+          )} €</strong></div>
+        </div>
+      `;
         })
         .join("");
     };
 
     const receiptHTML = `
-      <!DOCTYPE html>
-      <html>
-        <head><meta charset="UTF-8"><title>Receipt</title></head>
-        <body>
-          <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
-            <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">kviitung DlyQ</h2>
+      <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
 
-            <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
-              <div style="width:48%;">
-                <strong>Ostja:</strong><br>
-                ${formData.firstName || ""} ${formData.lastName || ""}<br>
-                ${formData.email || ""}<br>
-                ${formData.phone || ""}<br>
-                Адрес: ${formData.address || ""}, ${formData.apartment || ""}
-              </div>
-              <div style="width:48%; text-align:right;">
-                <strong>Müüja:</strong><br>
-                DLYQ OÜ<br>
-                Kviitungi number: #${order.id}<br>
-                Kuupäev: ${new Date(order.createdAt).toLocaleString("et-EE")}<br>
-                Tallinn, Eesti<br>
-                Registrikood: <strong>17268052</strong><br>
-                KMKR: <strong>EE102873957</strong><br>
-                info@dlyq.ee<br>
-                dlyq.ee
-              </div>
-            </div>
+        <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">kviitung DlyQ</h2>
+
+        <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
+          <div style="width:48%;">
+            <strong>Ostja:</strong><br>
+            ${formData.firstName || ""} ${formData.lastName || ""}<br>
+            ${formData.email || ""}<br>
+            ${formData.phone || ""}<br>
+            Адрес: ${formData.address || ""}, ${formData.apartment || ""}
+          </div>
+          <div style="width:48%; text-align:right;">
+            <strong>Müüja:</strong><br>
+            DLYQ OÜ<br>
+            Kviitungi number: #${order.id}<br>
+            Kuupäev: ${new Date(order.createdAt).toLocaleString("et-EE")}<br>
+            Tallinn, Eesti<br>
+            Registrikood: <strong>17268052</strong><br>
+            KMKR: <strong>EE102873957</strong><br>
+            ${COMPANY.email}<br>
+            ${COMPANY.site}
+          </div>
+        </div>
 
             <div style="border-top:1px solid #ccc; padding-top:15px; margin-top:15px;">
               ${generateSummaryItems(orderDetails)}
@@ -132,18 +141,21 @@ const downloadReceipt = async (req, res) => {
       </html>
     `;
 
-    // Генерим PDF в память
-    const buffer = await generatePDFShiftBuffer(receiptHTML);
+    // Proda
+    const buffer = await generatePDFShiftBuffer(receiptHTML); //Proda
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="dlyq-receipt-${orderId}.pdf"`);
-    res.send(buffer);
-  } catch (error) {
-    console.error("❌ Ошибка генерации PDF:", error);
-    res.status(500).json({ message: "Не удалось сгенерировать чек." });
+    res.setHeader("Content-Type", "application/pdf");  //proda
+    res.setHeader("Content-Disposition", `attachment; filename="dlyq-receipt-${orderId}.pdf"`); //Proda
+    res.send(buffer);  //Proda
+  } catch (error) {  //Proda
+    console.error("❌ Ошибка генерации PDF:", error);   //Proda
+    res.status(500).json({ message: "Не удалось сгенерировать чек." });   //Proda
   }
 };
-
+//Proda
+// Proda
+// Proda
+// Proda
 const createOrder = async (req, res) => {
   try {
     const {
@@ -323,7 +335,6 @@ const createOrder = async (req, res) => {
 
       const qty = Number(item.count ?? item.quantity ?? 1) || 1;
 
-      // цена может приходить строкой — аккуратно приводим к числу
       const unitPrice = Number(
         typeof item.price === "string" ? item.price.replace(/[^\d.,-]/g, "").replace(",", ".") : item.price
       ) || 0;
@@ -344,7 +355,7 @@ const createOrder = async (req, res) => {
     .join("");
 };
 
-    const receiptUrl = `${PUBLIC_URL}/api/order/${order.id}/receipt?token=${downloadToken}`;
+    const receiptUrl = `${PUBLIC_URL}/api/order/${order.id}/receipt?token=${downloadToken}`; //Proga
     order.receiptUrl = receiptUrl;
     await order.save();
 
@@ -466,14 +477,27 @@ const createOrder = async (req, res) => {
         </div>
       </div>
     `;
-
-    const subject = t("greetings", language);
-
+ //Proda
+    const subject = t("greetings", language);//Proda
+//Proda
+    //Proda
+    //Proda
+    //Proda
+    //Proda
+    //Proda
+    //Proda
+    //Proda
+    //Proda
     await Promise.all([
    sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
    sendEmail(email, subject, emailHTML),
  ]);
-
+ //Proda
+    //Proda
+    //Proda
+    //Proda
+    //Proda
+  
     res.status(201).json({ message: "Заказ успешно оформлен" });
   } catch (error) {
     res
