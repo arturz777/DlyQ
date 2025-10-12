@@ -51,16 +51,20 @@ const Basket = observer(() => {
   const [deliveryDate, setDeliveryDate] = useState("");
   const [isPreorder, setIsPreorder] = useState(false);
   const [preferredTime, setPreferredTime] = useState("");
-   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
-   const { t, i18n } = useTranslation();
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+  const { t, i18n } = useTranslation();
 
-   const hasOnlyPreorders =
+  const hasOnlyPreorders =
     basket.items.length > 0 && basket.items.every((item) => item.isPreorder);
   const hasOnlyStockItems =
     basket.items.length > 0 && basket.items.every((item) => !item.isPreorder);
   const hasMixedItems =
     basket.items.some((item) => item.isPreorder) &&
     basket.items.some((item) => !item.isPreorder);
+
+  const disablePreorderCheckbox =
+    hasOnlyPreorders ||
+    basket.items.some((item) => item.stockQuantity === 0 || item.isStoreClosed);
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
@@ -73,20 +77,16 @@ const Basket = observer(() => {
         }
       );
 
-        const data = await response.json();
+      const data = await response.json();
 
-       if (data.status === "error") {
-        const translatedMessage = t(data.message, {
-          ns: "cart",
-          defaultValue: data.message,
-        });
-        toast.error(`❌ ${translatedMessage}`);
-        return false;
+      if (data.status === "error") return false;
+
+      if (typeof data.isEnough === "boolean") {
+        return data.isEnough;
       }
-
-      return data.quantity >= quantity;
-    } catch (error) {
-      console.error("Ошибка при проверке наличия товара:", error);
+      return Number(data.quantity || 0) >= Number(quantity || 0);
+    } catch (e) {
+      console.error("Ошибка при проверке наличия товара:", e);
       return false;
     }
   };
@@ -119,7 +119,7 @@ const Basket = observer(() => {
           if (response.ok) {
             newQuantities[item.uniqueKey] = data.quantity;
           } else {
-            newQuantities[item.uniqueKey] = 0; 
+            newQuantities[item.uniqueKey] = 0;
           }
         } catch (error) {
           console.error("Ошибка при проверке наличия товара:", error);
@@ -131,7 +131,7 @@ const Basket = observer(() => {
     };
 
     fetchQuantities();
-  }, [basket.items]); 
+  }, [basket.items]);
 
   useEffect(() => {
     const storeClosed = basket.items.some((item) => item.isStoreClosed);
@@ -160,8 +160,19 @@ const Basket = observer(() => {
     );
 
     if (!isAvailable) {
-      toast.error(t("not enough stock", { ns: "basket" }));
-      return;
+      const hasStocks = basket.items.some(
+        (i) => !i.isPreorder && i.uniqueKey !== uniqueKey
+      );
+      if (hasStocks) {
+        toast.error(
+          `❌ ${t("you cannot add a pre-order to the cart with regular items", {
+            ns: "deviceItem",
+          })}`
+        );
+        return;
+      }
+      item.isPreorder = true;
+      setIsPreorder(true);
     }
 
     basket.updateItemCount(uniqueKey, newCount);
@@ -201,11 +212,11 @@ const Basket = observer(() => {
       return;
     }
 
-   const dataToSend = {
+    const dataToSend = {
       formData,
       paymentMethodId: paymentMethod.id,
       totalPrice: basket.getTotalPrice(),
-       language: i18n.language, 
+      language: i18n.language,
       orderDetails: basket.items.map((item, index) => ({
         translations: item.translations,
         name: item.name,
@@ -213,7 +224,7 @@ const Basket = observer(() => {
         count: item.count,
         deviceId: item.id,
         image: item.img,
-       selectedOptions: item.selectedOptions || {},
+        selectedOptions: item.selectedOptions || {},
         isPreorder: item.isPreorder || isPreorder,
         preferredTime:
           index === 0 && (item.isPreorder || isPreorder) ? preferredTime : null,
@@ -221,7 +232,7 @@ const Basket = observer(() => {
           index === 0 && (item.isPreorder || isPreorder) ? deliveryDate : null,
       })),
     };
-    
+
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/order/create`, {
         method: "POST",
@@ -234,7 +245,7 @@ const Basket = observer(() => {
 
       const data = await response.json();
 
-    if (response.ok) {
+      if (response.ok) {
         toast.success(t("order placed successfully", { ns: "basket" }));
         window.dispatchEvent(new Event("orderUpdated"));
         basket.clearItems();
@@ -250,7 +261,7 @@ const Basket = observer(() => {
     }
   };
 
-     const handleOptionChange = async (
+  const handleOptionChange = async (
     itemUniqueKey,
     optionName,
     selectedValue
@@ -305,13 +316,8 @@ const Basket = observer(() => {
 
     basket.updateSelectedOption(itemUniqueKey, optionName, updatedOption);
 
-    if (!isAvailable) {
-      toast.error(
-        `${t(
-          "product is out of stock, but has been added to the cart as a pre-order",
-          { ns: "basket" }
-        )}`
-      );
+    if (isThisPreorder) {
+      setIsPreorder(true);
     }
   };
 
@@ -563,8 +569,9 @@ const Basket = observer(() => {
                     <button
                       onClick={() => handleIncrement(item.uniqueKey)}
                       disabled={
+                        !item.isPreorder &&
                         basket.getItemCount(item.uniqueKey) >=
-                        (availableQuantities[item.uniqueKey] || 0)
+                          (availableQuantities[item.uniqueKey] || 0)
                       }
                     >
                       +
@@ -603,63 +610,8 @@ const Basket = observer(() => {
         })
       )}
 
-      {hasMixedItems && (
-        <div className={styles.warningBox}>
-          <p style={{ color: "red", fontWeight: "bold" }}>
-            ❗{" "}
-            {t("you cannot mix pre-orders and in-stock items in one order", {
-              ns: "basket",
-            })}
-          </p>
-        </div>
-      )}
-
       {basket.items.length > 0 && (
         <>
-          {(hasOnlyStockItems || hasOnlyPreorders) && !hasMixedItems && (
-            <Form.Group className={styles.preorderSection}>
-              <Form.Check
-                type="checkbox"
-                label={t("place a pre-order", { ns: "basket" })}
-                checked={isPreorder}
-                onChange={() => setIsPreorder(!isPreorder)}
-                className={styles.preorderCheckbox}
-                disabled={
-                  hasOnlyPreorders ||
-                  basket.items.some(
-                    (item) => item.stockQuantity === 0 || item.isStoreClosed
-                  )
-                }
-              />
-
-              {isPreorder && (
-                <>
-                  <Form.Label>
-                    {t("desired delivery datetime", { ns: "basket" })}
-                  </Form.Label>
-                  <Form.Control
-                    type="datetime-local"
-                    value={deliveryDate || ""}
-                    onChange={(e) => setDeliveryDate(e.target.value)}
-                    className={styles.dateInput}
-                    required
-                  />
-                  <Form.Label>
-                    {t("preferred delivery time comment", { ns: "basket" })}
-                  </Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={2}
-                    value={preferredTime}
-                    onChange={(e) => setPreferredTime(e.target.value)}
-                    className={styles.commentInput}
-                    required
-                  />
-                </>
-              )}
-            </Form.Group>
-          )}
-
           <h3 className={styles.totalDeliverPrice}>
             {t("delivery", { ns: "basket" })}: {deliveryCost.toFixed(2)}€
           </h3>
@@ -676,6 +628,18 @@ const Basket = observer(() => {
             totalPrice={basket.getTotalPrice()}
             onPaymentSuccess={handlePaymentSuccess}
             onDeliveryCostChange={setDeliveryCost}
+            preorder={{
+              isPreorder,
+              setIsPreorder,
+              hasOnlyPreorders,
+              hasOnlyStockItems,
+              hasMixedItems,
+              disablePreorderCheckbox,
+              deliveryDate,
+              setDeliveryDate,
+              preferredTime,
+              setPreferredTime,
+            }}
           />
         </Elements>
       )}
