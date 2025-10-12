@@ -6,7 +6,7 @@ const os = require("os");
 const path = require("path");
 const { t } = require("../utils/translations");
 const getDistanceFromWarehouse = require("../utils/distance");
-const generatePDFReceipt = require("../services/generatePDFReceipt");  // Local
+const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");  // Proda (PDFShift)
 const { supabase } = require("../config/supabaseClient");
 const uuid = require("uuid");
 
@@ -97,6 +97,13 @@ const downloadReceipt = async (req, res) => {
     };
 
     const receiptHTML = `
+    <!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Receipt</title>
+  </head>
+  <body>
       <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
 
         <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">kviitung DlyQ</h2>
@@ -434,6 +441,13 @@ const createOrder = async (req, res) => {
     const vatAmount = totalWithVAT - priceWithoutVAT;
 
     const receiptHTML = `
+    <!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Receipt</title>
+  </head>
+  <body>
       <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
 
         <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">Kviitung DlyQ</h2>
@@ -476,6 +490,8 @@ const createOrder = async (req, res) => {
           See dokument tõendab makset ja on automaatselt koostatud.
         </div>
       </div>
+      </body>
+</html>
     `;
  //Proda
     const subject = t("greetings", language);//Proda
