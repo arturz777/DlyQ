@@ -467,14 +467,6 @@ const createOrder = async (req, res) => {
       </div>
     `;
 
-    const publicDir = path.join(__dirname, "../public/static/receipts");
-if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });  // Прога
-const finalPath = path.join(publicDir, `receipt-${order.id}.pdf`);
-
-const pdfBuffer = await generatePDFShiftBuffer(receiptHTML);
-fs.writeFileSync(finalPath, pdfBuffer);
-
-
     const subject = t("greetings", language);
 
     await Promise.all([
