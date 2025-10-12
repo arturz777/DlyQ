@@ -6,7 +6,7 @@ const os = require("os");
 const path = require("path");
 const { t } = require("../utils/translations");
 const getDistanceFromWarehouse = require("../utils/distance");
-const generatePDFReceipt = require("../services/generatePDFReceipt");
+const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");
 const { supabase } = require("../config/supabaseClient");
 const uuid = require("uuid");
 
@@ -62,97 +62,85 @@ const downloadReceipt = async (req, res) => {
           const options =
             item.selectedOptions && Object.keys(item.selectedOptions).length > 0
               ? Object.entries(item.selectedOptions)
-                  .map(([k, v]) => `${k}: ${v}`)
+                  .map(([key, value]) => `${key}: ${value}`)
                   .join(", ")
               : "";
 
-          const qty = Number(item.count ?? item.quantity ?? 1) || 1;
-
-          const unitPrice =
-            Number(
-              typeof item.price === "string"
-                ? item.price.replace(/[^\d.,-]/g, "").replace(",", ".")
-                : item.price
-            ) || 0;
-
+          const qty = item.count ?? item.quantity ?? 1;
+          const unitPrice = Number(item.price) || 0;
           const lineTotal = unitPrice * qty;
 
           return `
-        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;">
-          <div style="flex:1; min-width:0;">
-            ${item.name}
-            ${
-              options &&
-              `<div style="font-size:0.85em; color:#777;">${options}</div>`
-            }
-          </div>
-          <div style="width:60px; text-align:center; white-space:nowrap;">× ${qty}</div>
-          <div style="white-space:nowrap;"><strong>${lineTotal.toFixed(
-            2
-          )} €</strong></div>
-        </div>
-      `;
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;">
+              <div style="flex:1; min-width:0;">
+                ${item.name}
+                ${options && `<div style="font-size:0.85em; color:#777;">${options}</div>`}
+              </div>
+              <div style="width:60px; text-align:center; white-space:nowrap;">× ${qty}</div>
+              <div style="white-space:nowrap;"><strong>${lineTotal.toFixed(2)} €</strong></div>
+            </div>
+          `;
         })
         .join("");
     };
 
     const receiptHTML = `
-      <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="UTF-8"><title>Receipt</title></head>
+        <body>
+          <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
+            <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">kviitung DlyQ</h2>
 
-        <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">kviitung DlyQ</h2>
+            <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
+              <div style="width:48%;">
+                <strong>Ostja:</strong><br>
+                ${formData.firstName || ""} ${formData.lastName || ""}<br>
+                ${formData.email || ""}<br>
+                ${formData.phone || ""}<br>
+                Адрес: ${formData.address || ""}, ${formData.apartment || ""}
+              </div>
+              <div style="width:48%; text-align:right;">
+                <strong>Müüja:</strong><br>
+                DLYQ OÜ<br>
+                Kviitungi number: #${order.id}<br>
+                Kuupäev: ${new Date(order.createdAt).toLocaleString("et-EE")}<br>
+                Tallinn, Eesti<br>
+                Registrikood: <strong>17268052</strong><br>
+                KMKR: <strong>EE102873957</strong><br>
+                info@dlyq.ee<br>
+                dlyq.ee
+              </div>
+            </div>
 
-        <div style="display:flex; justify-content:space-between; margin-bottom:25px; line-height:1.6; font-size:14px;">
-          <div style="width:48%;">
-            <strong>Ostja:</strong><br>
-            ${formData.firstName || ""} ${formData.lastName || ""}<br>
-            ${formData.email || ""}<br>
-            ${formData.phone || ""}<br>
-            Адрес: ${formData.address || ""}, ${formData.apartment || ""}
+            <div style="border-top:1px solid #ccc; padding-top:15px; margin-top:15px;">
+              ${generateSummaryItems(orderDetails)}
+            </div>
+
+            <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
+              <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
+              <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
+              <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
+              <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(2)} €</p>
+            </div>
+
+            <div style="margin-top:30px; font-size:0.85em; color:#666;">
+              See dokument tõendab makset ja on automaatselt koostatud.
+            </div>
           </div>
-          <div style="width:48%; text-align:right;">
-            <strong>Müüja:</strong><br>
-            DLYQ OÜ<br>
-            Kviitungi number: #${order.id}<br>
-            Kuupäev: ${new Date(order.createdAt).toLocaleString("et-EE")}<br>
-            Tallinn, Eesti<br>
-            Registrikood: <strong>17268052</strong><br>
-            KMKR: <strong>EE102873957</strong><br>
-            ${COMPANY.email}<br>
-            ${COMPANY.site}
-          </div>
-        </div>
-
-        <div style="border-top:1px solid #ccc; padding-top:15px; margin-top:15px;">
-          ${generateSummaryItems(orderDetails)}
-        </div>
-
-        <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
-          <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
-          <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
-          <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
-          <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(
-            2
-          )} €</p>
-        </div>
-
-        <div style="margin-top:30px; font-size:0.85em; color:#666;">
-          See dokument tõendab makset ja on automaatselt koostatud.
-        </div>
-      </div>
+        </body>
+      </html>
     `;
 
-    const tempDir = path.join(__dirname, "../temp");
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
-    const tempPath = path.join(tempDir, `receipt-${orderId}.pdf`);
-    await generatePDFReceipt(receiptHTML, tempPath);
+    // Генерим PDF в память
+    const buffer = await generatePDFShiftBuffer(receiptHTML);
 
-    res.download(tempPath, `dlyq-receipt-${orderId}.pdf`, (err) => {
-      fs.unlink(tempPath, () => {});
-      if (err) console.error("Ошибка отправки чека:", err);
-    });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="dlyq-receipt-${orderId}.pdf"`);
+    res.send(buffer);
   } catch (error) {
-    console.error("Ошибка генерации PDF-чека:", error);
-    res.status(500).json({ message: "Ошибка при скачивании чека" });
+    console.error("❌ Ошибка генерации PDF:", error);
+    res.status(500).json({ message: "Не удалось сгенерировать чек." });
   }
 };
 
