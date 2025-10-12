@@ -344,7 +344,7 @@ const createOrder = async (req, res) => {
     .join("");
 };
 
-    const receiptUrl = `${PUBLIC_URL}/static/receipts/receipt-${order.id}.pdf`;
+    const receiptUrl = `${PUBLIC_URL}/api/order/${order.id}/receipt?token=${downloadToken}`;
     order.receiptUrl = receiptUrl;
     await order.save();
 
@@ -468,23 +468,19 @@ const createOrder = async (req, res) => {
     `;
 
     const publicDir = path.join(__dirname, "../public/static/receipts");
-if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
+if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });  // Прога
 const finalPath = path.join(publicDir, `receipt-${order.id}.pdf`);
 
 const pdfBuffer = await generatePDFShiftBuffer(receiptHTML);
 fs.writeFileSync(finalPath, pdfBuffer);
 
+
     const subject = t("greetings", language);
 
     await Promise.all([
-      sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
-      sendEmail(email, subject, emailHTML, [
-        {
-          filename: "receipt.pdf",
-          path: finalPath,
-        },
-      ]),
-    ]);
+   sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
+   sendEmail(email, subject, emailHTML),
+ ]);
 
     res.status(201).json({ message: "Заказ успешно оформлен" });
   } catch (error) {
