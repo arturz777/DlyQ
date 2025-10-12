@@ -51,7 +51,9 @@ const LocationPicker = ({ setFormData }) => {
         longitude: e.latlng.lng,
       }));
       
-      fetch(` ${process.env.REACT_APP_API_URL}/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
+       fetch(
+        `${process.env.REACT_APP_API_URL}/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`
+      )
         .then((res) => res.json())
         .then((data) => {
           setFormData((prev) => ({
@@ -75,6 +77,7 @@ const PaymentForm = ({
   totalPrice,
   onPaymentSuccess,
   onDeliveryCostChange,
+  preorder,
 }) => {
   const { user } = useContext(Context);
   const [loading, setLoading] = useState(false);
@@ -90,6 +93,8 @@ const PaymentForm = ({
     phone: "",
     address: "",
     apartment: "",
+    floor: "",
+    entrance: "",
     comment: "",
     latitude: 59.437,
     longitude: 24.753,
@@ -103,7 +108,7 @@ const PaymentForm = ({
         longitude,
       }));
 
-      fetch(`https://dlyq-backend-staging.onrender.com/api/geo/reverse?lat=${latitude}&lon=${longitude}`)
+      fetch(`${process.env.REACT_APP_API_URL}/geo/reverse?lat=${latitude}&lon=${longitude}`)
         .then((res) => res.json())
         .then((data) => {
           setFormData((prev) => ({
@@ -128,7 +133,7 @@ const PaymentForm = ({
 
           try {
             const res = await fetch(
-              "https://ipinfo.io/json?token=e66bf7a246010e"
+              "https://ipinfo.io/json?token=e66bf7a246010e"   //<<<< нужно спрятать
             );
             const data = await res.json();
             const [lat, lon] = data.loc.split(",");
@@ -169,7 +174,9 @@ const PaymentForm = ({
     if (!formData.address) return;
 
     try {
-       const res = await fetch(` ${process.env.REACT_APP_API_URL}/geo/search?q=${formData.address}`);
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}/geo/search?q=${formData.address}`
+      );
       const data = await res.json();
 
       if (data.length > 0) {
@@ -188,8 +195,6 @@ const PaymentForm = ({
     }
   };
 
-  const [saveData, setSaveData] = useState(true);
-
   useEffect(() => {
     const loadUserData = async () => {
       if (user.isAuth) {
@@ -198,13 +203,15 @@ const PaymentForm = ({
           const savedData = localStorage.getItem("userFormData");
           let parsedData = savedData ? JSON.parse(savedData) : {};
 
-          setFormData((prev) => ({
+             setFormData((prev) => ({
             ...prev,
             firstName: profile.firstName || "",
             lastName: profile.lastName || "",
             email: profile.email || "",
             phone: profile.phone || "",
             apartment: parsedData.apartment || prev.apartment,
+            floor: parsedData.floor || prev.floor,
+            entrance: parsedData.entrance || prev.entrance,
             comment: parsedData.comment || prev.comment,
             address: parsedData.address || prev.address,
             latitude: parsedData.latitude || prev.latitude,
@@ -225,6 +232,7 @@ const PaymentForm = ({
               email: parsedData.email || prev.email,
               phone: parsedData.phone || prev.phone,
               apartment: parsedData.apartment || prev.apartment,
+              floor: parsedData.floor || prev.floor,
               comment: parsedData.comment || prev.comment,
               address: parsedData.address || prev.address,
               latitude: parsedData.latitude || prev.latitude,
@@ -239,6 +247,29 @@ const PaymentForm = ({
 
     loadUserData();
   }, [user.isAuth]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "userFormData",
+        JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          apartment: formData.apartment,
+          floor: formData.floor,
+          entrance: formData.entrance,
+          comment: formData.comment,
+          latitude: formData.latitude,
+          longitude: formData.longitude,
+        })
+      );
+    } catch (e) {
+      console.warn("Не удалось сохранить форму", e);
+    }
+  }, [formData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -255,12 +286,14 @@ const PaymentForm = ({
     setSaveData(e.target.checked);
   };
 
- const normalizePhone = (raw = "") => {
-  let p = String(raw).replace(/\u00A0/g, " ").replace(/[^\d+]/g, "");
-  if (p.startsWith("00")) p = "+" + p.slice(2);
-  p = p.replace(/^\++/, "+");
-  return p.trim();
-};
+const normalizePhone = (raw = "") => {
+    let p = String(raw)
+      .replace(/\u00A0/g, " ")
+      .replace(/[^\d+]/g, "");
+    if (p.startsWith("00")) p = "+" + p.slice(2);
+    p = p.replace(/^\++/, "+");
+    return p.trim();
+  };
 
 const handleSubmit = async (event) => {
   event.preventDefault();
@@ -273,13 +306,25 @@ const handleSubmit = async (event) => {
 
   setFormData(prev => ({ ...prev, phone: phoneNormalized }));
 
-  if (!formData.firstName?.trim()) { toast.error(t("first name is required", { ns: "paymentForm" })); return; }
-  if (!formData.email?.trim()) { toast.error(t("email is required", { ns: "paymentForm" })); return; }
+  if (!formData.firstName?.trim()) {
+      toast.error(t("first name is required", { ns: "paymentForm" }));
+      return;
+    }
+    if (!formData.email?.trim()) {
+      toast.error(t("email is required", { ns: "paymentForm" }));
+      return;
+    }
 
-  if (!stripe || !elements) { toast.error(t("payment initialization error", { ns: "paymentForm" })); return; }
+    if (!stripe || !elements) {
+      toast.error(t("payment initialization error", { ns: "paymentForm" }));
+      return;
+    }
 
-  const card = elements.getElement(CardNumberElement);
-  if (!card) { toast.error(t("card element not found", { ns: "paymentForm" })); return; }
+   const card = elements.getElement(CardNumberElement);
+    if (!card) {
+      toast.error(t("card element not found", { ns: "paymentForm" }));
+      return;
+    }
 
   setLoading(true);
 
@@ -313,15 +358,17 @@ const handleSubmit = async (event) => {
       }
     }
 
-    await onPaymentSuccess(paymentMethod, { ...formData, phone: phoneNormalized });
-
-  } catch (err) {
-    console.error(err);
-    toast.error(t("payment processing error", { ns: "paymentForm" }));
-  } finally {
-    setLoading(false);
-  }
-};
+    await onPaymentSuccess(paymentMethod, {
+        ...formData,
+        phone: phoneNormalized,
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error(t("payment processing error", { ns: "paymentForm" }));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Form
@@ -394,15 +441,12 @@ const handleSubmit = async (event) => {
 
       <Row className="mb-1">
         <Form.Group className="mb-1" controlId="address">
-          <Form.Label>{t("address", { ns: "paymentForm" })}</Form.Label>
           <div className="d-flex">
             <Form.Control
               type="text"
               name="address"
               value={formData.address}
-              onChange={(e) =>
-                setFormData({ ...formData, address: e.target.value })
-              }
+              onChange={handleChange}
               placeholder={t("enter address", { ns: "paymentForm" })}
               onFocus={(e) => e.target.select()}
             />
@@ -441,41 +485,99 @@ const handleSubmit = async (event) => {
           </MapContainer>
         </div>
 
-        <Col md={6}>
+        <Col md={6} className="mb-2">
           <Form.Group controlId="apartment">
-            <Form.Label>{t("apartment", { ns: "paymentForm" })}</Form.Label>
             <Form.Control
               type="text"
-              placeholder={t("enter apartment number", { ns: "paymentForm" })}
               name="apartment"
+              placeholder={t("enter apartment number", { ns: "paymentForm" })}
               value={formData.apartment}
               onChange={handleChange}
             />
           </Form.Group>
         </Col>
 
+        <Col md={6} className="mb-2">
+          <Form.Control
+            type="text"
+            name="floor"
+            placeholder={t("enter floor", { ns: "paymentForm" })}
+            value={formData.floor}
+            onChange={handleChange}
+          />
+        </Col>
+
+        <Col md={6} className="mb-2">
+          <Form.Control
+            type="text"
+            name="entrance"
+            placeholder={t("enter entrance", { ns: "paymentForm" })}
+            value={formData.entrance}
+            onChange={handleChange}
+          />
+        </Col>
+
         <Col md={6}>
           <Form.Group controlId="comment">
-            <Form.Label>{t("comment", { ns: "paymentForm" })}</Form.Label>
             <Form.Control
               as="textarea"
               rows={1}
-              placeholder={t("add comment", { ns: "paymentForm" })}
               name="comment"
+              placeholder={t("add comment", { ns: "paymentForm" })}
               value={formData.comment}
               onChange={handleChange}
             />
           </Form.Group>
         </Col>
       </Row>
-      <Form.Group className="mb-3">
-        <Form.Check
-          type="checkbox"
-          label={t("save address and comment", { ns: "paymentForm" })}
-          checked={saveData}
-          onChange={handleSaveDataChange}
-        />
-      </Form.Group>
+
+      {preorder &&
+        (preorder.hasOnlyStockItems || preorder.hasOnlyPreorders) &&
+        !preorder.hasMixedItems && (
+          <Form.Group className={styles.preorderSection}>
+            {(preorder.isPreorder || preorder.hasOnlyPreorders) && (
+              <div className={styles.preorderNote}>
+                {t("order processed as preorder", { ns: "basket" })}
+              </div>
+            )}
+
+            <Form.Check
+              type="checkbox"
+              label={t("place a pre-order", { ns: "basket" })}
+              checked={preorder.isPreorder}
+              onChange={() => preorder.setIsPreorder(!preorder.isPreorder)}
+              className={styles.preorderCheckbox}
+              disabled={preorder.disablePreorderCheckbox}
+            />
+
+            {preorder.isPreorder && (
+              <>
+                <Form.Label>
+                  {t("desired delivery datetime", { ns: "basket" })}
+                </Form.Label>
+                <Form.Control
+                  type="datetime-local"
+                  value={preorder.deliveryDate || ""}
+                  onChange={(e) => preorder.setDeliveryDate(e.target.value)}
+                  className={styles.dateInput}
+                  required
+                />
+                <Form.Label>
+                  {t("preferred delivery time comment", { ns: "basket" })}
+                </Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={2}
+                  value={preorder.preferredTime}
+                  onChange={(e) => preorder.setPreferredTime(e.target.value)}
+                  className={styles.commentInput}
+                  required
+                />
+              </>
+            )}
+          </Form.Group>
+        )}
+
       <h4 className="mb-1 text-center">
         {t("card details", { ns: "paymentForm" })}
       </h4>
