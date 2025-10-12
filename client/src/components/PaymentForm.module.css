@@ -34,3 +34,15 @@
   color: #777;
   cursor: not-allowed;
 }
+
+.preorderSection {
+  margin-top: 12px;
+}
+.preorderNote {
+  color: #c40000;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.preorderCheckbox {
+  margin-bottom: 8px;
+}
