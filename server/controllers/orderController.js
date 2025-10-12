@@ -1,4 +1,4 @@
- const sendEmail = require("../services/emailService");
+const sendEmail = require("../services/emailService");
 const { Order, Device, Translation, Courier } = require("../models/models");
 const { Op } = require("sequelize");
 const fs = require("fs");
@@ -6,7 +6,7 @@ const os = require("os");
 const path = require("path");
 const { t } = require("../utils/translations");
 const getDistanceFromWarehouse = require("../utils/distance");
-const generatePDFReceipt = require("../services/generatePDFReceipt");
+const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");  // Proda (PDFShift)
 const { supabase } = require("../config/supabaseClient");
 const uuid = require("uuid");
 
@@ -62,21 +62,21 @@ const downloadReceipt = async (req, res) => {
           const options =
             item.selectedOptions && Object.keys(item.selectedOptions).length > 0
               ? Object.entries(item.selectedOptions)
-                  .map(([k, v]) => `${k}: ${v}`)
+                  .map(([key, value]) => `${key}: ${value}`)
                   .join(", ")
               : "";
-
-          const qty = Number(item.count ?? item.quantity ?? 1) || 1;
-
-          const unitPrice =
-            Number(
-              typeof item.price === "string"
-                ? item.price.replace(/[^\d.,-]/g, "").replace(",", ".")
-                : item.price
-            ) || 0;
-
+// Proda
+          const qty = item.count ?? item.quantity ?? 1;
+          const unitPrice = Number(item.price) || 0;
           const lineTotal = unitPrice * qty;
-
+// Proda
+// Proda
+// Proda
+// Proda
+// Proda
+// Proda
+// Proda
+// Proda
           return `
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;">
           <div style="flex:1; min-width:0;">
@@ -97,6 +97,13 @@ const downloadReceipt = async (req, res) => {
     };
 
     const receiptHTML = `
+    <!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Receipt</title>
+  </head>
+  <body>
       <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
 
         <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">kviitung DlyQ</h2>
@@ -122,40 +129,45 @@ const downloadReceipt = async (req, res) => {
           </div>
         </div>
 
-        <div style="border-top:1px solid #ccc; padding-top:15px; margin-top:15px;">
-          ${generateSummaryItems(orderDetails)}
-        </div>
+            <div style="border-top:1px solid #ccc; padding-top:15px; margin-top:15px;">
+              ${generateSummaryItems(orderDetails)}
+            </div>
 
-        <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
-          <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
-          <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
-          <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
-          <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(
-            2
-          )} €</p>
-        </div>
+             <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
+              <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(
+                2
+              )} €</p>
+              <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
+              <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
+              <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(
+                2
+              )} €</p>
+            </div>
 
-        <div style="margin-top:30px; font-size:0.85em; color:#666;">
-          See dokument tõendab makset ja on automaatselt koostatud.
-        </div>
-      </div>
+            <div style="margin-top:30px; font-size:0.85em; color:#666;">
+              See dokument tõendab makset ja on automaatselt koostatud.
+            </div>
+          </div>
+        </body>
+      </html>
     `;
-
-    const tempDir = path.join(__dirname, "../temp");
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
-    const tempPath = path.join(tempDir, `receipt-${orderId}.pdf`);
-    await generatePDFReceipt(receiptHTML, tempPath);
-
-    res.download(tempPath, `dlyq-receipt-${orderId}.pdf`, (err) => {
-      fs.unlink(tempPath, () => {});
-      if (err) console.error("Ошибка отправки чека:", err);
-    });
-  } catch (error) {
-    console.error("Ошибка генерации PDF-чека:", error);
-    res.status(500).json({ message: "Ошибка при скачивании чека" });
+    // Proda
+    const buffer = await generatePDFShiftBuffer(receiptHTML); //Proda
+//Proda
+    res.setHeader("Content-Type", "application/pdf");  //proda
+    res.setHeader("Content-Disposition", `attachment; filename="dlyq-receipt-${orderId}.pdf"`); //Proda
+    res.send(buffer);  //Proda
+  } catch (error) {  //Proda
+    console.error("❌ Ошибка генерации PDF:", error);   //Proda
+    res.status(500).json({ message: "Не удалось сгенерировать чек." });   //Proda
   }
 };
-
+//Proda
+// Proda
+// Proda
+// Proda
+//Proda
+//Proda
 const createOrder = async (req, res) => {
   try {
     const {
@@ -335,28 +347,35 @@ const createOrder = async (req, res) => {
 
       const qty = Number(item.count ?? item.quantity ?? 1) || 1;
 
-      // цена может приходить строкой — аккуратно приводим к числу
-      const unitPrice = Number(
-        typeof item.price === "string" ? item.price.replace(/[^\d.,-]/g, "").replace(",", ".") : item.price
-      ) || 0;
+      const unitPrice =
+            Number(
+              typeof item.price === "string"
+                ? item.price.replace(/[^\d.,-]/g, "").replace(",", ".")
+                : item.price
+            ) || 0;
 
       const lineTotal = unitPrice * qty;
-
-      return `
+      
+        return `
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;">
           <div style="flex:1; min-width:0;">
             ${item.name}
-            ${options && `<div style="font-size:0.85em; color:#777;">${options}</div>`}
+            ${
+              options &&
+              `<div style="font-size:0.85em; color:#777;">${options}</div>`
+            }
           </div>
           <div style="width:60px; text-align:center; white-space:nowrap;">× ${qty}</div>
-          <div style="white-space:nowrap;"><strong>${lineTotal.toFixed(2)} €</strong></div>
+          <div style="white-space:nowrap;"><strong>${lineTotal.toFixed(
+            2
+          )} €</strong></div>
         </div>
       `;
-    })
-    .join("");
-};
+        })
+        .join("");
+    };
 
-    const receiptUrl = `${PUBLIC_URL}/static/receipts/receipt-${order.id}.pdf`;
+    const receiptUrl = `${PUBLIC_URL}/api/order/${order.id}/receipt?token=${downloadToken}`; //Proga
     order.receiptUrl = receiptUrl;
     await order.save();
 
@@ -417,14 +436,32 @@ const createOrder = async (req, res) => {
           ).toFixed(2)} €</strong></p>
         </div>
 
-        <hr style="margin-top:30px;">
-        <p style="font-size:0.85em; color:#666; line-height:1.6;">
-          💼 DLYQ OÜ<br>
-          ${t("download_invoice", language)} ${COMPANY.email}
-        </p>
-        <p style="margin-top:20px;">
-          <a href="${receiptUrl}" target="_blank">${t("contacts", language)}</a>
-        </p>
+      <hr style="margin-top:30px;">
+
+<p style="font-size:0.9em; color:#666; line-height:1.6; margin:0;">
+   DLYQ OÜ
+</p>
+
+<p style="font-size:0.9em; color:#666; line-height:1.6; margin:6px 0 0;">
+  <a href="${receiptUrl}" target="_blank" style="color:#3366cc; text-decoration:none;">
+    ${t("download_invoice", language)} (PDF)
+  </a>
+</p>
+
+<p style="font-size:0.9em; color:#666; line-height:1.6; margin:6px 0 0;">
+  ${t("contacts", language)}:
+  <a href="mailto:${
+    COMPANY.email
+  }" style="color:#3366cc; text-decoration:none;">
+    ${COMPANY.email}
+  </a>
+  &nbsp;•&nbsp;
+  <a href="https://${
+    COMPANY.site
+  }" target="_blank" style="color:#3366cc; text-decoration:none;">
+    ${COMPANY.site}
+  </a>
+</p>
       </div>
     `;
 
@@ -435,6 +472,13 @@ const createOrder = async (req, res) => {
     const vatAmount = totalWithVAT - priceWithoutVAT;
 
     const receiptHTML = `
+    <!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Receipt</title>
+  </head>
+  <body>
       <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; font-size:14px; padding:20px; border:1px solid #ccc; border-radius:8px; background:#fff;">
 
         <h2 style="text-align:center; margin-bottom:30px; font-size:20px;">Kviitung DlyQ</h2>
@@ -477,28 +521,30 @@ const createOrder = async (req, res) => {
           See dokument tõendab makset ja on automaatselt koostatud.
         </div>
       </div>
+      </body>
+</html>
     `;
-
-    const tempPath = path.join(os.tmpdir(), `receipt-${order.id}.pdf`);
-    await generatePDFReceipt(receiptHTML, tempPath);
-
-    const publicDir = path.join(__dirname, "../public/static/receipts");
-    if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
-    const finalPath = path.join(publicDir, `receipt-${order.id}.pdf`);
-    fs.renameSync(tempPath, finalPath);
-
-    const subject = t("greetings", language);
-
+ //Proda
+    const subject = t("greetings", language);//Proda
+//Proda
+    //Proda
+    //Proda
+    //Proda
+    //Proda
+    //Proda
+    //Proda
+    //Proda
+    //Proda
     await Promise.all([
-      sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
-      sendEmail(email, subject, emailHTML, [
-        {
-          filename: "receipt.pdf",
-          path: finalPath,
-        },
-      ]),
-    ]);
-
+   sendEmail("ms.margo07@mail.ru", "📥 Новый заказ", emailHTML),
+   sendEmail(email, subject, emailHTML),
+ ]);
+ //Proda
+    //Proda
+    //Proda
+    //Proda
+    //Proda
+  
     res.status(201).json({ message: "Заказ успешно оформлен" });
   } catch (error) {
     res
