@@ -133,11 +133,15 @@ const downloadReceipt = async (req, res) => {
               ${generateSummaryItems(orderDetails)}
             </div>
 
-            <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
-              <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(2)} €</p>
+             <div style="border-top:1px solid #ccc; margin-top:20px; padding-top:10px; text-align:right;">
+              <p><strong>Tarne maksumus:</strong> ${deliveryPrice.toFixed(
+                2
+              )} €</p>
               <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
               <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
-              <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(2)} €</p>
+              <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(
+                2
+              )} €</p>
             </div>
 
             <div style="margin-top:30px; font-size:0.85em; color:#666;">
@@ -147,10 +151,9 @@ const downloadReceipt = async (req, res) => {
         </body>
       </html>
     `;
-
     // Proda
     const buffer = await generatePDFShiftBuffer(receiptHTML); //Proda
-
+//Proda
     res.setHeader("Content-Type", "application/pdf");  //proda
     res.setHeader("Content-Disposition", `attachment; filename="dlyq-receipt-${orderId}.pdf"`); //Proda
     res.send(buffer);  //Proda
@@ -163,6 +166,8 @@ const downloadReceipt = async (req, res) => {
 // Proda
 // Proda
 // Proda
+//Proda
+//Proda
 const createOrder = async (req, res) => {
   try {
     const {
@@ -342,25 +347,33 @@ const createOrder = async (req, res) => {
 
       const qty = Number(item.count ?? item.quantity ?? 1) || 1;
 
-      const unitPrice = Number(
-        typeof item.price === "string" ? item.price.replace(/[^\d.,-]/g, "").replace(",", ".") : item.price
-      ) || 0;
+      const unitPrice =
+            Number(
+              typeof item.price === "string"
+                ? item.price.replace(/[^\d.,-]/g, "").replace(",", ".")
+                : item.price
+            ) || 0;
 
       const lineTotal = unitPrice * qty;
-
-      return `
+      
+        return `
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;">
           <div style="flex:1; min-width:0;">
             ${item.name}
-            ${options && `<div style="font-size:0.85em; color:#777;">${options}</div>`}
+            ${
+              options &&
+              `<div style="font-size:0.85em; color:#777;">${options}</div>`
+            }
           </div>
           <div style="width:60px; text-align:center; white-space:nowrap;">× ${qty}</div>
-          <div style="white-space:nowrap;"><strong>${lineTotal.toFixed(2)} €</strong></div>
+          <div style="white-space:nowrap;"><strong>${lineTotal.toFixed(
+            2
+          )} €</strong></div>
         </div>
       `;
-    })
-    .join("");
-};
+        })
+        .join("");
+    };
 
     const receiptUrl = `${PUBLIC_URL}/api/order/${order.id}/receipt?token=${downloadToken}`; //Proga
     order.receiptUrl = receiptUrl;
@@ -423,14 +436,32 @@ const createOrder = async (req, res) => {
           ).toFixed(2)} €</strong></p>
         </div>
 
-        <hr style="margin-top:30px;">
-        <p style="font-size:0.85em; color:#666; line-height:1.6;">
-          💼 DLYQ OÜ<br>
-          ${t("download_invoice", language)} ${COMPANY.email}
-        </p>
-        <p style="margin-top:20px;">
-          <a href="${receiptUrl}" target="_blank">${t("contacts", language)}</a>
-        </p>
+      <hr style="margin-top:30px;">
+
+<p style="font-size:0.9em; color:#666; line-height:1.6; margin:0;">
+   DLYQ OÜ
+</p>
+
+<p style="font-size:0.9em; color:#666; line-height:1.6; margin:6px 0 0;">
+  <a href="${receiptUrl}" target="_blank" style="color:#3366cc; text-decoration:none;">
+    ${t("download_invoice", language)} (PDF)
+  </a>
+</p>
+
+<p style="font-size:0.9em; color:#666; line-height:1.6; margin:6px 0 0;">
+  ${t("contacts", language)}:
+  <a href="mailto:${
+    COMPANY.email
+  }" style="color:#3366cc; text-decoration:none;">
+    ${COMPANY.email}
+  </a>
+  &nbsp;•&nbsp;
+  <a href="https://${
+    COMPANY.site
+  }" target="_blank" style="color:#3366cc; text-decoration:none;">
+    ${COMPANY.site}
+  </a>
+</p>
       </div>
     `;
 
