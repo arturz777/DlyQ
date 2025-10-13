@@ -5,9 +5,9 @@
 	"geolocation disabled": "⚠️ Геолокация отключена, используем IP-геолокацию...",
 	"ip geolocation error": "Ошибка получения IP-геолокации",
 	"payment initialization error": "Ошибка инициализации платежной системы. Попробуйте позже.",
-  "card element not found": "Ошибка: элемент карты не найден.",
-  "address found": "📍 Адрес найден!",
-  "address search error": "❌ Ошибка при поиске адреса.",
+    "card element not found": "Ошибка: элемент карты не найден.",
+    "address found": "📍 Адрес найден!",
+    "address search error": "❌ Ошибка при поиске адреса.",
 	
 	"map location updated": "📍 Местоположение обновлено",
 	"location not found": "Местоположение не найдено",
@@ -25,6 +25,10 @@
 	"enter phone": "Введите телефон",
 	"address": "Адрес",
 	"enter address": "Введите адрес",
+	 "floor": "Этаж",
+  "enter floor": "Введите этаж",
+   "entrance": "Подъезд",
+  "enter entrance": "Введите подъезд",
   
 	"apartment": "Номер квартиры",
 	"enter apartment number": "Введите номер квартиры",
@@ -59,3 +63,5 @@
 	"payment declined": "❌ Платеж отклонен",
 	"payment requires authentication": "⚠️ Платеж требует аутентификации"
   }
+  
+  
