@@ -27,6 +27,10 @@
 	"enter phone": "Enter your phone number",
 	"address": "Address",
 	"enter address": "Enter address",
+	"floor": "Floor",
+  "enter floor": "Enter floor",
+  "entrance": "Entrance",
+  "enter entrance": "Enter entrance",
   
 	"apartment": "Apartment Number",
 	"enter apartment number": "Enter apartment number",
@@ -58,11 +62,8 @@
 	"payment requires authentication": "⚠️ Payment requires authentication",
 
 	"first name is required": "Please enter your first name",
-        "email is required": "Please enter your email address",
-        "phone is required": "Please enter your phone number",
-
-
-  
+    "email is required": "Please enter your email address",
+    "phone is required": "Please enter your phone number",
 	
 	"searching address": "🔍 Searching for address...",
 	"error searching address": "Error while searching for address",
@@ -83,4 +84,3 @@
 	"estimated delivery time": "Estimated Delivery Time",
 	"estimated preparation time": "Estimated Preparation Time"
   }
-  
