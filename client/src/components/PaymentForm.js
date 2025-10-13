@@ -52,13 +52,14 @@ const LocationPicker = ({ setFormData }) => {
       }));
       
        fetch(
-        `${process.env.REACT_APP_API_URL}/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`
+        `${process.env.REACT_APP_API_URL}geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`
       )
-        .then((res) => res.json())
+         .then((res) => res.json())
         .then((data) => {
           setFormData((prev) => ({
             ...prev,
             address:
+              data.short_display_name ||
               data.display_name ||
               t("address not found", { ns: "paymentForm" }),
           }));
@@ -85,6 +86,22 @@ const PaymentForm = ({
   const elements = useElements();
   const [deliveryCost, setDeliveryCost] = useState(0);
   const { t } = useTranslation("paymentForm");
+  const [suggestions, setSuggestions] = useState([]);
+  const [addrFetchTimer, setAddrFetchTimer] = useState(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  const applyPlace = (place) => {
+    const short = place.short_display_name || place.display_name;
+    const lat = parseFloat(place.lat);
+    const lon = parseFloat(place.lon);
+    setFormData((prev) => ({
+      ...prev,
+      address: short || prev.address,
+      latitude: isFinite(lat) ? lat : prev.latitude,
+      longitude: isFinite(lon) ? lon : prev.longitude,
+    }));
+    toast.success(t("address found", { ns: "paymentForm" }));
+  };
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -101,6 +118,30 @@ const PaymentForm = ({
   });
 
   useEffect(() => {
+    const q = (formData.address || "").trim();
+    if (q.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+      const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `${
+            process.env.REACT_APP_API_URL
+          }/geo/search?q=${encodeURIComponent(q)}`
+        );
+        const data = await res.json();
+        setSuggestions(Array.isArray(data) ? data.slice(0, 5) : []);
+      } catch {
+        setSuggestions([]);
+      }
+    }, 250);
+
+      return () => clearTimeout(timer);
+  }, [formData.address]);
+
+   useEffect(() => {
     const updateLocation = (latitude, longitude) => {
       setFormData((prev) => ({
         ...prev,
@@ -108,20 +149,27 @@ const PaymentForm = ({
         longitude,
       }));
 
-      fetch(`${process.env.REACT_APP_API_URL}/geo/reverse?lat=${latitude}&lon=${longitude}`)
+      fetch(
+        `${process.env.REACT_APP_API_URL}geo/reverse?lat=${latitude}&lon=${longitude}`
+      )
         .then((res) => res.json())
         .then((data) => {
           setFormData((prev) => ({
             ...prev,
             address:
-              data.display_name ||
-              t("address not found", { ns: "paymentForm" }),
+              data.short_display_name || data.display_name || prev.address,
           }));
         })
         .catch((err) =>
           console.error(t("fetching address error", { ns: "paymentForm" }), err)
         );
     };
+
+    try {
+      const saved = JSON.parse(localStorage.getItem("userFormData") || "null");
+      if (saved && (saved.address || (saved.latitude && saved.longitude)))
+        return;
+    } catch {}
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -131,13 +179,12 @@ const PaymentForm = ({
         async (error) => {
           console.warn(t("geolocation disabled", { ns: "paymentForm" }));
 
-          try {
+        try {
             const res = await fetch(
-              "https://ipinfo.io/json?token=e66bf7a246010e"   //<<<< нужно спрятать
+              `https://ipinfo.io/json?token=${process.env.REACT_APP_IPINFO_TOKEN}`
             );
             const data = await res.json();
             const [lat, lon] = data.loc.split(",");
-
             updateLocation(parseFloat(lat), parseFloat(lon));
           } catch (err) {
             console.error(
@@ -171,84 +218,110 @@ const PaymentForm = ({
   }, [totalPrice, formData.latitude, formData.longitude, onDeliveryCostChange]);
 
   const searchAddress = async () => {
-    if (!formData.address) return;
+    const q = (formData.address || "").trim();
+    if (!q) return;
 
     try {
       const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/geo/search?q=${formData.address}`
+        `${process.env.REACT_APP_API_URL}geo/search?q=${encodeURIComponent(
+          formData.address
+        )}`
       );
+      if (!res.ok) throw new Error("search failed");
       const data = await res.json();
 
-      if (data.length > 0) {
-        const location = data[0];
+      if (Array.isArray(data) && data.length > 0) {
+        const place = data[0];
+        const short = place.short_display_name || place.display_name || q;
+
         setFormData((prev) => ({
           ...prev,
-          latitude: parseFloat(location.lat),
-          longitude: parseFloat(location.lon),
+          address: short, // подставляем сокращённый адрес
+          latitude: parseFloat(place.lat) || prev.latitude,
+          longitude: parseFloat(place.lon) || prev.longitude,
         }));
+
         toast.success(t("address found", { ns: "paymentForm" }));
       } else {
         toast.error(t("address not found", { ns: "paymentForm" }));
       }
     } catch (error) {
+      console.error("Address search error:", error);
       toast.error(t("address search error", { ns: "paymentForm" }));
     }
   };
 
   useEffect(() => {
     const loadUserData = async () => {
-      if (user.isAuth) {
-        try {
-          const profile = await fetchProfile();
-          const savedData = localStorage.getItem("userFormData");
-          let parsedData = savedData ? JSON.parse(savedData) : {};
+      try {
+        let parsedData = {};
+        const saved = localStorage.getItem("userFormData");
+        if (saved) parsedData = JSON.parse(saved);
 
-             setFormData((prev) => ({
+        if (user.isAuth) {
+          const profile = await fetchProfile();
+          setFormData((prev) => ({
             ...prev,
             firstName: profile.firstName || "",
             lastName: profile.lastName || "",
             email: profile.email || "",
             phone: profile.phone || "",
-            apartment: parsedData.apartment || prev.apartment,
-            floor: parsedData.floor || prev.floor,
-            entrance: parsedData.entrance || prev.entrance,
-            comment: parsedData.comment || prev.comment,
-            address: parsedData.address || prev.address,
-            latitude: parsedData.latitude || prev.latitude,
-            longitude: parsedData.longitude || prev.longitude,
+            apartment:
+              parsedData.apartment != null
+                ? String(parsedData.apartment)
+                : prev.apartment,
+            floor:
+              parsedData.floor != null ? String(parsedData.floor) : prev.floor,
+            entrance:
+              parsedData.entrance != null
+                ? String(parsedData.entrance)
+                : prev.entrance,
+            comment:
+              parsedData.comment != null
+                ? String(parsedData.comment)
+                : prev.comment,
+            address: parsedData.address ?? prev.address,
+            latitude: parsedData.latitude ?? prev.latitude,
+            longitude: parsedData.longitude ?? prev.longitude,
           }));
-        } catch (error) {
-          console.error("Ошибка загрузки профиля", error);
+        } else {
+          setFormData((prev) => ({
+            ...prev,
+            firstName: parsedData.firstName ?? prev.firstName,
+            lastName: parsedData.lastName ?? prev.lastName,
+            email: parsedData.email ?? prev.email,
+            phone: parsedData.phone ?? prev.phone,
+            apartment:
+              parsedData.apartment != null
+                ? String(parsedData.apartment)
+                : prev.apartment,
+            floor:
+              parsedData.floor != null ? String(parsedData.floor) : prev.floor,
+            entrance:
+              parsedData.entrance != null
+                ? String(parsedData.entrance)
+                : prev.entrance,
+            comment:
+              parsedData.comment != null
+                ? String(parsedData.comment)
+                : prev.comment,
+            address: parsedData.address ?? prev.address,
+            latitude: parsedData.latitude ?? prev.latitude,
+            longitude: parsedData.longitude ?? prev.longitude,
+          }));
         }
-      } else {
-        const savedData = localStorage.getItem("userFormData");
-        if (savedData) {
-          try {
-            const parsedData = JSON.parse(savedData);
-            setFormData((prev) => ({
-              ...prev,
-              firstName: parsedData.firstName || prev.firstName,
-              lastName: parsedData.lastName || prev.lastName,
-              email: parsedData.email || prev.email,
-              phone: parsedData.phone || prev.phone,
-              apartment: parsedData.apartment || prev.apartment,
-              floor: parsedData.floor || prev.floor,
-              comment: parsedData.comment || prev.comment,
-              address: parsedData.address || prev.address,
-              latitude: parsedData.latitude || prev.latitude,
-              longitude: parsedData.longitude || prev.longitude,
-            }));
-          } catch (error) {
-            console.error("Ошибка парсинга данных:", error);
-          }
-        }
+      } catch (e) {
+        console.error("Ошибка загрузки/парсинга userFormData", e);
+      } finally {
+        setHydrated(true);
       }
     };
 
     loadUserData();
   }, [user.isAuth]);
 
-  useEffect(() => {
+ useEffect(() => {
+    if (!hydrated) return;
     try {
       localStorage.setItem(
         "userFormData",
@@ -258,10 +331,10 @@ const PaymentForm = ({
           email: formData.email,
           phone: formData.phone,
           address: formData.address,
-          apartment: formData.apartment,
-          floor: formData.floor,
-          entrance: formData.entrance,
-          comment: formData.comment,
+          apartment: String(formData.apartment ?? ""),
+          floor: String(formData.floor ?? ""),
+          entrance: String(formData.entrance ?? ""),
+          comment: String(formData.comment ?? ""),
           latitude: formData.latitude,
           longitude: formData.longitude,
         })
@@ -269,21 +342,11 @@ const PaymentForm = ({
     } catch (e) {
       console.warn("Не удалось сохранить форму", e);
     }
-  }, [formData]);
+  }, [formData, hydrated]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => {
-      const updatedData = { ...prev, [name]: value };
-
-      localStorage.setItem("userFormData", JSON.stringify(updatedData));
-
-      return updatedData;
-    });
-  };
-
-  const handleSaveDataChange = (e) => {
-    setSaveData(e.target.checked);
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
 const normalizePhone = (raw = "") => {
@@ -370,7 +433,7 @@ const handleSubmit = async (event) => {
     }
   };
 
-  return (
+return (
     <Form
       onSubmit={handleSubmit}
       className={styles.form}
@@ -441,7 +504,7 @@ const handleSubmit = async (event) => {
 
       <Row className="mb-1">
         <Form.Group className="mb-1" controlId="address">
-          <div className="d-flex">
+          <div className="d-flex position-relative">
             <Form.Control
               type="text"
               name="address"
@@ -449,10 +512,64 @@ const handleSubmit = async (event) => {
               onChange={handleChange}
               placeholder={t("enter address", { ns: "paymentForm" })}
               onFocus={(e) => e.target.select()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  searchAddress();
+                }
+                if (e.key === "Escape") {
+                  setSuggestions([]);
+                }
+              }}
+              onBlur={() => setTimeout(() => setSuggestions([]), 100)}
+              autoComplete="off"
             />
-            <Button onClick={searchAddress} variant="primary" className="ms-2">
+
+            <Button
+              type="button"
+              onClick={searchAddress}
+              variant="primary"
+              className="ms-2"
+            >
               🔍
             </Button>
+
+            {suggestions.length > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  zIndex: 1000,
+                  background: "#fff",
+                  border: "1px solid #ddd",
+                  borderRadius: 6,
+                  marginTop: 4,
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
+                  maxHeight: 220,
+                  overflowY: "auto",
+                }}
+              >
+                {suggestions.map((s, i) => (
+                  <div
+                    key={i}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      applyPlace(s);
+                      setSuggestions([]);
+                    }}
+                    style={{
+                      padding: "10px 12px",
+                      cursor: "pointer",
+                      borderBottom: "1px solid #f3f3f3",
+                    }}
+                  >
+                    {s.short_display_name || s.display_name}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </Form.Group>
 
