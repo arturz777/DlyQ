@@ -18,6 +18,21 @@ const { Op, fn, col, literal } = require("sequelize");
 const fs = require("fs");
 const { supabase } = require("../config/supabaseClient");
 
+const mustEnv = (n) => {
+  const v = (process.env[n] ?? '').trim();
+  if (!v) throw new Error(`${n} is not set`);
+  return v;
+};
+
+const SUPABASE_URL = mustEnv('SUPABASE_URL');
+
+const SUPABASE_IMAGE_BUCKET =
+  process.env.SUPABASE_IMAGE_BUCKET || process.env.SUPABASE_BUCKET || 'images';
+
+const PUBLIC_BUCKET_BASE =
+  `${SUPABASE_URL.replace(/\/+$/, '')}/storage/v1/object/public/${SUPABASE_IMAGE_BUCKET}`;
+
+
 const getVal = (x) =>
   x && typeof x === "object" && "value" in x ? x.value : x;
 
@@ -91,7 +106,7 @@ class DeviceController {
         throw new Error("Ошибка загрузки изображения в Supabase Storage");
       }
 
-      const publicURL = `${SUPABASE_URL}/storage/v1/object/public/images/${fileName}`;
+      const publicURL = `${PUBLIC_BUCKET_BASE}/${fileName}`;
 
       let thumbnails = [];
       if (req.files && req.files.thumbnails) {
@@ -114,14 +129,14 @@ class DeviceController {
               return null;
             }
 
-            return `${SUPABASE_URL}/storage/v1/object/public/images/${thumbFileName}`;
+            return `${PUBLIC_BUCKET_BASE}/${thumbFileName}`;
           })
         );
 
         thumbnails = thumbnails.filter((url) => url !== null);
       }
 
-    let parsedOptions = Array.isArray(options)
+      let parsedOptions = Array.isArray(options)
         ? options
         : options
         ? JSON.parse(options)
@@ -780,8 +795,8 @@ class DeviceController {
         .json({ message: "Ошибка при получении устройства" });
     }
   }
-  
-   async update(req, res, next) {
+
+  async update(req, res, next) {
     try {
       const { id } = req.params;
       let {
@@ -903,7 +918,7 @@ class DeviceController {
           });
         }
 
-        fileName = `${SUPABASE_URL}/storage/v1/object/public/images/${newFileName}`;
+        fileName = `${PUBLIC_BUCKET_BASE}/${newFileName}`;
       }
 
       if (existingImages.length === 0) {
@@ -941,7 +956,7 @@ class DeviceController {
               return null;
             }
 
-            return `${SUPABASE_URL}/storage/v1/object/public/images/${thumbFileName}`;
+           return `${PUBLIC_BUCKET_BASE}/${thumbFileName}`;
           })
         );
 
@@ -1263,8 +1278,8 @@ class DeviceController {
       next(ApiError.badRequest(error.message));
     }
   }
-  
-   async getNewDevices(req, res) {
+
+  async getNewDevices(req, res) {
     try {
       let { limit = 50 } = req.query;
       limit = parseInt(limit, 10) || 50;
@@ -1340,7 +1355,7 @@ class DeviceController {
   async getDiscountedDevices(req, res) {
     try {
       let { limit } = req.query;
-     limit = limit ? parseInt(limit, 10) : 50;
+      limit = limit ? parseInt(limit, 10) : 50;
 
       const onlyVisible = req.query.onlyVisible !== "false";
       const where = { discount: true };
@@ -1364,7 +1379,7 @@ class DeviceController {
   async getRecommendedDevices(req, res) {
     try {
       let { limit } = req.query;
-     limit = limit ? parseInt(limit, 10) : 50;
+      limit = limit ? parseInt(limit, 10) : 50;
 
       const onlyVisible = req.query.onlyVisible !== "false";
       const where = { recommended: true };
