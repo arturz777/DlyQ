@@ -356,7 +356,7 @@ const createOrder = async (req, res) => {
 
       const lineTotal = unitPrice * qty;
       
-        return `
+       return `
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;">
           <div style="flex:1; min-width:0;">
             ${item.name}
@@ -375,7 +375,7 @@ const createOrder = async (req, res) => {
         .join("");
     };
 
-    const receiptUrl = `${PUBLIC_URL}/api/order/${order.id}/receipt?token=${downloadToken}`; //Proga
+    const receiptUrl = `${PUBLIC_URL}static/receipts/receipt-${order.id}.pdf`; //Local
     order.receiptUrl = receiptUrl;
     await order.save();
 
@@ -436,30 +436,30 @@ const createOrder = async (req, res) => {
           ).toFixed(2)} €</strong></p>
         </div>
 
-      <hr style="margin-top:30px;">
+        <hr style="margin-top:30px;">
 
 <p style="font-size:0.9em; color:#666; line-height:1.6; margin:0;">
    DLYQ OÜ
 </p>
 
 <p style="font-size:0.9em; color:#666; line-height:1.6; margin:6px 0 0;">
-  <a href="${receiptUrl}" target="_blank" style="color:#3366cc; text-decoration:none;">
-    ${t("download_invoice", language)} (PDF)
-  </a>
-</p>
-
-<p style="font-size:0.9em; color:#666; line-height:1.6; margin:6px 0 0;">
-  ${t("contacts", language)}:
+  ${t("contacts", language)}
   <a href="mailto:${
     COMPANY.email
   }" style="color:#3366cc; text-decoration:none;">
     ${COMPANY.email}
   </a>
   &nbsp;•&nbsp;
-  <a href="https://${
+  <a href="www.${
     COMPANY.site
   }" target="_blank" style="color:#3366cc; text-decoration:none;">
     ${COMPANY.site}
+  </a>
+</p>
+
+<p style="font-size:0.9em; color:#666; line-height:1.6; margin:6px 0 0;">
+  <a href="${receiptUrl}" target="_blank" style="color:#3366cc; text-decoration:none;">
+    ${t("download_invoice", language)}
   </a>
 </p>
       </div>
@@ -472,7 +472,7 @@ const createOrder = async (req, res) => {
     const vatAmount = totalWithVAT - priceWithoutVAT;
 
     const receiptHTML = `
-    <!DOCTYPE html>
+  <!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8" />
