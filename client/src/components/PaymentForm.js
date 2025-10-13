@@ -129,7 +129,7 @@ const PaymentForm = ({
         const res = await fetch(
           `${
             process.env.REACT_APP_API_URL
-          }/geo/search?q=${encodeURIComponent(q)}`
+          }geo/search?q=${encodeURIComponent(q)}`
         );
         const data = await res.json();
         setSuggestions(Array.isArray(data) ? data.slice(0, 5) : []);
@@ -236,7 +236,7 @@ const PaymentForm = ({
 
         setFormData((prev) => ({
           ...prev,
-          address: short, // подставляем сокращённый адрес
+          address: short,
           latitude: parseFloat(place.lat) || prev.latitude,
           longitude: parseFloat(place.lon) || prev.longitude,
         }));
