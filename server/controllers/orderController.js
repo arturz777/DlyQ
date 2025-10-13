@@ -375,7 +375,7 @@ const createOrder = async (req, res) => {
         .join("");
     };
 
-    const receiptUrl = `${PUBLIC_URL}static/receipts/receipt-${order.id}.pdf`; //Local
+    const receiptUrl = `${PUBLIC_URL}/static/receipts/receipt-${order.id}.pdf`; //Local
     order.receiptUrl = receiptUrl;
     await order.save();
 
