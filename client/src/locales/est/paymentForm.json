@@ -25,6 +25,10 @@
 	"enter phone": "Sisestage oma telefoninumber",
 	"address": "Aadress",
 	"enter address": "Sisestage aadress",
+	"floor": "Korrus",
+  "enter floor": "Sisestage korrus",
+  "entrance": "Trepikoda",
+  "enter entrance": "Sisestage trepikoda",
   
 	"apartment": "Korteri number",
 	"enter apartment number": "Sisestage korteri number",
@@ -56,9 +60,9 @@
 	"payment requires authentication": "⚠️ Makse nõuab autentimist",
 
 	"first name is required": "Palun sisestage eesnimi",
-       "email is required": "Palun sisestage e-posti aadress",
-       "phone is required": "Palun sisestage telefoninumber",
-	
+    "email is required": "Palun sisestage e-posti aadress",
+    "phone is required": "Palun sisestage telefoninumber",
+
 	"searching address": "🔍 Otsitakse aadressi...",
 	"error searching address": "Aadressi otsimisel ilmnes viga",
   
@@ -78,3 +82,5 @@
 	"estimated delivery time": "Eeldatav tarneaeg",
 	"estimated preparation time": "Eeldatav valmistamisaeg"
   }
+  
+  
