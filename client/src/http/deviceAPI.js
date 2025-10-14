@@ -2,6 +2,18 @@ import { $authHost, $host } from "./index";
 import jwt_decode from "jwt-decode";
 
 const CACHE_PREFIX = "api_cache_v1:";
+
+export const clearApiCache = (prefix = "") => {
+  try {
+    const keys = Object.keys(localStorage);
+    for (const k of keys) {
+      if (k.startsWith(CACHE_PREFIX + prefix)) {
+        localStorage.removeItem(k);
+      }
+    }
+  } catch {}
+};
+
 const putCache = (k, v, ttlMs) => {
   try {
     localStorage.setItem(
@@ -45,7 +57,7 @@ export const fetchNewDevices = async (limit = 50) => {
       return data.rows || [];
     },
     { ttlMs: 60 * 60 * 1000 }
-  ); 
+  );
 };
 
 export const fetchDiscountedDevices = async (limit = 50) => {
@@ -126,7 +138,7 @@ export const fetchModelsByMake = async (makeId) => {
   return cached(
     `models:${makeId}`,
     async () =>
-      (await $host.get("api/device/model", { params: { makeId } })).data,
+      (await $host.get("/device/model", { params: { makeId } })).data,
     { ttlMs: 24 * 60 * 60 * 1000 }
   );
 };
@@ -284,6 +296,16 @@ export const fetchDevices = async (
   return data;
 };
 
+export const fetchOneDeviceCached = (
+  id,
+  { ttlMs = 10 * 60 * 1000, refresh = false } = {}
+) =>
+  cached(
+    `device:${id}`,
+    async () => (await $host.get(`/device/${id}`)).data,
+    { ttlMs, refresh }
+  );
+
 export const fetchOneDevice = async (id) => {
   const { data } = await $host.get("/device/" + id);
   return data;
@@ -291,6 +313,10 @@ export const fetchOneDevice = async (id) => {
 
 export const updateDevice = async (id, device) => {
   const { data } = await $authHost.put(`/device/${id}`, device);
+  clearApiCache("filter:");
+  clearApiCache("new:");
+  clearApiCache("discounted:");
+  clearApiCache("recommended:");
   return data;
 };
 
