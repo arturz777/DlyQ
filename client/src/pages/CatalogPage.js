@@ -103,46 +103,55 @@ const CatalogPage = observer(() => {
   }, []);
 
   useEffect(() => {
-    const id = ++devicesReqId.current;
-    device.setLoading("devices", true);
+  const reqId = ++devicesReqId.current;
+  const showTimer = setTimeout(() => {
+    if (reqId === devicesReqId.current) device.setLoading('devices', true);
+  }, 150);
 
-    device.setDevices([]);
-    device.setTotalCount(0);
-    device.setFacets({ subtypes: [], brands: [] });
+  let cancelled = false;
 
-    const load = async () => {
-      try {
-        const data = await fetchFilter(
-          device.selectedType?.id || null,
-          device.selectedSubType?.id ?? null,
-          device.selectedBrand?.id || null,
-          device.page,
-          device.limit,
-          device.selectedMake?.id || null,
-          device.selectedModel?.id || null
-        );
-        if (id !== devicesReqId.current) return;
-        device.setDevices(data.rows);
-        device.setTotalCount(data.count);
-        device.setFacets?.(data.facets);
-      } catch (e) {
-        if (id === devicesReqId.current) {
-          console.error("Ошибка загрузки девайсов:", e);
-        }
-      } finally {
-        if (id === devicesReqId.current) device.setLoading("devices", false);
+  (async () => {
+    try {
+      const data = await fetchFilter(
+        device.selectedType?.id ?? null,
+        device.selectedSubType?.id ?? null,
+        device.selectedBrand?.id ?? null,
+        device.page,
+        device.limit,
+        device.selectedMake?.id ?? null,
+        device.selectedModel?.id ?? null
+      );
+      if (cancelled || reqId !== devicesReqId.current) return;
+
+      device.setDevices(data.rows);
+      device.setTotalCount(data.count);
+      device.setFacets?.(data.facets);
+    } catch (e) {
+      if (!cancelled && reqId === devicesReqId.current) {
+        console.error('Ошибка загрузки девайсов:', e);
       }
-    };
-    load();
-  }, [
-    device.selectedType?.id,
-    device.selectedSubType?.id,
-    device.selectedBrand?.id,
-    device.selectedMake?.id,
-    device.selectedModel?.id,
-    device.page,
-    device.limit,
-  ]);
+    } finally {
+      clearTimeout(showTimer);
+      if (!cancelled && reqId === devicesReqId.current) {
+        device.setLoading('devices', false);
+      }
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+    clearTimeout(showTimer);
+    device.setLoading('devices', false);
+  };
+}, [
+  device.selectedType?.id,
+  device.selectedSubType?.id,
+  device.selectedBrand?.id,
+  device.selectedMake?.id,
+  device.selectedModel?.id,
+  device.page,
+  device.limit,
+]);
 
   useEffect(() => {
     const loadModels = async () => {
