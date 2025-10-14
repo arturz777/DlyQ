@@ -1,8 +1,9 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { Card } from "react-bootstrap";
 import Image from "react-bootstrap/Image";
 import { useNavigate } from "react-router-dom";
 import { Context } from "../index";
+import { fetchOneDeviceCached } from "../http/deviceAPI";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import { isShopOpenNow } from "../utils/workHours";
@@ -14,6 +15,8 @@ const DeviceItem = ({ device, onClick }) => {
   const [availableQuantity, setAvailableQuantity] = useState(device.quantity);
   const [isPreorder, setIsPreorder] = useState(false);
   const { t, i18n } = useTranslation();
+  const cardRef = useRef(null);
+  const prefetchedRef = useRef(false);
   const currentLang = i18n.language || "en";
   const deviceName = device.translations?.name?.[currentLang] || device.name;
 
@@ -37,6 +40,32 @@ const DeviceItem = ({ device, onClick }) => {
     typeof onClick === "function"
       ? onClick(device.id)
       : navigate(`/device/${device.id}`);
+
+  const prefetchDetails = () => {
+    if (prefetchedRef.current) return;
+    prefetchedRef.current = true;
+    fetchOneDeviceCached(device.id).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!("IntersectionObserver" in window)) return;
+    const el = cardRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            prefetchDetails();
+            io.disconnect();
+            break;
+          }
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const toNum = (v) => {
     const n = parseFloat(String(v ?? "").replace(",", "."));
@@ -62,7 +91,7 @@ const DeviceItem = ({ device, onClick }) => {
   const checkStock = async (deviceId, quantity) => {
     try {
       const res = await fetch(
-        `${process.env.REACT_APP_API_URL}device/check-stock`,
+        `${process.env.REACT_APP_API_URL}api/device/check-stock`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -150,7 +179,13 @@ const DeviceItem = ({ device, onClick }) => {
   };
 
   return (
-    <div onClick={() => goToDevicePage()}>
+    <div
+      ref={cardRef}
+      onClick={goToDevicePage}
+      onMouseEnter={prefetchDetails}
+      onFocus={prefetchDetails}
+      onTouchStart={prefetchDetails}
+    >
       <Card className={styles.card}>
         {discountPercentage !== null && (
           <div className={styles.discountBadge}>-{discountPercentage}%</div>
