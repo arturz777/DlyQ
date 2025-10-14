@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
 import { Context } from "../index";
 import {
@@ -31,8 +31,44 @@ const HomePage = () => {
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-
+const [shouldLoadCatalog, setShouldLoadCatalog] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const DevicePage = lazy(() => import('../pages/DevicePage'));
+
+  useEffect(() => {
+  const el = document.getElementById('catalog-devices');
+  if (!el) return;
+  const io = new IntersectionObserver(([entry]) => {
+    if (entry.isIntersecting) {
+      setShouldLoadCatalog(true);
+      io.disconnect();
+    }
+  }, { rootMargin: '400px' });
+  io.observe(el);
+  return () => io.disconnect();
+}, []);
+
+useEffect(() => {
+  if (!shouldLoadCatalog) return;
+  let cancelled = false;
+  (async () => {
+    try {
+      device.setLoading('devices', true);
+      const catalogData = await fetchFilter(null, null, null, 1, 24, null, null);
+      if (cancelled) return;
+      device.setDevices(catalogData.rows || []);
+      device.setTotalCount(catalogData.count || 0);
+      device.setFacets?.(catalogData?.facets ?? { subtypes: [], brands: [] });
+    } catch (e) {
+      console.error('каталог:', e);
+    } finally {
+      if (!cancelled) device.setLoading('devices', false);
+    }
+  })();
+  return () => { cancelled = true; };
+}, [shouldLoadCatalog]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -50,12 +86,12 @@ const HomePage = () => {
           subtypesData,
           catalogData,
         ] = await Promise.all([
-          fetchNewDevices(LIMIT),
-          fetchDiscountedDevices(LIMIT),
-          fetchRecommendedDevices(undefined, LIMIT),
+          fetchNewDevices(50),
+          fetchDiscountedDevices(50),
+          fetchRecommendedDevices(undefined, 50),
           fetchTypes(),
           fetchSubtypes(),
-          fetchFilter(null, null, null, 1, LIMIT, null, null),
+          fetchFilter(null, null, null, 1, 24, null, null),
         ]);
 
         if (cancelled) return;
@@ -76,7 +112,7 @@ const HomePage = () => {
             : recommendedData?.devices ?? []
         );
 
-         const typesEnriched = (Array.isArray(typesData) ? typesData : []).map(
+        const typesEnriched = (Array.isArray(typesData) ? typesData : []).map(
           (t) => ({
             ...t,
             translations: t.translations || {},
@@ -94,7 +130,7 @@ const HomePage = () => {
 
         device.setDevices(catalogData.rows || []);
         device.setTotalCount(catalogData.count || 0);
-         device.setFacets?.(catalogData?.facets ?? { subtypes: [], brands: [] });
+        device.setFacets?.(catalogData?.facets ?? { subtypes: [], brands: [] });
         device.setSelectedType({});
         device.setSelectedSubType({});
         device.setSelectedBrand({});
@@ -156,6 +192,7 @@ const HomePage = () => {
         </div>
       )}
       <div className={styles.banner}>
+        <h1>{t("fast delivery", { ns: "homePage" })}</h1>
         <p>{t("average delivery time: 15–30 minutes", { ns: "homePage" })}</p>
       </div>
 
@@ -214,7 +251,7 @@ const HomePage = () => {
         setSidebarOpen={setSidebarOpen}
       />
 
-          <section className={styles.section}>
+      <section className={styles.section}>
         <h2>{t("discounts", { ns: "homePage" })}</h2>
         <div className={styles.deviceCarousel}>
           {Array.isArray(discountedDevices) && discountedDevices.length > 0 ? (
@@ -280,10 +317,12 @@ const HomePage = () => {
         </button>
       )}
       {selectedDeviceId && (
-        <SlideModal onClose={() => setSelectedDeviceId(null)}>
-          <DevicePage id={selectedDeviceId} />
-        </SlideModal>
-      )}
+  <SlideModal onClose={() => setSelectedDeviceId(null)}>
+    <Suspense fallback={<div style={{padding:16}}>{t('loading',{ns:'homePage'})}</div>}>
+      <DevicePage id={selectedDeviceId} />
+    </Suspense>
+  </SlideModal>
+)}
     </div>
   );
 };
