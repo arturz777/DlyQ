@@ -1,41 +1,59 @@
 import { $authHost, $host } from "./index";
 import jwt_decode from "jwt-decode";
 
-export const fetchNewDevices = async (limit = 100) => {
+// deviceAPI.js (вверху файла)
+const CACHE_PREFIX = 'api_cache_v1:';
+const putCache = (key, data, ttlMs) => {
   try {
-    const { data } = await $host.get("/device", {
+    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ t: Date.now(), ttl: ttlMs, data }));
+  } catch {}
+};
+const getCache = (key) => {
+  try {
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.t || !parsed.ttl) return null;
+    if (Date.now() - parsed.t > parsed.ttl) return null;
+    return parsed.data;
+  } catch { return null; }
+};
+
+// обёртка: сначала отдаём кэш (если есть), потом (опционально) обновляем
+const cached = async (key, fetcher, { ttlMs = 6 * 60 * 60 * 1000, refresh = false } = {}) => {
+  const fromCache = !refresh && getCache(key);
+  if (fromCache) return fromCache;
+  const data = await fetcher();
+  // на всякий: не кэшируем ошибку/undefined
+  if (data !== undefined && data !== null) putCache(key, data, ttlMs);
+  return data;
+};
+
+export const fetchNewDevices = async (limit = 50) => { // ✂️ меньше дефолт
+  return cached(`new:${limit}`, async () => {
+    const { data } = await $host.get('/api/device', {
       params: { isNew: true, limit, onlyVisible: true },
     });
     return data.rows || [];
-  } catch (error) {
-    console.error("Error fetching new devices:", error);
-    return [];
-  }
+  }, { ttlMs: 60*60*1000 }); // 1 час
 };
 
-export const fetchDiscountedDevices = async (limit = 100) => {
-  try {
-    const { data } = await $host.get("/device", {
-     params: { discount: true, limit, onlyVisible: true },
+export const fetchDiscountedDevices = async (limit = 50) => {
+  return cached(`discounted:${limit}`, async () => {
+    const { data } = await $host.get('/api/device', {
+      params: { discount: true, limit, onlyVisible: true },
     });
-    
-    return data.rows || []; 
-  } catch (error) {
-    console.error("❌ Ошибка загрузки товаров со скидками:", error);
-    return [];
-  }
+    return data.rows || [];
+  }, { ttlMs: 60*60*1000 });
 };
 
-export const fetchRecommendedDevices = async (typeId, limit = 100) => {
-  try {
-    const { data } = await $host.get("/device", {
+export const fetchRecommendedDevices = async (typeId, limit = 50) => {
+  return cached(`recommended:${typeId||'all'}:${limit}`, async () => {
+    const { data } = await $host.get('/api/device', {
       params: { typeId, recommended: true, limit, onlyVisible: true },
     });
     return data.rows || [];
-  } catch (error) {
-    console.error("❌ Ошибка загрузки рекомендованных товаров:", error);
-    return [];
-  }
+  }, { ttlMs: 60*60*1000 });
 };
 
 export const createType = async (type) => {
@@ -44,8 +62,10 @@ export const createType = async (type) => {
 };
 
 export const fetchTypes = async () => {
-  const { data } = await $host.get("/type");
-  return data;
+  return cached('types', async () => {
+    const { data } = await $host.get('api/type');
+    return data;
+  }, { ttlMs: 24*60*60*1000 });
 };
 
 export const updateType = async (id, type) => {
@@ -108,8 +128,10 @@ export const updateSubType = async (id, subType) => {
 };
 
 export const fetchSubtypes = async () => {
-  const { data } = await $host.get("/subtype");
-  return data;
+  return cached('subtypes', async () => {
+    const { data } = await $host.get('api/subtype');
+    return data;
+  }, { ttlMs: 24*60*60*1000 });
 };
 
 export const fetchSubtypesByType = async (typeId) => {
