@@ -648,7 +648,6 @@ const DevicePage = ({ id }) => {
                         <motion.img
                           key={`${img}-${index}`}
                           src={img}
-                          alt={device.name}
                           className={styles.DevicePageMainImage}
                           custom={direction}
                           variants={variants}
