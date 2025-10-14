@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import DeviceItem from "../components/DeviceItem";
 import DeviceList from "../components/DeviceList";
 import OrderSidebar from "../components/OrderSidebar";
+import SlideModal from "../components/modals/SlideModal";
 import styles from "./HomePage.module.css";
 import catalogStyles from "./CatalogPage.module.css";
 const DevicePageLazy = lazy(() => import('../pages/DevicePage'));
