@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { lazy, Suspense, useEffect, useState, useContext } from "react";
 import { Link } from "react-router-dom";
 import { Context } from "../index";
 import {
@@ -14,9 +14,9 @@ import DeviceItem from "../components/DeviceItem";
 import DeviceList from "../components/DeviceList";
 import OrderSidebar from "../components/OrderSidebar";
 import SlideModal from "../components/modals/SlideModal";
-import DevicePage from "../pages/DevicePage";
 import styles from "./HomePage.module.css";
 import catalogStyles from "./CatalogPage.module.css";
+const DevicePageLazy = lazy(() => import("../pages/DevicePage"));
 
 const HomePage = () => {
   const { device } = useContext(Context);
@@ -31,8 +31,34 @@ const HomePage = () => {
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-
+  const [shouldLoadCatalog, setShouldLoadCatalog] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const el = document.getElementById("catalog-devices");
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShouldLoadCatalog(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!shouldLoadCatalog) return;
+    (async () => {
+      const data = await fetchFilter(null, null, null, 1, 24, null, null);
+      device.setDevices(data.rows || []);
+      device.setTotalCount(data.count || 0);
+      device.setFacets?.(data.facets ?? { subtypes: [], brands: [] });
+    })();
+  }, [shouldLoadCatalog]);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,7 +102,7 @@ const HomePage = () => {
             : recommendedData?.devices ?? []
         );
 
- const typesEnriched = (Array.isArray(typesData) ? typesData : []).map(
+        const typesEnriched = (Array.isArray(typesData) ? typesData : []).map(
           (t) => ({
             ...t,
             translations: t.translations || {},
@@ -84,7 +110,7 @@ const HomePage = () => {
         );
         setTypes(typesEnriched);
         device.setTypes(typesEnriched);
-        
+
         device.setSubtypes(
           (Array.isArray(subtypesData) ? subtypesData : []).map((s) => ({
             ...s,
@@ -156,7 +182,7 @@ const HomePage = () => {
         </div>
       )}
       <div className={styles.banner}>
-         <h1>{t("fast delivery", { ns: "homePage" })}</h1>
+        <h1>{t("fast delivery", { ns: "homePage" })}</h1>
         <p>{t("average delivery time: 15–30 minutes", { ns: "homePage" })}</p>
       </div>
 
@@ -215,7 +241,7 @@ const HomePage = () => {
         setSidebarOpen={setSidebarOpen}
       />
 
-          <section className={styles.section}>
+      <section className={styles.section}>
         <h2>{t("discounts", { ns: "homePage" })}</h2>
         <div className={styles.deviceCarousel}>
           {Array.isArray(discountedDevices) && discountedDevices.length > 0 ? (
@@ -282,7 +308,15 @@ const HomePage = () => {
       )}
       {selectedDeviceId && (
         <SlideModal onClose={() => setSelectedDeviceId(null)}>
-          <DevicePage id={selectedDeviceId} />
+          <Suspense
+            fallback={
+              <div style={{ padding: 16 }}>
+                {t("loading", { ns: "homePage" })}
+              </div>
+            }
+          >
+            <DevicePageLazy id={selectedDeviceId} />
+          </Suspense>
         </SlideModal>
       )}
     </div>
