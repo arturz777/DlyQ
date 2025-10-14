@@ -76,7 +76,7 @@ const CatalogPage = observer(() => {
     };
 
     loadInitialData();
-  }, [currentLang, typeIdFromUrl]);
+  }, [currentLang]);
 
   useEffect(() => {
     const id = Number(typeIdFromUrl);
@@ -103,14 +103,17 @@ const CatalogPage = observer(() => {
   }, []);
 
   useEffect(() => {
-    const id = ++devicesReqId.current;
-    device.setLoading("devices", true);
+    const reqId = ++devicesReqId.current;
 
-    device.setDevices([]);
-    device.setTotalCount(0);
-    device.setFacets({ subtypes: [], brands: [] });
+    const showTimer = setTimeout(() => {
+      if (reqId === devicesReqId.current) {
+        device.setLoading("devices", true);
+      }
+    }, 150);
 
-    const load = async () => {
+    let cancelled = false;
+
+    (async () => {
       try {
         const data = await fetchFilter(
           device.selectedType?.id || null,
@@ -121,19 +124,29 @@ const CatalogPage = observer(() => {
           device.selectedMake?.id || null,
           device.selectedModel?.id || null
         );
-        if (id !== devicesReqId.current) return;
+
+        if (cancelled || reqId !== devicesReqId.current) return;
+
         device.setDevices(data.rows);
         device.setTotalCount(data.count);
         device.setFacets?.(data.facets);
       } catch (e) {
-        if (id === devicesReqId.current) {
+        if (!cancelled && reqId === devicesReqId.current) {
           console.error("Ошибка загрузки девайсов:", e);
         }
       } finally {
-        if (id === devicesReqId.current) device.setLoading("devices", false);
+        clearTimeout(showTimer);
+        if (!cancelled && reqId === devicesReqId.current) {
+          device.setLoading("devices", false);
+        }
       }
+    })();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(showTimer);
+      device.setLoading("devices", false);
     };
-    load();
   }, [
     device.selectedType?.id,
     device.selectedSubType?.id,
@@ -163,8 +176,6 @@ const CatalogPage = observer(() => {
   useEffect(() => {
     const id = ++subtypesReqId.current;
     device.setLoading("subtypes", true);
-
-    device.setSubtypes([]);
 
     const loadSubtypes = async () => {
       try {
@@ -290,7 +301,7 @@ const CatalogPage = observer(() => {
           </SlideModal>
         )}
       </div>
-      {device.isLoadingAnything && (
+      {device.loading.devices && !selectedDeviceId && (
         <div className={catalogStyles.loadingOverlay}>
           {t("loading", { ns: "homePage" })}
         </div>
