@@ -29,9 +29,9 @@ const cached = async (key, fetcher, { ttlMs = 6 * 60 * 60 * 1000, refresh = fals
   return data;
 };
 
-export const fetchNewDevices = async (limit = 50) => { // ✂️ меньше дефолт
+export const fetchNewDevices = async (limit = 50) => { 
   return cached(`new:${limit}`, async () => {
-    const { data } = await $host.get('/api/device', {
+    const { data } = await $host.get('/device', {
       params: { isNew: true, limit, onlyVisible: true },
     });
     return data.rows || [];
@@ -40,7 +40,7 @@ export const fetchNewDevices = async (limit = 50) => { // ✂️ меньше д
 
 export const fetchDiscountedDevices = async (limit = 50) => {
   return cached(`discounted:${limit}`, async () => {
-    const { data } = await $host.get('/api/device', {
+    const { data } = await $host.get('/device', {
       params: { discount: true, limit, onlyVisible: true },
     });
     return data.rows || [];
@@ -49,7 +49,7 @@ export const fetchDiscountedDevices = async (limit = 50) => {
 
 export const fetchRecommendedDevices = async (typeId, limit = 50) => {
   return cached(`recommended:${typeId||'all'}:${limit}`, async () => {
-    const { data } = await $host.get('/api/device', {
+    const { data } = await $host.get('/device', {
       params: { typeId, recommended: true, limit, onlyVisible: true },
     });
     return data.rows || [];
@@ -63,7 +63,7 @@ export const createType = async (type) => {
 
 export const fetchTypes = async () => {
   return cached('types', async () => {
-    const { data } = await $host.get('api/type');
+    const { data } = await $host.get('/type');
     return data;
   }, { ttlMs: 24*60*60*1000 });
 };
@@ -129,7 +129,7 @@ export const updateSubType = async (id, subType) => {
 
 export const fetchSubtypes = async () => {
   return cached('subtypes', async () => {
-    const { data } = await $host.get('api/subtype');
+    const { data } = await $host.get('/subtype');
     return data;
   }, { ttlMs: 24*60*60*1000 });
 };
