@@ -19,19 +19,20 @@ const fs = require("fs");
 const { supabase } = require("../config/supabaseClient");
 
 const mustEnv = (n) => {
-  const v = (process.env[n] ?? '').trim();
+  const v = (process.env[n] ?? "").trim();
   if (!v) throw new Error(`${n} is not set`);
   return v;
 };
 
-const SUPABASE_URL = mustEnv('SUPABASE_URL');
+const SUPABASE_URL = mustEnv("SUPABASE_URL");
 
 const SUPABASE_IMAGE_BUCKET =
-  process.env.SUPABASE_IMAGE_BUCKET || process.env.SUPABASE_BUCKET || 'images';
+  process.env.SUPABASE_IMAGE_BUCKET || process.env.SUPABASE_BUCKET || "images";
 
-const PUBLIC_BUCKET_BASE =
-  `${SUPABASE_URL.replace(/\/+$/, '')}/storage/v1/object/public/${SUPABASE_IMAGE_BUCKET}`;
-
+const PUBLIC_BUCKET_BASE = `${SUPABASE_URL.replace(
+  /\/+$/,
+  ""
+)}/storage/v1/object/public/${SUPABASE_IMAGE_BUCKET}`;
 
 const getVal = (x) =>
   x && typeof x === "object" && "value" in x ? x.value : x;
@@ -956,7 +957,7 @@ class DeviceController {
               return null;
             }
 
-           return `${PUBLIC_BUCKET_BASE}/${thumbFileName}`;
+            return `${PUBLIC_BUCKET_BASE}/${thumbFileName}`;
           })
         );
 
