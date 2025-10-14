@@ -188,6 +188,15 @@ const DeviceList = observer(({ onDeviceClick }) => {
     return ao === bo ? Number(a.id) - Number(b.id) : ao - bo;
   };
 
+  const isLoading = !!device.loading?.devices;
+  const hasActiveFilter = Boolean(
+   device.selectedType?.id ||
+   device.selectedSubType?.id ||
+   device.selectedBrand?.id ||
+   device.selectedMake?.id ||
+   device.selectedModel?.id
+ );
+
   const orderedTypeIds = (device.types || [])
     .slice()
     .sort(sortTypes)
@@ -203,7 +212,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
     return !hasNoSubtype && !hasAnySubtype;
   });
 
-  if (nothingToShow) {
+  if (nothingToShow && !isLoading && !hasActiveFilter) {
     const flat = Array.isArray(device.devices) ? device.devices : [];
     if (!flat.length) return null;
     return (
