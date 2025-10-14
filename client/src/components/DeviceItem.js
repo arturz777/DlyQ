@@ -195,7 +195,6 @@ const DeviceItem = ({ device, onClick }) => {
           <Image
             className={styles.image}
             src={device.img}
-            alt={deviceName}
             loading="lazy"
             decoding="async"
           />
