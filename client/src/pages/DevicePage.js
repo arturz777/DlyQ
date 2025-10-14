@@ -1,5 +1,8 @@
 import React, { useEffect, useState, useContext, useMemo } from "react";
-import { fetchOneDevice, fetchRecommendedDevices } from "../http/deviceAPI";
+import {
+  fetchOneDeviceCached,
+  fetchRecommendedDevices,
+} from "../http/deviceAPI";
 import { Context } from "../index";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
@@ -30,7 +33,7 @@ const parseMaybeJSON = (v) => {
 };
 
 const DevicePage = ({ id }) => {
-  const { basket } = useContext(Context);
+  const { basket, device: deviceStore } = useContext(Context);
   const [device, setDevice] = useState({
     info: [],
     options: [],
@@ -63,7 +66,7 @@ const DevicePage = ({ id }) => {
           : null;
 
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}api/device/check-stock`,
+        `${process.env.REACT_APP_API_URL}device/check-stock`,
         {
           method: "POST",
           headers: {
@@ -99,10 +102,31 @@ const DevicePage = ({ id }) => {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchData = async () => {
-      appStore.startLoading();
+      const instant = deviceStore?.devices?.find?.((d) => d.id === id);
+      if (instant) {
+        setDevice({
+          info: instant.info || [],
+          options: Array.isArray(instant.options)
+            ? instant.options
+            : parseMaybeJSON(instant.options) || [],
+          thumbnails: Array.isArray(instant.thumbnails)
+            ? instant.thumbnails
+            : parseMaybeJSON(instant.thumbnails) || [],
+          variants: Array.isArray(instant.variants)
+            ? instant.variants
+            : parseMaybeJSON(instant.variants) || [],
+          ...instant,
+        });
+        setFinalPrice(Number(instant.price) || 0);
+        setActiveIndex(0);
+      } else {
+        appStore.startLoading();
+      }
+
       try {
-        const deviceData = await fetchOneDevice(id);
+        const deviceData = await fetchOneDeviceCached(id);
 
         const normalizedVariants = (deviceData.variants || []).map((v) => {
           const sel = parseMaybeJSON(v.selected) || {};
@@ -114,6 +138,7 @@ const DevicePage = ({ id }) => {
         });
 
         const normalized = { ...deviceData, variants: normalizedVariants };
+        if (cancelled) return;
         setDevice(normalized);
         setFinalPrice(Number(normalized.price) || 0);
         setActiveIndex(0);
@@ -129,17 +154,27 @@ const DevicePage = ({ id }) => {
         setSelectedOptions({});
 
         const recommended = await fetchRecommendedDevices(normalized.type);
-        setRecommendedDevices(recommended);
+        if (!cancelled) setRecommendedDevices(recommended);
       } catch (error) {
         toast.error("❌ Ошибка загрузки устройства");
         console.error(error);
       } finally {
-        appStore.stopLoading();
+        if (!cancelled) appStore.stopLoading();
       }
     };
-
     fetchData();
-  }, [id, basket.items]);
+    return () => {
+      cancelled = true;
+    };
+  }, [id, basket.items, deviceStore?.devices]);
+
+  useEffect(() => {
+    const list = [device.img, ...(device.thumbnails || [])].filter(Boolean);
+    list.forEach((src) => {
+      const im = new Image();
+      im.src = src;
+    });
+  }, [device.img, device.thumbnails]);
 
   useEffect(() => {
     if (
