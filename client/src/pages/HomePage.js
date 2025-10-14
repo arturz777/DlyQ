@@ -13,10 +13,10 @@ import { useTranslation } from "react-i18next";
 import DeviceItem from "../components/DeviceItem";
 import DeviceList from "../components/DeviceList";
 import OrderSidebar from "../components/OrderSidebar";
-import SlideModal from "../components/modals/SlideModal";
-import DevicePage from "../pages/DevicePage";
 import styles from "./HomePage.module.css";
 import catalogStyles from "./CatalogPage.module.css";
+const DevicePageLazy = lazy(() => import('../pages/DevicePage'));
+  const DevicePage = lazy(() => import('../pages/DevicePage'));
 
 const HomePage = () => {
   const { device } = useContext(Context);
@@ -33,8 +33,6 @@ const HomePage = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 const [shouldLoadCatalog, setShouldLoadCatalog] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
-
-  const DevicePage = lazy(() => import('../pages/DevicePage'));
 
   useEffect(() => {
   const el = document.getElementById('catalog-devices');
@@ -69,84 +67,44 @@ useEffect(() => {
   return () => { cancelled = true; };
 }, [shouldLoadCatalog]);
 
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        setLoading(true);
-        const LIMIT = 1000;
-
-        const [
-          newDevicesData,
-          discountedData,
-          recommendedData,
-          typesData,
-          subtypesData,
-          catalogData,
-        ] = await Promise.all([
+useEffect(() => {
+  let cancelled = false;
+  (async () => {
+    try {
+      setLoading(true);
+      const [newDevicesData, discountedData, recommendedData, typesData, subtypesData] =
+        await Promise.all([
           fetchNewDevices(50),
           fetchDiscountedDevices(50),
           fetchRecommendedDevices(undefined, 50),
           fetchTypes(),
           fetchSubtypes(),
-          fetchFilter(null, null, null, 1, 24, null, null),
         ]);
 
-        if (cancelled) return;
+      if (cancelled) return;
 
-        setNewDevices(
-          Array.isArray(newDevicesData)
-            ? newDevicesData
-            : newDevicesData?.devices ?? []
-        );
-        setDiscountedDevices(
-          Array.isArray(discountedData)
-            ? discountedData
-            : discountedData?.devices ?? []
-        );
-        setRecommendedDevices(
-          Array.isArray(recommendedData)
-            ? recommendedData
-            : recommendedData?.devices ?? []
-        );
+      setNewDevices(Array.isArray(newDevicesData) ? newDevicesData : newDevicesData?.devices ?? []);
+      setDiscountedDevices(Array.isArray(discountedData) ? discountedData : discountedData?.devices ?? []);
+      setRecommendedDevices(Array.isArray(recommendedData) ? recommendedData : recommendedData?.devices ?? []);
 
-        const typesEnriched = (Array.isArray(typesData) ? typesData : []).map(
-          (t) => ({
-            ...t,
-            translations: t.translations || {},
-          })
-        );
-        setTypes(typesEnriched);
-        device.setTypes(typesEnriched);
-        
-        device.setSubtypes(
-          (Array.isArray(subtypesData) ? subtypesData : []).map((s) => ({
-            ...s,
-            translations: s.translations || {},
-          }))
-        );
+      const typesEnriched = (Array.isArray(typesData) ? typesData : []).map(t => ({ ...t, translations: t.translations || {} }));
+      setTypes(typesEnriched);
+      device.setTypes(typesEnriched);
+      device.setSubtypes((Array.isArray(subtypesData) ? subtypesData : []).map(s => ({ ...s, translations: s.translations || {} })));
 
-        device.setDevices(catalogData.rows || []);
-        device.setTotalCount(catalogData.count || 0);
-        device.setFacets?.(catalogData?.facets ?? { subtypes: [], brands: [] });
-        device.setSelectedType({});
-        device.setSelectedSubType({});
-        device.setSelectedBrand({});
-        device.setSelectedMake({});
-        device.setSelectedModel({});
-      } catch (err) {
-        console.error("❌ Ошибка при загрузке данных:", err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      device.setSelectedType({});
+      device.setSelectedSubType({});
+      device.setSelectedBrand({});
+      device.setSelectedMake({});
+      device.setSelectedModel({});
+    } catch (err) {
+      console.error("❌ Ошибка при загрузке данных:", err);
+    } finally {
+      if (!cancelled) setLoading(false);
+    }
+  })();
+  return () => { cancelled = true; };
+}, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -316,10 +274,10 @@ useEffect(() => {
           ↑
         </button>
       )}
-      {selectedDeviceId && (
+     {selectedDeviceId && (
   <SlideModal onClose={() => setSelectedDeviceId(null)}>
     <Suspense fallback={<div style={{padding:16}}>{t('loading',{ns:'homePage'})}</div>}>
-      <DevicePage id={selectedDeviceId} />
+      <DevicePageLazy id={selectedDeviceId} />
     </Suspense>
   </SlideModal>
 )}
