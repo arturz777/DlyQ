@@ -62,7 +62,7 @@ const DeviceItem = ({ device, onClick }) => {
   const checkStock = async (deviceId, quantity) => {
     try {
       const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/device/check-stock`,
+        `${process.env.REACT_APP_API_URL}api/device/check-stock`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -131,7 +131,7 @@ const DeviceItem = ({ device, onClick }) => {
 
     basket.addItem({
       ...device,
-      selectedOptions: {}, 
+      selectedOptions: {},
       isPreorder: isThisPreorder || !isShopOpenNow(),
       stockQuantity: Math.max(0, device.quantity - totalInBasket),
     });
@@ -157,7 +157,13 @@ const DeviceItem = ({ device, onClick }) => {
         )}
 
         <div className={styles.imageWrapper}>
-          <Image className={styles.image} src={device.img} alt={deviceName} />
+          <Image
+            className={styles.image}
+            src={device.img}
+            alt={deviceName}
+            loading="lazy"
+            decoding="async"
+          />
           <div className={styles.addButton} onClick={handleAddToBasket}>
             +
           </div>
