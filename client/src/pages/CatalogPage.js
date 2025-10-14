@@ -76,7 +76,7 @@ const CatalogPage = observer(() => {
     };
 
     loadInitialData();
-  }, [currentLang]);
+  }, [currentLang, typeIdFromUrl]);
 
   useEffect(() => {
     const id = Number(typeIdFromUrl);
@@ -103,59 +103,55 @@ const CatalogPage = observer(() => {
   }, []);
 
   useEffect(() => {
-    const reqId = ++devicesReqId.current;
+  const reqId = ++devicesReqId.current;
+  const showTimer = setTimeout(() => {
+    if (reqId === devicesReqId.current) device.setLoading('devices', true);
+  }, 150);
 
-    const showTimer = setTimeout(() => {
-      if (reqId === devicesReqId.current) {
-        device.setLoading("devices", true);
+  let cancelled = false;
+
+  (async () => {
+    try {
+      const data = await fetchFilter(
+        device.selectedType?.id ?? null,
+        device.selectedSubType?.id ?? null,
+        device.selectedBrand?.id ?? null,
+        device.page,
+        device.limit,
+        device.selectedMake?.id ?? null,
+        device.selectedModel?.id ?? null
+      );
+      if (cancelled || reqId !== devicesReqId.current) return;
+
+      device.setDevices(data.rows);
+      device.setTotalCount(data.count);
+      device.setFacets?.(data.facets);
+    } catch (e) {
+      if (!cancelled && reqId === devicesReqId.current) {
+        console.error('Ошибка загрузки девайсов:', e);
       }
-    }, 150);
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const data = await fetchFilter(
-          device.selectedType?.id || null,
-          device.selectedSubType?.id ?? null,
-          device.selectedBrand?.id || null,
-          device.page,
-          device.limit,
-          device.selectedMake?.id || null,
-          device.selectedModel?.id || null
-        );
-
-        if (cancelled || reqId !== devicesReqId.current) return;
-
-        device.setDevices(data.rows);
-        device.setTotalCount(data.count);
-        device.setFacets?.(data.facets);
-      } catch (e) {
-        if (!cancelled && reqId === devicesReqId.current) {
-          console.error("Ошибка загрузки девайсов:", e);
-        }
-      } finally {
-        clearTimeout(showTimer);
-        if (!cancelled && reqId === devicesReqId.current) {
-          device.setLoading("devices", false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
+    } finally {
       clearTimeout(showTimer);
-      device.setLoading("devices", false);
-    };
-  }, [
-    device.selectedType?.id,
-    device.selectedSubType?.id,
-    device.selectedBrand?.id,
-    device.selectedMake?.id,
-    device.selectedModel?.id,
-    device.page,
-    device.limit,
-  ]);
+      if (!cancelled && reqId === devicesReqId.current) {
+        device.setLoading('devices', false);
+      }
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+    clearTimeout(showTimer);
+    device.setLoading('devices', false);
+  };
+}, [
+  device.selectedType?.id,
+  device.selectedSubType?.id,
+  device.selectedBrand?.id,
+  device.selectedMake?.id,
+  device.selectedModel?.id,
+  device.page,
+  device.limit,
+]);
 
   useEffect(() => {
     const loadModels = async () => {
@@ -176,6 +172,8 @@ const CatalogPage = observer(() => {
   useEffect(() => {
     const id = ++subtypesReqId.current;
     device.setLoading("subtypes", true);
+
+    device.setSubtypes([]);
 
     const loadSubtypes = async () => {
       try {
@@ -301,7 +299,7 @@ const CatalogPage = observer(() => {
           </SlideModal>
         )}
       </div>
-      {device.loading.devices && !selectedDeviceId && (
+      {device.isLoadingAnything && (
         <div className={catalogStyles.loadingOverlay}>
           {t("loading", { ns: "homePage" })}
         </div>
