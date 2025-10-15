@@ -7,7 +7,7 @@ import {
 import { io } from "socket.io-client";
 import styles from "./Warehouse.module.css";
 
-const socket = io("https://zang-4.onrender.com");
+const socket = io("https://api.dlyq.ee");
 
 const Warehouse = () => {
   const [orders, setOrders] = useState([]);
