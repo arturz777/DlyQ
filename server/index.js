@@ -22,12 +22,9 @@ setupCleanupTask();
 const PORT = process.env.PORT || 5000;
 const app = express();
 
-/* -------- CORS -------- */
 const allowedOrigins = [
   "https://dlyq.ee",
   "https://www.dlyq.ee",
-  "https://dlyq.netlify.app", // можно убрать позже
-  "http://localhost:3000",
 ];
 
 app.use((req, res, next) => {
@@ -49,13 +46,11 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.set("trust proxy", 1);
 
-/* -------- Parsers & static -------- */
 app.use(express.json());
 app.use(express.static(path.resolve(__dirname, "static")));
 app.use(fileUpload({}));
 app.use(cookieParser());
 
-/* -------- Socket.IO (создаём ДО использования io) -------- */
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -76,8 +71,6 @@ io.on("connection", (socket) => {
     console.log("🔴 Клиент отключился:", socket.id);
   });
 });
-
-/* -------- Routes -------- */
 app.use("/api/geo", geoRouter);
 app.use("/api", router);
 app.use("/api/couriers", courierRouter);
@@ -85,7 +78,6 @@ app.use("/api/warehouse", warehouseRouter);
 app.use("/api/order", orderRouter);
 app.use("/api/chat", chatRouter);
 
-/* -------- Sockets modules -------- */
 const chatSocket = require("./sockets/chatSocket");
 chatSocket(io);
 
@@ -93,10 +85,8 @@ const notifyNewOrder = (order) => {
   io.emit("newOrder", order);
 };
 
-/* -------- Errors (последним) -------- */
 app.use(errorHandler);
 
-/* -------- Start -------- */
 server.listen(PORT, () => console.log(`🚀 Сервер запущен на порту ${PORT}`));
 
 const start = async () => {
