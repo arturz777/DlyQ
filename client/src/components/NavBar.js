@@ -73,7 +73,7 @@ const NavBar = observer(() => {
   useEffect(() => {
     if (!user?.user?.id) return;
 
-    fetch(`https://zang-4.onrender.com/api/chat/user/${user.user.id}`)
+    fetch(`https://api.dlyq.ee/api/chat/user/${user.user.id}`)
       .then((res) => res.json())
       .then((data) => {
         const unread = new Set();
@@ -90,7 +90,7 @@ const NavBar = observer(() => {
   }, [user?.user?.id]);
 
   useEffect(() => {
-    const socket = io("https://zang-4.onrender.com", {
+    const socket = io("https://api.dlyq.ee", {
   withCredentials: true,
   transports: ["websocket", "polling"]
 });
