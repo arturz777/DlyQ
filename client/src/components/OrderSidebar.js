@@ -16,7 +16,7 @@ import L from "leaflet";
 import { useTranslation } from "react-i18next";
 import styles from "./OrderSidebar.module.css";
 
-const socket = io("https://zang-4.onrender.com");
+const socket = io("https://api.dlyq.ee");
 
 const WAREHOUSE_LOCATION = { lat: 59.51372, lng: 24.828888 };
 
@@ -35,7 +35,7 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const courierMarkerRef = useRef(null);
 
   const courierIcon = new L.Icon({
-    iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png", // 🚗 машинка
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png",
     iconSize: [40, 40],
     iconAnchor: [20, 40],
     popupAnchor: [0, -40],
