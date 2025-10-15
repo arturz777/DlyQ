@@ -57,7 +57,7 @@ const UserProfile = () => {
     try {
       const token = localStorage.getItem("token"); 
       const response = await axios.put(
-        `${process.env.REACT_APP_API_URL}user/profile`,
+        `${process.env.REACT_APP_API_URL}/user/profile`,
         { firstName, lastName, phone },
         {
           headers: {
