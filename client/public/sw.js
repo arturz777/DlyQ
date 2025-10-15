@@ -5,7 +5,7 @@ const IMG_CACHE    = `img-${VERSION}`;
 
 const IS_DEV = ['localhost','127.0.0.1'].includes(self.location.hostname);
 
-const API_BASE = 'https://zang-4.onrender.com';
+const API_BASE = 'https://api.dlyq.ee';
 
 const PREWARM_API = IS_DEV ? [] : [
   `${API_BASE}/api/type`,
