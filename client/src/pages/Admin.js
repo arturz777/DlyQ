@@ -85,7 +85,7 @@ const Admin = () => {
   const [expireOpen, setExpireOpen] = useState(false);
 
   useEffect(() => {
-    const socket = io(`https://zang-4.onrender.com`);
+    const socket = io(`https://api.dlyq.ee`);
   
     socket.on("courierLocationUpdate", ({ courierId, lat, lng }) => {
       setCouriers((prev) =>
@@ -237,7 +237,7 @@ const Admin = () => {
   useEffect(() => {
     if (!user?.user?.id) return;
 
-    fetch(`https://zang-4.onrender.com/api/chat/user/${user.user.id}`)
+    fetch(`https://api.dlyq.ee/api/chat/user/${user.user.id}`)
       .then((res) => res.json())
       .then((data) => {
         const unread = new Set();
@@ -254,7 +254,7 @@ const Admin = () => {
   }, [user?.user?.id]);
 
   useEffect(() => {
-    const socket = io(`https://zang-4.onrender.com`);
+    const socket = io(`https://api.dlyq.ee`);
 
    if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
       socket.emit("joinAdminNotifications");
@@ -501,7 +501,7 @@ const Admin = () => {
       alert("Заполните все поля!");
       return;
     }
-    const response = await fetch(`https://zang-4.onrender.com/api/translations`, {
+    const response = await fetch(`https://api.dlyq.ee/api/translations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: newKey, lang: newLang, text: newText }),
