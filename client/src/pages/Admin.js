@@ -11,6 +11,8 @@ import CreateModel from "../components/modals/CreateModel";
 import CourierMap from "../components/CourierMap";
 import ChatBox from "../components/ChatBox";
 import AdminAccounting from "../components/AdminAccounting";
+import { fetchMaintenance, updateMaintenance } from "../http/configAPI";
+import appStore from "../store/appStore";
 import { assignCourierToOrder } from "../http/orderAPI";
 import { fetchTranslations, updateTranslation } from "../http/translationAPI";
 import {
@@ -83,10 +85,16 @@ const Admin = () => {
   const [openModelInMakeType, setOpenModelInMakeType] = useState(new Set());
   const [outOfOpen, setOutOfOpen] = useState(false);
   const [expireOpen, setExpireOpen] = useState(false);
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(
+    appStore.maintenance.enabled
+  );
+  const [maintMessage, setMaintMessage] = useState(
+    appStore.maintenance.message
+  );
 
   useEffect(() => {
     const socket = io(`https://api.dlyq.ee`);
-  
+
     socket.on("courierLocationUpdate", ({ courierId, lat, lng }) => {
       setCouriers((prev) =>
         prev.map((c) =>
@@ -94,16 +102,36 @@ const Admin = () => {
         )
       );
     });
-  
+
     socket.on("courierStatusUpdate", ({ courierId, status }) => {
       setCouriers((prev) =>
         prev.map((c) => (c.id === courierId ? { ...c, status } : c))
       );
     });
-  
+
     return () => socket.disconnect();
   }, []);
-  
+
+  useEffect(() => {
+    fetchMaintenance()
+      .then((v) => {
+        setMaintenanceEnabled(!!v.enabled);
+        appStore.setMaintenance(v);
+      })
+      .catch(console.error);
+  }, []);
+
+  const toggleMaintenance = async (next) => {
+    try {
+      setMaintenanceEnabled(next);
+      const saved = await updateMaintenance(next);
+      appStore.setMaintenance(saved);
+    } catch (e) {
+      console.error(e);
+      setMaintenanceEnabled(!next);
+    }
+  };
+
   useEffect(() => {
     fetchTypes().then(setTypes);
     fetchSubtypes().then(setSubtypes);
@@ -256,7 +284,7 @@ const Admin = () => {
   useEffect(() => {
     const socket = io(`https://api.dlyq.ee`);
 
-   if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
+    if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
       socket.emit("joinAdminNotifications");
       console.log("🔔 Админ подключен к admin_notifications");
     }
@@ -413,7 +441,7 @@ const Admin = () => {
   };
 
   const autoTypeId = React.useMemo(() => {
-    return types.find((t) => /автотовары/i.test(t.name))?.id ?? null;
+    return types.find((t) => /автомоб/i.test(t.name))?.id ?? null;
   }, [types]);
 
   const toggleDeviceType = (typeId) => {
@@ -628,7 +656,7 @@ const Admin = () => {
     .filter(Boolean)
     .sort((a, b) => a.device.name.localeCompare(b.device.name));
 
- const getCompatList = (d) => {
+  const getCompatList = (d) => {
     if (!d) return [];
     if (Array.isArray(d.compat)) return d.compat;
     if (Array.isArray(d.compatibility)) return d.compatibility;
@@ -708,6 +736,7 @@ const Admin = () => {
             {unreadChats.size > 0 && <span style={{ color: "red" }}>●</span>}
           </Tab>
           <Tab>Бухгалтерия</Tab>
+          <Tab>Настройки</Tab>
         </TabList>
 
         <TabPanel>
@@ -1632,9 +1661,7 @@ const Admin = () => {
                   <div className={styles.itemList}>
                     {subtypesForType.map((subtype) => (
                       <div key={subtype.id} className={styles.item}>
-                        <span>
-                          {subtype.name} 
-                        </span>
+                        <span>{subtype.name}</span>
                         <div className={styles.buttons}>
                           <button
                             className={styles.editButton}
@@ -1973,6 +2000,24 @@ const Admin = () => {
         <TabPanel>
           <AdminAccounting devices={devices} />
         </TabPanel>
+
+        <TabPanel>
+          <h3>Настройки</h3>
+          <label
+            className={styles.toggleWrap}
+            title="Режим обслуживания"
+            style={{ gap: 12, marginTop: 6, marginBottom: 12 }}
+          >
+            <input
+              type="checkbox"
+              className={styles.toggleInput}
+              checked={maintenanceEnabled}
+              onChange={(e) => toggleMaintenance(e.target.checked)}
+            />
+            <span className={styles.toggleSlider} />
+            <span className={styles.toggleLabel}>Режим обслуживания</span>
+          </label>
+        </TabPanel>
       </Tabs>
 
       <CreateBrand
@@ -2070,6 +2115,3 @@ const Admin = () => {
 };
 
 export default Admin;
-
-
-
