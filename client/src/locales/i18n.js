@@ -25,6 +25,7 @@ import mobileNavBarEst from './est/mobileNavBar.json';
 import homePageEst from './est/homePage.json';
 import courierPolicyEst from './est/courierPolicy.json';
 import brandBarEst from './est/brandBar.json';
+import maintenanceEst from './est/maintenance.json';
 
 import navbarEn from './en/navbar.json';
 import searchbarEn from './en/searchbar.json';
@@ -48,6 +49,7 @@ import mobileNavBarEn from './en/mobileNavBar.json';
 import homePageEn from './en/homePage.json';
 import courierPolicyEn from './en/courierPolicy.json';
 import brandBarEn from './en/brandBar.json';
+import maintenanceEn from './en/maintenance.json';
 
 import navbarRu from './ru/navbar.json';
 import searchbarRu from './ru/searchbar.json';
@@ -71,6 +73,7 @@ import mobileNavBarRu from './ru/mobileNavBar.json';
 import homePageRu from './ru/homePage.json';
 import courierPolicyRu from './ru/courierPolicy.json';
 import brandBarRu from './ru/brandBar.json';
+import maintenanceRu from './ru/maintenance.json';
 
 
 i18n
@@ -106,6 +109,7 @@ i18n
         homePage: homePageEn,
         courierPolicy: courierPolicyEn,
         brandBar: brandBarEn,
+        maintenance: maintenanceEn,
       },
       ru: {
         navbar: navbarRu,
@@ -130,6 +134,7 @@ i18n
         homePage: homePageRu,
         courierPolicy: courierPolicyRu,
         brandBar: brandBarRu,
+        maintenance: maintenanceRu,
       },
       est: {
         navbar: navbarEst,
@@ -154,6 +159,7 @@ i18n
         homePage: homePageEst,
         courierPolicy: courierPolicyEst,
         brandBar: brandBarEst,
+        maintenance: maintenanceEst,
       },
     },
 
