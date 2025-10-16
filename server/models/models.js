@@ -284,6 +284,11 @@ const ChatMessage = sequelize.define("chatMessage", {
   },
 });
 
+const Setting = sequelize.define('setting', {
+  key: { type: DataTypes.STRING, primaryKey: true },
+  value: { type: DataTypes.JSONB, allowNull: true },
+});
+
 Chat.hasMany(ChatParticipant, { as: "participants" });
 ChatParticipant.belongsTo(Chat);
 
@@ -434,4 +439,5 @@ module.exports = {
   Chat,
   ChatParticipant,
   ChatMessage,
+  Setting,
 };
