@@ -1,0 +1,128 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(
+      80rem 80rem at 10% -10%,
+      rgba(3, 57, 119, 0.2),
+      transparent 45%
+    ),
+    radial-gradient(
+      60rem 60rem at 110% 10%,
+      rgba(200, 225, 255, 0.25),
+      transparent 40%
+    ),
+    linear-gradient(180deg, #f7f9fc 0%, #eef2f7 100%);
+}
+
+.card {
+  width: 100%;
+  max-width: 720px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(3, 57, 119, 0.1);
+  border-radius: 20px;
+  padding: 32px 28px;
+  text-align: center;
+  box-shadow: 0 10px 20px rgba(3, 57, 119, 0.08),
+    0 2px 6px rgba(3, 57, 119, 0.05);
+  backdrop-filter: blur(6px);
+}
+
+.iconWrap {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 12px auto;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #033977 0%, #0a59b5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(3, 57, 119, 0.25);
+}
+
+.icon {
+  width: 36px;
+  height: 36px;
+  color: #fff;
+}
+
+.title {
+  margin: 10px 0 6px;
+  font-size: 28px;
+  font-weight: 800;
+  color: #0a2540;
+  letter-spacing: 0.2px;
+}
+
+.subtitle {
+  margin: 0 0 14px;
+  color: #466079;
+}
+
+.message {
+  margin: 0 auto 22px;
+  max-width: 560px;
+  color: #223043;
+  line-height: 1.5;
+  font-size: 16px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.primaryBtn {
+  appearance: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0a59b5 0%, #1881ff 100%);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 8px 18px rgba(24, 129, 255, 0.25);
+  transition: transform 0.06s ease, box-shadow 0.2s ease;
+}
+
+.primaryBtn:active {
+  transform: translateY(1px);
+  box-shadow: 0 6px 12px rgba(24, 129, 255, 0.25);
+}
+
+.linkBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(3, 57, 119, 0.15);
+  background: #fff;
+  color: #0a2540;
+  font-weight: 700;
+  transition: background 0.2s ease, transform 0.06s ease;
+}
+
+.linkBtn:hover {
+  background: #f6f9fc;
+}
+
+.linkBtn:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 480px) {
+  .title {
+    font-size: 24px;
+  }
+  .message {
+    font-size: 15px;
+  }
+}
