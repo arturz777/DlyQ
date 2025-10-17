@@ -36,11 +36,14 @@ const App = observer(() => {
     maintenanceKnown && appStore.maintenance.enabled && !isAdmin;
 
   const fetchSupportChat = async (userId) => {
-    const res = await fetch("https://api.dlyq.ee/api/chat/support-chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
-    });
+    const res = await fetch(
+      `${process.env.REACT_APP_API_URL}api/chat/support-chat`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      }
+    );
     return await res.json();
   };
 
@@ -56,8 +59,10 @@ const App = observer(() => {
     appStore.setIsLoading(true);
 
     fetchMaintenance()
-      .then(appStore.setMaintenance.bind(appStore))
-      .catch(() => {});
+      .then((v) => appStore.setMaintenance(v))
+      .catch(() => {
+        appStore.setMaintenance({ enabled: false });
+      });
 
     if (!token) {
       setLoading(false);
@@ -98,7 +103,7 @@ const App = observer(() => {
     >
       <BrowserRouter>
         <Elements stripe={stripePromise}>
-          {!maintenanceActive && <LoadingBar />}
+          {maintenanceKnown && !maintenanceActive && <LoadingBar />}
           {!maintenanceActive && <NavBar />}
           <AppRouter />
           {!maintenanceActive && maintenanceKnown && (
@@ -108,10 +113,14 @@ const App = observer(() => {
             </>
           )}
         </Elements>
-        {!maintenanceActive && maintenanceKnown && <MobileNavBar />}
-        {!maintenanceActive && maintenanceKnown && <CookieConsent />}
-        {!maintenanceActive && maintenanceKnown && <ChatModal />}
-        {!maintenanceActive && maintenanceKnown && <Footer />}
+        {!maintenanceActive && (
+          <MobileNavBar maintenanceMode={appStore.maintenance.enabled} />
+        )}
+        {maintenanceKnown && !maintenanceActive && <CookieConsent />}
+        {maintenanceKnown && !maintenanceActive && <ChatModal />}
+        {maintenanceKnown && (
+          <Footer maintenanceMode={appStore.maintenance.enabled} />
+        )}
       </BrowserRouter>
     </ChatContext.Provider>
   );
