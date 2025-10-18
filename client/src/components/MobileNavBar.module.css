@@ -1,44 +1,104 @@
 .mobileNavBar {
   position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
-  width: 100%;
-  background-color: #f8f9fa;
-  border-top: 1px solid #dee2e6;
+  z-index: 1000;
   display: none;
+  pointer-events: none;
 }
 
 @media (max-width: 768px) {
   .mobileNavBar {
     display: block;
-    z-index: 1000;
   }
+}
+
+.dock {
+  pointer-events: auto;
+  margin: 0;
+  max-width: none;
+  border-radius: 0;
+  background: #ffffff;
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.04);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .navItems {
   display: flex;
   justify-content: space-around;
-  padding: 10px 0;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
 }
 
-.navItem {
-  text-align: center;
-  cursor: pointer;
+.navBtn {
+  all: unset;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 72px;
+  padding: 6px 10px;
+  border-radius: 12px;
+
+  color: #6b7280;
+  transition: transform 0.15s ease, color 0.2s ease, background 0.2s ease;
   position: relative;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.navBtn:active {
+  transform: scale(0.96);
+}
+
+.navBtnActive {
+  color: #ffffff;
+  background: rgba(17, 24, 39, 0.06);
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
 }
 
 .navText {
-  font-size: 0.75rem;
-  margin-top: 2px;
+  font-size: 11px;
+  margin-top: 3px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
 }
 
 .cartBadge {
   position: absolute;
-  top: -2px;
-  right: -8px;
-  background-color: #dc3545;
-  color: white;
-  border-radius: 50%;
+  top: 0px;
+  right: 8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  line-height: 18px;
+
+  background-color: #ef4444;
+  color: #fff;
+  border-radius: 999px;
   font-size: 10px;
-  padding: 2px 5px;
-  line-height: 1;
+  font-weight: 700;
+
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  .dock {
+    background: rgba(255, 255, 255, 0.75);
+    border-color: rgba(196, 38, 38, 0.06);
+  }
+  .navBtn {
+    color: #9ca3af;
+  }
+  .navBtnActive {
+    background: rgba(255, 255, 255, 0.08);
+  }
 }
