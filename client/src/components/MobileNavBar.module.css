@@ -51,15 +51,6 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.navBtn:active {
-  transform: scale(0.96);
-}
-
-.navBtnActive {
-  color: #ffffff;
-  background: rgba(17, 24, 39, 0.06);
-}
-
 .icon {
   width: 24px;
   height: 24px;
