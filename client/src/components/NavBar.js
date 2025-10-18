@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { Context } from "../index";
 import { NavLink, useLocation } from "react-router-dom";
 import { ShoppingCart, Settings, List, UserCircle, LogOut } from "lucide-react";
@@ -33,6 +33,7 @@ const NavBar = observer(() => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, i18n } = useTranslation();
+  const langRef = useRef(null);
 
   const languages = [
     { code: "EE", language: "est" },
@@ -73,7 +74,7 @@ const NavBar = observer(() => {
   useEffect(() => {
     if (!user?.user?.id) return;
 
-    fetch(`https://api.dlyq.ee/api/chat/user/${user.user.id}`)
+    fetch(`${process.env.REACT_APP_API_URL}api/chat/user/${user.user.id}`)
       .then((res) => res.json())
       .then((data) => {
         const unread = new Set();
@@ -90,10 +91,7 @@ const NavBar = observer(() => {
   }, [user?.user?.id]);
 
   useEffect(() => {
-    const socket = io("https://api.dlyq.ee", {
-  withCredentials: true,
-  transports: ["websocket", "polling"]
-});
+    const socket = io(`${process.env.REACT_APP_API_URL}`);
 
     if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
       socket.emit("joinAdminNotifications");
@@ -122,6 +120,20 @@ const NavBar = observer(() => {
     };
   }, [user]);
 
+useEffect(() => {
+  const onDocClick = (e) => {
+    if (isLanguageMenuOpen && langRef.current && !langRef.current.contains(e.target)) {
+      setIsLanguageMenuOpen(false);
+    }
+  };
+  document.addEventListener("click", onDocClick);
+  return () => document.removeEventListener("click", onDocClick);
+}, [isLanguageMenuOpen]);
+
+useEffect(() => {
+  setIsLanguageMenuOpen(false);
+}, [location.pathname]);
+
   const navbarStyle = {
     position: "fixed",
     top: scrollDirection === "up" ? "0" : "-150px",
@@ -136,7 +148,7 @@ const NavBar = observer(() => {
     user.setIsAuth(false);
   };
 
-    return (
+  return (
     <div className={`${styles.navbar} NavBar`} style={navbarStyle}>
       <div className={styles.navbarContainer}>
         <NavLink to="/" className={styles.navbarLogo}>
@@ -151,6 +163,7 @@ const NavBar = observer(() => {
         <SearchBar />
 
         <div
+        ref={langRef}
           className={styles.languageSelectorWrapper}
           onMouseLeave={() => setIsLanguageMenuOpen(false)}
         >
