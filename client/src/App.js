@@ -37,7 +37,7 @@ const App = observer(() => {
 
   const fetchSupportChat = async (userId) => {
     const res = await fetch(
-      `${process.env.REACT_APP_API_URL}api/chat/support-chat`,
+      `${process.env.REACT_APP_API_URL}chat/support-chat`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
