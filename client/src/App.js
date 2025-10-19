@@ -102,17 +102,13 @@ const App = observer(() => {
       }}
     >
       <BrowserRouter>
+      {appStore.isLoading && <LoadingBar />}
         <Elements stripe={stripePromise}>
-          {maintenanceKnown && !maintenanceActive && <LoadingBar />}
           {!maintenanceActive && <NavBar />}
           <AppRouter />
-          {!maintenanceActive && maintenanceKnown && (
-            <>
-              <ToastContainer position="top-right" autoClose={3000} />
-              <OrderSidebar />
-            </>
-          )}
+         {!maintenanceActive && maintenanceKnown && <OrderSidebar />}
         </Elements>
+        
         {!maintenanceActive && (
           <MobileNavBar maintenanceMode={appStore.maintenance.enabled} />
         )}
@@ -121,6 +117,15 @@ const App = observer(() => {
         {maintenanceKnown && (
           <Footer maintenanceMode={appStore.maintenance.enabled} />
         )}
+         <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        newestOnTop
+        limit={3}
+        pauseOnFocusLoss
+        theme="colored"
+        style={{ zIndex: 2147483647 }}
+      />
       </BrowserRouter>
     </ChatContext.Provider>
   );
