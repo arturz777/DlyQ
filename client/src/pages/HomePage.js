@@ -34,21 +34,18 @@ const HomePage = () => {
   const [shouldLoadCatalog, setShouldLoadCatalog] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  useEffect(() => {
-    const el = document.getElementById("catalog-devices");
-    if (!el) return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setShouldLoadCatalog(true);
-          io.disconnect();
-        }
-      },
-      { rootMargin: "400px" }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
+    useEffect(() => {
+  if (!shouldLoadCatalog) return;
+  if ((device.devices?.length ?? 0) > 0) return; 
+
+  const LIMIT = 1000;
+  (async () => {
+    const data = await fetchFilter(null, null, null, 1, LIMIT, null, null);
+    device.setDevices(prev => prev?.length ? prev : (data.rows || []));
+    device.setTotalCount(data.count || 0);
+    device.setFacets?.(data.facets ?? { subtypes: [], brands: [] });
+  })();
+}, [shouldLoadCatalog]);
 
   useEffect(() => {
     if (!shouldLoadCatalog) return;
