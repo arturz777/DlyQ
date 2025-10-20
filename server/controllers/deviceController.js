@@ -469,9 +469,16 @@ class DeviceController {
       subtypeId = toInt(subtypeId);
       makeId = toInt(makeId);
       modelId = toInt(modelId);
-      page = Number(page) || 1;
-      limit = Number(limit) || 9;
-      const offset = page * limit - limit;
+      page =
+        Number.isFinite(Number(page)) && Number(page) > 0
+          ? Math.floor(Number(page))
+          : 1;
+      limit =
+        Number.isFinite(Number(limit)) && Number(limit) > 0
+          ? Math.min(Math.floor(Number(limit)), 1000)
+          : 1000;
+
+      const offset = (page - 1) * limit;
 
       const onlyVisible =
         String(req.query.onlyVisible).toLowerCase() === "true";
@@ -1482,9 +1489,16 @@ class DeviceController {
       subtypeId = toInt(subtypeId);
       makeId = toInt(makeId);
       modelId = toInt(modelId);
-      page = Number(page) || 1;
-      limit = Number(limit) || 9;
-      const offset = page * limit - limit;
+      page =
+        Number.isFinite(Number(page)) && Number(page) > 0
+          ? Math.floor(Number(page))
+          : 1;
+      limit =
+        Number.isFinite(Number(limit)) && Number(limit) > 0
+          ? Math.min(Math.floor(Number(limit)), 1000)
+          : 1000;
+
+      const offset = (page - 1) * limit;
 
       const baseWhere = {};
       if (brandId != null) baseWhere.brandId = brandId;
@@ -1561,6 +1575,7 @@ class DeviceController {
         include: baseInclude,
         distinct: true,
         subQuery: false,
+        order: [["id", "ASC"]],
       });
 
       const todayStr = new Date().toISOString().slice(0, 10);
@@ -1767,7 +1782,7 @@ class DeviceController {
           ? isVisible === "true"
           : Boolean(isVisible);
 
-      device.isVisible = !!isVisible;
+     device.isVisible = next;
       await device.save();
       return res.json({ id: device.id, isVisible: device.isVisible });
     } catch (e) {
