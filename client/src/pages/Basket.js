@@ -189,7 +189,15 @@ const Basket = observer(() => {
     basket.removeItem(uniqueKey);
   };
 
-  const handlePaymentSuccess = async (paymentMethod, formData) => {
+ const handlePaymentSuccess = async (payment, formData) => {
+
+   const paymentIntentId =
+     payment?.paymentIntentId || payment?.id || payment?.paymentIntent?.id;
+   if (!paymentIntentId) {
+     toast.error("Не удалось получить paymentIntentId");
+     return;
+   }
+
     const hasUnselectedOptions = basket.items.some(
       (item) =>
         item.selectedOptions &&
@@ -214,7 +222,7 @@ const Basket = observer(() => {
 
     const dataToSend = {
       formData,
-      paymentMethodId: paymentMethod.id,
+      paymentIntentId,
       totalPrice: basket.getTotalPrice(),
       language: i18n.language,
       orderDetails: basket.items.map((item, index) => ({
@@ -234,7 +242,7 @@ const Basket = observer(() => {
     };
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/order/create`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}api/order/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -260,7 +268,7 @@ const Basket = observer(() => {
       toast.error(t("error creating order", { ns: "basket" }));
     }
   };
-
+  
   const handleOptionChange = async (
     itemUniqueKey,
     optionName,
