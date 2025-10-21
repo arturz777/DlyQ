@@ -28,8 +28,10 @@
     "nodemailer": "^6.9.16",
     "pg": "^8.13.1",
     "pg-hstore": "^2.3.4",
+    "puppeteer": "^24.25.0",
     "sequelize": "^6.37.5",
     "socket.io": "^4.8.1",
+    "stripe": "^19.1.0",
     "uuid": "^11.0.3"
   },
   "devDependencies": {
