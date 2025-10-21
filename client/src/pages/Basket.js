@@ -189,7 +189,15 @@ const Basket = observer(() => {
     basket.removeItem(uniqueKey);
   };
 
-  const handlePaymentSuccess = async (paymentMethod, formData) => {
+ const handlePaymentSuccess = async (payment, formData) => {
+
+   const paymentIntentId =
+     payment?.paymentIntentId || payment?.id || payment?.paymentIntent?.id;
+   if (!paymentIntentId) {
+     toast.error("Не удалось получить paymentIntentId");
+     return;
+   }
+
     const hasUnselectedOptions = basket.items.some(
       (item) =>
         item.selectedOptions &&
@@ -214,7 +222,7 @@ const Basket = observer(() => {
 
     const dataToSend = {
       formData,
-      paymentMethodId: paymentMethod.id,
+      paymentIntentId,
       totalPrice: basket.getTotalPrice(),
       language: i18n.language,
       orderDetails: basket.items.map((item, index) => ({
