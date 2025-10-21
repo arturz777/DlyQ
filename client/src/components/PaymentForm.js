@@ -359,20 +359,21 @@ const normalizePhone = (raw = "") => {
   };
 
 const handleSubmit = async (event) => {
-  event.preventDefault();
+    event.preventDefault();
 
-  const phoneNormalized = normalizePhone(formData.phone);
-  if (!phoneNormalized) {
-    toast.error(t("phone is required", { ns: "paymentForm" }));
-    return;
-  }
+    const phoneNormalized = normalizePhone(formData.phone);
+    if (!phoneNormalized) {
+      toast.error(t("phone is required", { ns: "paymentForm" }));
+      return;
+    }
 
-  setFormData(prev => ({ ...prev, phone: phoneNormalized }));
+    setFormData((prev) => ({ ...prev, phone: phoneNormalized }));
 
-  if (!formData.firstName?.trim()) {
+    if (!formData.firstName?.trim()) {
       toast.error(t("first name is required", { ns: "paymentForm" }));
       return;
     }
+
     if (!formData.email?.trim()) {
       toast.error(t("email is required", { ns: "paymentForm" }));
       return;
@@ -383,48 +384,93 @@ const handleSubmit = async (event) => {
       return;
     }
 
-   const card = elements.getElement(CardNumberElement);
+    const card = elements.getElement(CardNumberElement);
+
     if (!card) {
       toast.error(t("card element not found", { ns: "paymentForm" }));
       return;
     }
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    const { error, paymentMethod } = await stripe.createPaymentMethod({
-      type: "card",
-      card
-    });
-    if (error) {
-      toast.error(error.message);
-      setLoading(false);
-      return;
-    }
+    try {
+      const amountCents = Math.round((totalPrice + deliveryCost) * 100);
 
-    if (user.isAuth && !user.user?.phone?.trim()) {
-      try {
-        await updateProfile({ phone: phoneNormalized });
-        const updatedProfile = await fetchProfile();
-        user.setUser({
-          ...user.user,
-          phone: updatedProfile.phone,
-          firstName: updatedProfile.firstName,
-          lastName: updatedProfile.lastName,
-          email: updatedProfile.email,
-        });
-      } catch (err) {
-        console.warn("Не удалось сохранить номер телефона в профиль:", err);
-        toast.error("Не удалось сохранить номер телефона в профиль");
+      const piRes = await fetch(
+        `${process.env.REACT_APP_API_URL}payments/create-intent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: amountCents,
+            currency: "eur",
+            receipt_email: formData.email,
+            metadata: {
+              phone: phoneNormalized,
+            },
+          }),
+        }
+      );
+
+      if (!piRes.ok) {
+        toast.error(t("payment initialization error", { ns: "paymentForm" }));
         setLoading(false);
         return;
       }
-    }
 
-    await onPaymentSuccess(paymentMethod, {
-        ...formData,
-        phone: phoneNormalized,
-      });
+      const { clientSecret } = await piRes.json();
+
+      const { error, paymentIntent } = await stripe.confirmCardPayment(
+        clientSecret,
+        {
+          payment_method: {
+            card,
+            billing_details: {
+              name: `${formData.firstName || ""} ${
+                formData.lastName || ""
+              }`.trim(),
+              email: formData.email,
+              phone: phoneNormalized,
+            },
+          },
+        }
+      );
+
+      if (error) {
+        toast.error(error.message);
+        setLoading(false);
+        return;
+      }
+
+      if (paymentIntent?.status !== "succeeded") {
+        toast.error(`Статус платежа: ${paymentIntent?.status || "unknown"}`);
+        setLoading(false);
+        return;
+      }
+
+      if (user.isAuth && !user.user?.phone?.trim()) {
+        try {
+          await updateProfile({ phone: phoneNormalized });
+          const updatedProfile = await fetchProfile();
+          user.setUser({
+            ...user.user,
+            phone: updatedProfile.phone,
+            firstName: updatedProfile.firstName,
+            lastName: updatedProfile.lastName,
+            email: updatedProfile.email,
+          });
+        } catch (err) {
+          console.warn("Не удалось сохранить номер телефона в профиль:", err);
+          toast.error("Не удалось сохранить номер телефона в профиль");
+          setLoading(false);
+          return;
+        }
+      }
+
+      await onPaymentSuccess(
+        { paymentIntentId: paymentIntent.id },
+        { ...formData, phone: phoneNormalized }
+      );
     } catch (err) {
       console.error(err);
       toast.error(t("payment processing error", { ns: "paymentForm" }));
