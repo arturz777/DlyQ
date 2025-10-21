@@ -397,7 +397,7 @@ const handleSubmit = async (event) => {
       const amountCents = Math.round((totalPrice + deliveryCost) * 100);
 
       const piRes = await fetch(
-        `${process.env.REACT_APP_API_URL}api/payments/create-intent`,
+        `${process.env.REACT_APP_API_URL}payments/create-intent`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
