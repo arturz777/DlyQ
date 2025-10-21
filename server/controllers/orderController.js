@@ -178,7 +178,7 @@ const createOrder = async (req, res) => {
       totalPrice,
       orderDetails,
       desiredDeliveryDate,
-      paymentMethodId,
+      paymentIntentId,
       language,
       deliveryCost = 0,
     } = req.body;
@@ -257,7 +257,7 @@ const createOrder = async (req, res) => {
     const deliveryDateFromFirstItem = orderDetails[0]?.deliveryDate || null;
     const preferredTimeFromFirstItem = orderDetails[0]?.preferredTime || null;
     const distance = getDistanceFromWarehouse(latitude, longitude);
-    const deliveryPrice = calculateDeliveryCost(totalPrice, distance);
+    const deliveryPrice = deliveryPriceServer;
 
     let isPreorder = false;
     const devicesToUpdate = [];
