@@ -10,6 +10,9 @@ const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");  /
 const { supabase } = require("../config/supabaseClient");
 const uuid = require("uuid");
 
+const Stripe = require("stripe");
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
 function mustEnv(name) {
   const v = (process.env[name] ?? "").trim();
   if (!v) throw new Error(`${name} is not set`);
@@ -177,6 +180,7 @@ const createOrder = async (req, res) => {
       desiredDeliveryDate,
       paymentMethodId,
       language,
+      deliveryCost = 0,
     } = req.body;
     const {
       firstName,
@@ -190,6 +194,53 @@ const createOrder = async (req, res) => {
       latitude,
       longitude,
     } = formData;
+
+    if (!paymentIntentId) {
+      return res.status(400).json({ message: "paymentIntentId is required" });
+    }
+
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    if (!pi || !pi.id) {
+      return res.status(400).json({ message: "PaymentIntent not found" });
+    }
+
+    const distanceForAmount = getDistanceFromWarehouse(latitude, longitude);
+    const deliveryPriceServer = calculateDeliveryCost(
+      totalPrice,
+      distanceForAmount
+    );
+    const serverAmountCents = Math.round(
+      (Number(totalPrice) + Number(deliveryPriceServer)) * 100
+    );
+
+    if (pi.amount !== serverAmountCents) {
+      return res.status(400).json({
+        message: "Amount mismatch",
+        expected: serverAmountCents,
+        actual: pi.amount,
+      });
+    }
+
+    if ((pi.currency || "").toLowerCase() !== "eur") {
+      return res.status(400).json({ message: "Unsupported currency" });
+    }
+
+    if (pi.status !== "succeeded") {
+      return res
+        .status(402)
+        .json({ message: `Payment not completed: ${pi.status}` });
+    }
+
+    const existingByPI = await Order.findOne({
+      where: { paymentIntentId: pi.id },
+    }).catch(() => null);
+    if (existingByPI) {
+      return res.status(409).json({
+        message: "Order already exists for this payment intent",
+        orderId: existingByPI.id,
+      });
+    }
 
     let email = formData.email;
     if ((!email || email.trim() === "") && req.user && req.user.email) {
@@ -305,7 +356,7 @@ const createOrder = async (req, res) => {
       };
     });
 
-    const order = await Order.create({
+  const orderData = {
       userId,
       totalPrice: totalPrice + deliveryPrice,
       deliveryPrice,
@@ -326,7 +377,16 @@ const createOrder = async (req, res) => {
         : null,
       preferredDeliveryComment: preferredTimeFromFirstItem,
       formData: JSON.stringify(formData),
-    });
+    };
+
+    if (Order.rawAttributes?.paymentIntentId) orderData.paymentIntentId = pi.id;
+    if (Order.rawAttributes?.paymentStatus) orderData.paymentStatus = pi.status;
+    if (Order.rawAttributes?.currency)
+      orderData.currency = (pi.currency || "eur").toUpperCase();
+    if (Order.rawAttributes?.amountCents)
+      orderData.amountCents = Math.round((totalPrice + deliveryPrice) * 100);
+
+    const order = await Order.create(orderData);
 
     for (const { device, count } of devicesToUpdate) {
       await device.update({ quantity: device.quantity - count });
