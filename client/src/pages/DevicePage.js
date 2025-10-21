@@ -66,7 +66,7 @@ const DevicePage = ({ id }) => {
           : null;
 
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}device/check-stock`,
+        `${process.env.REACT_APP_API_URL}/device/check-stock`,
         {
           method: "POST",
           headers: {
