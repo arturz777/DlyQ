@@ -117,7 +117,7 @@ const Basket = observer(() => {
           const data = await response.json();
 
           if (response.ok) {
-            newQuantities[item.uniqueKey] = data.quantity;
+             newQuantities[item.uniqueKey] = Number(data.quantity);
           } else {
             newQuantities[item.uniqueKey] = 0;
           }
@@ -153,11 +153,10 @@ const Basket = observer(() => {
 
     const newCount = item.count + 1;
 
-    const isAvailable = await checkStock(
-      item.id,
-      newCount,
-      item.selectedOptions
+  const normalizedOptions = Object.fromEntries(
+      Object.entries(item.selectedOptions || {}).map(([k, v]) => [k, getVal(v)])
     );
+    const isAvailable = await checkStock(item.id, newCount, normalizedOptions);
 
     if (!isAvailable) {
       const hasStocks = basket.items.some(
@@ -190,7 +189,6 @@ const Basket = observer(() => {
   };
 
  const handlePaymentSuccess = async (payment, formData) => {
-
    const paymentIntentId =
      payment?.paymentIntentId || payment?.id || payment?.paymentIntent?.id;
    if (!paymentIntentId) {
@@ -242,14 +240,17 @@ const Basket = observer(() => {
     };
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}api/order/create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-        body: JSON.stringify(dataToSend),
-      });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/order/create`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+          body: JSON.stringify(dataToSend),
+        }
+      );
 
       const data = await response.json();
 
@@ -268,7 +269,7 @@ const Basket = observer(() => {
       toast.error(t("error creating order", { ns: "basket" }));
     }
   };
-  
+
   const handleOptionChange = async (
     itemUniqueKey,
     optionName,
@@ -295,7 +296,14 @@ const Basket = observer(() => {
       [optionName]: updatedOption,
     };
 
-    const isAvailable = await checkStock(item.id, item.count, newOptions);
+     const normalizedOptions = Object.fromEntries(
+      Object.entries(newOptions || {}).map(([k, v]) => [k, getVal(v)])
+    );
+    const isAvailable = await checkStock(
+      item.id,
+      item.count,
+      normalizedOptions
+    );
     const isThisPreorder = !isAvailable;
     item.isPreorder = isThisPreorder;
 
@@ -577,9 +585,10 @@ const Basket = observer(() => {
                     <button
                       onClick={() => handleIncrement(item.uniqueKey)}
                       disabled={
-                        !item.isPreorder &&
+                      !item.isPreorder &&
+                        availableQuantities[item.uniqueKey] != null &&
                         basket.getItemCount(item.uniqueKey) >=
-                          (availableQuantities[item.uniqueKey] || 0)
+                          availableQuantities[item.uniqueKey]
                       }
                     >
                       +
