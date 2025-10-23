@@ -1,26 +1,25 @@
 {
 	"address not found": "❌ Address not found!",
 	"address selected": "📍 Address selected!",
-  "fetching address error": "Error fetching address",
-  "geolocation disabled": "⚠️ Geolocation disabled, using IP geolocation...",
-  "ip geolocation error": "Error fetching IP geolocation",
-  "payment initialization error": "Error initializing payment system. Please try again later.",
-  "card element not found": "Error: Card element not found.",
-  "address found": "📍 Address found!",
-  "address search error": "❌ Error searching for address.",
-
-
-	
+	"fetching address error": "Error fetching address",
+	"geolocation disabled": "⚠️ Geolocation disabled, using IP geolocation...",
+	"ip geolocation error": "Error fetching IP geolocation",
+	"card element not found": "Error: Card element not found.",
+	"address found": "📍 Address found!",
+	"address search error": "❌ Error searching for address.",
 	"map location updated": "📍 Map location updated",
 	"location not found": "Location not found",
 	"geolocation error": "Geolocation error",
 	"error fetching route": "Error fetching route",
 	"delivery cost updated": "Delivery cost updated",
-  
 	"first name": "First Name",
 	"enter first name": "Enter your first name",
 	"last name": "Last Name",
 	"enter last name": "Enter your last name",
+	"payment method": "Payment method",
+	"add card": "Add card",
+	"use new card": "Use new card",
+	"change": "Change",
 	"email": "Email",
 	"enter email": "Enter your email",
 	"phone": "Phone",
@@ -28,59 +27,60 @@
 	"address": "Address",
 	"enter address": "Enter address",
 	"floor": "Floor",
-  "enter floor": "Enter floor",
-  "entrance": "Entrance",
-  "enter entrance": "Enter entrance",
-  
+	"enter floor": "Enter floor",
+	"entrance": "Entrance",
+	"enter entrance": "Enter entrance",
 	"apartment": "Apartment Number",
 	"enter apartment number": "Enter apartment number",
 	"comment": "Comment",
 	"add comment": "Add a comment",
 	"save address and comment": "Save address and comment",
-  
 	"no active order": "No active order",
 	"order total": "Order Total",
 	"delivery status": "Delivery Status",
-  
 	"card details": "Card Details",
 	"card number": "Card Number",
 	"expiry date": "Expiry Date",
 	"cvc": "CVC",
-  
 	"pay": "Pay",
 	"processing": "Processing...",
 	"confirm payment": "Confirm Payment",
-  
 	"order placed": "✅ Order placed successfully!",
 	"payment error": "❌ Payment processing error",
-  
-	"error initializing payment": "Error initializing payment system",
+	"select or add card": "Please select or add a card",
 	"payment processing error": "An error occurred during payment processing",
 	"payment method error": "Error with payment method",
 	"payment success": "✅ Payment successful!",
 	"payment declined": "❌ Payment declined",
 	"payment requires authentication": "⚠️ Payment requires authentication",
-
+	"failed to load saved cards": "Failed to load saved cards",
+	"confirm delete card": "Delete card •••• {{last4}}?",
+	"failed to remove card": "Failed to remove card",
+	"card removed": "Card removed",
+	"delete": "Delete",
+	"add new card": "Add new card",
+	"cancel": "Cancel",
+	"could not create setupintent": "Failed to create SetupIntent",
+	"failed to attach card": "Failed to attach the card",
+	"failed to add card": "Failed to add card",
+	"save card": "Save card",
+	"select": "Select",
+	"failed to save phone": "Failed to save phone to profile",
 	"first name is required": "Please enter your first name",
-    "email is required": "Please enter your email address",
-    "phone is required": "Please enter your phone number",
-	
+	"email is required": "Please enter your email address",
+	"phone is required": "Please enter your phone number",
 	"searching address": "🔍 Searching for address...",
-	"error searching address": "Error while searching for address",
-  
 	"latitude": "Latitude",
 	"longitude": "Longitude",
 	"coordinates updated": "Coordinates updated",
-  
 	"enable geolocation": "Enable Geolocation",
 	"fetching location": "Fetching location...",
-  
 	"order summary": "Order Summary",
 	"subtotal": "Subtotal",
 	"tax": "Tax",
 	"discount": "Discount",
 	"total": "Total",
-  
 	"estimated delivery time": "Estimated Delivery Time",
-	"estimated preparation time": "Estimated Preparation Time"
-  }
+	"estimated preparation time": "Estimated Preparation Time",
+	 "payment initialization error": "Error initializing payment system. Please try again later."
+}
