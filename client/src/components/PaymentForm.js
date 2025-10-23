@@ -31,7 +31,6 @@ const customIcon = new L.Icon({
   popupAnchor: [1, -34],
 });
 
-// универсальный BASE для Vite/CRA
 const RAW_BASE_URL =
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.BASE_URL) ||
   process.env.PUBLIC_URL ||
