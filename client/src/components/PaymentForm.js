@@ -166,7 +166,7 @@ const PaymentForm = ({
       if (!user.isAuth) return;
       try {
         const res = await fetch(
-          `${process.env.REACT_APP_API_URL}api/payments/payment-methods`,
+          `${process.env.REACT_APP_API_URL}/payments/payment-methods`,
           {
             credentials: "include",
             headers: {
