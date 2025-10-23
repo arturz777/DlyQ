@@ -31,11 +31,9 @@ const customIcon = new L.Icon({
   popupAnchor: [1, -34],
 });
 
-// универсальный base для CRA и Vite:
-const BASE_URL =
-  (typeof import.meta !== "undefined" &&
-    import.meta.env &&
-    import.meta.env.BASE_URL) ||
+// универсальный BASE для Vite/CRA
+const RAW_BASE_URL =
+  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.BASE_URL) ||
   process.env.PUBLIC_URL ||
   "";
 
@@ -966,7 +964,7 @@ return (
                       <span className="d-inline-flex align-items-center gap-2">
                         <img
                           src={getCardLogo(card.brand)}
-                          onError={(e) => (e.currentTarget.src = getCardLogo("_default"))}
+                           onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getCardLogo(""); }}
                           alt={card.brand || "card"}
                           className={styles.pmBrandIcon}
                         />
