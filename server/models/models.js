@@ -9,6 +9,7 @@ const User = sequelize.define("user", {
   firstName: { type: DataTypes.STRING },
   lastName: { type: DataTypes.STRING },
   phone: { type: DataTypes.STRING },
+  stripeCustomerId: { type: DataTypes.STRING, allowNull: true },
 });
 
 const Basket = sequelize.define("basket", {
