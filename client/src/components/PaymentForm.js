@@ -15,7 +15,7 @@ import {
   CardExpiryElement,
   CardCvcElement,
 } from "@stripe/react-stripe-js";
-import { Button, Form, Row, Col } from "react-bootstrap";
+import { Button, Form, Row, Col, Modal } from "react-bootstrap";
 import { toast } from "react-toastify";
 import { fetchProfile, updateProfile } from "../http/userAPI";
 import { Context } from "../index";
@@ -30,6 +30,19 @@ const customIcon = new L.Icon({
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
 });
+
+const CARD_LOGOS = {
+  visa: "/card-logos/visa.svg",
+  mastercard: "/card-logos/mastercard.svg",
+  amex: "/card-logos/amex.svg",
+  discover: "/card-logos/discover.svg",
+  jcb: "/card-logos/jcb.svg",
+  unionpay: "/card-logos/unionpay.svg",
+  diners: "/card-logos/diners.svg",
+  _default: "/card-logos/generic.svg",
+};
+const getCardLogo = (brand = "") =>
+  CARD_LOGOS[brand.toLowerCase()] || CARD_LOGOS._default;
 
 const MapUpdater = ({ latitude, longitude }) => {
   const map = useMap();
@@ -80,7 +93,7 @@ const PaymentForm = ({
   onDeliveryCostChange,
   preorder,
 }) => {
-  const { user } = useContext(Context);
+ const { user } = useContext(Context);
   const [loading, setLoading] = useState(false);
   const stripe = useStripe();
   const elements = useElements();
@@ -89,6 +102,13 @@ const PaymentForm = ({
   const [suggestions, setSuggestions] = useState([]);
   const [addrFetchTimer, setAddrFetchTimer] = useState(null);
   const [hydrated, setHydrated] = useState(false);
+  const [savedCards, setSavedCards] = useState([]);
+  const [selectedPmId, setSelectedPmId] = useState("new");
+  const [showPmModal, setShowPmModal] = useState(false);
+  const [tempPmId, setTempPmId] = useState("new");
+  const [selectedCardMeta, setSelectedCardMeta] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null); 
 
   const applyPlace = (place) => {
     const short = place.short_display_name || place.display_name;
@@ -140,6 +160,33 @@ const PaymentForm = ({
 
       return () => clearTimeout(timer);
   }, [formData.address]);
+
+  useEffect(() => {
+    const loadSaved = async () => {
+      if (!user.isAuth) return;
+      try {
+        const res = await fetch(
+          `${process.env.REACT_APP_API_URL}api/payments/payment-methods`,
+          {
+            credentials: "include",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+            },
+          }
+        );
+        if (!res.ok) return;
+        const { cards } = await res.json();
+        setSavedCards(Array.isArray(cards) ? cards : []);
+        if (cards && cards.length > 0) {
+          setSelectedPmId(cards[0].id);
+          setSelectedCardMeta(cards[0]);
+        }
+      } catch (e) {
+        console.warn(t("failed to load saved cards", { ns: "paymentForm" }), e);
+      }
+    };
+    loadSaved();
+  }, [user.isAuth]);
 
    useEffect(() => {
     const updateLocation = (latitude, longitude) => {
@@ -216,6 +263,61 @@ const PaymentForm = ({
 
     updateDeliveryCost();
   }, [totalPrice, formData.latitude, formData.longitude, onDeliveryCostChange]);
+
+  const handleDeleteCard = async (pmIdToDelete) => {
+    try {
+      setDeletingId(pmIdToDelete);
+      const r = await fetch(
+        `${process.env.REACT_APP_API_URL}/payments/detach-pm`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+          body: JSON.stringify({ pmId: pmIdToDelete }),
+        }
+      );
+      if (!r.ok) {
+        const msg = await r.text().catch(() => "");
+        toast.error(msg || t("failed to remove card", { ns: "paymentForm" }));
+        return;
+      }
+
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}/payments/payment-methods`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        }
+      );
+      const { cards } = await res.json();
+      const list = Array.isArray(cards) ? cards : [];
+      setSavedCards(list);
+
+      if (selectedPmId === pmIdToDelete) {
+        if (list.length) {
+          setSelectedPmId(list[0].id);
+          setSelectedCardMeta(list[0]);
+        } else {
+          setSelectedPmId("new");
+          setSelectedCardMeta(null);
+        }
+      }
+      if (tempPmId === pmIdToDelete) {
+        setTempPmId(list.length ? list[0].id : "new");
+      }
+
+      toast.success(t("card removed", { ns: "paymentForm" }));
+    } catch (e) {
+      console.error(e);
+      toast.error(t("failed to remove card", { ns: "paymentForm" }));
+    } finally {
+      setDeletingId(null);
+      setConfirmDel(null);
+    }
+  };
 
   const searchAddress = async () => {
     const q = (formData.address || "").trim();
@@ -384,10 +486,8 @@ const handleSubmit = async (event) => {
       return;
     }
 
-    const card = elements.getElement(CardNumberElement);
-
-    if (!card) {
-      toast.error(t("card element not found", { ns: "paymentForm" }));
+    if (!selectedPmId || selectedPmId === "new") {
+      toast.error(t("select or add card", { ns: "paymentForm" }));
       return;
     }
 
@@ -400,7 +500,10 @@ const handleSubmit = async (event) => {
         `${process.env.REACT_APP_API_URL}/payments/create-intent`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
           body: JSON.stringify({
             amount: amountCents,
             currency: "eur",
@@ -420,11 +523,22 @@ const handleSubmit = async (event) => {
 
       const { clientSecret } = await piRes.json();
 
-      const { error, paymentIntent } = await stripe.confirmCardPayment(
-        clientSecret,
-        {
+      let confirmResult;
+
+      if (selectedPmId !== "new" && savedCards.length > 0) {
+        confirmResult = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: selectedPmId,
+        });
+      } else {
+        const cardEl = elements.getElement(CardNumberElement);
+        if (!cardEl) {
+          toast.error(t("card element not found", { ns: "paymentForm" }));
+          setLoading(false);
+          return;
+        }
+        confirmResult = await stripe.confirmCardPayment(clientSecret, {
           payment_method: {
-            card,
+            card: cardEl,
             billing_details: {
               name: `${formData.firstName || ""} ${
                 formData.lastName || ""
@@ -433,8 +547,10 @@ const handleSubmit = async (event) => {
               phone: phoneNormalized,
             },
           },
-        }
-      );
+        });
+      }
+
+      const { error, paymentIntent } = confirmResult;
 
       if (error) {
         toast.error(error.message);
@@ -460,8 +576,8 @@ const handleSubmit = async (event) => {
             email: updatedProfile.email,
           });
         } catch (err) {
-          console.warn("Не удалось сохранить номер телефона в профиль:", err);
-          toast.error("Не удалось сохранить номер телефона в профиль");
+          console.warn(t("failed to save phone", { ns: "paymentForm" }), err);
+          toast.error(t("failed to save phone", { ns: "paymentForm" }));
           setLoading(false);
           return;
         }
@@ -741,33 +857,49 @@ return (
           </Form.Group>
         )}
 
-      <h4 className="mb-1 text-center">
-        {t("card details", { ns: "paymentForm" })}
-      </h4>
-      <Form.Group className="mb-3">
-        <Form.Label>{t("card number", { ns: "paymentForm" })}</Form.Label>
-        <div className="border rounded p-2">
-          <CardNumberElement />
+      <h4 className="mb-2">{t("payment method", { ns: "paymentForm" })}</h4>
+
+      {selectedCardMeta ? (
+        <div className={styles.pmSummary}>
+          <div className={styles.pmCardRow}>
+            <img
+              className={styles.pmBrandIcon}
+              src={getCardLogo(selectedCardMeta.brand)}
+              alt={selectedCardMeta.brand || "card"}
+            />
+            <div className={styles.pmCardText}>
+              {(selectedCardMeta.brand || "CARD").toUpperCase()}
+              <span className={styles.pmLast4}>
+                {" "}
+                •••• {selectedCardMeta.last4}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className={styles.pmChangeLink}
+            onClick={() => {
+              setTempPmId(selectedPmId || "new");
+              setShowPmModal(true);
+            }}
+          >
+            {t("change", { ns: "paymentForm" })}
+          </button>
         </div>
-      </Form.Group>
-      <Row className="mb-2">
-        <Col md={6}>
-          <Form.Group>
-            <Form.Label>{t("expiry date", { ns: "paymentForm" })}</Form.Label>
-            <div className="border rounded p-2">
-              <CardExpiryElement />
-            </div>
-          </Form.Group>
-        </Col>
-        <Col md={6}>
-          <Form.Group>
-            <Form.Label>{t("cvc", { ns: "paymentForm" })}</Form.Label>
-            <div className="border rounded p-2">
-              <CardCvcElement />
-            </div>
-          </Form.Group>
-        </Col>
-      </Row>
+      ) : (
+        <button
+          type="button"
+          className={styles.pmAddBtn}
+          onClick={() => {
+            setTempPmId("new");
+            setShowPmModal(true);
+          }}
+        >
+          {t("add card", { ns: "paymentForm" })}
+        </button>
+      )}
+
       <div className="text-center">
         <button
           className={styles.buttonTPrice}
@@ -781,8 +913,277 @@ return (
               ).toFixed(2)} €`}
         </button>
       </div>
+
+      <Modal
+        show={showPmModal}
+        onHide={() => setShowPmModal(false)}
+        centered
+        backdrop="static"
+        restoreFocus={false}
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {t("payment method", { ns: "paymentForm" })}
+          </Modal.Title>
+        </Modal.Header>
+
+        <Modal.Body>
+          {savedCards.length > 0 && (
+            <div className="mb-3">
+              {savedCards.map((card) => (
+                <div
+                  key={card.id}
+                  className="d-flex align-items-center justify-content-between mb-2"
+                >
+                  <div className="form-check">
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="pmChoiceModal"
+                      id={`pm-modal-${card.id}`}
+                      value={card.id}
+                      checked={tempPmId === card.id}
+                      onChange={() => setTempPmId(card.id)}
+                    />
+                    <label
+                      className="form-check-label ms-1"
+                      htmlFor={`pm-modal-${card.id}`}
+                    >
+                      <span className="d-inline-flex align-items-center gap-2">
+                        <img
+                          src={getCardLogo(card.brand)}
+                          alt={card.brand || "card"}
+                          className={styles.pmBrandIcon}
+                        />
+                        <span className={styles.pmCardText}>
+                          {(card.brand || "CARD").toUpperCase()}
+                          <span className={styles.pmLast4}>
+                            {" "}
+                            •••• {card.last4}
+                          </span>
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={styles.pmDeleteBtn}
+                    disabled={deletingId === card.id}
+                    onClick={() =>
+                      setConfirmDel({ id: card.id, last4: card.last4 })
+                    }
+                  >
+                    {deletingId === card.id
+                      ? "..."
+                      : t("delete", { ns: "paymentForm" })}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="form-check mb-2">
+            <input
+              className="form-check-input"
+              type="radio"
+              name="pmChoiceModal"
+              id="pm-modal-new"
+              value="new"
+              checked={tempPmId === "new"}
+              onChange={() => setTempPmId("new")}
+            />
+            <label className="form-check-label" htmlFor="pm-modal-new">
+              {t("add new card", { ns: "paymentForm" })}
+            </label>
+          </div>
+
+          {tempPmId === "new" && (
+            <>
+              <Form.Label className="mt-2">
+                {t("card number", { ns: "paymentForm" })}
+              </Form.Label>
+              <div className="border rounded p-2">
+                <CardNumberElement />
+              </div>
+
+              <Row className="mt-2">
+                <Col md={6}>
+                  <Form.Label>
+                    {t("expiry date", { ns: "paymentForm" })}
+                  </Form.Label>
+                  <div className="border rounded p-2">
+                    <CardExpiryElement />
+                  </div>
+                </Col>
+                <Col md={6}>
+                  <Form.Label>{t("cvc", { ns: "paymentForm" })}</Form.Label>
+                  <div className="border rounded p-2">
+                    <CardCvcElement />
+                  </div>
+                </Col>
+              </Row>
+            </>
+          )}
+        </Modal.Body>
+
+        <Modal.Footer>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setShowPmModal(false)}
+          >
+            {t("cancel", { ns: "paymentForm" })}
+          </Button>
+          <Button
+            type="button"
+            onClick={async () => {
+              try {
+                if (tempPmId !== "new") {
+                  const meta =
+                    savedCards.find((x) => x.id === tempPmId) || null;
+                  setSelectedPmId(tempPmId);
+                  setSelectedCardMeta(meta);
+                  setShowPmModal(false);
+                  return;
+                }
+
+                if (!stripe || !elements) return;
+                const cardEl = elements.getElement(CardNumberElement);
+                if (!cardEl) {
+                  toast.error(
+                    t("card element not found", { ns: "paymentForm" })
+                  );
+                  return;
+                }
+
+                const siRes = await fetch(
+                  `${process.env.REACT_APP_API_URL}/payments/setup-intent`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${
+                        localStorage.getItem("token") || ""
+                      }`,
+                    },
+                    body: JSON.stringify({ email: formData.email }),
+                  }
+                );
+                if (!siRes.ok) {
+                  toast.error(
+                    t("could not create setupintent", { ns: "paymentForm" })
+                  );
+                  return;
+                }
+                const { clientSecret } = await siRes.json();
+
+                const phoneNormalized = (formData.phone || "").trim();
+
+                const { error, setupIntent, paymentMethod } =
+                  await stripe.confirmCardSetup(clientSecret, {
+                    payment_method: {
+                      card: cardEl,
+                      billing_details: {
+                        name: `${formData.firstName || ""} ${
+                          formData.lastName || ""
+                        }`.trim(),
+                        email: formData.email,
+                        phone: (formData.phone || "").trim() || undefined,
+                      },
+                    },
+                  });
+                if (error) {
+                  toast.error(error.message);
+                  return;
+                }
+
+                const pmId = paymentMethod?.id || setupIntent?.payment_method;
+
+                const setDef = await fetch(
+                  `${process.env.REACT_APP_API_URL}/payments/set-default`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${
+                        localStorage.getItem("token") || ""
+                      }`,
+                    },
+                    body: JSON.stringify({ pmId }),
+                  }
+                );
+
+                if (!setDef.ok) {
+                  const msg = await setDef.text().catch(() => "");
+                  console.warn("set-default failed", msg);
+                  toast.error(
+                    t("failed to attach card", { ns: "paymentForm" })
+                  );
+                  return;
+                }
+
+                const res = await fetch(
+                  `${process.env.REACT_APP_API_URL}/payments/payment-methods`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${
+                        localStorage.getItem("token") || ""
+                      }`,
+                    },
+                  }
+                );
+                const { cards } = await res.json();
+                setSavedCards(Array.isArray(cards) ? cards : []);
+                const meta = (cards || []).find((x) => x.id === pmId) || null;
+                setSelectedPmId(pmId);
+                setSelectedCardMeta(meta);
+                if (cardEl?.clear) cardEl.clear();
+                setShowPmModal(false);
+              } catch (e) {
+                console.error(e);
+                toast.error(t("failed to add card", { ns: "paymentForm" }));
+              }
+            }}
+          >
+            {tempPmId === "new"
+              ? t("save card", { ns: "paymentForm" })
+              : t("select", { ns: "paymentForm" })}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+      <Modal
+        show={!!confirmDel}
+        onHide={() => setConfirmDel(null)}
+        centered
+        backdrop="static"
+        restoreFocus={false}
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>{t("delete", { ns: "paymentForm" })}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {t("confirm delete card", {
+            ns: "paymentForm",
+            last4: confirmDel?.last4,
+          })}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setConfirmDel(null)}>
+            {t("cancel", { ns: "paymentForm" })}
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => confirmDel && handleDeleteCard(confirmDel.id)}
+            disabled={!!deletingId}
+          >
+            {deletingId ? "..." : t("delete", { ns: "paymentForm" })}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Form>
   );
 };
 
 export default PaymentForm;
+
