@@ -39,6 +39,8 @@ const BASE_URL =
   process.env.PUBLIC_URL ||
   "";
 
+const BASE_URL = RAW_BASE_URL.endsWith("/") ? RAW_BASE_URL : RAW_BASE_URL + "/";
+
 const CARD_LOGOS_FILES = {
   visa: "visa.svg",
   mastercard: "mastercard.svg",
@@ -55,7 +57,6 @@ const getCardLogo = (brand = "") => {
   const file = CARD_LOGOS_FILES[key] || CARD_LOGOS_FILES._default;
   return `${BASE_URL}card-logos/${file}`;
 };
-
 
 const MapUpdater = ({ latitude, longitude }) => {
   const map = useMap();
@@ -965,6 +966,7 @@ return (
                       <span className="d-inline-flex align-items-center gap-2">
                         <img
                           src={getCardLogo(card.brand)}
+                          onError={(e) => (e.currentTarget.src = getCardLogo("_default"))}
                           alt={card.brand || "card"}
                           className={styles.pmBrandIcon}
                         />
