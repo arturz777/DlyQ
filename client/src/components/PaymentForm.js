@@ -31,18 +31,31 @@ const customIcon = new L.Icon({
   popupAnchor: [1, -34],
 });
 
-const CARD_LOGOS = {
-  visa: "/card-logos/visa.svg",
-  mastercard: "/card-logos/mastercard.svg",
-  amex: "/card-logos/amex.svg",
-  discover: "/card-logos/discover.svg",
-  jcb: "/card-logos/jcb.svg",
-  unionpay: "/card-logos/unionpay.svg",
-  diners: "/card-logos/diners.svg",
-  _default: "/card-logos/generic.svg",
+// универсальный base для CRA и Vite:
+const BASE_URL =
+  (typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    import.meta.env.BASE_URL) ||
+  process.env.PUBLIC_URL ||
+  "";
+
+const CARD_LOGOS_FILES = {
+  visa: "visa.svg",
+  mastercard: "mastercard.svg",
+  amex: "amex.svg",
+  discover: "discover.svg",
+  jcb: "jcb.svg",
+  unionpay: "unionpay.svg",
+  diners: "diners.svg",
+  _default: "generic.svg",
 };
-const getCardLogo = (brand = "") =>
-  CARD_LOGOS[brand.toLowerCase()] || CARD_LOGOS._default;
+
+const getCardLogo = (brand = "") => {
+  const key = String(brand).toLowerCase();
+  const file = CARD_LOGOS_FILES[key] || CARD_LOGOS_FILES._default;
+  return `${BASE_URL}card-logos/${file}`;
+};
+
 
 const MapUpdater = ({ latitude, longitude }) => {
   const map = useMap();
