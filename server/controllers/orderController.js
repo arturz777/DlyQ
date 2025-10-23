@@ -31,8 +31,8 @@ const PLACEHOLDER_IMG =
   process.env.PLACEHOLDER_IMG || `${PUBLIC_URL}/static/placeholder.png`;
 
 const calculateDeliveryCost = (totalPrice, distance) => {
-  let baseCost = 2;
-  let distanceCost = distance * 0.5;
+  let baseCost = 0;
+  let distanceCost = distance * 0;
   let deliveryCost = baseCost + distanceCost;
   let discount = Math.floor(totalPrice / 30) * 2;
 
