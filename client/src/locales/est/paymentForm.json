@@ -5,16 +5,18 @@
 	"geolocation disabled": "⚠️ Geolokatsioon on keelatud, kasutame IP-geolokatsiooni...",
 	"ip geolocation error": "IP-geolokatsiooni hankimisel ilmnes viga",
 	"payment initialization error": "Maksesüsteemi initsialiseerimise viga. Palun proovige hiljem uuesti.",
-  "card element not found": "Viga: Kaardi elementi ei leitud.",
-  "address found": "📍 Aadress leitud!",
-  "address search error": "❌ Viga aadressi otsimisel.",
-	
+	"card element not found": "Viga: Kaardi elementi ei leitud.",
+	"address found": "📍 Aadress leitud!",
+	"address search error": "❌ Viga aadressi otsimisel.",
 	"map location updated": "📍 Kaardi asukoht uuendatud",
 	"location not found": "Asukohta ei leitud",
 	"geolocation error": "Geolokatsiooni viga",
+	"payment method": "Makseviis",
+  "add card": "Lisa kaart",
+  "use new card": "Kasuta uut kaarti",
+  "change": "Muuda",
 	"error fetching route": "Marsruudi hankimisel ilmnes viga",
 	"delivery cost updated": "Tarnekulu uuendatud",
-  
 	"first name": "Eesnimi",
 	"enter first name": "Sisestage oma eesnimi",
 	"last name": "Perekonnanimi",
@@ -26,61 +28,59 @@
 	"address": "Aadress",
 	"enter address": "Sisestage aadress",
 	"floor": "Korrus",
-  "enter floor": "Sisestage korrus",
-  "entrance": "Trepikoda",
-  "enter entrance": "Sisestage trepikoda",
-  
+	"enter floor": "Sisestage korrus",
+	"entrance": "Trepikoda",
+	"enter entrance": "Sisestage trepikoda",
 	"apartment": "Korteri number",
 	"enter apartment number": "Sisestage korteri number",
 	"comment": "Kommentaar",
 	"add comment": "Lisa kommentaar",
 	"save address and comment": "Salvesta aadress ja kommentaar",
-  
 	"no active order": "Aktiivset tellimust pole",
 	"order total": "Tellimuse kogusumma",
 	"delivery status": "Tarne staatus",
-  
 	"card details": "Kaardi andmed",
 	"card number": "Kaardi number",
 	"expiry date": "Aegumiskuupäev",
 	"cvc": "CVC",
-  
 	"pay": "Maksa",
 	"processing": "Töötlemine...",
 	"confirm payment": "Kinnita makse",
-  
 	"order placed": "✅ Tellimus edukalt esitatud!",
 	"payment error": "❌ Makse töötlemisel tekkis viga",
-  
-	"error initializing payment": "Maksesüsteemi initsialiseerimise viga",
+	"failed to load saved cards": "Salvestatud kaartide laadimine ebaõnnestus",
+	"confirm delete card": "Kustutada kaart •••• {{last4}}?",
+	"failed to remove card": "Kaardi eemaldamine ebaõnnestus",
+	"card removed": "Kaart eemaldatud",
+	"delete": "Kustuta",
+	"add new card": "Lisa uus kaart",
+	"cancel": "Tühista",
+	"could not create setupintent": "SetupIntenti loomine ebaõnnestus",
+	"failed to attach card": "Kaardi sidumine ebaõnnestus",
+	"failed to add card": "Kaardi lisamine ebaõnnestus",
+	"save card": "Salvesta kaart",
+	"select": "Vali",
+	"failed to save phone": "Telefoni salvestamine profiili ebaõnnestus",
+	"select or add card": "Vali või lisa kaart",
 	"payment processing error": "Makse töötlemisel ilmnes viga",
 	"payment method error": "Makseviisi viga",
 	"payment success": "✅ Makse edukalt sooritatud!",
 	"payment declined": "❌ Makse tagasi lükatud",
 	"payment requires authentication": "⚠️ Makse nõuab autentimist",
-
 	"first name is required": "Palun sisestage eesnimi",
-    "email is required": "Palun sisestage e-posti aadress",
-    "phone is required": "Palun sisestage telefoninumber",
-
+	"email is required": "Palun sisestage e-posti aadress",
+	"phone is required": "Palun sisestage telefoninumber",
 	"searching address": "🔍 Otsitakse aadressi...",
-	"error searching address": "Aadressi otsimisel ilmnes viga",
-  
 	"latitude": "Laiuskraad",
 	"longitude": "Pikkuskraad",
 	"coordinates updated": "Koordinaadid uuendatud",
-  
 	"enable geolocation": "Luba geolokatsioon",
 	"fetching location": "Asukoha hankimine...",
-  
 	"order summary": "Tellimuse kokkuvõte",
 	"subtotal": "Vahesumma",
 	"tax": "Maks",
 	"discount": "Allahindlus",
 	"total": "Kokku",
-  
 	"estimated delivery time": "Eeldatav tarneaeg",
 	"estimated preparation time": "Eeldatav valmistamisaeg"
-  }
-  
-  
+}
