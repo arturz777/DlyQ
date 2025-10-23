@@ -46,3 +46,86 @@
 .preorderCheckbox {
   margin-bottom: 8px;
 }
+
+.pmSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  margin-bottom: 12px;
+}
+
+.pmCardRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pmBrandIcon {
+  width: 32px;
+  height: 20px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.pmCardText {
+  font-weight: 600;
+}
+
+.pmLast4 {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.pmAddBtn {
+  background: #f3f4f6;
+  border: 1px dashed #c7cbd1;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.pmChangeLink {
+  background: none;
+  border: none;
+  color: #0072ce;
+  text-decoration: underline;
+  padding: 0;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.pmChangeLink:hover,
+.pmChangeLink:focus,
+.pmChangeLink:active {
+  text-decoration: none;
+}
+
+.pmBrandLogo {
+  width: 34px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.pmDeleteBtn {
+  background: none;
+  border: 0;
+  color: #c40000;
+  text-decoration: underline;
+  padding: 4px 6px;
+  border-radius: 6px;
+  text-decoration: none;
+}
+
+.pmDeleteBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pmDeleteBtn:hover,
+.pmDeleteBtn:focus {
+  text-decoration: none;
+}
