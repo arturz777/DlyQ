@@ -8,6 +8,7 @@ body.courier-page .MobileNavBar {
 }
 
 html, body {
+  overscroll-behavior-y: none;
   overflow-x: hidden;
   width: 100%;
 }
