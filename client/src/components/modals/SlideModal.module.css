@@ -9,6 +9,7 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  overscroll-behavior-y: none;
 }
 
 .modalContent {
@@ -16,10 +17,10 @@
   background: white;
   border-top-left-radius: 16px;
   border-top-right-radius: 16px;
-  height: 85vh;
+  height: 75vh;
   max-height: 85vh;
- touch-action: none;
- overflow: hidden; 
+  touch-action: none;
+  overflow: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding: 20px;
@@ -34,9 +35,10 @@
 }
 
 .modalScroll {
-  height: 100%;
+  height: calc(100% - 12px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   touch-action: pan-y;
 }
 
