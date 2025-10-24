@@ -1,6 +1,7 @@
 import React, { createContext} from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { ConfirmProvider } from "./components/modals/ConfirmProvider";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import UserStore from "./store/UserStore";
 import DeviceStore from "./store/DeviceStore";
@@ -20,7 +21,9 @@ if (rootElement) {
         device: new DeviceStore(),
         basket: new BasketStore()
       }}>
+       <ConfirmProvider>
         <App />
+        </ConfirmProvider>
       </Context.Provider>
     </GoogleOAuthProvider>
   );
