@@ -4,6 +4,7 @@ import { observer } from "mobx-react-lite";
 import { Container, Image, Card, Form } from "react-bootstrap";
 import { toast } from "react-toastify";
 import PaymentForm from "../components/PaymentForm";
+import { useConfirm } from "../components/modals/ConfirmProvider";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom";
@@ -46,6 +47,7 @@ const normalizeVariants = (item) => {
 const Basket = observer(() => {
   const { basket } = useContext(Context);
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [deliveryCost, setDeliveryCost] = useState(0);
   const [availableQuantities, setAvailableQuantities] = useState({});
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -609,13 +611,18 @@ const Basket = observer(() => {
 
                   <button
                     className={styles.buttonDelete}
-                    onClick={() => {
-                      const confirmed = window.confirm(
-                        t("are you sure you want to delete this item", {
-                          ns: "basket",
-                        })
-                      );
-                      if (confirmed) handleRemove(item.uniqueKey);
+                 onClick={async () => {
+                      const ok = await confirm({
+                        title: t("delete", { ns: "basket" }),
+                        message: t(
+                          "are you sure you want to delete this item",
+                          { ns: "basket" }
+                        ),
+                        confirmText: t("delete", { ns: "basket" }),
+                        cancelText: t("cancel", { ns: "paymentForm" }),
+                        confirmVariant: "danger",
+                      });
+                      if (ok) handleRemove(item.uniqueKey);
                     }}
                   >
                     {t("delete", { ns: "basket" })}
