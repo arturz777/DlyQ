@@ -7,15 +7,20 @@ import styles from "./SlideModal.module.css";
 
 const SlideModal = observer(({ children, onClose }) => {
   const dragControls = useDragControls();
-  const contentRef = useRef(null);
+  const containerRef = useRef(null);
   const scrollRef = useRef(null);
 
   const startYRef = useRef(0);
-  const [isGesture, setIsGesture] = useState(false);
 
   useEffect(() => {
     const body = document.body;
+    const html = document.documentElement;
     const y = window.scrollY || 0;
+
+    const prevHtml = {
+      overflow: html.style.overflow,
+      overscrollBehaviorY: html.style.overscrollBehaviorY,
+    };
 
     const prev = {
       position: body.style.position,
@@ -30,13 +35,39 @@ const SlideModal = observer(({ children, onClose }) => {
     body.style.width = "100%";
     body.style.overflow = "hidden";
     body.style.overscrollBehaviorY = "none";
+    html.style.overflow = "hidden";
+    html.style.overscrollBehaviorY = "none";
+
+    const stopper = (e) => {
+      const sc = scrollRef.current;
+      if (!sc) {
+        e.preventDefault();
+        return;
+      }
+      const insideScroll = sc.contains(e.target);
+      if (!insideScroll) {
+        e.preventDefault();
+        return;
+      }
+      const atTop = sc.scrollTop <= 0;
+      const atBot = sc.scrollTop + sc.clientHeight >= sc.scrollHeight;
+      const touch = e.touches && e.touches[0];
+      if (touch && startYRef.current !== null) {
+        const dy = touch.clientY - startYRef.current;
+        if ((atTop && dy > 0) || (atBot && dy < 0)) e.preventDefault();
+      }
+    };
+    document.addEventListener("touchmove", stopper, { passive: false });
 
     return () => {
+      document.removeEventListener("touchmove", stopper);
       body.style.position = prev.position;
       body.style.top = prev.top;
       body.style.width = prev.width;
       body.style.overflow = prev.overflow;
       body.style.overscrollBehaviorY = prev.overscrollBehaviorY;
+      html.style.overflow = prevHtml.overflow;
+      html.style.overscrollBehaviorY = prevHtml.overscrollBehaviorY;
       window.scrollTo(0, y);
     };
   }, []);
@@ -47,49 +78,31 @@ const SlideModal = observer(({ children, onClose }) => {
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const canStartDrag = () => (contentRef.current?.scrollTop ?? 0) <= 0;
+  const canStartDrag = () => ((scrollRef.current?.scrollTop ?? 0) <= 2);
 
   const handlePointerDown = (e) => {
     if (canStartDrag()) dragControls.start(e);
   };
 
   const handleTouchStart = (e) => {
-    if (!canStartDrag()) return;
-    startYRef.current = e.touches[0].clientY;
-    setIsGesture(true);
-    dragControls.start(e);
-  };
+   startYRef.current = e.touches[0].clientY;
+   if (canStartDrag()) {
+     dragControls.start(e);
+   }
+ };
 
-  const handleTouchEnd = () => setIsGesture(false);
-
-  useEffect(() => {
-    const el = contentRef.current;
-    if (!el) return;
-
-    const onTouchMove = (e) => {
-      if (!isGesture) return;
-      const dy = e.touches[0].clientY - startYRef.current;
-      if (dy > 0) {
-        e.preventDefault();
-      }
-    };
-
-    el.addEventListener("touchmove", onTouchMove, { passive: false });
-    return () => el.removeEventListener("touchmove", onTouchMove);
-  }, [isGesture]);
+  const handleTouchEnd = () => { /* no-op */ };
 
   return createPortal(
     <div className={styles.modalOverlay} onClick={onClose}>
       <AnimatePresence>
         <motion.div
-          ref={contentRef}
+          ref={containerRef}
           className={styles.modalContent}
           onClick={(e) => e.stopPropagation()}
-          onPointerDown={handlePointerDown}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
           onPointerDownCapture={handlePointerDown}
           onTouchStartCapture={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
@@ -101,11 +114,14 @@ const SlideModal = observer(({ children, onClose }) => {
           dragElastic={{ top: 0, bottom: 0.5 }}
           dragMomentum={false}
           onDragEnd={(event, info) => {
-            if (info.offset.y > 120 || info.velocity.y > 800) onClose();
+            const h = containerRef.current?.getBoundingClientRect().height || 0;
+            const shouldClose =
+              info.offset.y > Math.max(120, h * 0.24) || info.velocity.y > 800;
+            if (shouldClose) onClose();
           }}
         >
           <div className={styles.dragHandle} />
-          <div className={styles.modalScroll} ref={contentRef}>
+          <div className={styles.modalScroll} ref={scrollRef}>
             <div
               className={appStore.isLoading ? styles.hiddenContent : undefined}
             >
