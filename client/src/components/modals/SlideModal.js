@@ -17,6 +17,9 @@ const SlideModal = observer(({ children, onClose }) => {
     const html = document.documentElement;
     const y = window.scrollY || 0;
 
+    const app = document.querySelector('#root');
+    const prevAppOverflow = app?.style.overflow;
+
     const prevHtml = {
       overflow: html.style.overflow,
       overscrollBehaviorY: html.style.overscrollBehaviorY,
@@ -37,30 +40,39 @@ const SlideModal = observer(({ children, onClose }) => {
     body.style.overscrollBehaviorY = "none";
     html.style.overflow = "hidden";
     html.style.overscrollBehaviorY = "none";
+    if (app) app.style.overflow = "hidden";
 
-    const stopper = (e) => {
-      const sc = scrollRef.current;
-      if (!sc) {
-        e.preventDefault();
-        return;
-      }
-      const insideScroll = sc.contains(e.target);
-      if (!insideScroll) {
-        e.preventDefault();
-        return;
-      }
-      const atTop = sc.scrollTop <= 0;
-      const atBot = sc.scrollTop + sc.clientHeight >= sc.scrollHeight;
-      const touch = e.touches && e.touches[0];
-      if (touch && startYRef.current !== null) {
-        const dy = touch.clientY - startYRef.current;
-        if ((atTop && dy > 0) || (atBot && dy < 0)) e.preventDefault();
-      }
-    };
-    document.addEventListener("touchmove", stopper, { passive: false });
+   const stopper = (e) => {
+   const sc = scrollRef.current;
+   const cont = containerRef.current;
+   if (!cont) { e.preventDefault(); return; }
+
+   const inContainer = cont.contains(e.target);
+   if (!inContainer) { e.preventDefault(); return; }
+
+   const inScroll = sc && sc.contains(e.target);
+   if (!inScroll) {
+     return;
+   }
+
+   const atTop = sc.scrollTop <= 0;
+   const atBot = sc.scrollTop + sc.clientHeight >= sc.scrollHeight;
+   const t = e.touches && e.touches[0];
+   if (!t) return;
+   const dy = t.clientY - startYRef.current;
+   if ((atTop && dy > 0) || (atBot && dy < 0)) e.preventDefault();
+ };
+
+    document.addEventListener("touchmove", stopper, { passive: false, capture: true });
+
+     const startCap = (e) => {
+     startYRef.current = e.touches?.[0]?.clientY ?? 0;
+   };
+   document.addEventListener("touchstart", startCap, { passive: false, capture: true });
 
     return () => {
-      document.removeEventListener("touchmove", stopper);
+     document.removeEventListener("touchmove", stopper, true);
+     document.removeEventListener("touchstart", startCap, true);
       body.style.position = prev.position;
       body.style.top = prev.top;
       body.style.width = prev.width;
@@ -68,6 +80,7 @@ const SlideModal = observer(({ children, onClose }) => {
       body.style.overscrollBehaviorY = prev.overscrollBehaviorY;
       html.style.overflow = prevHtml.overflow;
       html.style.overscrollBehaviorY = prevHtml.overscrollBehaviorY;
+      if (app) app.style.overflow = prevAppOverflow || "";
       window.scrollTo(0, y);
     };
   }, []);
