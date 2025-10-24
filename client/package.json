@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@radix-ui/react-visually-hidden": "^1.2.3",
     "@react-oauth/google": "^0.12.2",
     "@stripe/react-stripe-js": "^3.1.1",
     "@stripe/stripe-js": "^5.4.0",
@@ -23,7 +24,8 @@
     "react-select": "^5.9.0",
     "react-tabs": "^6.1.0",
     "react-toastify": "^11.0.2",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "vaul": "^1.1.2"
   },
   "scripts": {
   "start": "REACT_APP_API_URL=https://api.dlyq.ee/api react-scripts start", 
