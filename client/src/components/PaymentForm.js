@@ -15,6 +15,7 @@ import {
   CardExpiryElement,
   CardCvcElement,
 } from "@stripe/react-stripe-js";
+import { useConfirm } from "./modals/ConfirmProvider";
 import { Button, Form, Row, Col, Modal } from "react-bootstrap";
 import { toast } from "react-toastify";
 import { fetchProfile, updateProfile } from "../http/userAPI";
@@ -108,6 +109,7 @@ const PaymentForm = ({
   const [loading, setLoading] = useState(false);
   const stripe = useStripe();
   const elements = useElements();
+   const confirm = useConfirm();
   const [deliveryCost, setDeliveryCost] = useState(0);
   const { t } = useTranslation("paymentForm");
   const [suggestions, setSuggestions] = useState([]);
@@ -118,8 +120,7 @@ const PaymentForm = ({
   const [showPmModal, setShowPmModal] = useState(false);
   const [tempPmId, setTempPmId] = useState("new");
   const [selectedCardMeta, setSelectedCardMeta] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
-  const [confirmDel, setConfirmDel] = useState(null); 
+const [deletingId, setDeletingId] = useState(null);
 
   const applyPlace = (place) => {
     const short = place.short_display_name || place.display_name;
@@ -325,8 +326,7 @@ const PaymentForm = ({
       console.error(e);
       toast.error(t("failed to remove card", { ns: "paymentForm" }));
     } finally {
-      setDeletingId(null);
-      setConfirmDel(null);
+     setDeletingId(null);
     }
   };
 
@@ -982,9 +982,19 @@ return (
                     type="button"
                     className={styles.pmDeleteBtn}
                     disabled={deletingId === card.id}
-                    onClick={() =>
-                      setConfirmDel({ id: card.id, last4: card.last4 })
-                    }
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: t("delete", { ns: "paymentForm" }),
+                        message: t("confirm delete card", {
+                          ns: "paymentForm",
+                          last4: card.last4,
+                        }),
+                        confirmText: t("delete", { ns: "paymentForm" }),
+                        cancelText: t("cancel", { ns: "paymentForm" }),
+                        confirmVariant: "danger",
+                      });
+                      if (ok) await handleDeleteCard(card.id);
+                    }}
                   >
                     {deletingId === card.id
                       ? "..."
@@ -1161,35 +1171,6 @@ return (
             {tempPmId === "new"
               ? t("save card", { ns: "paymentForm" })
               : t("select", { ns: "paymentForm" })}
-          </Button>
-        </Modal.Footer>
-      </Modal>
-      <Modal
-        show={!!confirmDel}
-        onHide={() => setConfirmDel(null)}
-        centered
-        backdrop="static"
-        restoreFocus={false}
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>{t("delete", { ns: "paymentForm" })}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {t("confirm delete card", {
-            ns: "paymentForm",
-            last4: confirmDel?.last4,
-          })}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setConfirmDel(null)}>
-            {t("cancel", { ns: "paymentForm" })}
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => confirmDel && handleDeleteCard(confirmDel.id)}
-            disabled={!!deletingId}
-          >
-            {deletingId ? "..." : t("delete", { ns: "paymentForm" })}
           </Button>
         </Modal.Footer>
       </Modal>
