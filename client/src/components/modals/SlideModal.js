@@ -20,8 +20,10 @@ const SlideModal = observer(({ children, onClose }) => {
     const x = window.scrollX || 0;
     const y = window.scrollY || 0;
 
-    const app = document.querySelector("#root");
-    const prevAppOverflow = app?.style.overflow;
+       const app = document.querySelector('#root');
+   const prevAppOverflow = app?.style.overflow;
+    const bg = document.querySelector('.app'); // твой фон-скроллер
+const prevBgOverflow = bg?.style.overflow;
 
    const lockScroll = () => window.scrollTo(x, y);
    const preventAll = (e) => {
@@ -64,6 +66,7 @@ const SlideModal = observer(({ children, onClose }) => {
     html.style.overflow = "hidden";
     html.style.overscrollBehaviorY = "none";
     if (app) app.style.overflow = "hidden";
+    if (bg) bg.style.overflow = 'hidden';
 
     return () => {
       window.removeEventListener("scroll", lockScroll, true);
@@ -80,6 +83,7 @@ const SlideModal = observer(({ children, onClose }) => {
       html.style.overscrollBehaviorY = prevHtml.overscrollBehaviorY;
 
       if (app) app.style.overflow = prevAppOverflow || "";
+      if (bg) bg.style.overflow = prevBgOverflow || '';
       window.scrollTo(0, y);
     };
   }, []);
