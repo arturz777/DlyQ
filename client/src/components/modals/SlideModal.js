@@ -8,9 +8,38 @@ import styles from "./SlideModal.module.css";
 const SlideModal = observer(({ children, onClose }) => {
   const dragControls = useDragControls();
   const contentRef = useRef(null);
+  const scrollRef = useRef(null);
 
   const startYRef = useRef(0);
   const [isGesture, setIsGesture] = useState(false);
+
+  useEffect(() => {
+    const body = document.body;
+    const y = window.scrollY || 0;
+
+    const prev = {
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+      overflow: body.style.overflow,
+      overscrollBehaviorY: body.style.overscrollBehaviorY,
+    };
+
+    body.style.position = "fixed";
+    body.style.top = `-${y}px`;
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+    body.style.overscrollBehaviorY = "none";
+
+    return () => {
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.width = prev.width;
+      body.style.overflow = prev.overflow;
+      body.style.overscrollBehaviorY = prev.overscrollBehaviorY;
+      window.scrollTo(0, y);
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
