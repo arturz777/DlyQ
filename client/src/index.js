@@ -28,21 +28,21 @@ if (rootElement) {
     </GoogleOAuthProvider>
   );
 
-    if ("serviceWorker" in navigator) {
-    if (process.env.NODE_ENV === "production") {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((r) => console.log("SW registered:", r.scope))
-          .catch(console.error);
-      });
-    } else {
-      navigator.serviceWorker.getRegistrations?.().then((regs) => {
-        regs.forEach((r) => r.unregister());
-      });
-      if (window.caches?.keys) {
-        caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
-      }
-    }
-  }
+  //   if ("serviceWorker" in navigator) {
+  //   if (process.env.NODE_ENV === "production") {
+  //     window.addEventListener("load", () => {
+  //       navigator.serviceWorker
+  //         .register("/sw.js")
+  //         .then((r) => console.log("SW registered:", r.scope))
+  //         .catch(console.error);
+  //     });
+  //   } else {
+  //     navigator.serviceWorker.getRegistrations?.().then((regs) => {
+  //       regs.forEach((r) => r.unregister());
+  //     });
+  //     if (window.caches?.keys) {
+  //       caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
+  //     }
+  //   }
+  // }
 }
