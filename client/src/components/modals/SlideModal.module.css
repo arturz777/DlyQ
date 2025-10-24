@@ -13,6 +13,8 @@
 }
 
 .modalContent {
+  display: flex;
+ flex-direction: column;
   width: 100%;
   background: white;
   border-top-left-radius: 16px;
@@ -35,7 +37,8 @@
 }
 
 .modalScroll {
-  height: calc(100% - 12px);
+  flex: 1;
+  min-height: 0; 
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
