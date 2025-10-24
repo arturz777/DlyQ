@@ -7,8 +7,8 @@ import styles from "./SlideModal.module.css";
 
 const SlideModal = observer(({ children, onClose }) => {
   const dragControls = useDragControls();
-  const containerRef = useRef(null);  // внешний motion.div
-  const scrollRef = useRef(null);     // внутренний скроллер
+  const containerRef = useRef(null);
+  const scrollRef = useRef(null);
   const startYRef = useRef(0);
 
   const isTouchDevice =
@@ -17,10 +17,30 @@ const SlideModal = observer(({ children, onClose }) => {
   useEffect(() => {
     const body = document.body;
     const html = document.documentElement;
-    const y = window.scrollY || 0;
+    const x = window.scrollX || 0;
 
     const app = document.querySelector("#root");
     const prevAppOverflow = app?.style.overflow;
+
+    const lockScroll = () => {
+      // удерживаем в исходной позиции
+      window.scrollTo(x, y);
+    };
+    const preventAll = (e) => {
+      if (e.cancelable) e.preventDefault();
+    };
+    window.addEventListener("scroll", lockScroll, {
+      passive: false,
+      capture: true,
+    });
+    document.addEventListener("wheel", preventAll, {
+      passive: false,
+      capture: true,
+    });
+    document.addEventListener("touchmove", preventAll, {
+      passive: false,
+      capture: true,
+    });
 
     const prevHtml = {
       overflow: html.style.overflow,
@@ -45,54 +65,10 @@ const SlideModal = observer(({ children, onClose }) => {
     html.style.overscrollBehaviorY = "none";
     if (app) app.style.overflow = "hidden";
 
-    // Глобально душим touchmove вне модалки + на краях скролла
-    const onTouchStartCap = (e) => {
-      startYRef.current = e.touches?.[0]?.clientY ?? 0;
-    };
-
-    const onTouchMoveCap = (e) => {
-      const cont = containerRef.current;
-      const sc = scrollRef.current;
-      if (!cont) {
-        // на всякий случай
-        if (e.cancelable) e.preventDefault();
-        return;
-      }
-
-      const inContainer = cont.contains(e.target);
-      if (!inContainer) {
-        // тач не в модалке → не отдаём вьюпорту
-        if (e.cancelable) e.preventDefault();
-        return;
-      }
-
-      // внутри модалки, но вне скролл-зоны (хэндл/паддинги) — не мешаем (пусть drag работает)
-      const inScroll = sc && sc.contains(e.target);
-      if (!inScroll) return;
-
-      // если скролл на краю и тянут наружу — блокируем, чтобы не пробросить в фон
-      const atTop = sc.scrollTop <= 0;
-      const atBot = sc.scrollTop + sc.clientHeight >= sc.scrollHeight;
-      const t = e.touches && e.touches[0];
-      if (!t) return;
-      const dy = t.clientY - startYRef.current;
-      if ((atTop && dy > 0) || (atBot && dy < 0)) {
-        if (e.cancelable) e.preventDefault();
-      }
-    };
-
-    document.addEventListener("touchstart", onTouchStartCap, {
-      passive: false,
-      capture: true,
-    });
-    document.addEventListener("touchmove", onTouchMoveCap, {
-      passive: false,
-      capture: true,
-    });
-
     return () => {
-      document.removeEventListener("touchstart", onTouchStartCap, true);
-      document.removeEventListener("touchmove", onTouchMoveCap, true);
+      window.removeEventListener("scroll", lockScroll, true);
+      document.removeEventListener("wheel", preventAll, true);
+      document.removeEventListener("touchmove", preventAll, true);
 
       body.style.position = prevBody.position;
       body.style.top = prevBody.top;
@@ -123,9 +99,7 @@ const SlideModal = observer(({ children, onClose }) => {
   };
 
   const handleTouchStart = (e) => {
-    startYRef.current = e.touches[0].clientY;
-    // Мобилка: тянуть можно с ЛЮБОЙ точки → стартуем drag
-    // И временно отключаем скролл контента (чтобы жест не уехал в скролл)
+    startYRef.current = e.touches?.[0]?.clientY ?? 0;
     if (scrollRef.current) {
       scrollRef.current.style.overflow = "hidden";
       scrollRef.current.style.touchAction = "none";
