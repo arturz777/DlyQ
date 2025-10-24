@@ -18,17 +18,17 @@ const SlideModal = observer(({ children, onClose }) => {
     const body = document.body;
     const html = document.documentElement;
     const x = window.scrollX || 0;
+    const y = window.scrollY || 0;
 
     const app = document.querySelector("#root");
     const prevAppOverflow = app?.style.overflow;
 
-    const lockScroll = () => {
-      // удерживаем в исходной позиции
-      window.scrollTo(x, y);
-    };
-    const preventAll = (e) => {
-      if (e.cancelable) e.preventDefault();
-    };
+   const lockScroll = () => window.scrollTo(x, y);
+   const preventAll = (e) => {
+     const cont = containerRef.current;
+     if (cont && cont.contains(e.target)) return;
+     if (e.cancelable) e.preventDefault();
+   };
     window.addEventListener("scroll", lockScroll, {
       passive: false,
       capture: true,
