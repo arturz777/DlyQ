@@ -11,7 +11,6 @@ const SlideModal = observer(({ children, onClose, title = "Modal" }) => {
   const [open, setOpen] = useState(false);
   const startY = useRef(0);
 
-  // Открываемся кадром позже — без дёрганья
   useEffect(() => {
     const id = requestAnimationFrame(() => {
       const id2 = requestAnimationFrame(() => setOpen(true));
@@ -20,14 +19,12 @@ const SlideModal = observer(({ children, onClose, title = "Modal" }) => {
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // Сообщаем родителю после анимации
   useEffect(() => {
     if (open) return;
     const t = setTimeout(() => onClose?.(), ANIM_MS);
     return () => clearTimeout(t);
   }, [open, onClose]);
 
-  // ⬇️ БЛОКИРУЕМ PTR, пока модалка открыта
   useEffect(() => {
     if (!open) return;
 
@@ -36,16 +33,15 @@ const SlideModal = observer(({ children, onClose, title = "Modal" }) => {
     };
 
     const onTouchMove = (e) => {
-      // Разрешаем жест только внутри скролл-контейнера модалки
       const scroller = e.target.closest?.(`.${styles.modalScroll}`);
       if (!scroller) {
         if (e.cancelable) e.preventDefault();
         return;
       }
 
-      // Если на краю и тянем "наружу" — не отдаём вьюпорту (iOS PTR)
       const atTop = scroller.scrollTop <= 0;
-      const atBot = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight;
+      const atBot =
+        scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight;
       const y = e.touches?.[0]?.clientY ?? 0;
       const dy = y - startY.current;
 
@@ -54,8 +50,14 @@ const SlideModal = observer(({ children, onClose, title = "Modal" }) => {
       }
     };
 
-    document.addEventListener("touchstart", onTouchStart, { capture: true, passive: false });
-    document.addEventListener("touchmove", onTouchMove, { capture: true, passive: false });
+    document.addEventListener("touchstart", onTouchStart, {
+      capture: true,
+      passive: false,
+    });
+    document.addEventListener("touchmove", onTouchMove, {
+      capture: true,
+      passive: false,
+    });
 
     return () => {
       document.removeEventListener("touchstart", onTouchStart, true);
@@ -81,7 +83,9 @@ const SlideModal = observer(({ children, onClose, title = "Modal" }) => {
 
           <div className={styles.dragHandle} />
           <div className={styles.modalScroll}>
-            <div className={appStore.isLoading ? styles.hiddenContent : undefined}>
+            <div
+              className={appStore.isLoading ? styles.hiddenContent : undefined}
+            >
               {children}
             </div>
             {appStore.isLoading && (
