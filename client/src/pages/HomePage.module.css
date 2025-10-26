@@ -51,8 +51,9 @@
 }
 
 .categoryIcon {
-  width: 24px;
-  height: 24px;
+width: 28px;
+  height: 28px;
+  border-radius: 10px;
   margin-right: 5px;
   object-fit: contain;
   mix-blend-mode: multiply;
