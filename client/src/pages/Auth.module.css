@@ -21,24 +21,29 @@
 }
 
 .currentLanguageButton {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
   width: 35px;
   height: 25px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  border: 1px solid rgba(10, 37, 64, 0.18);
+  border-radius: 10px;
   cursor: pointer;
   padding: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.currentLanguageButton:hover {
+  background: #f6f9fc;
+  border-color: rgba(10, 37, 64, 0.28);
 }
 
 .flag {
-  width: 25px;
+  width: 20px;
   height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #ccc;
 }
 
 .dropdownMenu {
