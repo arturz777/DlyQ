@@ -76,7 +76,9 @@
 }
 
 @media (min-width: 630px) {
-  .flag {
+  .flag,
+  .currentLanguageButton,
+  .dropdownMenu {
     display: none;
   }
 }
