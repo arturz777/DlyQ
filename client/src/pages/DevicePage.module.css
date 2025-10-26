@@ -391,7 +391,7 @@
   }
   .DevicePageSpecText {
     grid-template-columns: 42% 1fr;
-    gap: 10px;
+    gap: 30px;
   }
 }
 
