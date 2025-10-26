@@ -866,9 +866,13 @@ const DevicePage = ({ id }) => {
           onClick={handleAddToBasket}
           disabled={needToSelectAllOptions}
         >
-          <span className={styles.AddText}>
-            {t("add_to_cart", { ns: "devicePage" })}
-          </span>
+         <span className={styles.AddText}>
+      {needToSelectAllOptions
+        ? t("select a variant", { ns: "devicePage" })
+        : availableQuantity <= 0
+        ? t("out_of_stock", { ns: "devicePage" })
+        : t("add_to_cart", { ns: "devicePage" })}
+    </span>
           <span className={styles.AddPrice}>
             {showOld ? (
               <>
