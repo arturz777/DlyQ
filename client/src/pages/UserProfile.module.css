@@ -265,9 +265,7 @@
     display: none;
   }
 
-  .flag {
-    display: none;
-  }
+  .flag,
   .currentLanguageButton {
     display: none;
   }
