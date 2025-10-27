@@ -1,95 +1,166 @@
 .dropdownWrapper {
   position: relative;
-  width: 250px;
-  margin: 0 auto;
-  text-align: center;
+  width: 100%;
+  max-width: 280px;
 }
 
 .dropdownHeader {
   position: relative;
-  padding: 10px 40px 10px 16px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  width: 100%;
+  padding: 10px 44px 10px 14px;
+  background: #fff;
+  border: 1px solid rgba(17,24,39,.12);
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(17,24,39,.06);
   cursor: pointer;
-  text-align: center;
-  font-size: 16px;
-  font-weight: 500;
-  min-height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  transition: box-shadow .15s ease, border-color .15s ease, transform .06s ease;
+}
+
+.dropdownHeader:focus-visible {
+  outline: none;
+  border-color: #0072ce;
+  box-shadow: 0 0 0 3px rgba(0,114,206,.18);
+}
+
+.dropdownHeader:active {
+  transform: translateY(1px);
+}
+
+.activeDropdown {
+  border-color: #0072ce;
 }
 
 .dropdownText {
   flex: 1;
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.clearIcon {
+.clearBtn {
   position: absolute;
-  right: 10px;
+  right: 30px;
   background: transparent;
   border: none;
+  color: #6b7280;
   font-size: 16px;
-  color: #888;
+  line-height: 1;
   cursor: pointer;
-  transition: color 0.2s ease-in-out;
   padding: 0;
+  display: grid;
+  place-items: center;
   height: 100%;
-  display: flex;
-  align-items: center;
 }
+.clearBtn:hover { color: #111827; }
 
-.clearIcon:hover {
-  color: #0072CE;
+.chevron {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%) rotate(0deg);
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+  transition: transform .18s ease;
 }
+.chevronOpen { transform: translateY(-50%) rotate(180deg); }
 
 .dropdownMenu {
   position: absolute;
-  top: 100%;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
   width: 100%;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  z-index: 10;
-  margin-top: 5px;
+  background: #fff;
+  border: 1px solid rgba(17,24,39,.1);
+  border-radius: 12px;
+  box-shadow:
+    0 8px 20px rgba(17,24,39,.10),
+    0 2px 8px rgba(17,24,39,.04);
+  overflow: hidden;
 }
 
+.searchRow {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(17,24,39,.06);
+}
+.searchIcon {
+  width: 18px;
+  height: 18px;
+  color: #6b7280;
+  flex: 0 0 18px;
+}
 .searchInput {
-  width: 90%;
-  margin: 10px auto;
+  width: 100%;
+  border: 1px solid rgba(17,24,39,.12);
+  border-radius: 8px;
   padding: 6px 10px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  display: block;
+  font-size: 14px;
+}
+.searchInput:focus {
+  outline: none;
+  border-color: #0072ce;
+  box-shadow: 0 0 0 2px rgba(0,114,206,.15);
 }
 
 .brandList {
-  max-height: 200px;
+  max-height: 240px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(17,24,39,.25) transparent;
 }
+.brandList::-webkit-scrollbar { width: 8px; }
+.brandList::-webkit-scrollbar-thumb {
+  background: rgba(17,24,39,.25);
+  border-radius: 8px;
+}
+.brandList::-webkit-scrollbar-track { background: transparent; }
 
 .brandItem {
-  padding: 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background .12s ease, color .12s ease;
 }
-
-.brandItem:hover {
-  background: #f0f0f0;
+.brandItem:hover { background: rgba(0,0,0,.04); }
+.brandItemActive { background: rgba(0,114,206,.08); }
+.brandItemSelected {
+  background: rgba(0,114,206,.1);
+  color: #0b4e86;
+  font-weight: 600;
 }
+.brandName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tick { color: #0b4e86; font-weight: 700; }
 
-.clearButton {
-  margin-top: 10px;
-  background: transparent;
-  border: none;
-  color: #0072CE;
-  cursor: pointer;
+.empty {
+  padding: 14px 12px;
+  color: #6b7280;
   font-size: 14px;
-  text-decoration: underline;
+  text-align: center;
 }
 
-.activeDropdown {
-  border: 2px solid #0072CE;
+@media (max-width: 630px) {
+  .dropdownWrapper { max-width: 100%; }
 }
