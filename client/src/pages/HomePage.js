@@ -34,18 +34,18 @@ const HomePage = () => {
   const [shouldLoadCatalog, setShouldLoadCatalog] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-   useEffect(() => {
-  if (!shouldLoadCatalog) return;
-  if ((device.devices?.length ?? 0) > 0) return; 
+  useEffect(() => {
+    if (!shouldLoadCatalog) return;
+    if ((device.devices?.length ?? 0) > 0) return;
 
-  const LIMIT = 1000;
-  (async () => {
-    const data = await fetchFilter(null, null, null, 1, LIMIT, null, null);
-    device.setDevices(prev => prev?.length ? prev : (data.rows || []));
-    device.setTotalCount(data.count || 0);
-    device.setFacets?.(data.facets ?? { subtypes: [], brands: [] });
-  })();
-}, [shouldLoadCatalog]);
+    const LIMIT = 1000;
+    (async () => {
+      const data = await fetchFilter(null, null, null, 1, LIMIT, null, null);
+      device.setDevices((prev) => (prev?.length ? prev : data.rows || []));
+      device.setTotalCount(data.count || 0);
+      device.setFacets?.(data.facets ?? { subtypes: [], brands: [] });
+    })();
+  }, [shouldLoadCatalog]);
 
   useEffect(() => {
     if (!shouldLoadCatalog) return;
@@ -179,7 +179,7 @@ const HomePage = () => {
         </div>
       )}
       <div className={styles.banner}>
-        {/* <h1>{t("fast delivery", { ns: "homePage" })}</h1>  */}
+        <h1>{t("fast delivery", { ns: "homePage" })}</h1>
         <p>{t("average delivery time: 15–30 minutes", { ns: "homePage" })}</p>
       </div>
 
@@ -192,7 +192,9 @@ const HomePage = () => {
                 to={`/catalog?typeId=${type.id}`}
                 className={styles.category}
               >
-              {type.img && <img src={type.img} alt="" className={styles.categoryIcon} />}
+                {type.img && (
+                  <img src={type.img} alt="" className={styles.categoryIcon} />
+                )}
                 {type.translations?.name?.[currentLang] || type.name}
               </Link>
             ))}
@@ -214,8 +216,16 @@ const HomePage = () => {
                       to={`/catalog?typeId=${type.id}`}
                       className={styles.dropdownItem}
                     >
-                        {type.img && <img src={type.img} alt="" className={styles.categoryIcon} />}
-                      {type.translations?.name?.[currentLang] || type.name}
+                      {type.img && (
+                        <img
+                          src={type.img}
+                          alt=""
+                          className={styles.categoryIcon}
+                        />
+                      )}
+                      <span className={styles.dropdownItemLabel}>
+                        {type.translations?.name?.[currentLang] || type.name}
+                      </span>
                     </Link>
                   ))}
                 </div>
@@ -229,7 +239,9 @@ const HomePage = () => {
               to={`/catalog?typeId=${type.id}`}
               className={styles.category}
             >
-               {type.img && <img src={type.img} alt="" className={styles.categoryIcon} />}
+              {type.img && (
+                <img src={type.img} alt="" className={styles.categoryIcon} />
+              )}
               {type.translations?.name?.[currentLang] || type.name}
             </Link>
           ))
