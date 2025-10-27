@@ -18,9 +18,14 @@ const TypeBar = observer(() => {
           className={`${styles.typeItem} ${
             type.id === device.selectedType.id ? styles.active : ""
           }`}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) =>
+            (e.key === "Enter" || e.key === " ") && e.currentTarget.click()
+          }
           onClick={() => {
             const isSame = device.selectedType.id === type.id;
-             device.clearSelectedSubType?.();
+            device.clearSelectedSubType?.();
 
             if (isSame) {
               device.setSelectedType({});
@@ -42,7 +47,15 @@ const TypeBar = observer(() => {
             }, 100);
           }}
         >
-          <img src={type.img} alt={type.name} className={styles.typeImage} />
+          <div className={styles.typeImageWrap}>
+            <img
+              src={type.img}
+              alt=""
+              className={styles.typeImage}
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
           <span className={styles.typeName}>
             {type.translations?.name?.[currentLang] || type.name}
           </span>
