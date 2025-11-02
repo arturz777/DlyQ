@@ -17,6 +17,7 @@ import {
   fetchSubtypesByType,
   fetchMakes,
   fetchModelsByMake,
+  fetchCatalogCursor,
   fetchFilter,
 } from "../http/deviceAPI";
 import { useTranslation } from "react-i18next";
@@ -26,16 +27,19 @@ const CatalogPage = observer(() => {
   const { device } = useContext(Context);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const { t, i18n } = useTranslation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const typeIdFromUrl = searchParams.get("typeId");
   const currentLang = i18n.language || "en";
-  const devicesReqId = useRef(0);
-  const subtypesReqId = useRef(0);
 
+  const subtypesReqId = useRef(0);
+  const bottomRef = useRef(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   const isAutoType =
     !!device.selectedType?.name && /авто/i.test(device.selectedType.name);
+
+  const getCompatMode = () =>
+    device.selectedMake?.id || device.selectedModel?.id ? "strict" : undefined;
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -49,14 +53,14 @@ const CatalogPage = observer(() => {
           ]);
 
         device.setTypes(
-          typesData.map((type) => ({
+          (typesData || []).map((type) => ({
             ...type,
             translations: type.translations || {},
           }))
         );
 
         device.setSubtypes(
-          subtypesData
+          (subtypesData || [])
             .map((subtype) => ({
               ...subtype,
               translations: subtype.translations || {},
@@ -68,8 +72,8 @@ const CatalogPage = observer(() => {
             })
         );
 
-        device.setBrands(brandsData);
-        device.setMakes(makesData);
+        device.setBrands(brandsData || []);
+        device.setMakes(makesData || []);
       } catch (error) {
         console.error("Ошибка загрузки начальных данных:", error);
       }
@@ -87,7 +91,6 @@ const CatalogPage = observer(() => {
     const found = device.types?.find((t) => t.id === id);
     if (found && device.selectedType?.id !== id) {
       device.setSelectedType(found);
-      device.setPage(1);
     }
   }, [typeIdFromUrl, device.types]);
 
@@ -98,67 +101,155 @@ const CatalogPage = observer(() => {
       device.setSelectedMake({});
       device.setSelectedModel({});
       device.setSelectedBrand({});
-      device.setPage(1);
+      device.resetFeed?.();
     };
   }, []);
 
   useEffect(() => {
-  const reqId = ++devicesReqId.current;
-  const showTimer = setTimeout(() => {
-    if (reqId === devicesReqId.current) device.setLoading('devices', true);
-  }, 150);
-
-  let cancelled = false;
-
-  (async () => {
-    try {
-      const data = await fetchFilter(
-        device.selectedType?.id ?? null,
-        device.selectedSubType?.id ?? null,
-        device.selectedBrand?.id ?? null,
-        device.page,
-        device.limit,
-        device.selectedMake?.id ?? null,
-        device.selectedModel?.id ?? null
-      );
-      if (cancelled || reqId !== devicesReqId.current) return;
-
-      device.setDevices(data.rows);
-      device.setTotalCount(data.count);
-      device.setFacets?.(data.facets);
-    } catch (e) {
-      if (!cancelled && reqId === devicesReqId.current) {
-        console.error('Ошибка загрузки девайсов:', e);
+    let cancelled = false;
+    const load = async () => {
+      if (!device.hasMore || device.loading.devices) return;
+      device.setLoading("devices", true);
+      try {
+        const compatMode = getCompatMode();
+        const modelId = device.selectedModel?.id ?? undefined;
+        const makeId = modelId
+          ? undefined
+          : device.selectedMake?.id ?? undefined;
+        const data = await fetchCatalogCursor({
+          typeId: device.selectedType?.id ?? undefined,
+          subtypeId: device.selectedSubType?.id ?? undefined,
+          brandId: device.selectedBrand?.id ?? undefined,
+          makeId,
+          modelId,
+          compatMode,
+          cursor: device.cursor ?? undefined,
+          sort: device.sort,
+          limit: device.limit,
+          onlyVisible: true,
+        });
+        if (cancelled) return;
+        device.appendDevices(data.items || []);
+        device.setCursor(data.nextCursor);
+        device.setHasMore(!!data.hasMore);
+      } catch (e) {
+        if (!cancelled) console.error("cursor load error", e);
+        device.setHasMore(false);
+      } finally {
+        device.setLoading("devices", false);
       }
-    } finally {
-      clearTimeout(showTimer);
-      if (!cancelled && reqId === devicesReqId.current) {
-        device.setLoading('devices', false);
-      }
-    }
-  })();
+    };
+    if (device.devices.length === 0) load();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    device.selectedType?.id,
+    device.selectedSubType?.id,
+    device.selectedBrand?.id,
+    device.selectedMake?.id,
+    device.selectedModel?.id,
+    device.sort,
+  ]);
 
-  return () => {
-    cancelled = true;
-    clearTimeout(showTimer);
-    device.setLoading('devices', false);
-  };
-}, [
-  device.selectedType?.id,
-  device.selectedSubType?.id,
-  device.selectedBrand?.id,
-  device.selectedMake?.id,
-  device.selectedModel?.id,
-  device.page,
-  device.limit,
-]);
+  useEffect(() => {
+    const el = bottomRef.current;
+    if (!el) return;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && device.hasMore && !device.loading.devices) {
+          (async () => {
+            try {
+              device.setLoading("devices", true);
+
+              const compatMode = getCompatMode();
+              const modelId = device.selectedModel?.id ?? undefined;
+              const makeId = modelId
+                ? undefined
+                : device.selectedMake?.id ?? undefined;
+
+              const data = await fetchCatalogCursor({
+                typeId: device.selectedType?.id ?? undefined,
+                subtypeId: device.selectedSubType?.id ?? undefined,
+                brandId: device.selectedBrand?.id ?? undefined,
+                makeId,
+                modelId,
+                compatMode,
+                cursor: device.cursor ?? undefined,
+                sort: device.sort,
+                limit: device.limit,
+                onlyVisible: true,
+              });
+
+              device.appendDevices(data.items || []);
+              device.setCursor(data.nextCursor);
+              device.setHasMore(!!data.hasMore);
+            } catch (e) {
+              console.error("cursor load error", e);
+              device.setHasMore(false);
+            } finally {
+              device.setLoading("devices", false);
+            }
+          })();
+        }
+      },
+      { rootMargin: "600px 0px" }
+    );
+
+    io.observe(el);
+    return () => io.disconnect();
+  }, [
+    bottomRef,
+    device.hasMore,
+    device.cursor,
+    device.loading.devices,
+    device.selectedType?.id,
+    device.selectedSubType?.id,
+    device.selectedBrand?.id,
+    device.selectedMake?.id,
+    device.selectedModel?.id,
+    device.sort,
+  ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!device.selectedType?.id) return;
+
+      try {
+        const data = await fetchFilter(
+          device.selectedType.id,
+          undefined,
+          undefined,
+          1,
+          1
+        );
+        if (!cancelled) {
+          device.setFacets({
+            subtypes: data?.facets?.subtypes ?? [],
+            brands: data?.facets?.brands ?? [],
+            mmSubtypeIdsAll: data?.facets?.mmSubtypeIdsAll ?? [],
+            mmOnlySubtypeIds: data?.facets?.mmOnlySubtypeIds ?? [],
+            universalSubtypeIds: data?.facets?.universalSubtypeIds ?? [],
+          });
+        }
+      } catch (e) {
+        if (!cancelled) console.error("facets load error", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [device.selectedType?.id]);
 
   useEffect(() => {
     const loadModels = async () => {
       try {
         if (device.selectedMake?.id) {
           const models = await fetchModelsByMake(device.selectedMake.id);
-          device.setModels(models);
+          device.setModels(models || []);
         } else {
           device.setModels([]);
         }
@@ -172,18 +263,15 @@ const CatalogPage = observer(() => {
   useEffect(() => {
     const id = ++subtypesReqId.current;
     device.setLoading("subtypes", true);
-
     device.setSubtypes([]);
-
     const loadSubtypes = async () => {
       try {
         const subtypesData = device.selectedType?.id
           ? await fetchSubtypesByType(device.selectedType.id)
           : await fetchSubtypes();
-
         if (id !== subtypesReqId.current) return;
         device.setSubtypes(
-          subtypesData
+          (subtypesData || [])
             .map((subtype) => ({
               ...subtype,
               translations: subtype.translations || {},
@@ -202,15 +290,11 @@ const CatalogPage = observer(() => {
         if (id === subtypesReqId.current) device.setLoading("subtypes", false);
       }
     };
-
     loadSubtypes();
   }, [device.selectedType?.id, currentLang]);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300);
-    };
-
+    const handleScroll = () => setShowScrollTop(window.scrollY > 300);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -229,10 +313,7 @@ const CatalogPage = observer(() => {
   }, []);
 
   const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -266,8 +347,13 @@ const CatalogPage = observer(() => {
               </div>
 
               <div id="subtype-filter" className={catalogStyles.subtypeFilter}>
-                {device.selectedMake?.id && device.selectedModel?.id ? (
-                  <SubTypeBar variant="mm" />
+                {device.selectedModel?.id ? (
+                  <SubTypeBar
+                    key={`mm-${device.selectedType?.id}-${
+                      device.selectedMake?.id ?? "no-make"
+                    }-${device.selectedModel.id}`}
+                    variant="mm"
+                  />
                 ) : null}
               </div>
             </>
@@ -285,6 +371,7 @@ const CatalogPage = observer(() => {
         >
           <DeviceList onDeviceClick={(id) => setSelectedDeviceId(id)} />
         </div>
+
         {showScrollTop && (
           <button
             onClick={scrollToTop}
@@ -293,12 +380,14 @@ const CatalogPage = observer(() => {
             ↑
           </button>
         )}
+
         {selectedDeviceId && (
           <SlideModal onClose={() => setSelectedDeviceId(null)}>
             <DevicePage id={selectedDeviceId} />
           </SlideModal>
         )}
       </div>
+
       {device.isLoadingAnything && (
         <div className={catalogStyles.loadingOverlay}>
           {t("loading", { ns: "homePage" })}
