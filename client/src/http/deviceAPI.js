@@ -268,6 +268,7 @@ export async function fetchCatalogCursor({
   limit,
   compatMode,
   onlyVisible = true,
+  lang,
 }) {
   const params = {};
 
@@ -281,6 +282,7 @@ export async function fetchCatalogCursor({
   if (limit) params.limit = Number(limit);
   if (compatMode) params.compatMode = String(compatMode).toLowerCase();
   params.onlyVisible = String(onlyVisible);
+  if (typeof lang === "string" && lang) params.lang = lang;
 
   const { data } = await $host.get("/device/cursor", { params });
   return data;
