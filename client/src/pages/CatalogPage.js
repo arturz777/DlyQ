@@ -127,6 +127,7 @@ const CatalogPage = observer(() => {
           sort: device.sort,
           limit: device.limit,
           onlyVisible: true,
+          lang: currentLang, 
         });
         if (cancelled) return;
         device.appendDevices(data.items || []);
@@ -150,6 +151,7 @@ const CatalogPage = observer(() => {
     device.selectedMake?.id,
     device.selectedModel?.id,
     device.sort,
+    currentLang,
   ]);
 
   useEffect(() => {
@@ -181,6 +183,7 @@ const CatalogPage = observer(() => {
                 sort: device.sort,
                 limit: device.limit,
                 onlyVisible: true,
+              lang: currentLang, 
               });
 
               device.appendDevices(data.items || []);
@@ -211,6 +214,7 @@ const CatalogPage = observer(() => {
     device.selectedMake?.id,
     device.selectedModel?.id,
     device.sort,
+    currentLang,
   ]);
 
   useEffect(() => {
@@ -371,6 +375,8 @@ const CatalogPage = observer(() => {
         >
           <DeviceList onDeviceClick={(id) => setSelectedDeviceId(id)} />
         </div>
+
+        <div ref={bottomRef} className={catalogStyles.ioSentinel} aria-hidden />
 
         {showScrollTop && (
           <button
