@@ -11,15 +11,10 @@ const DeviceList = observer(({ onDeviceClick }) => {
   const currentLang = i18n.language || "en";
   const selectedSubtypeId = Number(device.selectedSubType?.id) || null;
 
-  const isAutoType =
-    !!device.selectedType?.name && /авто/i.test(device.selectedType.name);
-
   const grouped = useMemo(() => {
     const types = Array.isArray(device.types) ? device.types : [];
     const subtypes = Array.isArray(device.subtypes) ? device.subtypes : [];
     const devices = Array.isArray(device.devices) ? device.devices : [];
-
-    const selectedSubtypeId = Number(device.selectedSubType?.id) || null;
 
     const result = {};
     types.forEach((type) => {
@@ -34,7 +29,6 @@ const DeviceList = observer(({ onDeviceClick }) => {
         typeName,
         subtypes: {},
         noSubtypeDevices: [],
-        autoNoMakeModelBySubtype: new Map(),
       };
     });
 
@@ -51,26 +45,6 @@ const DeviceList = observer(({ onDeviceClick }) => {
       };
     });
 
-    const getCompatList = (d) => {
-      if (!d) return [];
-      if (Array.isArray(d.compat)) return d.compat;
-      if (Array.isArray(d.compatibility)) return d.compatibility;
-      if (Array.isArray(d.carCompat)) return d.carCompat;
-      return [];
-    };
-    const hasMakeOrModel = (compatItem) => {
-      const mk =
-        compatItem?.makeId || compatItem?.make?.id || compatItem?.model?.makeId;
-      const md = compatItem?.modelId || compatItem?.model?.id;
-      return !!(mk || md);
-    };
-    const isNoMakeModel = (d) => {
-      const compat = getCompatList(d);
-      if (!compat.length) return true;
-      if (compat.some((c) => c?.isUniversal)) return true;
-      return !compat.some((c) => hasMakeOrModel(c));
-    };
-
     const subtypeTypeIdById = new Map();
     subtypes.forEach((st) => {
       const sid = Number(st.id);
@@ -79,7 +53,9 @@ const DeviceList = observer(({ onDeviceClick }) => {
     });
 
     devices.forEach((dev) => {
-      const primaryTypeId = Number(dev?.typeId) || null;
+      const primaryTypeId =
+        Number(dev?.typeId) ||
+        (dev?.subtypeId ? subtypeTypeIdById.get(Number(dev.subtypeId)) : null);
       const primarySubtypeId = Number(dev?.subtypeId) || null;
 
       const m2mTypeIds = Array.isArray(dev?.types)
@@ -157,28 +133,12 @@ const DeviceList = observer(({ onDeviceClick }) => {
       });
     });
 
-    if (isAutoType) {
-      Object.values(result).forEach((group) => {
-        Object.values(group.subtypes).forEach((sub) => {
-          const noMM = [];
-          const withMM = [];
-          for (const d of sub.devices) {
-            (isNoMakeModel(d) ? noMM : withMM).push(d);
-          }
-          if (noMM.length)
-            group.autoNoMakeModelBySubtype.set(sub.subtypeId, noMM);
-          sub.devices = withMM;
-        });
-      });
-    }
-
     return result;
   }, [
     device.types,
     device.subtypes,
     device.devices,
     currentLang,
-    isAutoType,
     selectedSubtypeId,
   ]);
 
@@ -190,12 +150,12 @@ const DeviceList = observer(({ onDeviceClick }) => {
 
   const isLoading = !!device.loading?.devices;
   const hasActiveFilter = Boolean(
-   device.selectedType?.id ||
-   device.selectedSubType?.id ||
-   device.selectedBrand?.id ||
-   device.selectedMake?.id ||
-   device.selectedModel?.id
- );
+    device.selectedType?.id ||
+      device.selectedSubType?.id ||
+      device.selectedBrand?.id ||
+      device.selectedMake?.id ||
+      device.selectedModel?.id
+  );
 
   const orderedTypeIds = (device.types || [])
     .slice()
@@ -234,6 +194,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
         const hasAnySubtype = Object.values(group.subtypes || {}).some(
           (s) => s.devices?.length > 0
         );
+
         if (!hasNoSubtype && !hasAnySubtype) return null;
 
         const subArr = Object.values(group.subtypes || {}).sort((a, b) => {
@@ -253,42 +214,6 @@ const DeviceList = observer(({ onDeviceClick }) => {
                   <DeviceItem key={d.id} device={d} onClick={onDeviceClick} />
                 ))}
               </div>
-            )}
-
-            {isAutoType && group.autoNoMakeModelBySubtype && (
-              <>
-                {[...group.autoNoMakeModelBySubtype.entries()]
-                  .filter(([, list]) => list?.length)
-                  .sort(([aId], [bId]) => {
-                    const a = subArr.find((s) => s.subtypeId === aId);
-                    const b = subArr.find((s) => s.subtypeId === bId);
-                    const ao = Number(a?.displayOrder ?? 0);
-                    const bo = Number(b?.displayOrder ?? 0);
-                    if (ao === bo) return (aId || 0) - (bId || 0);
-                    return ao - bo;
-                  })
-                  .map(([sid, list]) => {
-                    const sub = subArr.find((s) => s.subtypeId === sid);
-                    if (!sub || !list?.length) return null;
-                    return (
-                      <div
-                        key={`no-mm-${sid}`}
-                        className={styles.subtypeSection}
-                      >
-                        <p className={styles.subtypeTitle}>{sub.subtypeName}</p>
-                        <div className={styles.deviceGrid}>
-                          {list.map((d) => (
-                            <DeviceItem
-                              key={d.id}
-                              device={d}
-                              onClick={onDeviceClick}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-              </>
             )}
 
             {subArr.map((sub) => {
