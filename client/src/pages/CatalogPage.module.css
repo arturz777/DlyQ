@@ -98,6 +98,13 @@
   scroll-margin-top: 13px;
 }
 
+.ioSentinel {
+  display: block;
+  height: 1px;
+  width: 100%;
+  pointer-events: none;
+}
+
 @keyframes loadingAnimation {
   0% {
     transform: translateX(-100%);
