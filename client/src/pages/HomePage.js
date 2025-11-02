@@ -137,7 +137,6 @@ const HomePage = () => {
       )}
 
       <div className={styles.banner}>
-        <h1>{t("fast delivery", { ns: "homePage" })}</h1>
         <p>{t("average delivery time: 15–30 minutes", { ns: "homePage" })}</p>
       </div>
 
