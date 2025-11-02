@@ -14,9 +14,53 @@ const {
   DeviceCompatibility,
 } = require("../models/models");
 const ApiError = require("../error/ApiError");
-const { Op, fn, col, literal } = require("sequelize");
+const { Op, fn, col, literal, QueryTypes } = require("sequelize");
 const fs = require("fs");
+const sequelize = require("../db");
 const { supabase } = require("../config/supabaseClient");
+const base64url = {
+  enc: (obj) => Buffer.from(JSON.stringify(obj)).toString("base64url"),
+  dec: (s) => JSON.parse(Buffer.from(String(s), "base64url").toString("utf8")),
+};
+
+const SORTS = {
+  id_asc: { expr: "d.id", dir: "ASC", skType: "int" },
+  id_desc: { expr: "d.id", dir: "DESC", skType: "int" },
+  price_asc: {
+    expr: "COALESCE(d.price, 99999999.99)",
+    dir: "ASC",
+    skType: "numeric",
+  },
+  price_desc: {
+    expr: "COALESCE(d.price, -99999999.99)",
+    dir: "DESC",
+    skType: "numeric",
+  },
+  rating_desc: {
+    expr: "COALESCE(d.rating, -2147483648)",
+    dir: "DESC",
+    skType: "int",
+  },
+  new_desc: {
+    expr: 'COALESCE(d."createdAt", to_timestamp(0))',
+    dir: "DESC",
+    skType: "ts",
+  },
+};
+
+function parseCursor(s) {
+  if (!s) return null;
+  try {
+    const c = base64url.dec(s);
+    if (!c || c.v !== 1 || !c.sort || c.id == null) return null;
+    return c;
+  } catch {
+    return null;
+  }
+}
+function makeCursor({ sort, sk, id }) {
+  return base64url.enc({ v: 1, sort, sk, id });
+}
 
 const mustEnv = (n) => {
   const v = (process.env[n] ?? "").trim();
@@ -444,7 +488,7 @@ class DeviceController {
     }
   }
 
-  async getAll(req, res) {
+async getAll(req, res) {
     try {
       let {
         brandId,
@@ -532,6 +576,30 @@ class DeviceController {
         });
       }
 
+      if (modelId != null || makeId != null) {
+        const cond = [
+          `dc."isUniversal" = TRUE`,
+          ...(modelId != null ? [`dc."modelId" = ${Number(modelId)}`] : []),
+          ...(modelId == null && makeId != null
+            ? [`dc."makeId" = ${Number(makeId)}`]
+            : []),
+        ].join(" OR ");
+
+        where[Op.and] = where[Op.and] || [];
+        where[Op.and].push(
+          literal(`(
+      EXISTS (
+        SELECT 1 FROM "device_compatibilities" dc
+        WHERE dc."deviceId" = "device"."id" AND (${cond})
+      )
+      OR NOT EXISTS (
+        SELECT 1 FROM "device_compatibilities" dc2
+        WHERE dc2."deviceId" = "device"."id"
+      )
+    )`)
+        );
+      }
+
       const compatInclude = {
         model: DeviceCompatibility,
         as: "compat",
@@ -545,14 +613,6 @@ class DeviceController {
           },
         ],
       };
-
-      if (modelId != null) {
-        compatInclude.required = true;
-        compatInclude.where = { [Op.or]: [{ modelId }, { isUniversal: true }] };
-      } else if (makeId != null) {
-        compatInclude.required = true;
-        compatInclude.where = { [Op.or]: [{ makeId }, { isUniversal: true }] };
-      }
 
       include.push(compatInclude);
 
@@ -1489,15 +1549,12 @@ class DeviceController {
       subtypeId = toInt(subtypeId);
       makeId = toInt(makeId);
       modelId = toInt(modelId);
-      page =
-        Number.isFinite(Number(page)) && Number(page) > 0
-          ? Math.floor(Number(page))
-          : 1;
-      limit =
-        Number.isFinite(Number(limit)) && Number(limit) > 0
-          ? Math.min(Math.floor(Number(limit)), 1000)
-          : 1000;
 
+      page = Number.isFinite(+page) && +page > 0 ? Math.floor(+page) : 1;
+      limit =
+        Number.isFinite(+limit) && +limit > 0
+          ? Math.min(Math.floor(+limit), 1000)
+          : 1000;
       const offset = (page - 1) * limit;
 
       const baseWhere = {};
@@ -1541,13 +1598,6 @@ class DeviceController {
           },
         ],
       };
-      if (modelId != null) {
-        compatInclude.required = true;
-        compatInclude.where = { [Op.or]: [{ modelId }, { isUniversal: true }] };
-      } else if (makeId != null) {
-        compatInclude.required = true;
-        compatInclude.where = { [Op.or]: [{ makeId }, { isUniversal: true }] };
-      }
 
       const baseInclude = [
         { model: SubType, as: "subtype" },
@@ -1568,8 +1618,61 @@ class DeviceController {
         compatInclude,
       ];
 
+      const cloneWhere = (w = {}) => {
+        const r = { ...w };
+        if (w[Op.and]) r[Op.and] = [...w[Op.and]];
+        if (w[Op.or]) r[Op.or] = [...w[Op.or]];
+        return r;
+      };
+
+      const whereCommon = cloneWhere(baseWhere);
+      const whereRows = cloneWhere(whereCommon);
+      if (modelId != null || makeId != null) {
+        const condParts = [];
+        if (modelId != null)
+          condParts.push(`dc."modelId" = ${Number(modelId)}`);
+        if (makeId != null) condParts.push(`dc."makeId" = ${Number(makeId)}`);
+        const cond = condParts.length ? `(${condParts.join(" OR ")})` : "FALSE";
+
+        whereRows[Op.and] = whereRows[Op.and] || [];
+        whereRows[Op.and].push(
+          literal(`(
+      EXISTS (
+        SELECT 1
+        FROM "device_compatibilities" dc
+        WHERE dc."deviceId" = "device"."id"
+          AND ( ${cond} OR dc."isUniversal" = TRUE )
+      )
+      OR NOT EXISTS (
+        SELECT 1 FROM "device_compatibilities" dc2
+        WHERE dc2."deviceId" = "device"."id"
+      )
+    )`)
+        );
+      }
+
+      const whereFacet = cloneWhere(whereCommon);
+      if (modelId != null || makeId != null) {
+        const condParts = [];
+        if (modelId != null)
+          condParts.push(`dc."modelId" = ${Number(modelId)}`);
+        if (makeId != null) condParts.push(`dc."makeId" = ${Number(makeId)}`);
+        const cond = condParts.length ? `(${condParts.join(" OR ")})` : "FALSE";
+
+        whereFacet[Op.and] = whereFacet[Op.and] || [];
+        whereFacet[Op.and].push(
+          literal(`
+      EXISTS (
+        SELECT 1
+        FROM "device_compatibilities" dc
+        WHERE dc."deviceId" = "device"."id" AND ${cond}
+      )
+    `)
+        );
+      }
+
       const devices = await Device.findAndCountAll({
-        where: baseWhere,
+        where: whereRows,
         limit,
         offset,
         include: baseInclude,
@@ -1610,7 +1713,6 @@ class DeviceController {
         const valueIdx = keyParts[4];
 
         if (!translatedSpecs[deviceId]) translatedSpecs[deviceId] = {};
-
         if (section === "info") {
           if (!translatedSpecs[deviceId].info)
             translatedSpecs[deviceId].info = [];
@@ -1653,7 +1755,7 @@ class DeviceController {
         d.dataValues.translations = translatedSpecs[d.id] || {};
       });
 
-      const whereNoSubtype = { ...baseWhere };
+      const whereNoSubtype = cloneWhere(whereFacet);
       if (whereNoSubtype[Op.and]) {
         whereNoSubtype[Op.and] = whereNoSubtype[Op.and].filter((cond) => {
           return (
@@ -1697,13 +1799,11 @@ class DeviceController {
       });
 
       const subtypeCounts = new Map();
-
       for (const r of primarySubtypes) {
         const id = Number(r.subtypeId);
         const c = Number(r.count || 0);
         if (id) subtypeCounts.set(id, (subtypeCounts.get(id) || 0) + c);
       }
-
       for (const r of m2mSubtypes) {
         const id = Number(r.id);
         const c = Number(r.count || 0);
@@ -1725,17 +1825,15 @@ class DeviceController {
         });
       }
 
-      const subtypesFacet = allSubtypes.length
-        ? allSubtypes.map((s) => ({
-            id: s.id,
-            name: s.name,
-            typeId: s.typeId,
-            displayOrder: s.displayOrder,
-            count: subtypeCounts.get(s.id) || 0,
-          }))
-        : [];
+      const subtypesFacet = allSubtypes.map((s) => ({
+        id: s.id,
+        name: s.name,
+        typeId: s.typeId,
+        displayOrder: s.displayOrder,
+        count: subtypeCounts.get(s.id) || 0,
+      }));
 
-      const whereNoBrand = { ...baseWhere };
+      const whereNoBrand = cloneWhere(baseWhere);
       if (whereNoBrand.brandId != null) delete whereNoBrand.brandId;
 
       const brandsRows = await Device.findAll({
@@ -1754,17 +1852,232 @@ class DeviceController {
         .map((r) => ({ id: Number(r.brandId), count: Number(r.count || 0) }))
         .filter((b) => b.id);
 
+      let mmSubtypeIdsAll = [];
+      if (typeId != null) {
+        const [rows] = await sequelize.query(
+          `
+    SELECT DISTINCT s.id AS "subtypeId"
+    FROM "devices" d
+    LEFT JOIN "device_subtypes" ds ON ds."deviceId" = d.id
+    JOIN "subtypes" s ON s.id = COALESCE(ds."subtypeId", d."subtypeId")
+    WHERE s."typeId" = :typeId
+      ${onlyVisible ? 'AND d."isVisible" = TRUE' : ""}
+      AND EXISTS (
+        SELECT 1
+        FROM "device_compatibilities" dc
+        WHERE dc."deviceId" = d.id
+          AND COALESCE(dc."isUniversal", FALSE) = FALSE
+          AND (dc."makeId" IS NOT NULL OR dc."modelId" IS NOT NULL)
+      )
+  `,
+          { replacements: { typeId } }
+        );
+
+        mmSubtypeIdsAll = rows.map((r) => Number(r.subtypeId)).filter(Boolean);
+      }
+
+      let universalSubtypeIds = [];
+      if (typeId != null) {
+        const [rowsUni] = await sequelize.query(`
+      SELECT DISTINCT COALESCE(ds."subtypeId", d."subtypeId") AS "subtypeId"
+      FROM "devices" d
+      LEFT JOIN "device_subtypes" ds ON ds."deviceId" = d.id
+      WHERE (${onlyVisible ? 'd."isVisible" = TRUE AND ' : ""} 1=1)
+      ${brandId != null ? `AND d."brandId" = ${Number(brandId)}` : ""}
+        AND (
+             EXISTS (SELECT 1 FROM "device_compatibilities" dc WHERE dc."deviceId"=d.id AND dc."isUniversal"=TRUE)
+          OR NOT EXISTS (SELECT 1 FROM "device_compatibilities" dc2 WHERE dc2."deviceId"=d.id)
+        )
+        ${
+          typeId != null
+            ? `AND EXISTS (
+           SELECT 1 FROM "subtypes" s
+           WHERE s.id = COALESCE(ds."subtypeId", d."subtypeId") AND s."typeId" = ${Number(
+             typeId
+           )}
+        )`
+            : ""
+        }
+    `);
+        universalSubtypeIds = rowsUni
+          .map((r) => Number(r.subtypeId))
+          .filter(Boolean);
+      }
+
+      const uniSet = new Set(universalSubtypeIds);
+      const mmOnlySubtypeIds = Array.from(new Set(mmSubtypeIdsAll)).filter(
+        (id) => !uniSet.has(id)
+      );
+
       return res.json({
         rows: devices.rows,
         count: devices.count,
         facets: {
           subtypes: subtypesFacet,
           brands: brandsFacet,
+          mmSubtypeIdsAll,
+          mmOnlySubtypeIds,
+          universalSubtypeIds,
         },
       });
     } catch (error) {
       console.error("❌ Ошибка filter:", error);
       return res.status(500).json({ message: "Ошибка фильтра" });
+    }
+  }
+
+  async cursor(req, res) {
+    try {
+      const toInt = (v) => {
+        const n = Number(v);
+        return Number.isInteger(n) && n > 0 ? n : null;
+      };
+      const brandId = toInt(req.query.brandId);
+      const typeId = toInt(req.query.typeId);
+      const subtypeId = toInt(req.query.subtypeId);
+      const makeId = toInt(req.query.makeId);
+      const modelId = toInt(req.query.modelId);
+
+      const onlyVisible =
+        String(req.query.onlyVisible ?? "true").toLowerCase() !== "false";
+
+      const sortKey = String(req.query.sort || "id_asc");
+      const sort = SORTS[sortKey] || SORTS.id_asc;
+      const dir = sort.dir;
+      const cmp = dir === "ASC" ? ">" : "<";
+      const limit = Math.min(
+        Math.max(parseInt(req.query.limit, 10) || 24, 1),
+        100
+      );
+      const cursorObj = parseCursor(req.query.cursor);
+
+      if (cursorObj && cursorObj.sort !== sortKey) {
+      }
+
+      const where = [];
+      const repl = { lim_plus: limit + 1 };
+      if (onlyVisible) where.push(`d."isVisible" = TRUE`);
+      if (brandId) {
+        where.push(`d."brandId" = :brandId`);
+        repl.brandId = brandId;
+      }
+      if (typeId) {
+        where.push(`
+        (
+          d."typeId" = :typeId
+          OR EXISTS (SELECT 1 FROM "device_types" dt WHERE dt."deviceId"=d.id AND dt."typeId"=:typeId)
+          OR EXISTS (
+            SELECT 1
+            FROM "device_subtypes" ds
+            JOIN "subtypes" s ON s.id = ds."subtypeId"
+            WHERE ds."deviceId"=d.id AND s."typeId"=:typeId
+          )
+        )
+      `);
+        repl.typeId = typeId;
+      }
+      if (subtypeId) {
+        where.push(`
+        (
+          d."subtypeId" = :subtypeId
+          OR EXISTS (SELECT 1 FROM "device_subtypes" ds2 WHERE ds2."deviceId"=d.id AND ds2."subtypeId"=:subtypeId)
+        )
+      `);
+        repl.subtypeId = subtypeId;
+      }
+
+      const compatMode = String(req.query.compatMode || "").toLowerCase();
+
+      // Фильтруем по совместимости ТОЛЬКО когда выбран make/model
+      if (makeId || modelId) {
+        repl.makeId = makeId;
+        repl.modelId = modelId;
+
+        if (compatMode === "strict") {
+          where.push(`
+      EXISTS (
+        SELECT 1 FROM "device_compatibilities" dc
+        WHERE dc."deviceId" = d.id
+          AND (
+            (:modelId IS NOT NULL AND dc."modelId" = :modelId)
+            OR (:makeId  IS NOT NULL AND dc."makeId"  = :makeId)
+          )
+      )
+    `);
+        } else {
+          where.push(`
+      (
+        EXISTS (SELECT 1 FROM "device_compatibilities" dc
+                WHERE dc."deviceId" = d.id AND dc."isUniversal" = TRUE)
+        OR EXISTS (SELECT 1 FROM "device_compatibilities" dc
+                   WHERE dc."deviceId" = d.id AND (
+                     (:modelId IS NOT NULL AND dc."modelId" = :modelId)
+                     OR (:makeId  IS NOT NULL AND dc."makeId"  = :makeId)
+                   ))
+        OR NOT EXISTS (SELECT 1 FROM "device_compatibilities" dc2
+                       WHERE dc2."deviceId" = d.id)
+      )
+    `);
+        }
+      }
+
+      // Seek-предикат для курсора (исключает дубли и зацикливание)
+      const useSeek =
+        cursorObj &&
+        cursorObj.sort === sortKey &&
+        cursorObj.id != null &&
+        cursorObj.sk != null;
+
+      if (useSeek) {
+        repl.seek_id = Number(cursorObj.id);
+        repl.seek_sk = cursorObj.sk; // как есть — PG сам сравнит
+        where.push(`(
+    (${sort.expr} ${cmp} :seek_sk)
+    OR (${sort.expr} = :seek_sk AND d.id ${cmp} :seek_id)
+  )`);
+      }
+
+      const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+      const sql = `
+      WITH filtered AS (
+        SELECT d.id, ${sort.expr} AS sk
+        FROM "devices" d
+        ${whereSql}
+        ORDER BY sk ${dir}, d.id ${dir}
+        LIMIT :lim_plus
+      )
+      SELECT d.id, d.name, d.price, d."oldPrice", d.img, d.thumbnails, d.quantity, d."typeId",
+      d."subtypeId", d."brandId", d.rating,
+             d.discount, d."isNew", d."expiryDate", d."snoozeUntil",
+             f.sk AS _sk
+      FROM "devices" d
+      JOIN filtered f ON f.id = d.id
+      ORDER BY f.sk ${dir}, d.id ${dir};
+    `;
+
+      const rows = await sequelize.query(sql, {
+        replacements: repl,
+        type: QueryTypes.SELECT,
+      });
+
+      const hasMore = rows.length > limit;
+      const items = hasMore ? rows.slice(0, limit) : rows;
+      const last = items[items.length - 1];
+      const nextCursor =
+        hasMore && last
+          ? makeCursor({ sort: sortKey, sk: last._sk, id: last.id })
+          : null;
+
+      return res.json({
+        items: items.map(({ _sk, ...lite }) => lite),
+        nextCursor,
+        hasMore,
+        sort: sortKey,
+      });
+    } catch (e) {
+      console.error("cursor feed error", e);
+      return res.status(500).json({ message: "Ошибка курсорного фида" });
     }
   }
 
