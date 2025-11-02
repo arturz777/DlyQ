@@ -257,6 +257,35 @@ export const fetchFilter = async (
   );
 };
 
+export async function fetchCatalogCursor({
+  typeId,
+  subtypeId,
+  brandId,
+  makeId,
+  modelId,
+  cursor,
+  sort,
+  limit,
+  compatMode,
+  onlyVisible = true,
+}) {
+  const params = {};
+
+  if (typeId != null) params.typeId = Number(typeId);
+  if (subtypeId != null) params.subtypeId = Number(subtypeId);
+  if (brandId != null) params.brandId = Number(brandId);
+  if (makeId != null) params.makeId = Number(makeId);
+  if (modelId != null) params.modelId = Number(modelId);
+  if (cursor) params.cursor = cursor;
+  if (sort) params.sort = sort;
+  if (limit) params.limit = Number(limit);
+  if (compatMode) params.compatMode = String(compatMode).toLowerCase();
+  params.onlyVisible = String(onlyVisible);
+
+  const { data } = await $host.get("/api/device/cursor", { params });
+  return data;
+}
+
 export const updateDeviceVisibility = async (id, isVisible) => {
   const res = await fetch(
     `${process.env.REACT_APP_API_URL}/device/${id}/visibility`,
