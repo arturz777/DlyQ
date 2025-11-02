@@ -282,7 +282,7 @@ export async function fetchCatalogCursor({
   if (compatMode) params.compatMode = String(compatMode).toLowerCase();
   params.onlyVisible = String(onlyVisible);
 
-  const { data } = await $host.get("/api/device/cursor", { params });
+  const { data } = await $host.get("/device/cursor", { params });
   return data;
 }
 
