@@ -1515,7 +1515,7 @@ async getAll(req, res) {
     }
   }
 
-  async filter(req, res) {
+ async filter(req, res) {
     try {
       const toInt = (v) => {
         const n = Number(v);
@@ -1937,6 +1937,11 @@ async getAll(req, res) {
       const subtypeId = toInt(req.query.subtypeId);
       const makeId = toInt(req.query.makeId);
       const modelId = toInt(req.query.modelId);
+      const rawLang = String(req.query.lang || "")
+        .trim()
+        .toLowerCase();
+      const langShort = rawLang.split("-")[0];
+      const lang = langShort === "et" ? "est" : langShort;
 
       const onlyVisible =
         String(req.query.onlyVisible ?? "true").toLowerCase() !== "false";
@@ -2069,8 +2074,57 @@ async getAll(req, res) {
           ? makeCursor({ sort: sortKey, sk: last._sk, id: last.id })
           : null;
 
+      const ids = items.map((it) => it.id);
+      let rowsTr = [];
+      if (ids.length) {
+        rowsTr = await Translation.findAll({
+          where: {
+            key: {
+              [Op.or]: ids.map((id) => ({ [Op.like]: `device_${id}.%` })),
+            },
+            ...(lang ? { lang } : {}),
+          },
+          attributes: ["key", "lang", "text"],
+        });
+      }
+
+      const byDev = {};
+      for (const t of rowsTr) {
+        const parts = t.key.split(".");
+        const devId = parts[0].replace("device_", "");
+        const section = parts[1]; // name | description | info | option
+        const optIdx = parts[2];
+        const field = parts[3];
+        const valIdx = parts[4];
+
+        byDev[devId] = byDev[devId] || {};
+
+        if (section === "info") {
+          byDev[devId].info ||= [];
+          byDev[devId].info[optIdx] ||= { title: {}, description: {} };
+          byDev[devId].info[optIdx][field][t.lang] = t.text;
+        } else if (section === "option") {
+          byDev[devId].options ||= [];
+          byDev[devId].options[optIdx] ||= { name: {}, values: [] };
+          if (field === "name") {
+            byDev[devId].options[optIdx].name[t.lang] = t.text;
+          } else if (field === "value" && valIdx !== undefined) {
+            byDev[devId].options[optIdx].values[valIdx] ||= {};
+            byDev[devId].options[optIdx].values[valIdx][t.lang] = t.text;
+          }
+        } else {
+          byDev[devId][section] ||= {};
+          byDev[devId][section][t.lang] = t.text;
+        }
+      }
+
+      const itemsOut = items.map(({ _sk, ...lite }) => ({
+        ...lite,
+        translations: byDev[String(lite.id)] || {},
+      }));
+
       return res.json({
-        items: items.map(({ _sk, ...lite }) => lite),
+        items: itemsOut,
         nextCursor,
         hasMore,
         sort: sortKey,
@@ -2080,7 +2134,7 @@ async getAll(req, res) {
       return res.status(500).json({ message: "Ошибка курсорного фида" });
     }
   }
-
+  
   async updateVisibility(req, res) {
     try {
       const { id } = req.params;
