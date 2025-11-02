@@ -10,6 +10,7 @@ router.get("/discounted", deviceController.getDiscountedDevices);
 router.put("/updateDiscountStatus", deviceController.update);
 router.post("/check-stock", deviceController.checkStock);
 router.get('/search', deviceController.search);
+router.get('/cursor', deviceController.cursor);
 router.get('/filter', deviceController.filter);
 
 router.get('/make', makeController.getAll);
