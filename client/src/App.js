@@ -114,9 +114,9 @@ const App = observer(() => {
         )}
         {maintenanceKnown && !maintenanceActive && <CookieConsent />}
         {maintenanceKnown && !maintenanceActive && <ChatModal />}
-        {maintenanceKnown && (
+       
           <Footer maintenanceMode={appStore.maintenance.enabled} />
-        )}
+        
          <ToastContainer
         position="top-right"
         autoClose={3000}
