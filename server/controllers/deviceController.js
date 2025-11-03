@@ -1926,7 +1926,7 @@ async getAll(req, res) {
     }
   }
 
-  async cursor(req, res) {
+ async cursor(req, res) {
     try {
       const toInt = (v) => {
         const n = Number(v);
@@ -1993,7 +1993,6 @@ async getAll(req, res) {
 
       const compatMode = String(req.query.compatMode || "").toLowerCase();
 
-      // Фильтруем по совместимости ТОЛЬКО когда выбран make/model
       if (makeId || modelId) {
         repl.makeId = makeId;
         repl.modelId = modelId;
@@ -2026,7 +2025,6 @@ async getAll(req, res) {
         }
       }
 
-      // Seek-предикат для курсора (исключает дубли и зацикливание)
       const useSeek =
         cursorObj &&
         cursorObj.sort === sortKey &&
@@ -2035,7 +2033,7 @@ async getAll(req, res) {
 
       if (useSeek) {
         repl.seek_id = Number(cursorObj.id);
-        repl.seek_sk = cursorObj.sk; // как есть — PG сам сравнит
+        repl.seek_sk = cursorObj.sk;
         where.push(`(
     (${sort.expr} ${cmp} :seek_sk)
     OR (${sort.expr} = :seek_sk AND d.id ${cmp} :seek_id)
@@ -2075,6 +2073,69 @@ async getAll(req, res) {
           : null;
 
       const ids = items.map((it) => it.id);
+
+      let m2mSubRows = [];
+      if (ids.length) {
+        m2mSubRows = await sequelize.query(
+          `
+    SELECT ds."deviceId",
+           s.id        AS "subtypeId",
+           s."typeId"  AS "typeId",
+           s.name      AS "name",
+           s."displayOrder" AS "displayOrder"
+    FROM "device_subtypes" ds
+    JOIN "subtypes" s ON s.id = ds."subtypeId"
+    WHERE ds."deviceId" IN (:ids)
+    `,
+          {
+            replacements: { ids },
+            type: QueryTypes.SELECT,
+          }
+        );
+      }
+
+      const subByDevice = {};
+      for (const row of m2mSubRows) {
+        const dId = Number(row.deviceId);
+        if (!subByDevice[dId]) subByDevice[dId] = [];
+        subByDevice[dId].push({
+          id: Number(row.subtypeId),
+          typeId: Number(row.typeId),
+          name: row.name,
+          displayOrder: Number(row.displayOrder ?? 0),
+        });
+      }
+
+      let m2mTypeRows = [];
+      if (ids.length) {
+        m2mTypeRows = await sequelize.query(
+          `
+    SELECT dt."deviceId",
+           t.id       AS "typeId",
+           t.name     AS "name",
+           t."displayOrder" AS "displayOrder"
+    FROM "device_types" dt
+    JOIN "types" t ON t.id = dt."typeId"
+    WHERE dt."deviceId" IN (:ids)
+    `,
+          {
+            replacements: { ids },
+            type: QueryTypes.SELECT,
+          }
+        );
+      }
+
+      const typesByDevice = {};
+      for (const row of m2mTypeRows) {
+        const dId = Number(row.deviceId);
+        if (!typesByDevice[dId]) typesByDevice[dId] = [];
+        typesByDevice[dId].push({
+          id: Number(row.typeId),
+          name: row.name,
+          displayOrder: Number(row.displayOrder ?? 0),
+        });
+      }
+
       let rowsTr = [];
       if (ids.length) {
         rowsTr = await Translation.findAll({
@@ -2092,7 +2153,7 @@ async getAll(req, res) {
       for (const t of rowsTr) {
         const parts = t.key.split(".");
         const devId = parts[0].replace("device_", "");
-        const section = parts[1]; // name | description | info | option
+        const section = parts[1];
         const optIdx = parts[2];
         const field = parts[3];
         const valIdx = parts[4];
@@ -2120,6 +2181,8 @@ async getAll(req, res) {
 
       const itemsOut = items.map(({ _sk, ...lite }) => ({
         ...lite,
+        subtypes: subByDevice[lite.id] || [],
+        types: typesByDevice[lite.id] || [],
         translations: byDev[String(lite.id)] || {},
       }));
 
