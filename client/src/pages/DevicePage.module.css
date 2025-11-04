@@ -58,8 +58,10 @@
 
 .DevicePageThumbnailContainer {
   display: flex;
-  justify-content: center;
+  flex-wrap: wrap;     
   gap: 10px;
+  justify-content: center;
+  max-width: 100%;        
 }
 
 .DevicePageThumbnail {
@@ -78,6 +80,18 @@
 
 .ActiveThumbnail {
   border-color: #0072ce;
+}
+
+@media (max-width: 480px) {
+  .DevicePageThumbnailContainer {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  .DevicePageThumbnail {
+    flex: 0 0 60px;
+  }
 }
 
 .DevicePageDetails {
