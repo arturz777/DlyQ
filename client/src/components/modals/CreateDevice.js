@@ -32,7 +32,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [name, setName] = useState("");
   const [price, setPrice] = useState(null);
   const [mainImage, setMainImage] = useState(null);
-  const [images, setImages] = useState(Array(5).fill(null));
+  const [images, setImages] = useState(Array(8).fill(null));
   const [imagePreviews, setImagePreviews] = useState([]);
   const [existingImages, setExistingImages] = useState([]);
   const [info, setInfo] = useState([]);
@@ -342,7 +342,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
       const updatedDisplayedImages = [
         ...updatedImages,
-        ...Array(5 - updatedImages.length).fill(null),
+        ...Array(8 - updatedImages.length).fill(null),
       ];
       setImages(updatedDisplayedImages);
 
@@ -467,7 +467,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     setOptions([]);
     setVariants([]);
     setMainImage(null);
-    setImages(Array(5).fill(null));
+    setImages(Array(8).fill(null));
     setImagePreviews([]);
     setExistingImages([]);
     setIsEditMode(false);
