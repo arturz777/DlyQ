@@ -10,6 +10,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
   const selectedSubtypeId = Number(device.selectedSubType?.id) || null;
+  const forcedTypeId = Number(device.selectedType?.id) || null;
 
   const grouped = useMemo(() => {
     const types = Array.isArray(device.types) ? device.types : [];
@@ -73,7 +74,9 @@ const DeviceList = observer(({ onDeviceClick }) => {
 
       if (allTypeIds.size === 0) return;
 
-      allTypeIds.forEach((tid) => {
+      const targetTypeIds = forcedTypeId ? new Set([forcedTypeId]) : allTypeIds;
+
+      targetTypeIds.forEach((tid) => {
         const group = result[tid];
         if (!group) return;
 
@@ -98,6 +101,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
           }
           return;
         }
+
         if (idsOfThisType.size === 0) {
           group.noSubtypeDevices.push(dev);
           return;
@@ -140,6 +144,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
     device.devices,
     currentLang,
     selectedSubtypeId,
+    forcedTypeId,
   ]);
 
   const sortTypes = (a, b) => {
@@ -158,6 +163,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
   );
 
   const orderedTypeIds = (device.types || [])
+    .filter((t) => !forcedTypeId || Number(t.id) === forcedTypeId)
     .slice()
     .sort(sortTypes)
     .map((t) => Number(t.id));
