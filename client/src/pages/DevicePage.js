@@ -348,7 +348,7 @@ const DevicePage = ({ id }) => {
         (o) => selectedOptions[o.name]?.value
       );
       if (!allChosen) {
-        toast.error(`❌ ${t("Select product options!", { ns: "devicePage" })}`);
+        toast.error(`❌ ${t("select product options", { ns: "devicePage" })}`);
         return;
       }
       if (!selectedVariant) {
@@ -741,7 +741,7 @@ const DevicePage = ({ id }) => {
                 disabled={needToSelectAllOptions}
               >
                 {needToSelectAllOptions
-                  ? t("Select product options!", { ns: "devicePage" })
+                  ? t("select product options", { ns: "devicePage" })
                   : availableQuantity <= 0
                   ? t("out_of_stock", { ns: "devicePage" })
                   : t("add_to_cart", { ns: "devicePage" })}
