@@ -26,6 +26,12 @@ import catalogStyles from "./CatalogPage.module.css";
 const CatalogPage = observer(() => {
   const { device } = useContext(Context);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+  const subtypeAnchorRef = useRef(null);
+  const [showStickySubtypes, setShowStickySubtypes] = useState(false);
+  const ignoreNextIO = useRef(false);
+  const [navbarHeight, setNavbarHeight] = useState(60);
+  const [isNavbarVisible, setIsNavbarVisible] = useState(true);
+  const lastScrollY = useRef(0);
   const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
   const typeIdFromUrl = searchParams.get("typeId");
@@ -40,6 +46,8 @@ const CatalogPage = observer(() => {
 
   const getCompatMode = () =>
     device.selectedMake?.id || device.selectedModel?.id ? "strict" : undefined;
+
+  const stickyTop = isNavbarVisible ? navbarHeight : 0;
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -80,7 +88,7 @@ const CatalogPage = observer(() => {
     };
 
     loadInitialData();
-  }, [currentLang, typeIdFromUrl]);
+  }, [currentLang, typeIdFromUrl, device]);
 
   useEffect(() => {
     const id = Number(typeIdFromUrl);
@@ -92,7 +100,7 @@ const CatalogPage = observer(() => {
     if (found && device.selectedType?.id !== id) {
       device.setSelectedType(found);
     }
-  }, [typeIdFromUrl, device.types]);
+  }, [typeIdFromUrl, device.types, device]);
 
   useEffect(() => {
     return () => {
@@ -103,7 +111,7 @@ const CatalogPage = observer(() => {
       device.setSelectedBrand({});
       device.resetFeed?.();
     };
-  }, []);
+  }, [device]);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,7 +135,7 @@ const CatalogPage = observer(() => {
           sort: device.sort,
           limit: device.limit,
           onlyVisible: true,
-          lang: currentLang, 
+          lang: currentLang,
         });
         if (cancelled) return;
         device.appendDevices(data.items || []);
@@ -152,6 +160,7 @@ const CatalogPage = observer(() => {
     device.selectedModel?.id,
     device.sort,
     currentLang,
+    device,
   ]);
 
   useEffect(() => {
@@ -183,7 +192,7 @@ const CatalogPage = observer(() => {
                 sort: device.sort,
                 limit: device.limit,
                 onlyVisible: true,
-              lang: currentLang, 
+                lang: currentLang,
               });
 
               device.appendDevices(data.items || []);
@@ -215,6 +224,7 @@ const CatalogPage = observer(() => {
     device.selectedModel?.id,
     device.sort,
     currentLang,
+    device,
   ]);
 
   useEffect(() => {
@@ -246,7 +256,7 @@ const CatalogPage = observer(() => {
     return () => {
       cancelled = true;
     };
-  }, [device.selectedType?.id]);
+  }, [device.selectedType?.id, device]);
 
   useEffect(() => {
     const loadModels = async () => {
@@ -262,7 +272,7 @@ const CatalogPage = observer(() => {
       }
     };
     loadModels();
-  }, [device.selectedMake?.id]);
+  }, [device.selectedMake?.id, device]);
 
   useEffect(() => {
     const id = ++subtypesReqId.current;
@@ -295,12 +305,75 @@ const CatalogPage = observer(() => {
       }
     };
     loadSubtypes();
-  }, [device.selectedType?.id, currentLang]);
+  }, [device.selectedType?.id, currentLang, device]);
+
+  useEffect(() => {
+    const handler = () => {
+      ignoreNextIO.current = true;
+      setShowStickySubtypes(true);
+    };
+    window.addEventListener("catalog:reached-subtype", handler);
+    return () => window.removeEventListener("catalog:reached-subtype", handler);
+  }, []);
+
+  useEffect(() => {
+    if (!device.selectedType?.id) {
+      setShowStickySubtypes(false);
+      return;
+    }
+
+    const el = subtypeAnchorRef.current;
+    if (!el) return;
+
+    const TRIGGER_PX = 10;
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        const top = entry.boundingClientRect.top;
+
+        if (ignoreNextIO.current) {
+          ignoreNextIO.current = false;
+          return;
+        }
+        if (top > TRIGGER_PX) {
+          setShowStickySubtypes(false);
+        } else {
+          setShowStickySubtypes(true);
+        }
+      },
+      { threshold: 0 }
+    );
+
+    io.observe(el);
+    return () => io.disconnect();
+  }, [device.selectedType?.id]);
 
   useEffect(() => {
     const handleScroll = () => setShowScrollTop(window.scrollY > 300);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const nav = document.querySelector(".NavBar");
+    if (nav) {
+      setNavbarHeight(nav.offsetHeight || 60);
+    }
+
+    lastScrollY.current = window.pageYOffset;
+
+    const onScroll = () => {
+      const current = window.pageYOffset;
+
+      const goingUp = current < lastScrollY.current;
+
+      setIsNavbarVisible(goingUp || current < 5);
+
+      lastScrollY.current = current;
+    };
+
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
@@ -337,20 +410,19 @@ const CatalogPage = observer(() => {
           </div>
 
           {isAutoType ? (
-            <>
+            <div
+              className={showStickySubtypes ? catalogStyles.hideOnSticky : ""}
+            >
               <div className={catalogStyles.subtypeFilter}>
                 <SubTypeBar variant="universal" />
               </div>
-
               <div id="make-filter" className={catalogStyles.makeFilter}>
                 <MakeBar />
               </div>
-
               <div className={catalogStyles.modelFilter}>
                 <ModelBar />
               </div>
-
-              <div id="subtype-filter" className={catalogStyles.subtypeFilter}>
+              <div className={catalogStyles.subtypeFilter}>
                 {device.selectedModel?.id ? (
                   <SubTypeBar
                     key={`mm-${device.selectedType?.id}-${
@@ -360,16 +432,124 @@ const CatalogPage = observer(() => {
                   />
                 ) : null}
               </div>
-            </>
+            </div>
           ) : (
-            <div id="subtype-filter" className={catalogStyles.subtypeFilter}>
+            <div className={catalogStyles.subtypeFilter}>
               {device.selectedType?.id ? <SubTypeBar /> : null}
             </div>
           )}
+
+          <div
+            id="subtype-filter"
+            ref={subtypeAnchorRef}
+            className={catalogStyles.subtypeAnchor}
+          />
         </div>
 
         <div
-          className={catalogStyles.deviceContainer}
+          className={
+            device.selectedType?.id
+              ? `${catalogStyles.mobileStickyFilter} ${
+                  showStickySubtypes ? catalogStyles.stickyVisible : ""
+                }`
+              : catalogStyles.mobileStickyFilter
+          }
+          style={{ top: stickyTop }}
+        >
+          {device.selectedType?.id ? (
+            <>
+              <div className={catalogStyles.mobileTypesRow}>
+                {device.types.map((type) => {
+                  const isActive = type.id === device.selectedType?.id;
+                  const label =
+                    type.translations?.name?.[currentLang] || type.name || "";
+                  return (
+                    <button
+                      key={type.id}
+                      type="button"
+                      className={
+                        isActive
+                          ? catalogStyles.mobileTypePill
+                          : catalogStyles.mobileTypePillInactive
+                      }
+                      onClick={() => {
+                        if (device.selectedType?.id === type.id) return;
+
+                        device.clearSelectedSubType?.();
+                        device.setSelectedType(type);
+
+                        setTimeout(() => {
+                          const isAuto = /авто/i.test(label);
+                          const targetId = isAuto
+                            ? "make-filter"
+                            : "subtype-filter";
+                          const el = document.getElementById(targetId);
+                          if (!el) return;
+
+                          const fixed = document.querySelector(
+                            ".mobileStickyFilter"
+                          );
+                          const offset = fixed ? fixed.offsetHeight + 10 : 10;
+                          const y =
+                            el.getBoundingClientRect().top +
+                            window.scrollY -
+                            offset;
+
+                          window.scrollTo({ top: y, behavior: "smooth" });
+                          window.dispatchEvent(
+                            new CustomEvent("catalog:reached-subtype")
+                          );
+                        }, 50);
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {isAutoType ? (
+                <>
+                  <div className={catalogStyles.mobileFilterRow}>
+                    <SubTypeBar variant="universal" />
+                  </div>
+
+                  <div className={catalogStyles.mobileFilterRow}>
+                    <MakeBar />
+                  </div>
+
+                  <div className={catalogStyles.mobileFilterRow}>
+                    <ModelBar />
+                  </div>
+
+                  {device.selectedModel?.id ? (
+                    <div className={catalogStyles.mobileFilterRow}>
+                      <SubTypeBar
+                        key={`mm-${device.selectedType?.id}-${
+                          device.selectedMake?.id ?? "no-make"
+                        }-${device.selectedModel.id}`}
+                        variant="mm"
+                      />
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className={catalogStyles.mobileFilterRow}>
+                  <SubTypeBar />
+                </div>
+              )}
+            </>
+          ) : null}
+        </div>
+
+        <div
+          className={`${catalogStyles.deviceContainer} ${
+            showStickySubtypes
+              ? isAutoType
+                ? catalogStyles.withStickyAuto
+                : catalogStyles.withSticky
+              : ""
+          }`}
           id="catalog-devices"
           style={{ opacity: device.loading.devices ? 0.3 : 1 }}
         >
