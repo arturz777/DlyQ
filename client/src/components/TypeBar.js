@@ -9,6 +9,24 @@ const TypeBar = observer(() => {
   const { i18n } = useTranslation();
   const currentLang = i18n.language || "en";
 
+  const scrollToTarget = (targetId) => {
+    const el = document.getElementById(targetId);
+    if (!el) return;
+
+    const fixed = document.querySelector(".mobileStickyFilter");
+    const offset = fixed ? fixed.offsetHeight + 10 : 10;
+    const y = el.getBoundingClientRect().top + window.scrollY - offset;
+
+    window.scrollTo({
+      top: y,
+      behavior: "smooth",
+    });
+
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("catalog:reached-subtype"));
+    }, 120);
+  };
+
   return (
     <div className={styles.typeBar}>
       {device.types.map((type) => (
@@ -38,13 +56,10 @@ const TypeBar = observer(() => {
               const label =
                 type.translations?.name?.[currentLang] || type.name || "";
               const isAuto = /авто/i.test(label);
-
               const targetId = isAuto ? "make-filter" : "subtype-filter";
-              document.getElementById(targetId)?.scrollIntoView({
-                behavior: "smooth",
-                block: "start",
-              });
-            }, 100);
+
+              scrollToTarget(targetId);
+            }, 50);
           }}
         >
           <div className={styles.typeImageWrap}>
