@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from "react";
 import { ChatContext } from "../context/ChatContext";
 import { normalizeChatRole } from "../utils/chatRoles";
 import { io } from "socket.io-client";
+import { useTranslation } from "react-i18next";
 import styles from "./ChatBox.module.css";
 
 const socket = io("https://api.dlyq.ee");
@@ -21,6 +22,7 @@ const ChatBox = ({
   const { closeSupportChat } = useContext(ChatContext);
   const [unreadChats, setUnreadChats] = useState(new Set());
   const messagesEndRef = useRef(null);
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     if (chatId) {
@@ -71,7 +73,7 @@ const ChatBox = ({
           const newChat = await res.json();
           setChats((prev) => [newChat, ...prev]);
         } catch (err) {
-          console.error("❌ Ошибка при загрузке чата:", err);
+         console.error(t("errorLoadChat", { ns: "chatBox" }), err);
         }
       }
 
@@ -125,7 +127,7 @@ const ChatBox = ({
 
           setChats((prev) => [newChat, ...prev]);
         } catch (error) {
-          console.error("❌ Ошибка при загрузке нового чата:", error);
+        console.error(t("errorLoadNewChat", { ns: "chatBox" }), error);
         }
       } else {
         setChats((prevChats) =>
@@ -152,7 +154,7 @@ const ChatBox = ({
   }, [userRole]);
 
   const getSenderName = (msg) => {
-    if (msg.senderId === userId) return "Вы";
+   if (msg.senderId === userId) return t("you", { ns: "chatBox" });
   if (msg.senderRole === "admin") return "Support";
 
     const chat = chats.find((c) => c.id === msg.chatId);
@@ -179,7 +181,6 @@ const ChatBox = ({
     socket.emit("readMessages", { chatId: id, userId });
   };
   
-
   const handleSend = async () => {
     if (!text.trim()) return;
 
@@ -240,19 +241,19 @@ const ChatBox = ({
       <button onClick={() => setView(view === "chat" ? "history" : "chat")}>
         {view === "chat" ? (
           <>
-            📂 История{" "}
+            {t("historyLabel", { ns: "chatBox" })}{" "}
             {unreadChats.size > 0 && (
               <span className={styles.unreadDotButton} />
             )}
           </>
         ) : (
-          "⬅️ Назад"
+         t("back", { ns: "chatBox" })
         )}
       </button>
 
       {view === "history" ? (
         <div className={styles.sidebar}>
-          <h4>История чатов</h4>
+          <h4>{t("chatHistoryTitle", { ns: "chatBox" })}</h4>
           {chats
             .filter((chat) => chat.messages && chat.messages.length > 0)
             .map((chat) => (
@@ -290,17 +291,16 @@ const ChatBox = ({
                 }
               >
                 <div className={styles.sender}>{getSenderName(msg)}</div>
-
                 <div className={styles.text}>{msg.text}</div>
               </div>
             ))}
-               <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} />
           </div>
           <div className={styles.inputArea}>
             <input
               type="text"
               value={text}
-              placeholder="Введите сообщение..."
+              placeholder={t("messagePlaceholder", { ns: "chatBox" })}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
