@@ -102,30 +102,29 @@ const App = observer(() => {
       }}
     >
       <BrowserRouter>
-      {appStore.isLoading && <LoadingBar />}
+        {appStore.isLoading && <LoadingBar />}
         <Elements stripe={stripePromise}>
-          {!maintenanceActive && <NavBar />}
+          <NavBar />
           <AppRouter />
-         {!maintenanceActive && maintenanceKnown && <OrderSidebar />}
+          <OrderSidebar />
         </Elements>
-        
-        {!maintenanceActive && (
-          <MobileNavBar maintenanceMode={appStore.maintenance.enabled} />
-        )}
-        {maintenanceKnown && !maintenanceActive && <CookieConsent />}
-        {maintenanceKnown && !maintenanceActive && <ChatModal />}
-       
-          <Footer maintenanceMode={appStore.maintenance.enabled} />
-        
-         <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        newestOnTop
-        limit={3}
-        pauseOnFocusLoss
-        theme="colored"
-        style={{ zIndex: 2147483647 }}
-      />
+
+        <MobileNavBar maintenanceMode={appStore.maintenance.enabled} />
+
+        <CookieConsent />
+        <ChatModal />
+
+        <Footer maintenanceMode={appStore.maintenance.enabled} />
+
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          newestOnTop
+          limit={3}
+          pauseOnFocusLoss
+          theme="colored"
+          style={{ zIndex: 2147483647 }}
+        />
       </BrowserRouter>
     </ChatContext.Provider>
   );
