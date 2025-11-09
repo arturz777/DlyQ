@@ -1,0 +1,10 @@
+{
+  "you": "Teie",
+  "errorLoadChat": "❌ Viga vestluse laadimisel:",
+  "errorLoadNewChat": "❌ Viga uue vestluse laadimisel:",
+  "senderIsYou": "Teie",
+  "chatHistoryTitle": "Vestluste ajalugu",
+  "historyLabel": "📂 Ajalugu",
+  "back": "⬅️ Tagasi",
+  "messagePlaceholder": "Sisestage sõnum..."
+}
