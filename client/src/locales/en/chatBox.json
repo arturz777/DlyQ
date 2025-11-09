@@ -1,0 +1,10 @@
+{
+  "you": "You",
+  "errorLoadChat": "❌ Error loading chat:",
+  "errorLoadNewChat": "❌ Error loading new chat:",
+  "senderIsYou": "You",
+  "chatHistoryTitle": "Chat history",
+  "historyLabel": "📂 History",
+  "back": "⬅️ Back",
+  "messagePlaceholder": "Enter a message..."
+}
