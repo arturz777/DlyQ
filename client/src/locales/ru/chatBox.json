@@ -1,0 +1,10 @@
+{
+  "you": "Вы",
+  "errorLoadChat": "❌ Ошибка при загрузке чата:",
+  "errorLoadNewChat": "❌ Ошибка при загрузке нового чата:",
+  "senderIsYou": "Вы",
+  "chatHistoryTitle": "История чатов",
+  "historyLabel": "📂 История",
+  "back": "⬅️ Назад",
+  "messagePlaceholder": "Введите сообщение..."
+}
