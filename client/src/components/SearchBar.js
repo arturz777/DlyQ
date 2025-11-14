@@ -3,11 +3,14 @@ import { searchDevices } from "../http/deviceAPI";
 import { useLocation } from "react-router-dom";
 import styles from "./NavBar.module.css";
 import { useTranslation } from "react-i18next";
+import SlideModal from "../components/modals/SlideModal";
+import DevicePage from "../pages/DevicePage";
 
 const SearchBar = () => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const location = useLocation();
   const searchRef = useRef(null);
   const { t, i18n } = useTranslation();
@@ -84,16 +87,13 @@ const SearchBar = () => {
     setResults([]);
     setSelectedIndex(-1);
 
-    window.dispatchEvent(
-      new CustomEvent("openDeviceModal", {
-        detail: { id },
-      })
-    );
+     setSelectedDeviceId(id);
   };
 
   useEffect(() => {
     setResults([]);
     setQuery("");
+    setSelectedDeviceId(null);
   }, [location.pathname]);
 
   return (
@@ -134,6 +134,11 @@ const SearchBar = () => {
           </div>
         )}
       </div>
+        {selectedDeviceId && (
+          <SlideModal onClose={() => setSelectedDeviceId(null)}>
+            <DevicePage id={selectedDeviceId} />
+          </SlideModal>
+        )}
     </div>
   );
 };
