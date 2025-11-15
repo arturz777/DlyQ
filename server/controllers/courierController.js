@@ -30,8 +30,9 @@ class CourierController {
       const orders = await Order.findAll({
         where: {
           status: { [Op.or]: ["Waiting for courier", "Ready for pickup"] },
-          [Op.or]: [{ courierId: null }, { courierId }],
+          [Op.or]: [{ courierId: null }, { courierId: courierId }],
         },
+
         order: [["createdAt", "DESC"]],
         attributes: [
           "id",
@@ -40,7 +41,7 @@ class CourierController {
           "deliveryLng",
           "deliveryAddress",
           "orderDetails",
-          "deliveryPrice",
+          "deliveryPrice", 
         ],
       });
 
@@ -48,32 +49,10 @@ class CourierController {
         return res.json([]);
       }
 
-      const formattedOrders = orders.map((order) => {
-        const raw = order.toJSON();
-        let details = raw.orderDetails;
-
-        if (typeof details === "string") {
-          try {
-            details = JSON.parse(details);
-          } catch (e) {
-            console.error(
-              "⚠️ Ошибка парса orderDetails для заказа",
-              raw.id,
-              e.message
-            );
-            details = [];
-          }
-        }
-
-        if (!Array.isArray(details)) {
-          details = [];
-        }
-
-        return {
-          ...raw,
-          orderDetails: details,
-        };
-      });
+      const formattedOrders = orders.map((order) => ({
+        ...order.toJSON(),
+        orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
+      }));
 
       return res.json(formattedOrders);
     } catch (error) {
@@ -81,7 +60,7 @@ class CourierController {
       return res.status(500).json({ message: "Ошибка сервера" });
     }
   }
-  
+
   async acceptOrder(req, res) {
     try {
       const { id } = req.params;
@@ -122,7 +101,7 @@ class CourierController {
 
       const io = req.app.get("io");
 
-    io.emit("orderStatusUpdate", {
+      io.emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
         accepted: true,
@@ -131,20 +110,15 @@ class CourierController {
           courier.currentLat && courier.currentLng
             ? { lat: courier.currentLat, lng: courier.currentLng }
             : null,
-        deliveryLat: order.deliveryLat,
-        deliveryLng: order.deliveryLng,
-        deliveryAddress: order.deliveryAddress,
-        deliveryPrice: order.deliveryPrice,
       });
 
-       return res.json({
+      return res.json({
         id: order.id,
         status: order.status,
         deliveryLat: order.deliveryLat,
         deliveryLng: order.deliveryLng,
         deliveryAddress: order.deliveryAddress,
         deliveryPrice: order.deliveryPrice,
-        orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
         courierId: order.courierId,
       });
     } catch (error) {
