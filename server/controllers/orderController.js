@@ -199,7 +199,7 @@ const createOrder = async (req, res) => {
       longitude,
     } = formData;
 
-     if (!paymentIntentId) {
+    if (!paymentIntentId) {
       return res.status(400).json({ message: "paymentIntentId is required" });
     }
 
@@ -258,10 +258,11 @@ const createOrder = async (req, res) => {
     const userId = req.user ? req.user.id : null;
     let warehouseId = 1;
 
-    const deliveryDateFromFirstItem = orderDetails[0]?.deliveryDate || null;
+   const deliveryDateFromFirstItem = orderDetails[0]?.deliveryDate || null;
     const preferredTimeFromFirstItem = orderDetails[0]?.preferredTime || null;
     const distance = getDistanceFromWarehouse(latitude, longitude);
-    const deliveryPrice = deliveryPriceServer;
+    const deliveryPrice = calculateDeliveryCost(totalPrice, distance);
+    const courierFee = calculateDeliveryBase(distance);
 
     let isPreorder = false;
     const devicesToUpdate = [];
@@ -360,10 +361,11 @@ const createOrder = async (req, res) => {
       };
     });
 
-   const orderData = {
+  const orderData = {
       userId,
-     totalPrice: Number(totalPrice) + Number(deliveryPrice),
+      totalPrice: Number(totalPrice) + Number(deliveryPrice),
       deliveryPrice,
+    courierFee, 
       status,
       warehouseStatus: "pending",
       warehouseId,
@@ -387,8 +389,10 @@ const createOrder = async (req, res) => {
     if (Order.rawAttributes?.paymentStatus) orderData.paymentStatus = pi.status;
     if (Order.rawAttributes?.currency)
       orderData.currency = (pi.currency || "eur").toUpperCase();
-    if (Order.rawAttributes?.amountCents)
-      orderData.amountCents = Math.round((totalPrice + deliveryPrice) * 100);
+  if (Order.rawAttributes?.amountCents)
+      orderData.amountCents = Math.round(
+        (Number(totalPrice) + Number(deliveryPrice)) * 100
+      );
 
     const order = await Order.create(orderData);
 
@@ -439,7 +443,7 @@ const createOrder = async (req, res) => {
         .join("");
     };
 
-     const receiptUrl = `${PUBLIC_URL}/api/order/${order.id}/receipt?token=${downloadToken}`; //Proda
+   const receiptUrl = `${PUBLIC_URL}/api/order/${order.id}/receipt?token=${downloadToken}`; //Proda
     order.receiptUrl = receiptUrl;
     await order.save();
 
@@ -718,6 +722,7 @@ const getActiveOrder = async (req, res) => {
             "Picked up",
             "Arrived at destination",
             "Delivered",
+             "courierFee", 
           ],
         },
       },
