@@ -191,6 +191,7 @@ const Order = sequelize.define(
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     userId: { type: DataTypes.INTEGER, allowNull: true },
     totalPrice: { type: DataTypes.NUMERIC(10, 2), allowNull: false },
+    deliveryPrice: { type: DataTypes.NUMERIC(10, 2), allowNull: false, defaultValue: 0 },
     status: { type: DataTypes.STRING, defaultValue: "Pending" },
     warehouseStatus: { type: DataTypes.STRING, defaultValue: "pending" },
     desiredDeliveryDate: { type: DataTypes.DATE, allowNull: true },
