@@ -41,6 +41,7 @@ class CourierController {
           "deliveryLng",
           "deliveryAddress",
           "orderDetails",
+          "deliveryPrice",
         ],
       });
 
@@ -100,7 +101,7 @@ class CourierController {
 
       const io = req.app.get("io");
 
-      io.emit("orderStatusUpdate", {
+    io.emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
         accepted: true,
@@ -109,14 +110,20 @@ class CourierController {
           courier.currentLat && courier.currentLng
             ? { lat: courier.currentLat, lng: courier.currentLng }
             : null,
+        deliveryLat: order.deliveryLat,
+        deliveryLng: order.deliveryLng,
+        deliveryAddress: order.deliveryAddress,
+        deliveryPrice: order.deliveryPrice,
       });
 
-      return res.json({
+       return res.json({
         id: order.id,
         status: order.status,
         deliveryLat: order.deliveryLat,
         deliveryLng: order.deliveryLng,
         deliveryAddress: order.deliveryAddress,
+        deliveryPrice: order.deliveryPrice,
+        orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
         courierId: order.courierId,
       });
     } catch (error) {
