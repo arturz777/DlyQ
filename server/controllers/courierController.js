@@ -119,6 +119,7 @@ class CourierController {
         deliveryLng: order.deliveryLng,
         deliveryAddress: order.deliveryAddress,
         deliveryPrice: order.deliveryPrice,
+        courierFee: order.courierFee,
         courierId: order.courierId,
       });
     } catch (error) {
