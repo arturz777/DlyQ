@@ -358,7 +358,7 @@ const createOrder = async (req, res) => {
 
   const orderData = {
       userId,
-      totalPrice: totalPrice + deliveryPrice,
+      totalPrice: Number(totalPrice) + Number(deliveryPrice),
       deliveryPrice,
       status,
       warehouseStatus: "pending",
