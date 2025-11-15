@@ -41,6 +41,7 @@ class CourierController {
           "deliveryLng",
           "deliveryAddress",
           "orderDetails",
+          "deliveryPrice", 
         ],
       });
 
@@ -117,6 +118,7 @@ class CourierController {
         deliveryLat: order.deliveryLat,
         deliveryLng: order.deliveryLng,
         deliveryAddress: order.deliveryAddress,
+        deliveryPrice: order.deliveryPrice,
         courierId: order.courierId,
       });
     } catch (error) {
