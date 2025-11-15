@@ -42,6 +42,7 @@ class CourierController {
           "deliveryAddress",
           "orderDetails",
           "deliveryPrice", 
+          "courierFee",
         ],
       });
 
