@@ -30,13 +30,17 @@ const SUPABASE_URL = mustEnv("SUPABASE_URL");
 const PLACEHOLDER_IMG =
   process.env.PLACEHOLDER_IMG || `${PUBLIC_URL}/static/placeholder.png`;
 
-const calculateDeliveryCost = (totalPrice, distance) => {
+const calculateDeliveryBase = (distance) => {
   let baseCost = 2;
   let distanceCost = distance * 0.5;
-  let deliveryCost = baseCost + distanceCost;
-  let discount = Math.floor(totalPrice / 30) * 2;
+  const deliveryCost = baseCost + distanceCost;
+  return parseFloat(deliveryCost.toFixed(2));
+};
 
-  deliveryCost = Math.max(0, deliveryCost - discount);
+const calculateDeliveryCost = (totalPrice, distance) => {
+  const base = calculateDeliveryBase(distance);
+  let discount = Math.floor(totalPrice / 30) * 2;
+  const deliveryCost = Math.max(0, base - discount);
   return parseFloat(deliveryCost.toFixed(2));
 };
 
