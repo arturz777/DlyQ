@@ -1,5 +1,7 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {
+  Animated,
+  PanResponder,
   View,
   Text,
   TouchableOpacity,
@@ -9,11 +11,12 @@ import {
   ActivityIndicator,
   Linking,
 } from 'react-native';
+import {Audio} from 'expo-av';
+import * as Haptics from 'expo-haptics';
 import {WebView} from 'react-native-webview';
 import {CommonActions} from '@react-navigation/native';
 import * as Location from 'expo-location';
 import {io} from 'socket.io-client';
-
 import {SOCKET_URL, SOCKET_PATH} from '../config/api';
 import {
   fetchActiveOrders,
@@ -22,10 +25,56 @@ import {
   updateDeliveryStatus,
   completeDelivery,
   updateCourierLocation,
+  fetchCourierSelf,
+  savePushToken,
 } from '../api/courierAPI';
 import {logout} from '../api/authAPI';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+import {Platform} from 'react-native';
 
 const WAREHOUSE_LOCATION = {lat: 59.51372, lng: 24.828888};
+const SLIDE_WIDTH = 280;
+const SLIDE_KNOB = 48;
+
+async function registerForPushNotificationsAsync() {
+  let token;
+
+  if (!Constants.isDevice) {
+    console.log('Push уведомления работают только на реальном устройстве');
+    return null;
+  }
+
+  const {status: existingStatus} = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== 'granted') {
+    const {status} = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== 'granted') {
+    Alert.alert('Уведомления', 'Разрешите уведомления, чтобы получать заказы.');
+    return null;
+  }
+
+  // Получаем Expo push token
+  const pushTokenData = await Notifications.getExpoPushTokenAsync();
+  token = pushTokenData.data;
+
+  // Для Android настраиваем канал, чтобы был звук и приоритет
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+      sound: 'default',
+    });
+  }
+
+  return token;
+}
 
 const leafletHtml = center => `
 <!DOCTYPE html><html><head>
@@ -39,7 +88,7 @@ const leafletHtml = center => `
 <div id="map"></div>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-  const map = L.map('map').setView([${center.lat},${center.lng}], 12);
+ const map = L.map('map', { zoomControl: false }).setView([${center.lat},${center.lng}], 12);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(map);
 
   const markers = {};
@@ -95,17 +144,129 @@ const leafletHtml = center => `
 </body></html>
 `;
 
+function SlideAction({label, onComplete, disabled, danger = false}) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const [done, setDone] = useState(false);
+
+  const labelOpacity = translateX.interpolate({
+    inputRange: [0, SLIDE_WIDTH - SLIDE_KNOB - 4],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: () => !disabled && !done,
+      onPanResponderMove: (_, gesture) => {
+        if (disabled || done) return;
+        const x = Math.min(
+          Math.max(0, gesture.dx),
+          SLIDE_WIDTH - SLIDE_KNOB - 4,
+        );
+        translateX.setValue(x);
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (disabled || done) return;
+        const successPoint = SLIDE_WIDTH * 0.6;
+        if (gesture.dx > successPoint) {
+          Animated.timing(translateX, {
+            toValue: SLIDE_WIDTH - SLIDE_KNOB - 4,
+            duration: 120,
+            useNativeDriver: false,
+          }).start(() => {
+            setDone(true);
+            onComplete && onComplete();
+          });
+        } else {
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: false,
+          }).start();
+        }
+      },
+    }),
+  ).current;
+
+  return (
+    <View style={slideStyles.container}>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          slideStyles.cover,
+          {
+            width: Animated.add(translateX, SLIDE_KNOB),
+          },
+        ]}
+      />
+
+      <Animated.Text
+        style={[slideStyles.label, {opacity: done ? 0 : labelOpacity}]}>
+        {label}
+      </Animated.Text>
+
+      <Animated.View
+        style={[
+          slideStyles.knob,
+          {backgroundColor: danger ? '#ef4444' : '#22c55e'},
+          {transform: [{translateX}]},
+          disabled || done ? {backgroundColor: '#9ca3af'} : null,
+        ]}
+        {...panResponder.panHandlers}>
+        <Text style={slideStyles.knobText}>{'>'}</Text>
+      </Animated.View>
+    </View>
+  );
+}
+
+const slideStyles = StyleSheet.create({
+  container: {
+    width: SLIDE_WIDTH,
+    height: 50,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 999,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  cover: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#e5e7eb',
+  },
+  label: {
+    position: 'absolute',
+    width: '100%',
+    textAlign: 'center',
+    color: '#111827',
+    fontWeight: '600',
+  },
+  knob: {
+    width: SLIDE_KNOB,
+    height: 42,
+    borderRadius: 999,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 4,
+  },
+  knobText: {
+    color: '#fff',
+    fontSize: 18,
+  },
+});
+
 export default function CourierScreen({navigation}) {
   const webRef = useRef(null);
   const lastPosRef = useRef(null);
+  const ringRef = useRef(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [courierStatus, setCourierStatus] = useState('offline');
   const [orders, setOrders] = useState([]);
   const [currentOrder, setCurrentOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [webReady, setWebReady] = useState(false);
+  const prevOrdersCountRef = useRef(0);
 
   const socket = useMemo(
     () =>
@@ -119,23 +280,159 @@ export default function CourierScreen({navigation}) {
     [],
   );
 
+  const loadOrdersOnce = async () => {
+    try {
+      const data = await fetchActiveOrders();
+      const list = data || [];
+
+      if (!list.length) {
+        setOrders([]);
+        setCurrentOrder(null);
+        return;
+      }
+
+      // Ищем заказ, который уже назначен этому курьеру
+      const assigned = list.find(o => o.courierId != null);
+
+      if (assigned) {
+        setCurrentOrder(assigned);
+
+        // Остальные — свободные заказы (без курьера)
+        const free = list.filter(
+          o => o.id !== assigned.id && o.courierId == null,
+        );
+        setOrders(free);
+
+        if (
+          webReady &&
+          assigned.deliveryLat != null &&
+          assigned.deliveryLng != null
+        ) {
+          webRef.current?.postMessage(
+            JSON.stringify({
+              type: 'setOrder',
+              id: assigned.id,
+              lat: assigned.deliveryLat,
+              lng: assigned.deliveryLng,
+            }),
+          );
+          webRef.current?.postMessage(JSON.stringify({type: 'fit'}));
+        }
+      } else {
+        // Нет назначенного заказа — просто кладём все как свободные
+        setOrders(list);
+
+        const first = list[0];
+        if (
+          webReady &&
+          first?.deliveryLat != null &&
+          first?.deliveryLng != null
+        ) {
+          webRef.current?.postMessage(
+            JSON.stringify({
+              type: 'setOrder',
+              id: first.id,
+              lat: first.deliveryLat,
+              lng: first.deliveryLng,
+            }),
+          );
+          webRef.current?.postMessage(JSON.stringify({type: 'fit'}));
+        }
+      }
+    } catch (e) {
+      console.log('orders error:', e?.message || e);
+    }
+  };
+
+  const startRinging = async () => {
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
+      if (ringRef.current) {
+        await ringRef.current.setPositionAsync(0);
+        await ringRef.current.setIsLoopingAsync(true);
+        await ringRef.current.playAsync();
+      }
+    } catch (e) {
+      console.log('startRinging error:', e);
+    }
+  };
+
+  const stopRinging = async () => {
+    try {
+      if (ringRef.current) {
+        await ringRef.current.stopAsync();
+        await ringRef.current.setIsLoopingAsync(false);
+        await ringRef.current.setPositionAsync(0);
+      }
+    } catch (e) {
+      console.log('stopRinging error:', e);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
+
     (async () => {
       try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        });
+
+        const {sound} = await Audio.Sound.createAsync(
+          require('../../assets/sounds/order_alert.wav'),
+          {volume: 1.0, isLooping: true},
+        );
+
+        if (mounted) {
+          ringRef.current = sound;
+        }
+      } catch (e) {
+        console.log('audio init error:', e);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+      if (ringRef.current) {
+        ringRef.current.unloadAsync();
+        ringRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        try {
+          const self = await fetchCourierSelf();
+          if (mounted && self?.status) {
+            setCourierStatus(self.status);
+          }
+        } catch (e) {
+          console.log('self courier error:', e?.message || e);
+        }
+
         const {status} = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert('Ошибка', 'Разрешение на геолокацию отклонено.');
           return;
         }
+
         const pos = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
         if (!mounted) return;
+
         lastPosRef.current = {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         };
+
         await loadOrdersOnce();
       } catch (e) {
         console.log('init error:', e?.message || e);
@@ -143,8 +440,34 @@ export default function CourierScreen({navigation}) {
         if (mounted) setLoading(false);
       }
     })();
+
     return () => {
       mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const token = await registerForPushNotificationsAsync();
+        if (mounted && token) {
+          await savePushToken(token);
+          console.log('Expo push token сохранён:', token);
+        }
+      } catch (e) {
+        console.log('push token error:', e?.message || e);
+      }
+    })();
+
+    const responseSub = Notifications.addNotificationResponseReceivedListener(
+      response => {},
+    );
+
+    return () => {
+      mounted = false;
+      responseSub?.remove();
     };
   }, []);
 
@@ -157,6 +480,7 @@ export default function CourierScreen({navigation}) {
 
   useEffect(() => {
     const onWarehouseOrder = newOrder => {
+      startRinging();
       Alert.alert('Новый заказ!', `Заказ №${newOrder.id} добавлен.`);
       setOrders(prev => [...prev, newOrder]);
       if (
@@ -193,12 +517,30 @@ export default function CourierScreen({navigation}) {
       socket.off('warehouseOrder', onWarehouseOrder);
       socket.off('orderReady', onOrderReady);
       socket.off('orderStatusUpdate', onOrderStatusUpdate);
+    };
+  }, [socket, webReady]);
+
+  useEffect(() => {
+    return () => {
       try {
         socket.removeAllListeners();
         socket.disconnect();
       } catch {}
     };
-  }, [socket, webReady]);
+  }, [socket]);
+
+  useEffect(() => {
+    if (courierStatus !== 'online') {
+      prevOrdersCountRef.current = orders.length;
+      return;
+    }
+
+    if (orders.length > prevOrdersCountRef.current) {
+      startRinging();
+    }
+
+    prevOrdersCountRef.current = orders.length;
+  }, [orders.length, courierStatus]);
 
   useEffect(() => {
     if (courierStatus !== 'online') return;
@@ -231,34 +573,6 @@ export default function CourierScreen({navigation}) {
     };
   }, [courierStatus, webReady]);
 
-  const loadOrdersOnce = async () => {
-    try {
-      const data = await fetchActiveOrders();
-      setOrders(data || []);
-      const target =
-        (data &&
-          data[0] && {
-            lat: data[0].deliveryLat,
-            lng: data[0].deliveryLng,
-            id: data[0].id,
-          }) ||
-        null;
-      if (target && webReady) {
-        webRef.current?.postMessage(
-          JSON.stringify({
-            type: 'setOrder',
-            id: target.id,
-            lat: target.lat,
-            lng: target.lng,
-          }),
-        );
-        webRef.current?.postMessage(JSON.stringify({type: 'fit'}));
-      }
-    } catch (e) {
-      console.log('orders error:', e?.message || e);
-    }
-  };
-
   const handleToggleStatus = async () => {
     try {
       const next = courierStatus === 'online' ? 'offline' : 'online';
@@ -267,6 +581,7 @@ export default function CourierScreen({navigation}) {
       if (next === 'online') {
         await loadOrdersOnce();
       } else {
+        stopRinging();
         setOrders([]);
       }
     } catch (e) {
@@ -289,6 +604,7 @@ export default function CourierScreen({navigation}) {
   const handleAcceptOrder = async orderId => {
     try {
       const o = await acceptOrder(orderId);
+      stopRinging();
       setCurrentOrder(o);
       if (o?.deliveryLat && o?.deliveryLng) {
         await drawRouteFromWarehouse(o.id, WAREHOUSE_LOCATION, {
@@ -377,6 +693,15 @@ export default function CourierScreen({navigation}) {
     );
   };
 
+  const firstOrder = orders[0] || null;
+
+  const formatCourierFee = order => {
+    if (!order || order.courierFee == null) return '';
+    const value = Number(order.courierFee);
+    if (Number.isNaN(value)) return '';
+    return `${value.toFixed(2)} €`;
+  };
+
   return (
     <View style={styles.root}>
       <WebView
@@ -396,28 +721,78 @@ export default function CourierScreen({navigation}) {
         <Text style={styles.burgerText}>☰</Text>
       </TouchableOpacity>
 
+      {currentOrder?.deliveryLat && currentOrder?.deliveryLng && (
+        <TouchableOpacity style={styles.mapBtn} onPress={openExternalRoute}>
+          <Text style={styles.mapBtnIcon}>🗺️</Text>
+        </TouchableOpacity>
+      )}
+
       <View style={styles.bottomBar}>
-        {courierStatus === 'offline' ? (
-          <TouchableOpacity
-            style={styles.btnPrimary}
-            onPress={handleToggleStatus}>
-            <Text style={styles.btnPrimaryText}>🟢 Выйти в онлайн</Text>
-          </TouchableOpacity>
-        ) : currentOrder ? (
-          <TouchableOpacity
-            style={styles.btnGrey}
-            onPress={() => setOrderModalOpen(true)}>
-            <Text style={styles.btnGreyText}>📦 Детали заказа</Text>
-          </TouchableOpacity>
-        ) : orders.length > 0 ? (
-          <TouchableOpacity
-            style={styles.btnPrimary}
-            onPress={() => handleAcceptOrder(orders[0].id)}>
-            <Text style={styles.btnPrimaryText}>✅ Принять заказ</Text>
-          </TouchableOpacity>
-        ) : (
+        {courierStatus === 'online' && !currentOrder && !firstOrder && (
           <Text style={styles.infoText}>🔎 Поиск заказа...</Text>
         )}
+
+        <View style={styles.centerControls}>
+          {courierStatus === 'offline' && (
+            <SlideAction
+              label="🟢 Выйти в онлайн"
+              onComplete={handleToggleStatus}
+            />
+          )}
+
+          {courierStatus === 'online' && !currentOrder && firstOrder && (
+            <SlideAction
+              label={(() => {
+                const price = formatCourierFee(firstOrder);
+                return `✅ Принять заказ${price ? ` • ${price}` : ''}`;
+              })()}
+              onComplete={() => handleAcceptOrder(firstOrder.id)}
+            />
+          )}
+
+          {courierStatus === 'online' && !currentOrder && !firstOrder && (
+            <SlideAction
+              label="🔴 Выйти в оффлайн"
+              onComplete={handleToggleStatus}
+              danger
+            />
+          )}
+
+          {courierStatus === 'online' && currentOrder && (
+            <>
+              <Text style={styles.orderAddr} numberOfLines={1}>
+                📍 {currentOrder.deliveryAddress}
+              </Text>
+
+              {currentOrder.status === 'Waiting for courier' && (
+                <Text style={styles.infoText}>⏳ Заказ готовится...</Text>
+              )}
+
+              {currentOrder.status === 'Ready for pickup' && (
+                <SlideAction
+                  label="📦 Забрал заказ"
+                  onComplete={() => handleUpdateStatus('Picked up')}
+                />
+              )}
+
+              {currentOrder.status === 'Picked up' && (
+                <SlideAction
+                  label="📍 Прибыл к клиенту"
+                  onComplete={() =>
+                    handleUpdateStatus('Arrived at destination')
+                  }
+                />
+              )}
+
+              {currentOrder.status === 'Arrived at destination' && (
+                <SlideAction
+                  label="✅ Доставлено"
+                  onComplete={handleCompleteDelivery}
+                />
+              )}
+            </>
+          )}
+        </View>
       </View>
 
       <Modal
@@ -460,104 +835,6 @@ export default function CourierScreen({navigation}) {
         </View>
       </Modal>
 
-      <Modal
-        visible={orderModalOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setOrderModalOpen(false)}>
-        <View
-          style={styles.overlay}
-          onTouchEnd={() => setOrderModalOpen(false)}>
-          <View
-            style={styles.orderModal}
-            onStartShouldSetResponder={() => true}>
-            <TouchableOpacity
-              style={styles.menuClose}
-              onPress={() => setOrderModalOpen(false)}>
-              <Text style={styles.menuCloseText}>×</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>📦 Информация</Text>
-
-            {courierStatus === 'online' && !currentOrder && (
-              <>
-                <Text style={styles.infoText}>🔎 Поиск заказа...</Text>
-                <TouchableOpacity
-                  style={styles.btnDanger}
-                  onPress={handleToggleStatus}>
-                  <Text style={styles.btnDangerText}>🔴 Выключить</Text>
-                </TouchableOpacity>
-              </>
-            )}
-
-            {courierStatus === 'offline' && (
-              <>
-                <Text style={styles.infoText}>
-                  Вы офлайн. Включите онлайн, чтобы получать заказы.
-                </Text>
-                <TouchableOpacity
-                  style={styles.btnPrimary}
-                  onPress={handleToggleStatus}>
-                  <Text style={styles.btnPrimaryText}>🟢 Выйти в онлайн</Text>
-                </TouchableOpacity>
-              </>
-            )}
-
-            {currentOrder && (
-              <>
-                <Text style={styles.infoText}>
-                  <Text style={{fontWeight: '600'}}>Адрес:</Text>{' '}
-                  {currentOrder.deliveryAddress}
-                </Text>
-                <Text style={styles.infoText}>
-                  <Text style={{fontWeight: '600'}}>Статус:</Text>{' '}
-                  {currentOrder.status === 'Ready for pickup'
-                    ? '📦 Готово к доставке!'
-                    : currentOrder.status}
-                </Text>
-
-                {currentOrder.status === 'Picked up' &&
-                  currentOrder.deliveryLat &&
-                  currentOrder.deliveryLng && (
-                    <TouchableOpacity
-                      style={styles.btnGrey}
-                      onPress={openExternalRoute}>
-                      <Text style={styles.btnGreyText}>🗺 Открыть маршрут</Text>
-                    </TouchableOpacity>
-                  )}
-
-                {currentOrder.status === 'Ready for pickup' && (
-                  <TouchableOpacity
-                    style={styles.btnPrimary}
-                    onPress={() => handleUpdateStatus('Picked up')}>
-                    <Text style={styles.btnPrimaryText}>📦 Забрал заказ</Text>
-                  </TouchableOpacity>
-                )}
-
-                {currentOrder.status === 'Picked up' && (
-                  <TouchableOpacity
-                    style={styles.btnPrimary}
-                    onPress={() =>
-                      handleUpdateStatus('Arrived at destination')
-                    }>
-                    <Text style={styles.btnPrimaryText}>
-                      📍 Прибыл к клиенту
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {currentOrder.status === 'Arrived at destination' && (
-                  <TouchableOpacity
-                    style={styles.btnSuccess}
-                    onPress={handleCompleteDelivery}>
-                    <Text style={styles.btnSuccessText}>✅ Доставлено</Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
-
       {loading && (
         <View style={styles.loading}>
           <ActivityIndicator />
@@ -590,36 +867,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.96)',
     alignItems: 'center',
   },
-  btnPrimary: {
-    backgroundColor: '#22c55e',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+  centerControls: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 8,
   },
-  btnPrimaryText: {color: '#fff', fontWeight: '600'},
-  btnDanger: {
-    backgroundColor: '#ef4444',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    marginTop: 8,
-  },
-  btnDangerText: {color: '#fff', fontWeight: '600'},
-  btnSuccess: {
-    backgroundColor: '#16a34a',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    marginTop: 8,
-  },
-  btnSuccessText: {color: '#fff', fontWeight: '600'},
-  btnGrey: {
-    backgroundColor: '#e5e7eb',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-  },
-  btnGreyText: {color: '#111827', fontWeight: '600'},
   infoText: {color: '#374151', marginVertical: 6},
   overlay: {
     flex: 1,
@@ -627,19 +879,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   menu: {width: '86%', backgroundColor: '#fff', borderRadius: 14, padding: 16},
   menuClose: {position: 'absolute', top: 6, right: 10, zIndex: 10},
   menuCloseText: {fontSize: 26},
   menuHeader: {fontSize: 18, fontWeight: '700', marginBottom: 12},
   menuItem: {paddingVertical: 10},
   menuItemText: {fontSize: 16},
-  orderModal: {
-    width: '92%',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 16,
-  },
-  modalTitle: {fontSize: 18, fontWeight: '700', marginBottom: 8},
   loading: {
     position: 'absolute',
     left: 0,
@@ -648,5 +894,30 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  orderAddr: {
+    marginBottom: 6,
+    marginTop: 4,
+    color: '#111827',
+    fontWeight: '500',
+  },
+  mapBtn: {
+    position: 'absolute',
+    top: 18,
+    right: 16,
+    backgroundColor: '#fff',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+  },
+  mapBtnIcon: {
+    fontSize: 20,
   },
 });
