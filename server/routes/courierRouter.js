@@ -12,7 +12,7 @@ router.post("/orders/:id/complete", authMiddleware, courierController.completeDe
 router.post("/orders/:id/status", authMiddleware, courierController.updateDeliveryStatus);
 router.post("/update-location", authMiddleware, courierController.updateCourierLocation);
 router.get('/couriers', authMiddleware, checkRole("ADMIN"), courierController.getAllCouriers);
-
+router.get("/me", authMiddleware, courierController.getSelf);
 
 
 module.exports = router;
