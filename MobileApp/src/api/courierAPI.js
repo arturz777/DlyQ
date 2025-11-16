@@ -31,3 +31,13 @@ export const updateCourierLocation = async (lat, lng) => {
   const {data} = await $authHost.post('/couriers/update-location', {lat, lng});
   return data;
 };
+
+export const fetchCourierSelf = async () => {
+  const {data} = await $authHost.get('/couriers/me');
+  return data;
+};
+
+export const savePushToken = async token => {
+  const {data} = await $authHost.post('/couriers/push-token', {token});
+  return data;
+};
