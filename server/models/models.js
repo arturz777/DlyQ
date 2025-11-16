@@ -240,6 +240,7 @@ const Courier = sequelize.define("courier", {
   status: { type: DataTypes.STRING, defaultValue: "offline" },
   currentLat: { type: DataTypes.FLOAT, allowNull: true },
   currentLng: { type: DataTypes.FLOAT, allowNull: true },
+  expoPushToken: { type: DataTypes.STRING, allowNull: true },
 });
 
 const Warehouse = sequelize.define("warehouse", {
