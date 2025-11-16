@@ -8,6 +8,7 @@ const { t } = require("../utils/translations");
 const getDistanceFromWarehouse = require("../utils/distance");
 const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");  // Proda (PDFShift)
 const { supabase } = require("../config/supabaseClient");
+const { sendOrderAssignedPush } = require("../services/pushService");
 const uuid = require("uuid");
 
 const Stripe = require("stripe");
@@ -811,6 +812,10 @@ const assignCourier = async (req, res) => {
       deliveryAddress: order.deliveryAddress,
       orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
     });
+
+     sendOrderAssignedPush(order).catch(err =>
+      console.error("push error:", err),
+    );
 
     res.json({ message: "Курьер назначен", order });
   } catch (error) {
