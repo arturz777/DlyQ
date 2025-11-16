@@ -15,6 +15,36 @@ class CourierController {
     }
   }
 
+  async getSelf(req, res) {
+    try {
+      const courierId = req.user.id;
+      if (!courierId) {
+        return res.status(401).json({ message: "Вы не авторизованы." });
+      }
+
+      let courier = await Courier.findByPk(courierId);
+
+      if (!courier) {
+        courier = await Courier.create({
+          id: courierId,
+          name: req.user.name || "Курьер",
+          status: "offline",
+        });
+      }
+
+      return res.json({
+        id: courier.id,
+        name: courier.name,
+        status: courier.status,
+        currentLat: courier.currentLat,
+        currentLng: courier.currentLng,
+      });
+    } catch (error) {
+      console.error("❌ Ошибка получения курьера:", error);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
   async getActiveOrders(req, res) {
     try {
       const courierId = req.user.id;
@@ -29,7 +59,14 @@ class CourierController {
 
       const orders = await Order.findAll({
         where: {
-          status: { [Op.or]: ["Waiting for courier", "Ready for pickup"] },
+          status: {
+            [Op.in]: [
+              "Waiting for courier",
+              "Ready for pickup",
+              "Picked up",
+              "Arrived at destination",
+            ],
+          },
           [Op.or]: [{ courierId: null }, { courierId: courierId }],
         },
 
@@ -41,8 +78,9 @@ class CourierController {
           "deliveryLng",
           "deliveryAddress",
           "orderDetails",
-          "deliveryPrice", 
+          "deliveryPrice",
           "courierFee",
+          "courierId",
         ],
       });
 
