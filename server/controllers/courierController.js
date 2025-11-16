@@ -3,6 +3,38 @@ const { Op } = require("sequelize");
 const fetch = require("node-fetch");
 
 class CourierController {
+
+  async savePushToken(req, res) {
+  try {
+    const courierId = req.user.id;
+    const { token } = req.body;
+
+    if (!courierId) {
+      return res.status(401).json({ message: "Вы не авторизованы." });
+    }
+    if (!token) {
+      return res.status(400).json({ message: "Токен не передан." });
+    }
+
+    let courier = await Courier.findByPk(courierId);
+    if (!courier) {
+      courier = await Courier.create({
+        id: courierId,
+        name: req.user.name || "Курьер",
+        status: "offline",
+      });
+    }
+
+    courier.expoPushToken = token;
+    await courier.save();
+
+    return res.json({ message: "Push-токен сохранён" });
+  } catch (error) {
+    console.error("❌ Ошибка сохранения push-токена:", error);
+    return res.status(500).json({ message: "Ошибка сервера" });
+  }
+}
+  
   async getAllCouriers(req, res) {
     try {
       const couriers = await Courier.findAll({
