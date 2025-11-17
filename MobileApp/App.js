@@ -1,26 +1,25 @@
 import React, {useEffect, useState} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import * as Notifications from 'expo-notifications';
 import LoginScreen from './src/screens/LoginScreen';
 import CourierScreen from './src/screens/CourierScreen';
-import * as Notifications from 'expo-notifications';
-import { NavigationContainer } from '@react-navigation/native';
 import {checkAuth} from './src/api/authAPI';
 import { loadRuntimeBaseFromStorage, fetchRemoteConfig, setRuntimeBase } from './src/config/api';
 
-const Stack = createNativeStackNavigator();
-
-export default function App() {
-  const [booted, setBooted] = useState(false);
-  const [initialRoute, setInitialRoute] = useState('Login');
-
-  Notifications.setNotificationHandler({
+Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),
 });
+
+const Stack = createNativeStackNavigator();
+
+export default function App() {
+  const [booted, setBooted] = useState(false);
+  const [initialRoute, setInitialRoute] = useState('Login');
 
   useEffect(() => {
   (async () => {
@@ -47,7 +46,6 @@ export default function App() {
 
   return (
     <NavigationContainer>
-    <RootNavigator />
       <Stack.Navigator
         initialRouteName={initialRoute}
         screenOptions={{headerShown: false}}>
@@ -57,4 +55,3 @@ export default function App() {
     </NavigationContainer>
   );
 }
-
