@@ -799,6 +799,12 @@ const adminUpdateOrderStatus = async (req, res) => {
     };
 
     io.emit("warehouseOrder", courierPayload);
+
+       if (order.courierId) {
+      sendOrderAssignedPush(order).catch(err =>
+        console.error("push error (adminUpdateOrderStatus):", err),
+      );
+    }
   }
 
   return res.json({ message: "Обновлено", order });
