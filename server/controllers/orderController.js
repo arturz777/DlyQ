@@ -783,7 +783,23 @@ const adminUpdateOrderStatus = async (req, res) => {
   await order.save();
 
   const io = req.app.get("io");
+
   io.emit("orderStatusUpdate", order);
+
+  if (["Waiting for courier", "Ready for pickup"].includes(order.status)) {
+    const courierPayload = {
+      id: order.id,
+      status: order.status,
+      deliveryLat: order.deliveryLat,
+      deliveryLng: order.deliveryLng,
+      deliveryAddress: order.deliveryAddress,
+      deliveryPrice: order.deliveryPrice,
+      courierFee: order.courierFee,
+      courierId: order.courierId,
+    };
+
+    io.emit("warehouseOrder", courierPayload);
+  }
 
   return res.json({ message: "Обновлено", order });
 };
