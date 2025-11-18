@@ -9,6 +9,9 @@ class CourierController {
     const courierId = req.user.id;
     const { token } = req.body;
 
+        console.log('savePushToken CALLED:', { courierId, token });
+
+
     if (!courierId) {
       return res.status(401).json({ message: "Вы не авторизованы." });
     }
