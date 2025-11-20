@@ -34,10 +34,11 @@ async savePushToken(req, res) {
       });
     }
 
+    // 🔴 тут теперь будет лежать FCM-токен, просто поле исторически называется expoPushToken
     courier.expoPushToken = token;
     await courier.save();
 
-    console.log('✅ Push-токен сохранён в БД для курьера', courierId, token);
+    console.log('✅ FCM push-токен сохранён в БД для курьера', courierId, token);
 
     return res.json({ message: "Push-токен сохранён" });
   } catch (error) {
@@ -45,7 +46,6 @@ async savePushToken(req, res) {
     return res.status(500).json({ message: "Ошибка сервера" });
   }
 }
-
   
   async getAllCouriers(req, res) {
     try {
