@@ -1,9 +1,46 @@
-const { Expo } = require("expo-server-sdk");
+// services/pushService.js
 const { Courier } = require("../models/models");
 const { Op } = require("sequelize");
+const admin = require("../config/firebaseAdmin"); // ⬅️ новый импорт
 
-const expo = new Expo();
+// helper: отправка одного пуша и обработка ошибок токена
+async function sendFcmToToken(token, payload) {
+  try {
+    const res = await admin.messaging().send({
+      token,
+      notification: payload.notification,
+      data: payload.data,
+      android: {
+        priority: "high",
+        notification: {
+          sound: "default",
+          channelId: "default",
+        },
+      },
+    });
 
+    console.log("✅ FCM push sent:", res);
+    return true;
+  } catch (err) {
+    console.error("❌ FCM push error:", err.code || err.message || err);
+
+    // Если токен умер — можно подчистить в базе
+    if (
+      err.code === "messaging/registration-token-not-registered" ||
+      err.code === "messaging/invalid-registration-token"
+    ) {
+      console.warn("⚠️ Удаляем невалидный FCM токен:", token);
+      await Courier.update(
+        { expoPushToken: null },
+        { where: { expoPushToken: token } }
+      );
+    }
+
+    return false;
+  }
+}
+
+// 📦 Пуш: «заказ назначен конкретному курьеру»
 async function sendOrderAssignedPush(order) {
   try {
     if (!order.courierId) {
@@ -19,49 +56,33 @@ async function sendOrderAssignedPush(order) {
 
     const token = courier.expoPushToken;
     if (!token) {
-      console.warn("sendOrderAssignedPush: у курьера нет expoPushToken");
+      console.warn("sendOrderAssignedPush: у курьера нет FCM токена");
       return;
     }
 
-    if (!Expo.isExpoPushToken(token)) {
-      console.warn("sendOrderAssignedPush: неверный Expo токен", token);
-      return;
-    }
-
-    const messages = [
-      {
-        to: token,
-        sound: "default",
+    const payload = {
+      notification: {
         title: "Заказ назначен вам",
         body: order.deliveryAddress
           ? `Новый заказ: ${order.deliveryAddress}`
           : `Вам назначен заказ #${order.id}`,
-        data: {
-          type: "assigned",
-          orderId: order.id,
-          status: order.status,
-          deliveryAddress: order.deliveryAddress,
-        },
-        priority: "high",
       },
-    ];
+      data: {
+        type: "assigned",
+        orderId: String(order.id),
+        status: order.status || "",
+        deliveryAddress: order.deliveryAddress || "",
+      },
+    };
 
-    const chunks = expo.chunkPushNotifications(messages);
-    for (const chunk of chunks) {
-      await expo.sendPushNotificationsAsync(chunk);
-    }
+    console.log("📨 Пуш \"назначен\" на токен:", token);
+    await sendFcmToToken(token, payload);
   } catch (err) {
     console.error("❌ Ошибка отправки push для курьера:", err);
   }
 }
 
-/**
- * Пуш «появился новый заказ на складе».
- * Сейчас логика такая: шлём всем курьерам, у кого:
- *  - есть expoPushToken
- *  - status === 'online'
- * (для одного курьера это вообще идеально)
- */
+// 🏭 Пуш: «на складе появился новый заказ» (всем онлайн-курьерам)
 async function sendWarehouseOrderPush(order) {
   try {
     const couriers = await Courier.findAll({
@@ -76,35 +97,30 @@ async function sendWarehouseOrderPush(order) {
       return;
     }
 
-    const messages = [];
-
-    for (const courier of couriers) {
-      const token = courier.expoPushToken;
-      if (!Expo.isExpoPushToken(token)) {
-        console.warn("sendWarehouseOrderPush: неверный токен", token);
-        continue;
-      }
-
-      messages.push({
-        to: token,
-        sound: "default",
+    const payload = {
+      notification: {
         title: "Новый заказ",
         body: order.deliveryAddress
           ? `Новый заказ: ${order.deliveryAddress}`
           : `Новый заказ #${order.id}`,
-        data: {
-          type: "warehouse",
-          orderId: order.id,
-          status: order.status,
-          deliveryAddress: order.deliveryAddress,
-        },
-        priority: "high",
-      });
-    }
+      },
+      data: {
+        type: "warehouse",
+        orderId: String(order.id),
+        status: order.status || "",
+        deliveryAddress: order.deliveryAddress || "",
+      },
+    };
 
-    const chunks = expo.chunkPushNotifications(messages);
-    for (const chunk of chunks) {
-      await expo.sendPushNotificationsAsync(chunk);
+    console.log(
+      `📨 Пуш по складу: рассылаем ${couriers.length} курьерам`,
+    );
+
+    for (const courier of couriers) {
+      const token = courier.expoPushToken;
+      if (!token) continue;
+      console.log("  → курьер", courier.id, "токен", token);
+      await sendFcmToToken(token, payload);
     }
   } catch (err) {
     console.error("❌ Ошибка отправки push для склада:", err);
