@@ -1,12 +1,12 @@
 // services/pushService.js
 const { Courier } = require("../models/models");
 const { Op } = require("sequelize");
-const admin = require("../config/firebaseAdmin"); // ⬅️ новый импорт
+const admin = require("../config/firebaseAdmin");
 
-// helper: отправка одного пуша и обработка ошибок токена
+// Отправка одного пуша через FCM + чистка мёртвых токенов
 async function sendFcmToToken(token, payload) {
   try {
-    const res = await admin.messaging().send({
+    const message = {
       token,
       notification: payload.notification,
       data: payload.data,
@@ -17,14 +17,14 @@ async function sendFcmToToken(token, payload) {
           channelId: "default",
         },
       },
-    });
+    };
 
+    const res = await admin.messaging().send(message);
     console.log("✅ FCM push sent:", res);
     return true;
   } catch (err) {
     console.error("❌ FCM push error:", err.code || err.message || err);
 
-    // Если токен умер — можно подчистить в базе
     if (
       err.code === "messaging/registration-token-not-registered" ||
       err.code === "messaging/invalid-registration-token"
@@ -60,12 +60,14 @@ async function sendOrderAssignedPush(order) {
       return;
     }
 
+    const bodyText = order.deliveryAddress
+      ? `Новый заказ: ${order.deliveryAddress}`
+      : `Вам назначен заказ #${order.id}`;
+
     const payload = {
       notification: {
         title: "Заказ назначен вам",
-        body: order.deliveryAddress
-          ? `Новый заказ: ${order.deliveryAddress}`
-          : `Вам назначен заказ #${order.id}`,
+        body: bodyText,
       },
       data: {
         type: "assigned",
@@ -75,7 +77,7 @@ async function sendOrderAssignedPush(order) {
       },
     };
 
-    console.log("📨 Пуш \"назначен\" на токен:", token);
+    console.log('📨 Пуш "назначен" на токен:', token);
     await sendFcmToToken(token, payload);
   } catch (err) {
     console.error("❌ Ошибка отправки push для курьера:", err);
@@ -97,12 +99,14 @@ async function sendWarehouseOrderPush(order) {
       return;
     }
 
+    const bodyText = order.deliveryAddress
+      ? `Новый заказ: ${order.deliveryAddress}`
+      : `Новый заказ #${order.id}`;
+
     const payload = {
       notification: {
         title: "Новый заказ",
-        body: order.deliveryAddress
-          ? `Новый заказ: ${order.deliveryAddress}`
-          : `Новый заказ #${order.id}`,
+        body: bodyText,
       },
       data: {
         type: "warehouse",
