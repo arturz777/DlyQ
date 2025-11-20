@@ -1,5 +1,9 @@
 const { Order, Warehouse } = require("../models/models");
 const { Op } = require("sequelize");
+const {
+  sendOrderAssignedPush,
+  sendWarehouseOrderPush,
+} = require("../services/pushService");
 
 class WarehouseController {
   async getWarehouseOrders(req, res) {
@@ -70,6 +74,20 @@ class WarehouseController {
       io.emit("warehouseOrder", order);
       io.emit("orderStatusUpdate", order);
 
+      try {
+        if (
+          ["Waiting for courier", "Ready for pickup"].includes(order.status)
+        ) {
+          if (order.courierId) {
+            await sendOrderAssignedPush(order);
+          } else {
+            await sendWarehouseOrderPush(order);
+          }
+        }
+      } catch (err) {
+        console.error("push error (warehouse.acceptOrder):", err);
+      }
+
       return res.json(order);
     } catch (error) {
       console.error("❌ Ошибка обработки заказа складом:", error);
@@ -93,6 +111,20 @@ class WarehouseController {
       const io = req.app.get("io");
       io.emit("orderReady", order);
       io.emit("orderStatusUpdate", { id: order.id, status: order.status });
+
+      try {
+        if (
+          ["Waiting for courier", "Ready for pickup"].includes(order.status)
+        ) {
+          if (order.courierId) {
+            await sendOrderAssignedPush(order);
+          } else {
+            await sendWarehouseOrderPush(order);
+          }
+        }
+      } catch (err) {
+        console.error("push error (warehouse.completeOrder):", err);
+      }
 
       return res.json(order);
     } catch (error) {
