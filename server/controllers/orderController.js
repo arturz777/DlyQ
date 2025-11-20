@@ -8,7 +8,7 @@ const { t } = require("../utils/translations");
 const getDistanceFromWarehouse = require("../utils/distance");
 const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");  // Proda (PDFShift)
 const { supabase } = require("../config/supabaseClient");
-const { sendOrderAssignedPush } = require("../services/pushService");
+const { sendOrderAssignedPush, sendWarehouseOrderPush } = require("../services/pushService");
 const uuid = require("uuid");
 
 const Stripe = require("stripe");
@@ -800,12 +800,16 @@ const adminUpdateOrderStatus = async (req, res) => {
 
     io.emit("warehouseOrder", courierPayload);
 
-       if (order.courierId) {
-      sendOrderAssignedPush(order).catch(err =>
-        console.error("push error (adminUpdateOrderStatus):", err),
-      );
-    }
+         if (order.courierId) {
+    sendOrderAssignedPush(order).catch(err =>
+      console.error("push error (adminUpdateOrderStatus, assigned):", err),
+    );
+  } else {
+    sendWarehouseOrderPush(order).catch(err =>
+      console.error("push error (adminUpdateOrderStatus, warehouse):", err),
+    );
   }
+}
 
   return res.json({ message: "Обновлено", order });
 };
