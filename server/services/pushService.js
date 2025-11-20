@@ -84,6 +84,21 @@ async function sendOrderAssignedPush(order) {
   }
 }
 
+async function sendTestPush(token) {
+  const payload = {
+    notification: {
+      title: "Тест FCM",
+      body: "Если ты видишь это — пуши через FCM работают 🚚",
+    },
+    data: {
+      type: "test",
+    },
+  };
+
+  console.log("📨 Тестовый FCM пуш на токен:", token);
+  return sendFcmToToken(token, payload);
+}
+
 // 🏭 Пуш: «на складе появился новый заказ» (всем онлайн-курьерам)
 async function sendWarehouseOrderPush(order) {
   try {
@@ -134,4 +149,5 @@ async function sendWarehouseOrderPush(order) {
 module.exports = {
   sendOrderAssignedPush,
   sendWarehouseOrderPush,
+   sendTestPush,
 };
