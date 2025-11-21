@@ -124,7 +124,6 @@ async savePushToken(req, res) {
           "deliveryPrice",
           "courierFee",
           "courierId",
-          "acceptedAt",
         ],
       });
 
