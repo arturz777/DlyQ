@@ -61,7 +61,7 @@ async function sendOrderAssignedPush(order) {
 
     const title = isReady ? "Заказ готов" : "Заказ назначен вам";
     const bodyText = isReady
-      ? "Заказ готов, можно забирать со склада"
+      ? "Заказ готов, можно забирать."
       : order.deliveryAddress
       ? `Новый заказ: ${order.deliveryAddress}`
       : `Вам назначен заказ #${order.id}`;
