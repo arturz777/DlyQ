@@ -95,11 +95,13 @@ async function sendWarehouseOrderPush(order) {
       return;
     }
 
-    const bodyText = "Заказ готов";
+    const bodyText = order.deliveryAddress
+      ? `Новый заказ: ${order.deliveryAddress}`
+      : `Заказ готов #${order.id}`;
 
     const payload = {
       notification: {
-        title: "Заказ готов",
+        title: "Новый заказ",
         body: bodyText,
       },
       data: {
@@ -110,7 +112,9 @@ async function sendWarehouseOrderPush(order) {
       },
     };
 
-    console.log(`📨 Пуш по складу: рассылаем ${couriers.length} курьерам`);
+    console.log(
+      `📨 Пуш по складу: рассылаем ${couriers.length} курьерам`,
+    );
 
     for (const courier of couriers) {
       const token = courier.expoPushToken;
