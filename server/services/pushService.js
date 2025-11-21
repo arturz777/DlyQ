@@ -81,22 +81,6 @@ async function sendOrderAssignedPush(order) {
   }
 }
 
-async function sendTestPush(token) {
-  const payload = {
-    notification: {
-      title: "Тест FCM",
-      body: "Если ты видишь это — пуши через FCM работают 🚚",
-    },
-    data: {
-      type: "test",
-    },
-  };
-
-  console.log("📨 Тестовый FCM пуш на токен:", token);
-  return sendFcmToToken(token, payload);
-}
-
-// 🏭 Пуш: «на складе появился новый заказ» (всем онлайн-курьерам)
 async function sendWarehouseOrderPush(order) {
   try {
     const couriers = await Courier.findAll({
@@ -111,13 +95,21 @@ async function sendWarehouseOrderPush(order) {
       return;
     }
 
-    const bodyText = order.deliveryAddress
-      ? `Новый заказ: ${order.deliveryAddress}`
-      : `Новый заказ #${order.id}`;
+     const isReady = order.status === "Ready for pickup";
 
-    const payload = {
+    const title = isReady ? "Заказ готов к забору" : "Новый заказ";
+
+    const bodyText = order.deliveryAddress
+      ? isReady
+        ? `Заказ готов: ${order.deliveryAddress}`
+        : `Новый заказ: ${order.deliveryAddress}`
+      : isReady
+        ? `Заказ #${order.id} готов к забору`
+        : `Новый заказ #${order.id}`;
+
+      const payload = {
       notification: {
-        title: "Новый заказ",
+        title,
         body: bodyText,
       },
       data: {
@@ -146,5 +138,4 @@ async function sendWarehouseOrderPush(order) {
 module.exports = {
   sendOrderAssignedPush,
   sendWarehouseOrderPush,
-   sendTestPush,
 };
