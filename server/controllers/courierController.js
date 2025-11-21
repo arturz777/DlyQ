@@ -34,7 +34,6 @@ async savePushToken(req, res) {
       });
     }
 
-    // 🔴 тут теперь будет лежать FCM-токен, просто поле исторически называется expoPushToken
     courier.expoPushToken = token;
     await courier.save();
 
@@ -125,6 +124,7 @@ async savePushToken(req, res) {
           "deliveryPrice",
           "courierFee",
           "courierId",
+          "acceptedAt",
         ],
       });
 
