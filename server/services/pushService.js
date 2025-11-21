@@ -95,26 +95,24 @@ async function sendWarehouseOrderPush(order) {
       return;
     }
 
-    const bodyText = order.deliveryAddress
+   const isReady = order.status === "Ready for pickup";
+
+const payload = {
+  notification: {
+    title: isReady ? "Заказ готов" : "Новый заказ",
+    body: isReady
+      ? "Заказ готов"
+      : order.deliveryAddress
       ? `Новый заказ: ${order.deliveryAddress}`
-      : `Заказ готов #${order.id}`;
-
-    const payload = {
-      notification: {
-        title: "Новый заказ",
-        body: bodyText,
-      },
-      data: {
-        type: "warehouse",
-        orderId: String(order.id),
-        status: order.status || "",
-        deliveryAddress: order.deliveryAddress || "",
-      },
-    };
-
-    console.log(
-      `📨 Пуш по складу: рассылаем ${couriers.length} курьерам`,
-    );
+      : `Новый заказ #${order.id}`,
+  },
+  data: {
+    type: "warehouse",
+    orderId: String(order.id),
+    status: order.status || "",
+    deliveryAddress: order.deliveryAddress || "",
+  },
+};
 
     for (const courier of couriers) {
       const token = courier.expoPushToken;
