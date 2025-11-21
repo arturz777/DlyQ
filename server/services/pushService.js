@@ -57,13 +57,18 @@ async function sendOrderAssignedPush(order) {
       return;
     }
 
-    const bodyText = order.deliveryAddress
+    const isReady = order.status === "Ready for pickup";
+
+    const title = isReady ? "Заказ готов" : "Заказ назначен вам";
+    const bodyText = isReady
+      ? "Заказ готов, можно забирать со склада"
+      : order.deliveryAddress
       ? `Новый заказ: ${order.deliveryAddress}`
       : `Вам назначен заказ #${order.id}`;
 
     const payload = {
       notification: {
-        title: "Заказ назначен вам",
+        title,
         body: bodyText,
       },
       data: {
@@ -95,24 +100,24 @@ async function sendWarehouseOrderPush(order) {
       return;
     }
 
-   const isReady = order.status === "Ready for pickup";
+    const isReady = order.status === "Ready for pickup";
 
-const payload = {
-  notification: {
-    title: isReady ? "Заказ готов" : "Новый заказ",
-    body: isReady
-      ? "Заказ готов"
-      : order.deliveryAddress
-      ? `Новый заказ: ${order.deliveryAddress}`
-      : `Новый заказ #${order.id}`,
-  },
-  data: {
-    type: "warehouse",
-    orderId: String(order.id),
-    status: order.status || "",
-    deliveryAddress: order.deliveryAddress || "",
-  },
-};
+    const payload = {
+      notification: {
+        title: isReady ? "Заказ готов" : "Новый заказ",
+        body: isReady
+          ? "Заказ готов"
+          : order.deliveryAddress
+          ? `Новый заказ: ${order.deliveryAddress}`
+          : `Новый заказ #${order.id}`,
+      },
+      data: {
+        type: "warehouse",
+        orderId: String(order.id),
+        status: order.status || "",
+        deliveryAddress: order.deliveryAddress || "",
+      },
+    };
 
     for (const courier of couriers) {
       const token = courier.expoPushToken;
