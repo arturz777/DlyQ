@@ -724,7 +724,6 @@ const getActiveOrder = async (req, res) => {
             "Picked up",
             "Arrived at destination",
             "Delivered",
-             "courierFee", 
           ],
         },
       },
