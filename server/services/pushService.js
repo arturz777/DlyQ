@@ -12,7 +12,7 @@ async function sendFcmToToken(token, payload) {
         priority: "high",
         notification: {
           sound: "default",
-          channelId: "orders",
+          channelId: "default",
         },
       },
     };
