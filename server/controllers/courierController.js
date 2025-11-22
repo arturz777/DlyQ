@@ -6,35 +6,6 @@ const {
 } = require("../services/orderDistributionService");
 
 class CourierController {
-  async declineOrder(req, res) {
-    try {
-      const { id } = req.params;
-      const courierId = req.user.id;
-
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      const order = await Order.findByPk(id);
-      if (!order) {
-        return res.status(404).json({ message: "Заказ не найден." });
-      }
-
-      // фиксируем отказ, если ещё не был
-      await OrderDecline.findOrCreate({
-        where: { orderId: order.id, courierId },
-        defaults: { orderId: order.id, courierId },
-      });
-
-      // запускаем рассылку следующему курьеру
-      await sendOrderToNextCourier(order);
-
-      return res.json({ message: "Заказ отклонён", orderId: order.id });
-    } catch (error) {
-      console.error("❌ Ошибка отклонения заказа курьером:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
 
   async savePushToken(req, res) {
     try {
@@ -385,6 +356,34 @@ class CourierController {
       return res.json({ message: "Местоположение обновлено!" });
     } catch (error) {
       console.error("❌ Ошибка обновления местоположения курьера:", error);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
+  async declineOrder(req, res) {
+    try {
+      const { id } = req.params;
+      const courierId = req.user.id;
+
+      if (!courierId) {
+        return res.status(401).json({ message: "Вы не авторизованы." });
+      }
+
+      const order = await Order.findByPk(id);
+      if (!order) {
+        return res.status(404).json({ message: "Заказ не найден." });
+      }
+
+      await OrderDecline.findOrCreate({
+        where: { orderId: order.id, courierId },
+        defaults: { orderId: order.id, courierId },
+      });
+
+      await sendOrderToNextCourier(order);
+
+      return res.json({ message: "Заказ отклонён", orderId: order.id });
+    } catch (error) {
+      console.error("❌ Ошибка отклонения заказа курьером:", error);
       return res.status(500).json({ message: "Ошибка сервера" });
     }
   }
