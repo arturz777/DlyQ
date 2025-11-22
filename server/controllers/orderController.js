@@ -786,7 +786,7 @@ const adminUpdateOrderStatus = async (req, res) => {
 
   io.emit("orderStatusUpdate", order);
 
-  if (["Waiting for courier", "Ready for pickup"].includes(order.status)) {
+   if (['Waiting for courier', 'Ready for pickup'].includes(order.status)) {
     const courierPayload = {
       id: order.id,
       status: order.status,
@@ -798,18 +798,14 @@ const adminUpdateOrderStatus = async (req, res) => {
       courierId: order.courierId,
     };
 
-    io.emit("warehouseOrder", courierPayload);
+    io.emit('warehouseOrder', courierPayload);
 
-         if (order.courierId) {
-    sendOrderAssignedPush(order).catch(err =>
-      console.error("push error (adminUpdateOrderStatus, assigned):", err),
-    );
-  } else {
-    sendWarehouseOrderPush(order).catch(err =>
-      console.error("push error (adminUpdateOrderStatus, warehouse):", err),
-    );
+    try {
+      await sendOrderToNextCourier(order);
+    } catch (err) {
+      console.error('push error (adminUpdateOrderStatus):', err);
+    }
   }
-}
 
   return res.json({ message: "Обновлено", order });
 };
