@@ -3,8 +3,6 @@ const router = new Router();
 const courierController = require("../controllers/courierController");
 const authMiddleware = require("../middleware/authMiddleware");
 const checkRole = require("../middleware/checkRoleMiddleware");
-const { Courier } = require("../models/models");
-const { sendTestPush } = require("../services/pushService");
 
 router.get("/orders", authMiddleware, courierController.getActiveOrders);
 router.post(
