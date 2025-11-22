@@ -9,6 +9,7 @@ const getDistanceFromWarehouse = require("../utils/distance");
 const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");  // Proda (PDFShift)
 const { supabase } = require("../config/supabaseClient");
 const { sendOrderAssignedPush, sendWarehouseOrderPush } = require("../services/pushService");
+const { sendOrderToNextCourier } = require("../services/orderDistributionService");
 const uuid = require("uuid");
 
 const Stripe = require("stripe");
