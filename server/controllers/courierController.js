@@ -1,51 +1,87 @@
-const { Order, Courier } = require("../models/models");
 const { Op } = require("sequelize");
 const fetch = require("node-fetch");
+const { Order, Courier, OrderDecline } = require("../models/models");
+const {
+  sendOrderToNextCourier,
+} = require("../services/orderDistributionService");
 
 class CourierController {
+  async declineOrder(req, res) {
+    try {
+      const { id } = req.params;
+      const courierId = req.user.id;
 
-async savePushToken(req, res) {
-  try {
-    console.log('📩 /couriers/push-token raw:', {
-      body: req.body,
-      user: req.user,
-      authHeader: req.headers.authorization,
-    });
+      if (!courierId) {
+        return res.status(401).json({ message: "Вы не авторизованы." });
+      }
 
-    const { token } = req.body;
-    const courierId = req.user?.id; 
+      const order = await Order.findByPk(id);
+      if (!order) {
+        return res.status(404).json({ message: "Заказ не найден." });
+      }
 
-    if (!courierId) {
-      console.warn('⚠️ savePushToken: нет req.user, авторизация не прошла');
-      return res.status(401).json({ message: "Вы не авторизованы." });
-    }
-
-    if (!token) {
-      console.warn('⚠️ savePushToken: пустой token');
-      return res.status(400).json({ message: "Токен не передан." });
-    }
-
-    let courier = await Courier.findByPk(courierId);
-    if (!courier) {
-      courier = await Courier.create({
-        id: courierId,
-        name: req.user.name || "Курьер",
-        status: "offline",
+      // фиксируем отказ, если ещё не был
+      await OrderDecline.findOrCreate({
+        where: { orderId: order.id, courierId },
+        defaults: { orderId: order.id, courierId },
       });
+
+      // запускаем рассылку следующему курьеру
+      await sendOrderToNextCourier(order);
+
+      return res.json({ message: "Заказ отклонён", orderId: order.id });
+    } catch (error) {
+      console.error("❌ Ошибка отклонения заказа курьером:", error);
+      return res.status(500).json({ message: "Ошибка сервера" });
     }
-
-    courier.expoPushToken = token;
-    await courier.save();
-
-    console.log('✅ FCM push-токен сохранён в БД для курьера', courierId, token);
-
-    return res.json({ message: "Push-токен сохранён" });
-  } catch (error) {
-    console.error("❌ Ошибка сохранения push-токена:", error);
-    return res.status(500).json({ message: "Ошибка сервера" });
   }
-}
-  
+
+  async savePushToken(req, res) {
+    try {
+      console.log("📩 /couriers/push-token raw:", {
+        body: req.body,
+        user: req.user,
+        authHeader: req.headers.authorization,
+      });
+
+      const { token } = req.body;
+      const courierId = req.user?.id;
+
+      if (!courierId) {
+        console.warn("⚠️ savePushToken: нет req.user, авторизация не прошла");
+        return res.status(401).json({ message: "Вы не авторизованы." });
+      }
+
+      if (!token) {
+        console.warn("⚠️ savePushToken: пустой token");
+        return res.status(400).json({ message: "Токен не передан." });
+      }
+
+      let courier = await Courier.findByPk(courierId);
+      if (!courier) {
+        courier = await Courier.create({
+          id: courierId,
+          name: req.user.name || "Курьер",
+          status: "offline",
+        });
+      }
+
+      courier.expoPushToken = token;
+      await courier.save();
+
+      console.log(
+        "✅ FCM push-токен сохранён в БД для курьера",
+        courierId,
+        token
+      );
+
+      return res.json({ message: "Push-токен сохранён" });
+    } catch (error) {
+      console.error("❌ Ошибка сохранения push-токена:", error);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
   async getAllCouriers(req, res) {
     try {
       const couriers = await Courier.findAll({
