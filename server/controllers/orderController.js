@@ -786,7 +786,7 @@ const adminUpdateOrderStatus = async (req, res) => {
 
   io.emit("orderStatusUpdate", order);
 
-  if (["Waiting for courier", "Ready for pickup"].includes(order.status)) {
+   if (['Waiting for courier', 'Ready for pickup'].includes(order.status)) {
     const courierPayload = {
       id: order.id,
       status: order.status,
@@ -798,7 +798,7 @@ const adminUpdateOrderStatus = async (req, res) => {
       courierId: order.courierId,
     };
 
-    io.emit("warehouseOrder", courierPayload);
+    io.emit('warehouseOrder', courierPayload);
 
     try {
       await sendOrderToNextCourier(order);
