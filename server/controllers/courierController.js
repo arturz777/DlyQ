@@ -6,7 +6,6 @@ const {
 } = require("../services/orderDistributionService");
 
 class CourierController {
-
   async savePushToken(req, res) {
     try {
       console.log("📩 /couriers/push-token raw:", {
@@ -361,34 +360,6 @@ class CourierController {
   }
 
   async declineOrder(req, res) {
-  try {
-    const { id } = req.params;
-    const courierId = req.user.id;
-    console.log('➡ declineOrder called', { orderId: id, courierId });
-
-    const order = await Order.findByPk(id);
-    if (!order) {
-      console.log('⚠ order not found', id);
-      return res.status(404).json({ message: "Заказ не найден." });
-    }
-
-    const [row, created] = await OrderDecline.findOrCreate({
-      where: { orderId: order.id, courierId },
-      defaults: { orderId: order.id, courierId },
-    });
-    console.log('✅ OrderDecline saved:', { row: row.toJSON(), created });
-
-    await sendOrderToNextCourier(order);
-
-    return res.json({ message: "Заказ отклонён", orderId: order.id });
-  } catch (error) {
-    console.error("❌ Ошибка отклонения заказа курьером:", error);
-    return res.status(500).json({ message: "Ошибка сервера" });
-  }
-}
-
-
-  async declineOrder(req, res) {
     try {
       const { id } = req.params;
       const courierId = req.user.id;
@@ -408,6 +379,21 @@ class CourierController {
       });
 
       await sendOrderToNextCourier(order);
+
+      const io = req.app.get("io");
+
+      const courierPayload = {
+        id: order.id,
+        status: order.status,
+        deliveryLat: order.deliveryLat,
+        deliveryLng: order.deliveryLng,
+        deliveryAddress: order.deliveryAddress,
+        deliveryPrice: order.deliveryPrice,
+        courierFee: order.courierFee,
+        courierId: order.courierId,
+      };
+
+      io.emit("warehouseOrder", courierPayload);
 
       return res.json({ message: "Заказ отклонён", orderId: order.id });
     } catch (error) {
