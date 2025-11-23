@@ -280,6 +280,7 @@ const OrderDecline = sequelize.define(
   }
 );
 
+
 const Translation = sequelize.define(
   "translation",
   {
