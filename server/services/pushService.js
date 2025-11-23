@@ -1,119 +1,170 @@
-const { Order, Warehouse } = require("../models/models");
+const { Courier } = require("../models/models");
 const { Op } = require("sequelize");
-const { sendOrderToNextCourier } = require("../services/orderDistributionService");
+const admin = require("../config/firebaseAdmin");
 
+async function sendWarehouseOrderPushToCourier(order, courier) {
+  const token = courier.expoPushToken;
+  if (!token) {
+    console.warn(
+      "sendWarehouseOrderPushToCourier: нет токена у курьера",
+      courier.id
+    );
+    return;
+  }
 
-class WarehouseController {
-  async getWarehouseOrders(req, res) {
-    try {
-      let warehouse = await Warehouse.findOne({ where: { id: req.user.id } });
+  const isReady = order.status === "Ready for pickup";
 
-      if (!warehouse && req.user.role === "ADMIN") {
-        warehouse = await Warehouse.create({
-          id: req.user.id,
-          name: "Склад Админа",
-          status: "active",
-        });
-      }
+  const payload = {
+    notification: {
+      title: isReady ? "Заказ готов" : "Новый заказ",
+      body: isReady
+        ? "Заказ готов, можно забирать."
+        : order.deliveryAddress
+        ? `Новый заказ: ${order.deliveryAddress}`
+        : `Новый заказ #${order.id}`,
+    },
+    data: {
+      type: "warehouse",
+      orderId: String(order.id),
+      status: order.status || "",
+      deliveryAddress: order.deliveryAddress || "",
+    },
+  };
 
-      if (!warehouse) {
-        return res.status(404).json({ message: "Склад не найден." });
-      }
+  console.log("📨 Пуш по кругу: warehouse → курьер", courier.id);
+  await sendFcmToToken(token, payload);
+}
 
-      const orders = await Order.findAll({
-        where: {
-          warehouseStatus: { [Op.not]: "ready" },
-          [Op.or]: [{ warehouseId: warehouse.id }, { warehouseId: null }],
+async function sendFcmToToken(token, payload) {
+  try {
+    const message = {
+      token,
+      notification: payload.notification,
+      data: payload.data,
+      android: {
+        priority: "high",
+        notification: {
+          sound: "default",
+          channelId: "default",
         },
-        order: [["createdAt", "DESC"]],
-      });
+      },
+    };
 
-      const formattedOrders = orders.map((order) => ({
-        ...order.toJSON(),
-        orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
-        preorderDate: order.desiredDeliveryDate || null,
-      }));
+    const res = await admin.messaging().send(message);
+    console.log("✅ FCM push sent:", res);
+    return true;
+  } catch (err) {
+    console.error("❌ FCM push error:", err.code || err.message || err);
 
-      return res.json(formattedOrders);
-    } catch (error) {
-      return res.status(500).json({ message: "Ошибка сервера" });
+    if (
+      err.code === "messaging/registration-token-not-registered" ||
+      err.code === "messaging/invalid-registration-token"
+    ) {
+      console.warn("⚠️ Удаляем невалидный FCM токен:", token);
+      await Courier.update(
+        { expoPushToken: null },
+        { where: { expoPushToken: token } }
+      );
     }
-  }
 
-  async acceptOrder(req, res) {
-    try {
-      const { id } = req.params;
-      const { processingTime } = req.body;
-      const adminId = req.user.id;
-
-      let warehouse = await Warehouse.findOne({ where: { id: adminId } });
-
-      if (!warehouse) {
-        warehouse = await Warehouse.create({
-          id: adminId,
-          name: "Склад Админа",
-          status: "active",
-        });
-      }
-
-      const order = await Order.findByPk(id);
-      if (!order) {
-        return res.status(404).json({ message: "Заказ не найден" });
-      }
-
-      order.warehouseStatus = "processing";
-      order.processingTime = processingTime;
-      order.processingStartTime = new Date();
-      order.warehouseId = warehouse.id;
-      order.status = "Waiting for courier";
-      await order.save();
-
-      const io = req.app.get("io");
-      io.emit("warehouseOrder", order);
-      io.emit("orderStatusUpdate", order);
-
-      try {
-        await sendOrderToNextCourier(order);
-      } catch (err) {
-        console.error("push error (warehouse.acceptOrder):", err);
-      }
-
-      return res.json(order);
-    } catch (error) {
-      console.error("❌ Ошибка обработки заказа складом:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async completeOrder(req, res) {
-    try {
-      const { id } = req.params;
-
-      const order = await Order.findByPk(id);
-      if (!order) {
-        return res.status(404).json({ message: "Заказ не найден" });
-      }
-
-      order.warehouseStatus = "ready";
-      order.status = "Ready for pickup";
-      await order.save();
-
-      const io = req.app.get("io");
-      io.emit("orderReady", order);
-      io.emit("orderStatusUpdate", { id: order.id, status: order.status });
-
-      try {
-        await sendOrderToNextCourier(order);
-      } catch (err) {
-        console.error("push error (warehouse.completeOrder):", err);
-      }
-
-      return res.json(order);
-    } catch (error) {
-      console.error("❌ Ошибка завершения заказа:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
+    return false;
   }
 }
 
-module.exports = new WarehouseController();
+async function sendOrderAssignedPush(order) {
+  try {
+    if (!order.courierId) {
+      console.warn("sendOrderAssignedPush: у заказа нет courierId");
+      return;
+    }
+
+    const courier = await Courier.findByPk(order.courierId);
+    if (!courier) {
+      console.warn("sendOrderAssignedPush: курьер не найден", order.courierId);
+      return;
+    }
+
+    const token = courier.expoPushToken;
+    if (!token) {
+      console.warn("sendOrderAssignedPush: у курьера нет FCM токена");
+      return;
+    }
+
+    const isReady = order.status === "Ready for pickup";
+
+    const title = isReady ? "Заказ готов" : "Заказ назначен вам";
+    const bodyText = isReady
+      ? "Заказ готов, можно забирать."
+      : order.deliveryAddress
+      ? `Новый заказ: ${order.deliveryAddress}`
+      : `Вам назначен заказ #${order.id}`;
+
+    const payload = {
+      notification: {
+        title,
+        body: bodyText,
+      },
+      data: {
+        type: "assigned",
+        orderId: String(order.id),
+        status: order.status || "",
+        deliveryAddress: order.deliveryAddress || "",
+      },
+    };
+
+    console.log('📨 Пуш "назначен" на токен:', token);
+    await sendFcmToToken(token, payload);
+  } catch (err) {
+    console.error("❌ Ошибка отправки push для курьера:", err);
+  }
+}
+
+async function sendWarehouseOrderPush(order) {
+  try {
+    const couriers = await Courier.findAll({
+      where: {
+        expoPushToken: { [Op.ne]: null },
+        status: "online",
+      },
+    });
+
+    if (!couriers.length) {
+      console.warn("sendWarehouseOrderPush: нет онлайн курьеров с токенами");
+      return;
+    }
+
+    const isReady = order.status === "Ready for pickup";
+
+    const payload = {
+      notification: {
+        title: isReady ? "Заказ готов" : "Новый заказ",
+        body: isReady
+          ? "Заказ готов"
+          : order.deliveryAddress
+          ? `Новый заказ: ${order.deliveryAddress}`
+          : `Новый заказ #${order.id}`,
+      },
+      data: {
+        type: "warehouse",
+        orderId: String(order.id),
+        status: order.status || "",
+        deliveryAddress: order.deliveryAddress || "",
+      },
+    };
+
+    for (const courier of couriers) {
+      const token = courier.expoPushToken;
+      if (!token) continue;
+      console.log("  → курьер", courier.id, "токен", token);
+      await sendFcmToToken(token, payload);
+    }
+  } catch (err) {
+    console.error("❌ Ошибка отправки push для склада:", err);
+  }
+}
+
+module.exports = {
+  sendOrderAssignedPush,
+  sendWarehouseOrderPush,
+  sendWarehouseOrderPushToCourier,
+};
