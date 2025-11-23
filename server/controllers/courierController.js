@@ -1,51 +1,57 @@
-const { Order, Courier } = require("../models/models");
 const { Op } = require("sequelize");
 const fetch = require("node-fetch");
+const { Order, Courier, OrderDecline } = require("../models/models");
+const {
+  sendOrderToNextCourier,
+} = require("../services/orderDistributionService");
 
 class CourierController {
-
-async savePushToken(req, res) {
-  try {
-    console.log('📩 /couriers/push-token raw:', {
-      body: req.body,
-      user: req.user,
-      authHeader: req.headers.authorization,
-    });
-
-    const { token } = req.body;
-    const courierId = req.user?.id; 
-
-    if (!courierId) {
-      console.warn('⚠️ savePushToken: нет req.user, авторизация не прошла');
-      return res.status(401).json({ message: "Вы не авторизованы." });
-    }
-
-    if (!token) {
-      console.warn('⚠️ savePushToken: пустой token');
-      return res.status(400).json({ message: "Токен не передан." });
-    }
-
-    let courier = await Courier.findByPk(courierId);
-    if (!courier) {
-      courier = await Courier.create({
-        id: courierId,
-        name: req.user.name || "Курьер",
-        status: "offline",
+  async savePushToken(req, res) {
+    try {
+      console.log("📩 /couriers/push-token raw:", {
+        body: req.body,
+        user: req.user,
+        authHeader: req.headers.authorization,
       });
+
+      const { token } = req.body;
+      const courierId = req.user?.id;
+
+      if (!courierId) {
+        console.warn("⚠️ savePushToken: нет req.user, авторизация не прошла");
+        return res.status(401).json({ message: "Вы не авторизованы." });
+      }
+
+      if (!token) {
+        console.warn("⚠️ savePushToken: пустой token");
+        return res.status(400).json({ message: "Токен не передан." });
+      }
+
+      let courier = await Courier.findByPk(courierId);
+      if (!courier) {
+        courier = await Courier.create({
+          id: courierId,
+          name: req.user.name || "Курьер",
+          status: "offline",
+        });
+      }
+
+      courier.expoPushToken = token;
+      await courier.save();
+
+      console.log(
+        "✅ FCM push-токен сохранён в БД для курьера",
+        courierId,
+        token
+      );
+
+      return res.json({ message: "Push-токен сохранён" });
+    } catch (error) {
+      console.error("❌ Ошибка сохранения push-токена:", error);
+      return res.status(500).json({ message: "Ошибка сервера" });
     }
-
-    courier.expoPushToken = token;
-    await courier.save();
-
-    console.log('✅ FCM push-токен сохранён в БД для курьера', courierId, token);
-
-    return res.json({ message: "Push-токен сохранён" });
-  } catch (error) {
-    console.error("❌ Ошибка сохранения push-токена:", error);
-    return res.status(500).json({ message: "Ошибка сервера" });
   }
-}
-  
+
   async getAllCouriers(req, res) {
     try {
       const couriers = await Courier.findAll({
@@ -349,6 +355,49 @@ async savePushToken(req, res) {
       return res.json({ message: "Местоположение обновлено!" });
     } catch (error) {
       console.error("❌ Ошибка обновления местоположения курьера:", error);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
+  async declineOrder(req, res) {
+    try {
+      const { id } = req.params;
+      const courierId = req.user.id;
+
+      if (!courierId) {
+        return res.status(401).json({ message: "Вы не авторизованы." });
+      }
+
+      const order = await Order.findByPk(id);
+      if (!order) {
+        return res.status(404).json({ message: "Заказ не найден." });
+      }
+
+      await OrderDecline.findOrCreate({
+        where: { orderId: order.id, courierId },
+        defaults: { orderId: order.id, courierId },
+      });
+
+      await sendOrderToNextCourier(order);
+
+      const io = req.app.get("io");
+
+      const courierPayload = {
+        id: order.id,
+        status: order.status,
+        deliveryLat: order.deliveryLat,
+        deliveryLng: order.deliveryLng,
+        deliveryAddress: order.deliveryAddress,
+        deliveryPrice: order.deliveryPrice,
+        courierFee: order.courierFee,
+        courierId: order.courierId,
+      };
+
+      io.emit("warehouseOrder", courierPayload);
+
+      return res.json({ message: "Заказ отклонён", orderId: order.id });
+    } catch (error) {
+      console.error("❌ Ошибка отклонения заказа курьером:", error);
       return res.status(500).json({ message: "Ошибка сервера" });
     }
   }
