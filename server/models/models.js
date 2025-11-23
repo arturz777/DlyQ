@@ -249,6 +249,37 @@ const Warehouse = sequelize.define("warehouse", {
   status: { type: DataTypes.STRING, defaultValue: "offline" },
 });
 
+const OrderDecline = sequelize.define(
+  "OrderDecline",
+  {
+    id: {
+      type: DataTypes.BIGINT,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    orderId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: "orderId",
+    },
+    courierId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: "courierId",
+    },
+  },
+  {
+    tableName: "order_decline",
+    timestamps: true,
+    indexes: [
+      {
+        unique: true,
+        fields: ["orderId", "courierId"],
+      },
+    ],
+  }
+);
+
 const Translation = sequelize.define(
   "translation",
   {
