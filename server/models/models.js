@@ -483,4 +483,5 @@ module.exports = {
   ChatParticipant,
   ChatMessage,
   Setting,
+  OrderDecline,
 };
