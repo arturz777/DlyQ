@@ -33,7 +33,7 @@ router.get(
   courierController.getAllCouriers
 );
 router.get("/me", authMiddleware, courierController.getSelf);
-router.post("/push-token", authMiddleware, courierController.savePushToken
+router.post("/push-token", authMiddleware, courierController.savePushToken);
 router.post('/orders/:id/decline', authMiddleware, courierController.declineOrder);
 
 module.exports = router;
