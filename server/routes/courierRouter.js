@@ -34,6 +34,6 @@ router.get(
 );
 router.get("/me", authMiddleware, courierController.getSelf);
 router.post("/push-token", authMiddleware, courierController.savePushToken);
-router.post('/couriers/orders/:id/decline', authMiddleware, courierController.declineOrder);
+router.post('/orders/:id/decline', authMiddleware, courierController.declineOrder);
 
 module.exports = router;
