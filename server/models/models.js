@@ -250,7 +250,7 @@ const Warehouse = sequelize.define("warehouse", {
 });
 
 const OrderDecline = sequelize.define(
-  "order_decline",
+  'OrderDecline',
   {
     id: {
       type: DataTypes.BIGINT,
@@ -260,26 +260,23 @@ const OrderDecline = sequelize.define(
     orderId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      field: "orderId",
     },
     courierId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      field: "courierId",
     },
   },
   {
-    tableName: "order_declines",
+    tableName: 'order_declines',
     timestamps: true,
     indexes: [
       {
         unique: true,
-        fields: ["orderId", "courierId"],
+        fields: ['orderId', 'courierId'],
       },
     ],
   }
 );
-
 
 const Translation = sequelize.define(
   "translation",
