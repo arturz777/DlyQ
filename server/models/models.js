@@ -250,7 +250,7 @@ const Warehouse = sequelize.define("warehouse", {
 });
 
 const OrderDecline = sequelize.define(
-  "OrderDecline",
+  "order_decline",
   {
     id: {
       type: DataTypes.BIGINT,
