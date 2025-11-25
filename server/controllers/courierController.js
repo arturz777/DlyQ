@@ -5,6 +5,17 @@ const {
   sendOrderToNextCourier,
 } = require("../services/orderDistributionService");
 
+function buildCourierName(user) {
+  const parts = [];
+  if (user.firstName) parts.push(user.firstName);
+  if (user.lastName) parts.push(user.lastName);
+  const full = parts.join(" ").trim();
+
+  if (full) return full;
+  if (user.email) return user.email;
+  return `Courier #${user.id}`;
+}
+
 class CourierController {
   async savePushToken(req, res) {
     try {
@@ -25,7 +36,7 @@ class CourierController {
       if (!courier) {
         courier = await Courier.create({
           id: courierId,
-          name: req.user.name || "Курьер",
+          name: buildCourierName(req.user),
           status: "offline",
         });
       }
@@ -64,7 +75,7 @@ class CourierController {
       if (!courier) {
         courier = await Courier.create({
           id: courierId,
-          name: req.user.name || "Курьер",
+          name: buildCourierName(req.user),
           status: "offline",
         });
       }
@@ -148,14 +159,9 @@ class CourierController {
 
       let courier = await Courier.findByPk(courierId);
       if (!courier) {
-        const nameFromUser =
-          (req.user.firstName || "") +
-          (req.user.lastName ? ` ${req.user.lastName}` : "");
-
         courier = await Courier.create({
           id: courierId,
-          name:
-            nameFromUser.trim() || req.user.email || `Courier #${courierId}`,
+          name: buildCourierName(req.user),
           status: "offline",
         });
       }
@@ -345,7 +351,11 @@ class CourierController {
 
       let courier = await Courier.findByPk(courierId);
       if (!courier) {
-        return res.status(404).json({ message: "Курьер не найден." });
+        courier = await Courier.create({
+          id: courierId,
+          name: buildCourierName(req.user),
+          status: "offline",
+        });
       }
 
       courier.currentLat = lat;
