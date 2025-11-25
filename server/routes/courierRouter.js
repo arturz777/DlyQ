@@ -20,3 +20,5 @@ router.get(
   checkRole("ADMIN"),
   courierController.getAllCouriers
 );
+
+module.exports = router;
