@@ -337,40 +337,47 @@ class CourierController {
   }
 
   async updateCourierLocation(req, res) {
-    try {
-      const { lat, lng } = req.body;
-      const courierId = req.user.id;
+  try {
+    const { lat, lng } = req.body;
+    const courierId = req.user.id;
 
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      if (!lat || !lng) {
-        return res.status(400).json({ message: "Координаты не переданы." });
-      }
-
-      let courier = await Courier.findByPk(courierId);
-      if (!courier) {
-        courier = await Courier.create({
-          id: courierId,
-          name: buildCourierName(req.user),
-          status: "offline",
-        });
-      }
-
-      courier.currentLat = lat;
-      courier.currentLng = lng;
-      await courier.save();
-
-      const io = req.app.get("io");
-      io.emit("courierLocationUpdate", { courierId, lat, lng });
-
-      return res.json({ message: "Местоположение обновлено!" });
-    } catch (error) {
-      console.error("❌ Ошибка обновления местоположения курьера:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
+    if (!courierId) {
+      return res.status(401).json({ message: "Вы не авторизованы." });
     }
+
+    if (!lat || !lng) {
+      return res.status(400).json({ message: "Координаты не переданы." });
+    }
+
+    let courier = await Courier.findByPk(courierId);
+
+    // 🔧 Если курьера нет — создаём, а не отдаём 404
+    if (!courier) {
+      const nameFromUser =
+        (req.user.firstName || "") +
+        (req.user.lastName ? ` ${req.user.lastName}` : "");
+
+      courier = await Courier.create({
+        id: courierId,
+        name:
+          nameFromUser.trim() || req.user.email || `Courier #${courierId}`,
+        status: "offline",
+      });
+    }
+
+    courier.currentLat = lat;
+    courier.currentLng = lng;
+    await courier.save();
+
+    const io = req.app.get("io");
+    io.emit("courierLocationUpdate", { courierId, lat, lng });
+
+    return res.json({ message: "Местоположение обновлено!" });
+  } catch (error) {
+    console.error("❌ Ошибка обновления местоположения курьера:", error);
+    return res.status(500).json({ message: "Ошибка сервера" });
   }
+}
 
   async declineOrder(req, res) {
     try {
