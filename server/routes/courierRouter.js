@@ -1,4 +1,8 @@
-const roleMiddleware = require("../middleware/roleMiddleware");
+const Router = require("express");
+const router = new Router();
+const courierController = require("../controllers/courierController");
+const authMiddleware = require("../middleware/authMiddleware");
+const checkRole = require("../middleware/checkRoleMiddleware");
 
 router.get("/orders", authMiddleware, roleMiddleware("COURIER"), courierController.getActiveOrders);
 router.post("/orders/:id/accept", authMiddleware, roleMiddleware("COURIER"), courierController.acceptOrder);
