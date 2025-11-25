@@ -32,7 +32,7 @@ const generateTokens = (
 
 class UserController {
   async registration(req, res, next) {
-    const { email, password, role, firstName, lastName, phone } = req.body;
+    const { email, password, firstName, lastName, phone } = req.body;
     if (!email || !password) {
       return next(ApiError.badRequest("Некорректный маил или пароль"));
     }
