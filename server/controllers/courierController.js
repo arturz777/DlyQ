@@ -218,9 +218,19 @@ class CourierController {
         return res.status(401).json({ message: "Вы не авторизованы." });
       }
 
-      const courier = await Courier.findByPk(courierId);
+      let courier = await Courier.findByPk(courierId);
+
       if (!courier) {
-        return res.status(404).json({ message: "Курьер не найден" });
+        const nameFromUser =
+          (req.user.firstName || "") +
+          (req.user.lastName ? ` ${req.user.lastName}` : "");
+
+        courier = await Courier.create({
+          id: courierId,
+          name:
+            nameFromUser.trim() || req.user.email || `Courier #${courierId}`,
+          status: "offline",
+        });
       }
 
       courier.status = status;
