@@ -20,3 +20,5 @@ router.get(
   require("../middleware/checkRoleMiddleware")("ADMIN"),
   courierController.getAllCouriers
 );
+
+module.exports = router;
