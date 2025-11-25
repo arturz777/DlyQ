@@ -13,6 +13,6 @@ router.post("/orders/:id/decline", authMiddleware, roleMiddleware("COURIER"), co
 router.get(
   "/couriers",
   authMiddleware,
-  require("../middleware/checkRoleMiddleware")("ADMIN"),
+  checkRole("ADMIN"),
   courierController.getAllCouriers
 );
