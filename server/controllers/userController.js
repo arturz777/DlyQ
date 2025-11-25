@@ -45,7 +45,7 @@ class UserController {
     const hashPassword = await bcrypt.hash(password, 5);
     const user = await User.create({
       email,
-      role,
+     role: "USER",
       password: hashPassword,
       firstName,
       lastName,
@@ -86,7 +86,10 @@ class UserController {
     const { accessToken, refreshToken } = generateTokens(
       user.id,
       user.email,
-      user.role
+      user.role,
+      user.firstName,
+      user.lastName,
+      user.phone
     );
 
     res.cookie("refreshToken", refreshToken, {
