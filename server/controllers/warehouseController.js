@@ -1,30 +1,36 @@
 const { Order, Warehouse } = require("../models/models");
 const { Op } = require("sequelize");
-const {
-  sendOrderToNextCourier,
-} = require("../services/orderDistributionService");
+const { sendOrderToNextCourier } = require("../services/orderDistributionService");
+
+function buildWarehouseName(user) {
+  const parts = [];
+  if (user.firstName) parts.push(user.firstName);
+  if (user.lastName) parts.push(user.lastName);
+  const full = parts.join(" ").trim();
+
+  if (full) return full;
+  if (user.email) return user.email;
+  return `Склад #${user.id}`;
+}
 
 class WarehouseController {
   async getWarehouseOrders(req, res) {
     try {
       const userId = req.user.id;
-
-        let warehouse = await Warehouse.findOne({ where: { id: userId } });
-
-      if (!warehouse) {
-        const nameFromUser =
-          (req.user.firstName || "") +
-          (req.user.lastName ? ` ${req.user.lastName}` : "");
-
-        warehouse = await Warehouse.create({
-          id: userId,
-          name: nameFromUser.trim() || req.user.email || "Склад",
-          status: "active",
-        });
+      if (!userId) {
+        return res.status(401).json({ message: "Вы не авторизованы." });
       }
 
+      // ищем склад по id пользователя (один склад на одного warehouse-пользователя)
+      let warehouse = await Warehouse.findByPk(userId);
+
+      // если нет — создаём
       if (!warehouse) {
-        return res.status(404).json({ message: "Склад не найден." });
+        warehouse = await Warehouse.create({
+          id: userId,
+          name: buildWarehouseName(req.user),
+          status: "active",
+        });
       }
 
       const orders = await Order.findAll({
@@ -35,7 +41,7 @@ class WarehouseController {
         order: [["createdAt", "DESC"]],
       });
 
-      const formattedOrders = orders.map((order) => ({
+      const formattedOrders = orders.map(order => ({
         ...order.toJSON(),
         orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
         preorderDate: order.desiredDeliveryDate || null,
@@ -43,6 +49,7 @@ class WarehouseController {
 
       return res.json(formattedOrders);
     } catch (error) {
+      console.error("❌ Ошибка получения заказов склада:", error);
       return res.status(500).json({ message: "Ошибка сервера" });
     }
   }
@@ -51,18 +58,18 @@ class WarehouseController {
     try {
       const { id } = req.params;
       const { processingTime } = req.body;
-      const adminId = req.user.id;
+      const userId = req.user.id;
 
-      let warehouse = await Warehouse.findOne({ where: { id: adminId } });
+      if (!userId) {
+        return res.status(401).json({ message: "Вы не авторизованы." });
+      }
 
-       if (!warehouse) {
-        const nameFromUser =
-          (req.user.firstName || "") +
-          (req.user.lastName ? ` ${req.user.lastName}` : "");
+      let warehouse = await Warehouse.findByPk(userId);
 
+      if (!warehouse) {
         warehouse = await Warehouse.create({
           id: userId,
-          name: nameFromUser.trim() || req.user.email || "Склад",
+          name: buildWarehouseName(req.user),
           status: "active",
         });
       }
