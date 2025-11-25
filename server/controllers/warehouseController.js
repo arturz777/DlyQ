@@ -7,12 +7,18 @@ const {
 class WarehouseController {
   async getWarehouseOrders(req, res) {
     try {
-      let warehouse = await Warehouse.findOne({ where: { id: req.user.id } });
+      const userId = req.user.id;
+
+        let warehouse = await Warehouse.findOne({ where: { id: userId } });
 
       if (!warehouse) {
+        const nameFromUser =
+          (req.user.firstName || "") +
+          (req.user.lastName ? ` ${req.user.lastName}` : "");
+
         warehouse = await Warehouse.create({
-          id: req.user.id,
-          name: req.user.firstName || req.user.email || "Склад",
+          id: userId,
+          name: nameFromUser.trim() || req.user.email || "Склад",
           status: "active",
         });
       }
@@ -49,10 +55,14 @@ class WarehouseController {
 
       let warehouse = await Warehouse.findOne({ where: { id: adminId } });
 
-      if (!warehouse) {
+       if (!warehouse) {
+        const nameFromUser =
+          (req.user.firstName || "") +
+          (req.user.lastName ? ` ${req.user.lastName}` : "");
+
         warehouse = await Warehouse.create({
-          id: adminId,
-          name: "Склад Админа",
+          id: userId,
+          name: nameFromUser.trim() || req.user.email || "Склад",
           status: "active",
         });
       }
