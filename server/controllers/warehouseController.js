@@ -1,16 +1,18 @@
 const { Order, Warehouse } = require("../models/models");
 const { Op } = require("sequelize");
-const { sendOrderToNextCourier } = require("../services/orderDistributionService");
+const {
+  sendOrderToNextCourier,
+} = require("../services/orderDistributionService");
 
 class WarehouseController {
   async getWarehouseOrders(req, res) {
     try {
       let warehouse = await Warehouse.findOne({ where: { id: req.user.id } });
 
-      if (!warehouse && req.user.role === "ADMIN") {
+      if (!warehouse) {
         warehouse = await Warehouse.create({
           id: req.user.id,
-          name: "Склад Админа",
+          name: req.user.firstName || req.user.email || "Склад",
           status: "active",
         });
       }
