@@ -1,28 +1,78 @@
 const Router = require("express");
 const router = new Router();
-const warehouseController = require("../controllers/warehouseController");
+const courierController = require("../controllers/courierController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
+const checkRoleMiddleware = require("../middleware/checkRoleMiddleware");
 
 router.get(
   "/orders",
   authMiddleware,
-  roleMiddleware("WAREHOUSE"),
-  warehouseController.getWarehouseOrders
+  roleMiddleware("COURIER"),
+  courierController.getActiveOrders
 );
 
 router.post(
   "/orders/:id/accept",
   authMiddleware,
-  roleMiddleware("WAREHOUSE"),
-  warehouseController.acceptOrder
+  roleMiddleware("COURIER"),
+  courierController.acceptOrder
+);
+
+router.post(
+  "/status",
+  authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.toggleCourierStatus
 );
 
 router.post(
   "/orders/:id/complete",
   authMiddleware,
-  roleMiddleware("WAREHOUSE"),
-  warehouseController.completeOrder
+  roleMiddleware("COURIER"),
+  courierController.completeDelivery
+);
+
+router.post(
+  "/orders/:id/status",
+  authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.updateDeliveryStatus
+);
+
+router.post(
+  "/update-location",
+  authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.updateCourierLocation
+);
+
+router.get(
+  "/me",
+  authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.getSelf
+);
+
+router.post(
+  "/push-token",
+  authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.savePushToken
+);
+
+router.post(
+  "/orders/:id/decline",
+  authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.declineOrder
+);
+
+router.get(
+  "/couriers",
+  authMiddleware,
+  checkRoleMiddleware("ADMIN"),
+  courierController.getAllCouriers
 );
 
 module.exports = router;
