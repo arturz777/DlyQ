@@ -8,12 +8,6 @@ const {
 class CourierController {
   async savePushToken(req, res) {
     try {
-      console.log("📩 /couriers/push-token raw:", {
-        body: req.body,
-        user: req.user,
-        authHeader: req.headers.authorization,
-      });
-
       const { token } = req.body;
       const courierId = req.user?.id;
 
@@ -38,12 +32,6 @@ class CourierController {
 
       courier.expoPushToken = token;
       await courier.save();
-
-      console.log(
-        "✅ FCM push-токен сохранён в БД для курьера",
-        courierId,
-        token
-      );
 
       return res.json({ message: "Push-токен сохранён" });
     } catch (error) {
@@ -160,9 +148,14 @@ class CourierController {
 
       let courier = await Courier.findByPk(courierId);
       if (!courier) {
+        const nameFromUser =
+          (req.user.firstName || "") +
+          (req.user.lastName ? ` ${req.user.lastName}` : "");
+
         courier = await Courier.create({
           id: courierId,
-          name: req.user.name || "Админ-Курьер",
+          name:
+            nameFromUser.trim() || req.user.email || `Courier #${courierId}`,
           status: "offline",
         });
       }
