@@ -258,7 +258,6 @@ const createOrder = async (req, res) => {
     }
 
     const userId = req.user ? req.user.id : null;
-    let warehouseId = 1;
 
    const deliveryDateFromFirstItem = orderDetails[0]?.deliveryDate || null;
     const preferredTimeFromFirstItem = orderDetails[0]?.preferredTime || null;
@@ -370,7 +369,6 @@ const createOrder = async (req, res) => {
     courierFee, 
       status,
       warehouseStatus: "pending",
-      warehouseId,
       courierId: null,
       deliveryLat: latitude,
       deliveryLng: longitude,
