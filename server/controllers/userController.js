@@ -17,7 +17,7 @@ const generateTokens = (
     { id, email, role, firstName, lastName, phone },
     process.env.SECRET_KEY,
     {
-      expiresIn: "15m",
+      expiresIn: "24h",
     }
   );
 
