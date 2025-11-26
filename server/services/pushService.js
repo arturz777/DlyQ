@@ -1,39 +1,5 @@
 const { Courier } = require("../models/models");
-const { Op } = require("sequelize");
 const admin = require("../config/firebaseAdmin");
-
-async function sendWarehouseOrderPushToCourier(order, courier) {
-  const token = courier.expoPushToken;
-  if (!token) {
-    console.warn(
-      "sendWarehouseOrderPushToCourier: нет токена у курьера",
-      courier.id
-    );
-    return;
-  }
-
-  const isReady = order.status === "Ready for pickup";
-
-  const payload = {
-    notification: {
-      title: isReady ? "Заказ готов" : "Новый заказ",
-      body: isReady
-        ? "Заказ готов, можно забирать."
-        : order.deliveryAddress
-        ? `Новый заказ: ${order.deliveryAddress}`
-        : `Новый заказ #${order.id}`,
-    },
-    data: {
-      type: "warehouse",
-      orderId: String(order.id),
-      status: order.status || "",
-      deliveryAddress: order.deliveryAddress || "",
-    },
-  };
-
-  console.log("📨 Пуш по кругу: warehouse → курьер", courier.id);
-  await sendFcmToToken(token, payload);
-}
 
 async function sendFcmToToken(token, payload) {
   try {
@@ -69,6 +35,39 @@ async function sendFcmToToken(token, payload) {
 
     return false;
   }
+}
+
+async function sendWarehouseOrderPushToCourier(order, courier) {
+  const token = courier.expoPushToken;
+  if (!token) {
+    console.warn(
+      "sendWarehouseOrderPushToCourier: нет токена у курьера",
+      courier.id
+    );
+    return;
+  }
+
+  const isReady = order.status === "Ready for pickup";
+
+  const payload = {
+    notification: {
+      title: isReady ? "Заказ готов" : "Новый заказ",
+      body: isReady
+        ? "Заказ готов, можно забирать."
+        : order.deliveryAddress
+        ? `Новый заказ: ${order.deliveryAddress}`
+        : `Новый заказ #${order.id}`,
+    },
+    data: {
+      type: "warehouse",
+      orderId: String(order.id),
+      status: order.status || "",
+      deliveryAddress: order.deliveryAddress || "",
+    },
+  };
+
+  console.log("📨 Пуш склад → курьер", courier.id);
+  await sendFcmToToken(token, payload);
 }
 
 async function sendOrderAssignedPush(order) {
@@ -119,8 +118,7 @@ async function sendOrderAssignedPush(order) {
   }
 }
 
-
-
 module.exports = {
+  sendOrderAssignedPush,
   sendWarehouseOrderPushToCourier,
 };
