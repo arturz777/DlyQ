@@ -227,14 +227,9 @@ class CourierController {
       let courier = await Courier.findByPk(courierId);
 
       if (!courier) {
-        const nameFromUser =
-          (req.user.firstName || "") +
-          (req.user.lastName ? ` ${req.user.lastName}` : "");
-
         courier = await Courier.create({
           id: courierId,
-          name:
-            nameFromUser.trim() || req.user.email || `Courier #${courierId}`,
+          name: buildCourierName(req.user),
           status: "offline",
         });
       }
@@ -350,6 +345,7 @@ class CourierController {
       }
 
       let courier = await Courier.findByPk(courierId);
+
       if (!courier) {
         courier = await Courier.create({
           id: courierId,
@@ -407,6 +403,8 @@ class CourierController {
       };
 
       io.emit("warehouseOrder", courierPayload);
+
+      await sendOrderToNextCourier(order);
 
       return res.json({ message: "Заказ отклонён", orderId: order.id });
     } catch (error) {
