@@ -1,5 +1,39 @@
 const { Courier } = require("../models/models");
+const { Op } = require("sequelize");
 const admin = require("../config/firebaseAdmin");
+
+async function sendWarehouseOrderPushToCourier(order, courier) {
+  const token = courier.expoPushToken;
+  if (!token) {
+    console.warn(
+      "sendWarehouseOrderPushToCourier: нет токена у курьера",
+      courier.id
+    );
+    return;
+  }
+
+  const isReady = order.status === "Ready for pickup";
+
+  const payload = {
+    notification: {
+      title: isReady ? "Заказ готов" : "Новый заказ",
+      body: isReady
+        ? "Заказ готов, можно забирать."
+        : order.deliveryAddress
+        ? `Новый заказ: ${order.deliveryAddress}`
+        : `Новый заказ #${order.id}`,
+    },
+    data: {
+      type: "warehouse",
+      orderId: String(order.id),
+      status: order.status || "",
+      deliveryAddress: order.deliveryAddress || "",
+    },
+  };
+
+  console.log("📨 Пуш по кругу: warehouse → курьер", courier.id);
+  await sendFcmToToken(token, payload);
+}
 
 async function sendFcmToToken(token, payload) {
   try {
@@ -35,39 +69,6 @@ async function sendFcmToToken(token, payload) {
 
     return false;
   }
-}
-
-async function sendWarehouseOrderPushToCourier(order, courier) {
-  const token = courier.expoPushToken;
-  if (!token) {
-    console.warn(
-      "sendWarehouseOrderPushToCourier: нет токена у курьера",
-      courier.id
-    );
-    return;
-  }
-
-  const isReady = order.status === "Ready for pickup";
-
-  const payload = {
-    notification: {
-      title: isReady ? "Заказ готов" : "Новый заказ",
-      body: isReady
-        ? "Заказ готов, можно забирать."
-        : order.deliveryAddress
-        ? `Новый заказ: ${order.deliveryAddress}`
-        : `Новый заказ #${order.id}`,
-    },
-    data: {
-      type: "warehouse",
-      orderId: String(order.id),
-      status: order.status || "",
-      deliveryAddress: order.deliveryAddress || "",
-    },
-  };
-
-  console.log("📨 Пуш склад → курьер", courier.id);
-  await sendFcmToToken(token, payload);
 }
 
 async function sendOrderAssignedPush(order) {
@@ -118,7 +119,52 @@ async function sendOrderAssignedPush(order) {
   }
 }
 
+async function sendWarehouseOrderPush(order) {
+  try {
+    const couriers = await Courier.findAll({
+      where: {
+        expoPushToken: { [Op.ne]: null },
+        status: "online",
+      },
+    });
+
+    if (!couriers.length) {
+      console.warn("sendWarehouseOrderPush: нет онлайн курьеров с токенами");
+      return;
+    }
+
+    const isReady = order.status === "Ready for pickup";
+
+    const payload = {
+      notification: {
+        title: isReady ? "Заказ готов" : "Новый заказ",
+        body: isReady
+          ? "Заказ готов"
+          : order.deliveryAddress
+          ? `Новый заказ: ${order.deliveryAddress}`
+          : `Новый заказ #${order.id}`,
+      },
+      data: {
+        type: "warehouse",
+        orderId: String(order.id),
+        status: order.status || "",
+        deliveryAddress: order.deliveryAddress || "",
+      },
+    };
+
+    for (const courier of couriers) {
+      const token = courier.expoPushToken;
+      if (!token) continue;
+      console.log("  → курьер", courier.id, "токен", token);
+      await sendFcmToToken(token, payload);
+    }
+  } catch (err) {
+    console.error("❌ Ошибка отправки push для склада:", err);
+  }
+}
+
 module.exports = {
   sendOrderAssignedPush,
+  sendWarehouseOrderPush,
   sendWarehouseOrderPushToCourier,
 };
