@@ -119,52 +119,7 @@ async function sendOrderAssignedPush(order) {
   }
 }
 
-async function sendWarehouseOrderPush(order) {
-  try {
-    const couriers = await Courier.findAll({
-      where: {
-        expoPushToken: { [Op.ne]: null },
-        status: "online",
-      },
-    });
-
-    if (!couriers.length) {
-      console.warn("sendWarehouseOrderPush: нет онлайн курьеров с токенами");
-      return;
-    }
-
-    const isReady = order.status === "Ready for pickup";
-
-    const payload = {
-      notification: {
-        title: isReady ? "Заказ готов" : "Новый заказ",
-        body: isReady
-          ? "Заказ готов"
-          : order.deliveryAddress
-          ? `Новый заказ: ${order.deliveryAddress}`
-          : `Новый заказ #${order.id}`,
-      },
-      data: {
-        type: "warehouse",
-        orderId: String(order.id),
-        status: order.status || "",
-        deliveryAddress: order.deliveryAddress || "",
-      },
-    };
-
-    for (const courier of couriers) {
-      const token = courier.expoPushToken;
-      if (!token) continue;
-      console.log("  → курьер", courier.id, "токен", token);
-      await sendFcmToToken(token, payload);
-    }
-  } catch (err) {
-    console.error("❌ Ошибка отправки push для склада:", err);
-  }
-}
-
 module.exports = {
   sendOrderAssignedPush,
-  sendWarehouseOrderPush,
   sendWarehouseOrderPushToCourier,
 };
