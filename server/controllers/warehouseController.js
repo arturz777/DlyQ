@@ -1,9 +1,9 @@
 const { Order, Warehouse } = require("../models/models");
 const { Op } = require("sequelize");
+const { sendOrderAssignedPush } = require("../services/pushService");
 const {
   sendOrderToNextCourier,
 } = require("../services/orderDistributionService");
-const { sendOrderAssignedPush } = require("../services/pushService");
 
 function buildWarehouseName(user) {
   const parts = [];
@@ -94,7 +94,7 @@ class WarehouseController {
       io.emit("orderStatusUpdate", order);
 
       try {
-        await sendOrderAssignedPush(order);
+        await sendOrderToNextCourier(order);
       } catch (err) {
         console.error("push error (warehouse.acceptOrder):", err);
       }
@@ -124,7 +124,11 @@ class WarehouseController {
       io.emit("orderStatusUpdate", { id: order.id, status: order.status });
 
       try {
-        await sendOrderToNextCourier(order);
+        if (order.courierId) {
+          await sendOrderAssignedPush(order);
+        } else {
+          await sendOrderToNextCourier(order);
+        }
       } catch (err) {
         console.error("push error (warehouse.completeOrder):", err);
       }
