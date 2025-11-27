@@ -1,6 +1,9 @@
 const { Order, Warehouse } = require("../models/models");
 const { Op } = require("sequelize");
-const { sendOrderToNextCourier } = require("../services/orderDistributionService");
+const {
+  sendOrderToNextCourier,
+} = require("../services/orderDistributionService");
+const { sendOrderAssignedPush } = require("../services/pushService");
 
 function buildWarehouseName(user) {
   const parts = [];
@@ -21,10 +24,8 @@ class WarehouseController {
         return res.status(401).json({ message: "Вы не авторизованы." });
       }
 
-      // ищем склад по id пользователя (один склад на одного warehouse-пользователя)
       let warehouse = await Warehouse.findByPk(userId);
 
-      // если нет — создаём
       if (!warehouse) {
         warehouse = await Warehouse.create({
           id: userId,
@@ -41,7 +42,7 @@ class WarehouseController {
         order: [["createdAt", "DESC"]],
       });
 
-      const formattedOrders = orders.map(order => ({
+      const formattedOrders = orders.map((order) => ({
         ...order.toJSON(),
         orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
         preorderDate: order.desiredDeliveryDate || null,
@@ -91,7 +92,7 @@ class WarehouseController {
       io.emit("orderStatusUpdate", order);
 
       try {
-        await sendOrderToNextCourier(order);
+        await sendOrderAssignedPush(order);
       } catch (err) {
         console.error("push error (warehouse.acceptOrder):", err);
       }
