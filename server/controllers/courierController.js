@@ -404,6 +404,8 @@ class CourierController {
 
       io.emit("warehouseOrder", courierPayload);
 
+      await sendOrderToNextCourier(order);
+
       return res.json({ message: "Заказ отклонён", orderId: order.id });
     } catch (error) {
       console.error("❌ Ошибка отклонения заказа курьером:", error);
