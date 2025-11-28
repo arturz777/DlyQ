@@ -9,6 +9,8 @@ const ACTIVE_STATUSES = [
   "Arrived at destination",
 ];
 
+const OFFER_TTL_SECONDS = 15;
+
 async function sendOrderToNextCourier(order) {
   if (!["Waiting for courier", "Ready for pickup"].includes(order.status)) {
     return;
@@ -60,6 +62,11 @@ async function sendOrderToNextCourier(order) {
   }
 
   const nextCourier = candidates[0];
+
+  order.offerCourierId = nextCourier.id;
+  order.offerExpiresAt = new Date(Date.now() + OFFER_TTL_SECONDS * 1000);
+  await order.save();
+
   await sendWarehouseOrderPushToCourier(order, nextCourier);
 }
 
