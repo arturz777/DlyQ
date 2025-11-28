@@ -3,7 +3,43 @@ const schedule = require('node-schedule');
 const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
-const { Order } = require('./models/models'); // Подключаем модель Order
+const { Order, OrderDecline } = require('./models/models');
+const { sendOrderToNextCourier } = require('./services/orderDistributionService');
+
+const ACTIVE_STATUSES = [
+  'Waiting for courier',
+  'Ready for pickup',
+];
+
+async function processExpiredOffers() {
+  const now = new Date();
+
+  const expiredOrders = await Order.findAll({
+    where: {
+      status: { [Op.in]: ACTIVE_STATUSES },
+      courierId: null,
+      offerCourierId: { [Op.ne]: null },
+      offerExpiresAt: { [Op.lt]: now },
+    },
+  });
+
+  for (const order of expiredOrders) {
+    const courierId = order.offerCourierId;
+
+    if (courierId) {
+      await OrderDecline.findOrCreate({
+        where: { orderId: order.id, courierId },
+        defaults: { orderId: order.id, courierId },
+      });
+    }
+
+    order.offerCourierId = null;
+    order.offerExpiresAt = null;
+    await order.save();
+
+    await sendOrderToNextCourier(order);
+  }
+}
 
 const setupCleanupTask = () => {
     // Удаление истории заказов минута- '* * * * *' 30 дней- '0 0 1 * *'
@@ -47,6 +83,7 @@ const setupCleanupTask = () => {
             console.error("❌ Ошибка при удалении старых заказов:", error);
         }
     });
+    setInterval(processExpiredOffers, 5000);
 };
 
 module.exports = setupCleanupTask;
