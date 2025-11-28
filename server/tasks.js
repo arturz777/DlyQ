@@ -1,478 +1,130 @@
+const schedule = require("node-schedule");
 const { Op } = require("sequelize");
-const fetch = require("node-fetch");
-const { Order, Courier, OrderDecline } = require("../models/models");
+const fs = require("fs");
+const path = require("path");
+const { Order, OrderDecline, Courier } = require("./models/models");
 const {
   sendOrderToNextCourier,
-} = require("../services/orderDistributionService");
+} = require("./services/orderDistributionService");
 
-function buildCourierName(user) {
-  const parts = [];
-  if (user.firstName) parts.push(user.firstName);
-  if (user.lastName) parts.push(user.lastName);
-  const full = parts.join(" ").trim();
+const ACTIVE_STATUSES = ["Waiting for courier", "Ready for pickup"];
 
-  if (full) return full;
-  if (user.email) return user.email;
-  return `Courier #${user.id}`;
+async function processExpiredOffers() {
+  const now = new Date();
+
+  const expiredOrders = await Order.findAll({
+    where: {
+      status: { [Op.in]: ACTIVE_STATUSES },
+      courierId: null,
+      offerCourierId: { [Op.ne]: null },
+      offerExpiresAt: { [Op.lt]: now },
+    },
+  });
+
+  for (const order of expiredOrders) {
+    const courierId = order.offerCourierId;
+
+    if (courierId) {
+      await OrderDecline.findOrCreate({
+        where: { orderId: order.id, courierId },
+        defaults: { orderId: order.id, courierId },
+      });
+    }
+
+    order.offerCourierId = null;
+    order.offerExpiresAt = null;
+    await order.save();
+
+    await sendOrderToNextCourier(order);
+  }
 }
 
-class CourierController {
-  async savePushToken(req, res) {
-    try {
-      const { token } = req.body;
-      const courierId = req.user?.id;
-
-      if (!courierId) {
-        console.warn("⚠️ savePushToken: нет req.user, авторизация не прошла");
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      if (!token) {
-        console.warn("⚠️ savePushToken: пустой token");
-        return res.status(400).json({ message: "Токен не передан." });
-      }
-
-      let courier = await Courier.findByPk(courierId);
-      if (!courier) {
-        courier = await Courier.create({
-          id: courierId,
-          name: buildCourierName(req.user),
-          status: "offline",
-        });
-      }
-
-      courier.expoPushToken = token;
-      await courier.save();
-
-      return res.json({ message: "Push-токен сохранён" });
-    } catch (error) {
-      console.error("❌ Ошибка сохранения push-токена:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async getAllCouriers(req, res) {
-    try {
-      const couriers = await Courier.findAll({
-        attributes: ["id", "name", "currentLat", "currentLng", "status"],
-      });
-      res.json(couriers);
-    } catch (error) {
-      console.error("Ошибка получения курьеров:", error);
-      res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async getSelf(req, res) {
-    try {
-      const courierId = req.user.id;
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      let courier = await Courier.findByPk(courierId);
-
-      if (!courier) {
-        courier = await Courier.create({
-          id: courierId,
-          name: buildCourierName(req.user),
-          status: "offline",
-        });
-      }
-
-      return res.json({
-        id: courier.id,
-        name: courier.name,
-        status: courier.status,
-        currentLat: courier.currentLat,
-        currentLng: courier.currentLng,
-      });
-    } catch (error) {
-      console.error("❌ Ошибка получения курьера:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async getActiveOrders(req, res) {
-    try {
-      const courierId = req.user.id;
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      const courier = await Courier.findByPk(courierId);
-      if (!courier || courier.status !== "online") {
-        return res.json([]);
-      }
-
-      const orders = await Order.findAll({
-        where: {
-          status: {
-            [Op.in]: [
-              "Waiting for courier",
-              "Ready for pickup",
-              "Picked up",
-              "Arrived at destination",
-            ],
-          },
-          [Op.or]: [{ courierId: null }, { courierId: courierId }],
-        },
-
-        order: [["createdAt", "DESC"]],
-        attributes: [
-          "id",
-          "status",
-          "deliveryLat",
-          "deliveryLng",
-          "deliveryAddress",
-          "orderDetails",
-          "deliveryPrice",
-          "courierFee",
-          "courierId",
-          "offerExpiresAt",
-        ],
-      });
-
-      if (orders.length === 0) {
-        return res.json([]);
-      }
-
-      const formattedOrders = orders.map((order) => ({
-        ...order.toJSON(),
-        orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
-      }));
-
-      return res.json(formattedOrders);
-    } catch (error) {
-      console.error("❌ Ошибка получения активных заказов:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async acceptOrder(req, res) {
-    try {
-      const { id } = req.params;
-      const courierId = req.user.id;
-
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      let courier = await Courier.findByPk(courierId);
-      if (!courier) {
-        courier = await Courier.create({
-          id: courierId,
-          name: buildCourierName(req.user),
-          status: "offline",
-        });
-      }
-
-      const order = await Order.findByPk(id);
-
-      if (!order) {
-        return res.status(404).json({ message: "Заказ не найден." });
-      }
-
-      if (
-        order.status !== "Waiting for courier" &&
-        order.status !== "Ready for pickup"
-      ) {
-        return res
-          .status(400)
-          .json({ message: "Заказ уже занят или не доступен для курьера." });
-      }
-
-      order.courierId = courierId;
-      order.acceptedAt = new Date();
-
-      order.offerCourierId = null;
-      order.offerExpiresAt = null;
-
-      await order.save();
-
-      const io = req.app.get("io");
-
-      io.emit("orderStatusUpdate", {
-        id: order.id,
-        status: order.status,
-        accepted: true,
-        courierId: order.courierId,
-        courierLocation:
-          courier.currentLat && courier.currentLng
-            ? { lat: courier.currentLat, lng: courier.currentLng }
-            : null,
-      });
-
-      return res.json({
-        id: order.id,
-        status: order.status,
-        deliveryLat: order.deliveryLat,
-        deliveryLng: order.deliveryLng,
-        deliveryAddress: order.deliveryAddress,
-        deliveryPrice: order.deliveryPrice,
-        courierFee: order.courierFee,
-        courierId: order.courierId,
-      });
-    } catch (error) {
-      console.error("❌ Ошибка принятия заказа:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async toggleCourierStatus(req, res) {
-    try {
-      const { status } = req.body;
-      const courierId = req.user.id;
-
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      let courier = await Courier.findByPk(courierId);
-
-      if (!courier) {
-        courier = await Courier.create({
-          id: courierId,
-          name: buildCourierName(req.user),
-          status: "offline",
-        });
-      }
-
-      courier.status = status;
-      await courier.save();
-
-      const io = req.app.get("io");
-      io.emit("courierStatusUpdate", { courierId, status });
-
-      if (status === "online") {
-        try {
-          const ACTIVE_STATUSES = ["Waiting for courier", "Ready for pickup"];
-
-          const waitingOrders = await Order.findAll({
-            where: {
-              status: { [Op.in]: ACTIVE_STATUSES },
-              courierId: null,
-              offerCourierId: null,
-            },
-            order: [["createdAt", "ASC"]],
-          });
-
-          for (const order of waitingOrders) {
-            await sendOrderToNextCourier(order);
-          }
-        } catch (err) {
-          console.error(
-            "❌ Ошибка автораспределения заказов при выходе курьера в онлайн:",
-            err
-          );
-        }
-      }
-
-      return res.json({ message: `Вы в статусе: ${status}` });
-    } catch (error) {
-      console.error("❌ Ошибка смены статуса курьера:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async updateDeliveryStatus(req, res) {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
-      const courierId = req.user.id;
-
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      const order = await Order.findByPk(id);
-      if (!order) {
-        return res.status(404).json({ message: "Заказ не найден." });
-      }
-
-      if (order.courierId !== courierId) {
-        return res
-          .status(403)
-          .json({ message: "Этот заказ вам не принадлежит." });
-      }
-
-      order.status = status;
-
-      if (order.status === "Picked up") {
-        const estimatedTime = await calculateRouteTime(order);
-        order.estimatedTime = estimatedTime;
-        order.pickupStartTime = new Date();
-      }
-
-      await order.save();
-
-      const io = req.app.get("io");
-      io.emit("orderStatusUpdate", {
-        id: order.id,
-        status: order.status,
-        estimatedTime: order.estimatedTime || null,
-      });
-
-      return res.json(order);
-    } catch (error) {
-      console.error("❌ Ошибка обновления статуса доставки:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async completeDelivery(req, res) {
-    try {
-      const { id } = req.params;
-      const courierId = req.user.id;
-
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      const order = await Order.findByPk(id);
-      if (!order) {
-        return res.status(404).json({ message: "Заказ не найден." });
-      }
-
-      if (order.courierId !== courierId) {
-        return res
-          .status(403)
-          .json({ message: "Этот заказ вам не принадлежит." });
-      }
-
-      order.status = "Delivered";
-      order.estimatedTime = null;
-
-      await order.save();
-
-      const io = req.app.get("io");
-      io.emit("orderStatusUpdate", {
-        id: order.id,
-        status: order.status,
-        estimatedTime: null,
-      });
-
-      return res.json(order);
-    } catch (error) {
-      console.error("❌ Ошибка завершения доставки:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async updateCourierLocation(req, res) {
-    try {
-      const { lat, lng } = req.body;
-      const courierId = req.user.id;
-
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      if (!lat || !lng) {
-        return res.status(400).json({ message: "Координаты не переданы." });
-      }
-
-      let courier = await Courier.findByPk(courierId);
-
-      if (!courier) {
-        courier = await Courier.create({
-          id: courierId,
-          name: buildCourierName(req.user),
-          status: "offline",
-        });
-      }
-
-      courier.currentLat = lat;
-      courier.currentLng = lng;
-      await courier.save();
-
-      const io = req.app.get("io");
-      io.emit("courierLocationUpdate", { courierId, lat, lng });
-
-      return res.json({ message: "Местоположение обновлено!" });
-    } catch (error) {
-      console.error("❌ Ошибка обновления местоположения курьера:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async declineOrder(req, res) {
-    try {
-      const { id } = req.params;
-      const courierId = req.user.id;
-
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      const order = await Order.findByPk(id);
-      if (!order) {
-        return res.status(404).json({ message: "Заказ не найден." });
-      }
-
+async function processExpiredOffers() {
+  const now = new Date();
+
+  const expiredOrders = await Order.findAll({
+    where: {
+      status: { [Op.in]: ACTIVE_STATUSES },
+      courierId: null,
+      offerCourierId: { [Op.ne]: null },
+      offerExpiresAt: { [Op.lt]: now },
+    },
+  });
+
+  for (const order of expiredOrders) {
+    const courierId = order.offerCourierId;
+
+    console.log(`⏰ offer expired: order ${order.id}, courier ${courierId}`);
+
+    if (courierId) {
       await OrderDecline.findOrCreate({
         where: { orderId: order.id, courierId },
         defaults: { orderId: order.id, courierId },
       });
 
-      await sendOrderToNextCourier(order);
+      const courier = await Courier.findByPk(courierId);
+      if (courier && courier.status === "online") {
+        courier.status = "offline";
+        await courier.save();
+        console.log(
+          `💤 Courier ${courierId} автоматически переведён в offline (проспал оффер)`
+        );
+      }
+    }
 
-      const io = req.app.get("io");
+    order.offerCourierId = null;
+    order.offerExpiresAt = null;
+    await order.save();
 
-      const courierPayload = {
-        id: order.id,
-        status: order.status,
-        deliveryLat: order.deliveryLat,
-        deliveryLng: order.deliveryLng,
-        deliveryAddress: order.deliveryAddress,
-        deliveryPrice: order.deliveryPrice,
-        courierFee: order.courierFee,
-        courierId: order.courierId,
-        offerExpiresAt: order.offerExpiresAt,
-      };
+    await sendOrderToNextCourier(order);
+  }
+}
 
-      io.emit("warehouseOrder", courierPayload);
+setInterval(processExpiredOffers, 5000);
 
-      return res.json({ message: "Заказ отклонён", orderId: order.id });
+const setupCleanupTask = () => {
+  // Удаление истории заказов минута- '* * * * *' 30 дней- '0 0 1 * *'
+  schedule.scheduleJob("0 0 1 * *", async () => {
+    try {
+      const cutoffDate = new Date(
+        new Date().getTime() - 30 * 24 * 60 * 60 * 1000
+      ); // // какие заказы считаются "старыми". старше 30 дней - 30 * 24 * 60 * 60 * 1000 , Старше минуты-  - 1 * 60 * 1000
+
+      // Находим заказы старше 30 дней
+      const ordersToDelete = await Order.findAll({
+        where: {
+          createdAt: { [Op.lt]: cutoffDate },
+        },
+      });
+
+      ordersToDelete.forEach((order) => {
+        if (
+          order.deviceImage &&
+          !order.deviceImage.includes("placeholder.png") &&
+          order.deviceImage.startsWith("orders/")
+        ) {
+          const filePath = path.resolve(__dirname, "static", order.deviceImage);
+          if (fs.existsSync(filePath)) {
+            console.log(`🗑 Удаляем изображение заказа: ${filePath}`);
+            fs.unlinkSync(filePath);
+          } else {
+            console.warn(`⚠️ Файл не найден: ${filePath}`);
+          }
+        }
+      });
+
+      const deletedCount = await Order.destroy({
+        where: {
+          createdAt: { [Op.lt]: cutoffDate },
+        },
+      });
+
+      console.log(`✅ Удалено заказов: ${deletedCount}`);
     } catch (error) {
-      console.error("❌ Ошибка отклонения заказа курьером:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
+      console.error("❌ Ошибка при удалении старых заказов:", error);
     }
-  }
-}
+  });
+  setInterval(processExpiredOffers, 5000);
+};
 
-async function calculateRouteTime(order) {
-  if (!order.deliveryLat || !order.deliveryLng) {
-    return 15 * 60;
-  }
-
-  const courier = await Courier.findByPk(order.courierId);
-  if (!courier || !courier.currentLat || !courier.currentLng) {
-    return 15 * 60;
-  }
-
-  const API_KEY = "5b3ce3597851110001cf624889e39f2834a84a62aaca04f731838a64";
-  const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${API_KEY}&start=${courier.currentLng},${courier.currentLat}&end=${order.deliveryLng},${order.deliveryLat}`;
-
-  try {
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (data.features && data.features.length > 0) {
-      const realTime = Math.round(
-        data.features[0].properties.segments[0].duration
-      );
-      return realTime;
-    } else {
-      console.warn(
-        "⚠️ Не удалось получить данные маршрута, оставляем 15 минут."
-      );
-      return 15 * 60;
-    }
-  } catch (error) {
-    console.error("❌ Ошибка получения маршрута:", error);
-    return 15 * 60;
-  }
-}
-
-module.exports = new CourierController();
+module.exports = setupCleanupTask;
