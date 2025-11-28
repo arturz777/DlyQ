@@ -228,6 +228,14 @@ const Order = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+     offerCourierId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    offerExpiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     timestamps: true,
