@@ -19,8 +19,6 @@ const cookieParser = require('cookie-parser');
 const Stripe = require("stripe");  
 const paymentsRouter = require("./routes/paymentsRouter.js");
 
-setupCleanupTask();
-
 const PORT = process.env.PORT || 5000;
 const app = express();
 
@@ -98,7 +96,8 @@ const start = async () => {
   try {
     await sequelize.authenticate();
     await sequelize.sync();
-    
+
+    setupCleanupTask();
   } catch (e) {
     console.log(e);
   }
