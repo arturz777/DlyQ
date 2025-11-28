@@ -29,38 +29,6 @@ async function processExpiredOffers() {
         where: { orderId: order.id, courierId },
         defaults: { orderId: order.id, courierId },
       });
-    }
-
-    order.offerCourierId = null;
-    order.offerExpiresAt = null;
-    await order.save();
-
-    await sendOrderToNextCourier(order);
-  }
-}
-
-async function processExpiredOffers() {
-  const now = new Date();
-
-  const expiredOrders = await Order.findAll({
-    where: {
-      status: { [Op.in]: ACTIVE_STATUSES },
-      courierId: null,
-      offerCourierId: { [Op.ne]: null },
-      offerExpiresAt: { [Op.lt]: now },
-    },
-  });
-
-  for (const order of expiredOrders) {
-    const courierId = order.offerCourierId;
-
-    console.log(`⏰ offer expired: order ${order.id}, courier ${courierId}`);
-
-    if (courierId) {
-      await OrderDecline.findOrCreate({
-        where: { orderId: order.id, courierId },
-        defaults: { orderId: order.id, courierId },
-      });
 
       const courier = await Courier.findByPk(courierId);
       if (courier && courier.status === "online") {
@@ -79,8 +47,6 @@ async function processExpiredOffers() {
     await sendOrderToNextCourier(order);
   }
 }
-
-setInterval(processExpiredOffers, 5000);
 
 const setupCleanupTask = () => {
   // Удаление истории заказов минута- '* * * * *' 30 дней- '0 0 1 * *'
