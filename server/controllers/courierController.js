@@ -129,6 +129,7 @@ class CourierController {
           "deliveryPrice",
           "courierFee",
           "courierId",
+          "offerExpiresAt",
         ],
       });
 
@@ -183,6 +184,9 @@ class CourierController {
 
       order.courierId = courierId;
       order.acceptedAt = new Date();
+
+      order.offerCourierId = null;
+      order.offerExpiresAt = null;
 
       await order.save();
 
@@ -400,6 +404,7 @@ class CourierController {
         deliveryPrice: order.deliveryPrice,
         courierFee: order.courierFee,
         courierId: order.courierId,
+        offerExpiresAt: order.offerExpiresAt,
       };
 
       io.emit("warehouseOrder", courierPayload);
