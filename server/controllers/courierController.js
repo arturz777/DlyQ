@@ -244,6 +244,30 @@ class CourierController {
       const io = req.app.get("io");
       io.emit("courierStatusUpdate", { courierId, status });
 
+      if (status === "online") {
+        try {
+          const ACTIVE_STATUSES = ["Waiting for courier", "Ready for pickup"];
+
+          const waitingOrders = await Order.findAll({
+            where: {
+              status: { [Op.in]: ACTIVE_STATUSES },
+              courierId: null,
+              offerCourierId: null,
+            },
+            order: [["createdAt", "ASC"]],
+          });
+
+          for (const order of waitingOrders) {
+            await sendOrderToNextCourier(order);
+          }
+        } catch (err) {
+          console.error(
+            "❌ Ошибка автораспределения заказов при выходе курьера в онлайн:",
+            err
+          );
+        }
+      }
+
       return res.json({ message: `Вы в статусе: ${status}` });
     } catch (error) {
       console.error("❌ Ошибка смены статуса курьера:", error);
