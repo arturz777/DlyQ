@@ -115,7 +115,10 @@ class CourierController {
               "Arrived at destination",
             ],
           },
-          [Op.or]: [{ courierId: null }, { courierId: courierId }],
+          [Op.or]: [
+            { courierId: courierId },
+            { courierId: null, offerCourierId: courierId },
+          ],
         },
 
         order: [["createdAt", "DESC"]],
@@ -130,6 +133,7 @@ class CourierController {
           "courierFee",
           "courierId",
           "offerExpiresAt",
+          "offerCourierId", 
         ],
       });
 
