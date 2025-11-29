@@ -1,4 +1,4 @@
-const { Courier } = require("../models/models");
+const { Courier, Warehouse } = require("../models/models");
 const { Op } = require("sequelize");
 const admin = require("../config/firebaseAdmin");
 
@@ -33,6 +33,40 @@ async function sendWarehouseOrderPushToCourier(order, courier) {
 
   console.log("📨 Пуш по кругу: warehouse → курьер", courier.id);
   await sendFcmToToken(token, payload);
+}
+
+async function sendNewOrderPushToWarehouse(order) {
+  try {
+    const warehouses = await Warehouse.findAll({
+      where: {
+        expoPushToken: { [Op.ne]: null },
+        status: "active",
+      },
+    });
+
+    if (!warehouses.length) {
+      console.warn("sendNewOrderPushToWarehouse: нет складов с токенами");
+      return;
+    }
+
+    const payload = {
+      notification: {
+        title: "Новый заказ",
+        body: `Заказ #${order.id} на сумму ${order.totalPrice} €`,
+      },
+      data: {
+        type: "warehouse_new",
+        orderId: String(order.id),
+      },
+    };
+
+    for (const wh of warehouses) {
+      console.log("📨 Пуш на склад:", wh.id);
+      await sendFcmToToken(wh.expoPushToken, payload);
+    }
+  } catch (err) {
+    console.error("❌ Ошибка отправки push на склад:", err);
+  }
 }
 
 async function sendFcmToToken(token, payload) {
@@ -122,4 +156,5 @@ async function sendOrderAssignedPush(order) {
 module.exports = {
   sendOrderAssignedPush,
   sendWarehouseOrderPushToCourier,
+  sendNewOrderPushToWarehouse,
 };
