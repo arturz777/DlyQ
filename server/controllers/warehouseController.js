@@ -17,6 +17,38 @@ function buildWarehouseName(user) {
 }
 
 class WarehouseController {
+  async savePushToken(req, res) {
+    try {
+      const { token } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Вы не авторизованы." });
+      }
+
+      if (!token) {
+        return res.status(400).json({ message: "Токен не передан." });
+      }
+
+      let warehouse = await Warehouse.findByPk(userId);
+      if (!warehouse) {
+        warehouse = await Warehouse.create({
+          id: userId,
+          name: buildWarehouseName(req.user),
+          status: "active",
+        });
+      }
+
+      warehouse.expoPushToken = token;
+      await warehouse.save();
+
+      return res.json({ message: "Push-токен склада сохранён" });
+    } catch (error) {
+      console.error("❌ Ошибка сохранения push-токена склада:", error);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
   async getWarehouseOrders(req, res) {
     try {
       const userId = req.user.id;
@@ -24,10 +56,8 @@ class WarehouseController {
         return res.status(401).json({ message: "Вы не авторизованы." });
       }
 
-      // ищем склад по id пользователя (один склад на одного warehouse-пользователя)
       let warehouse = await Warehouse.findByPk(userId);
 
-      // если нет — создаём
       if (!warehouse) {
         warehouse = await Warehouse.create({
           id: userId,
