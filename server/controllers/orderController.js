@@ -396,6 +396,12 @@ const createOrder = async (req, res) => {
 
     const order = await Order.create(orderData);
 
+    try {
+      await sendNewOrderPushToWarehouse(order);
+    } catch (err) {
+      console.error("push error (createOrder → warehouse):", err);
+    }
+
     for (const { device, count } of devicesToUpdate) {
       await device.update({ quantity: device.quantity - count });
     }
