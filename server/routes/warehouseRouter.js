@@ -25,4 +25,11 @@ router.post(
   warehouseController.completeOrder
 );
 
+router.post(
+  "/push-token",
+  authMiddleware,
+  roleMiddleware("WAREHOUSE"),
+  warehouseController.savePushToken
+);
+
 module.exports = router;
