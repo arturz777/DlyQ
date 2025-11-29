@@ -133,7 +133,7 @@ class CourierController {
           "courierFee",
           "courierId",
           "offerExpiresAt",
-          "offerCourierId", 
+          "offerCourierId",
         ],
       });
 
@@ -355,6 +355,28 @@ class CourierController {
         status: order.status,
         estimatedTime: null,
       });
+
+      try {
+        const ACTIVE_STATUSES = ["Waiting for courier", "Ready for pickup"];
+
+        const waitingOrders = await Order.findAll({
+          where: {
+            status: { [Op.in]: ACTIVE_STATUSES },
+            courierId: null,
+            offerCourierId: null,
+          },
+          order: [["createdAt", "ASC"]],
+        });
+
+        for (const o of waitingOrders) {
+          await sendOrderToNextCourier(o);
+        }
+      } catch (err) {
+        console.error(
+          "❌ Ошибка автораспределения заказов после завершения доставки:",
+          err
+        );
+      }
 
       return res.json(order);
     } catch (error) {
