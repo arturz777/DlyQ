@@ -255,6 +255,7 @@ const Warehouse = sequelize.define("warehouse", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   name: { type: DataTypes.STRING, allowNull: false },
   status: { type: DataTypes.STRING, defaultValue: "offline" },
+  expoPushToken: { type: DataTypes.STRING, allowNull: true },
 });
 
 const OrderDecline = sequelize.define(
