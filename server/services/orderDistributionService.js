@@ -29,15 +29,31 @@ async function sendOrderToNextCourier(order) {
     return;
   }
 
-  const activeOrders = await Order.findAll({
+  const now = new Date();
+
+  // 🔥 НОВОЕ: считаем курьеров занятыми не только по courierId,
+  // но и по активным офферам (offerCourierId + offerExpiresAt > now)
+  const busyOrders = await Order.findAll({
     where: {
-      courierId: { [Op.ne]: null },
-      status: { [Op.in]: ACTIVE_STATUSES },
+      [Op.or]: [
+        {
+          courierId: { [Op.ne]: null },
+          status: { [Op.in]: ACTIVE_STATUSES },
+        },
+        {
+          offerCourierId: { [Op.ne]: null },
+          offerExpiresAt: { [Op.gt]: now },
+        },
+      ],
     },
-    attributes: ["courierId"],
+    attributes: ["courierId", "offerCourierId"],
   });
 
-  const busyCouriers = new Set(activeOrders.map((o) => o.courierId));
+  const busyCouriers = new Set();
+  for (const o of busyOrders) {
+    if (o.courierId) busyCouriers.add(o.courierId);
+    if (o.offerCourierId) busyCouriers.add(o.offerCourierId);
+  }
 
   const declines = await OrderDecline.findAll({
     where: { orderId: order.id },
@@ -56,7 +72,7 @@ async function sendOrderToNextCourier(order) {
 
   if (!candidates.length) {
     console.warn(
-      "sendOrderToNextCourier: все онлайн-курьеры сейчас с активными заказами"
+      "sendOrderToNextCourier: все онлайн-курьеры сейчас заняты (заказами или офферами)"
     );
     return;
   }
