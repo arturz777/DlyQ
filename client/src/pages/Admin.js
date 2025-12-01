@@ -40,6 +40,17 @@ import "react-tabs/style/react-tabs.css";
 import Image from "react-bootstrap/Image";
 import styles from "./Admin.module.css";
 
+const STATUS_LABELS_RU = {
+  Pending: "В обработке",
+  "Waiting for courier": "Ожидает курьера",
+  "Ready for pickup": "Готов к выдаче",
+  "Picked up": "Забран курьером",
+  "Arrived at destination": "Курьер прибыл",
+  Delivered: "Доставлен",
+  Completed: "Завершён",
+  Cancelled: "Отменён",
+};
+
 const Admin = () => {
   const { device, user } = useContext(Context);
   const [types, setTypes] = useState([]);
@@ -1874,7 +1885,7 @@ const Admin = () => {
                         </select>
                       </td>
 
-                      <td>
+                  <td>
                         <select
                           value={order.status}
                           onChange={(e) =>
@@ -1887,22 +1898,16 @@ const Admin = () => {
                             )
                           }
                         >
-                          <option value="Pending">Pending</option>
-                          <option value="Waiting for courier">
-                            Waiting for courier
-                          </option>
-                          <option value="Ready for pickup">
-                            Ready for pickup
-                          </option>
-                          <option value="Picked up">Picked up</option>
-                          <option value="Arrived at destination">
-                            Arrived at destination
-                          </option>
-                          <option value="Delivered">Delivered</option>
-                          <option value="Completed">Completed</option>
-                          <option value="Cancelled">Cancelled</option>
+                          {Object.entries(STATUS_LABELS_RU).map(
+                            ([value, label]) => (
+                              <option key={value} value={value}>
+                                {label}
+                              </option>
+                            )
+                          )}
                         </select>
                       </td>
+                            
                       <td>
                         {order.status === "Waiting for courier" && (
                           <select
