@@ -1744,7 +1744,7 @@ const Admin = () => {
           </div>
         </TabPanel>
 
-        <TabPanel>
+         <TabPanel>
           <h2 className={styles.translationsTitle}>Переводы</h2>
 
           <button
@@ -1885,25 +1885,29 @@ const Admin = () => {
                         </select>
                       </td>
 
-                    <select
-    value={order.status}
-    onChange={(e) =>
-      setAllOrders((prev) =>
-        prev.map((o) =>
-          o.id === order.id
-            ? { ...o, status: e.target.value }
-            : o
-        )
-      )
-    }
-  >
-    {Object.entries(STATUS_LABELS_RU).map(([value, label]) => (
-      <option key={value} value={value}>
-        {label}
-      </option>
-    ))}
-  </select>
-</td>
+                      <td>
+                        <select
+                          value={order.status}
+                          onChange={(e) =>
+                            setAllOrders((prev) =>
+                              prev.map((o) =>
+                                o.id === order.id
+                                  ? { ...o, status: e.target.value }
+                                  : o
+                              )
+                            )
+                          }
+                        >
+                          {Object.entries(STATUS_LABELS_RU).map(
+                            ([value, label]) => (
+                              <option key={value} value={value}>
+                                {label}
+                              </option>
+                            )
+                          )}
+                        </select>
+                      </td>
+
                       <td>
                         {order.status === "Waiting for courier" && (
                           <select
