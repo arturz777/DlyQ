@@ -1,18 +1,7 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, lazy, Suspense } from "react";
 import { Context } from "../index";
 import { updateDeviceVisibility } from "../http/deviceAPI";
 import { fetchAllCouriers } from "../http/courierAPI";
-import CreateBrand from "../components/modals/CreateBrand";
-import CreateDevice from "../components/modals/CreateDevice";
-import CreateType from "../components/modals/CreateType";
-import CreateSubType from "../components/modals/CreateSubType";
-import CreateMake from "../components/modals/CreateMake";
-import CreateModel from "../components/modals/CreateModel";
-import CourierMap from "../components/CourierMap";
-import ChatBox from "../components/ChatBox";
-import AdminAccounting from "../components/AdminAccounting";
-import { fetchMaintenance, updateMaintenance } from "../http/configAPI";
-import appStore from "../store/appStore";
 import { assignCourierToOrder } from "../http/orderAPI";
 import { fetchTranslations, updateTranslation } from "../http/translationAPI";
 import {
@@ -33,12 +22,26 @@ import {
   fetchAllOrdersForAdmin,
   adminUpdateOrderStatus,
 } from "../http/orderAPI";
+import CreateBrand from "../components/modals/CreateBrand";
+import CreateDevice from "../components/modals/CreateDevice";
+import CreateType from "../components/modals/CreateType";
+import CreateSubType from "../components/modals/CreateSubType";
+import CreateMake from "../components/modals/CreateMake";
+import CreateModel from "../components/modals/CreateModel";
+import CourierMap from "../components/CourierMap";
+import ChatBox from "../components/ChatBox";
+import AdminAccounting from "../components/AdminAccounting";
+import { fetchMaintenance, updateMaintenance } from "../http/configAPI";
+import appStore from "../store/appStore";
 import StockQuickAdjustModal from "../components/modals/StockQuickAdjustModal";
+import SlideModal from "../components/modals/SlideModal";
 import { io } from "socket.io-client";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
 import "react-tabs/style/react-tabs.css";
 import Image from "react-bootstrap/Image";
 import styles from "./Admin.module.css";
+
+const DevicePageLazy = lazy(() => import("../pages/DevicePage"));
 
 const STATUS_LABELS_RU = {
   Pending: "В обработке",
@@ -91,6 +94,7 @@ const Admin = () => {
   const [quickAdjustVisible, setQuickAdjustVisible] = useState(false);
   const [makes, setMakes] = useState([]);
   const [modelsByMake, setModelsByMake] = useState({});
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const [openMakeIds, setOpenMakeIds] = useState([]);
   const [openMakeInType, setOpenMakeInType] = useState(new Set());
   const [openModelInMakeType, setOpenModelInMakeType] = useState(new Set());
@@ -731,7 +735,7 @@ const Admin = () => {
     );
   };
 
-  return (
+ return (
     <div className={styles.adminPanelContainer}>
       <Tabs>
         <TabList>
@@ -795,7 +799,8 @@ const Admin = () => {
                     <div
                       key={device.id}
                       className={styles.item}
-                      style={{ background: "#fff7ed" }}
+                     style={{ background: "#fff7ed", cursor: "pointer" }}
+  onClick={() => setSelectedDeviceId(device.id)}
                     >
                       <div>
                         id-{device.id}
@@ -832,16 +837,21 @@ const Admin = () => {
 
                         <button
                           className={styles.editButton}
-                          onClick={() => handleEditDevice(device)}
+                          onClick={(e) => {
+      e.stopPropagation();
+      handleEditDevice(device);
+    }}
                         >
                           Редактировать
                         </button>
                         <button
                           className={styles.deleteButton}
-                          onClick={() => {
-                            if (window.confirm("Удалить этот товар?"))
-                              handleDeleteDevice(device.id);
-                          }}
+                          onClick={(e) => {
+      e.stopPropagation();
+      if (window.confirm("Удалить этот товар?")) {
+        handleDeleteDevice(device.id);
+      }
+    }}
                         >
                           Удалить
                         </button>
@@ -1027,9 +1037,8 @@ const Admin = () => {
             });
 
             const isOpenType = openDeviceTypeIds.includes(type.id);
-            const isAuto = Number(type.id) === Number(autoTypeId); // <-- ВАЖНО
+            const isAuto = Number(type.id) === Number(autoTypeId);
 
-            // ===== СТАРАЯ раскладка для НЕ-авто =====
             const devicesWithoutSubtypeInThisType = !isAuto
               ? typeDevices.filter((d) => {
                   const sIds = getDeviceSubtypeIds(d);
@@ -1134,8 +1143,13 @@ const Admin = () => {
               return m;
             };
 
-            const DeviceRow = ({ d }) => (
-              <div key={d.id} className={styles.item}>
+            const DeviceRow = ({ d, onOpen }) => (
+              <div 
+              key={d.id} 
+              className={styles.item}
+              onClick={() => onOpen?.(d.id)}
+              style={{ cursor: "pointer" }}
+              >
                 <div>
                   id-{d.id}
                   <Image
@@ -1171,22 +1185,28 @@ const Admin = () => {
                   </span>
                   <button
                     className={styles.editButton}
-                    onClick={() => handleEditDevice(d)}
+                     onClick={(e) => {
+          e.stopPropagation();
+          handleEditDevice(d);
+        }}
                   >
                     Редактировать
                   </button>
                   <button
                     className={styles.deleteButton}
-                    onClick={() => {
-                      if (window.confirm("Удалить этот девайс?"))
-                        handleDeleteDevice(d.id);
-                    }}
+                     onClick={(e) => {
+          e.stopPropagation();
+          if (window.confirm("Удалить этот девайс?")) {
+            handleDeleteDevice(d.id);
+          }
+        }}
                   >
                     Удалить
                   </button>
                   <label
                     className={styles.toggleWrap}
                     title="Показывать на витрине"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <input
                       type="checkbox"
@@ -1231,7 +1251,7 @@ const Admin = () => {
                         {devicesWithoutSubtypeInThisType.length > 0 && (
                           <div className={styles.itemList}>
                             {devicesWithoutSubtypeInThisType.map((d) => (
-                              <DeviceRow key={d.id} d={d} />
+                             <DeviceRow key={d.id} d={d} onOpen={setSelectedDeviceId} />
                             ))}
                           </div>
                         )}
@@ -1248,7 +1268,7 @@ const Admin = () => {
                               </h5>
                               <div className={styles.itemList}>
                                 {subtypeDevices.map((d) => (
-                                  <DeviceRow key={d.id} d={d} />
+                                  <DeviceRow key={d.id} d={d} onOpen={setSelectedDeviceId} />
                                 ))}
                               </div>
                             </div>
@@ -1267,7 +1287,7 @@ const Admin = () => {
                             <h5 className={styles.typeTitle}>Без подтипа</h5>
                             <div className={styles.itemList}>
                               {uniqueById(universalNoSubtype).map((d) => (
-                                <DeviceRow key={d.id} d={d} />
+                                <DeviceRow key={d.id} d={d} onOpen={setSelectedDeviceId} />
                               ))}
                             </div>
                           </div>
@@ -1302,7 +1322,7 @@ const Admin = () => {
                                     </div>
                                     <div className={styles.itemList}>
                                       {list.map((d) => (
-                                        <DeviceRow key={d.id} d={d} />
+                                        <DeviceRow key={d.id} d={d} onOpen={setSelectedDeviceId} />
                                       ))}
                                     </div>
                                   </div>
@@ -1744,7 +1764,7 @@ const Admin = () => {
           </div>
         </TabPanel>
 
-         <TabPanel>
+        <TabPanel>
           <h2 className={styles.translationsTitle}>Переводы</h2>
 
           <button
@@ -2115,8 +2135,23 @@ const Admin = () => {
           );
         }}
       />
+      {selectedDeviceId && (
+  <SlideModal onClose={() => setSelectedDeviceId(null)}>
+    <Suspense
+      fallback={
+        <div style={{ padding: 16 }}>
+          Загрузка…
+        </div>
+      }
+    >
+      <DevicePageLazy id={selectedDeviceId} />
+    </Suspense>
+  </SlideModal>
+)}
+
     </div>
   );
 };
 
 export default Admin;
+
