@@ -735,7 +735,7 @@ const Admin = () => {
     );
   };
 
-  return (
+return (
     <div className={styles.adminPanelContainer}>
       <Tabs>
         <TabList>
@@ -799,8 +799,8 @@ const Admin = () => {
                     <div
                       key={device.id}
                       className={styles.item}
-                     style={{ background: "#fff7ed", cursor: "pointer" }}
-  onClick={() => setSelectedDeviceId(device.id)}
+                      style={{ background: "#fff7ed", cursor: "pointer" }}
+                      onClick={() => setSelectedDeviceId(device.id)}
                     >
                       <div>
                         id-{device.id}
@@ -838,20 +838,20 @@ const Admin = () => {
                         <button
                           className={styles.editButton}
                           onClick={(e) => {
-      e.stopPropagation();
-      handleEditDevice(device);
-    }}
+                            e.stopPropagation();
+                            handleEditDevice(device);
+                          }}
                         >
                           Редактировать
                         </button>
                         <button
                           className={styles.deleteButton}
                           onClick={(e) => {
-      e.stopPropagation();
-      if (window.confirm("Удалить этот товар?")) {
-        handleDeleteDevice(device.id);
-      }
-    }}
+                            e.stopPropagation();
+                            if (window.confirm("Удалить этот товар?")) {
+                              handleDeleteDevice(device.id);
+                            }
+                          }}
                         >
                           Удалить
                         </button>
@@ -886,7 +886,7 @@ const Admin = () => {
 
               {outOfOpen && (
                 <div className={styles.itemList}>
-                 {outOfStockDevices.map(({ device, zeros }) => (
+                  {outOfStockDevices.map(({ device, zeros }) => (
                     <div
                       key={device.id}
                       className={styles.item}
@@ -930,7 +930,7 @@ const Admin = () => {
                           </div>
                         </div>
                       )}
-                        
+
                       <div className={styles.buttons}>
                         <span
                           style={{
@@ -967,6 +967,7 @@ const Admin = () => {
                             type="checkbox"
                             className={styles.toggleInput}
                             checked={!!device.isVisible}
+                            onClick={(e) => e.stopPropagation()}
                             onChange={(e) =>
                               handleToggleVisibility(
                                 device.id,
@@ -983,13 +984,17 @@ const Admin = () => {
                         </label>
                         <button
                           className={styles.editButton}
-                          onClick={() => handleEditDevice(device)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditDevice(device);
+                          }}
                         >
                           Редактировать
                         </button>
                         <button
                           className={styles.deleteButton}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (window.confirm("Удалить этот товар?"))
                               handleDeleteDevice(device.id);
                           }}
@@ -1145,11 +1150,11 @@ const Admin = () => {
             };
 
             const DeviceRow = ({ d, onOpen }) => (
-              <div 
-              key={d.id} 
-              className={styles.item}
-              onClick={() => onOpen?.(d.id)}
-              style={{ cursor: "pointer" }}
+              <div
+                key={d.id}
+                className={styles.item}
+                onClick={() => onOpen?.(d.id)}
+                style={{ cursor: "pointer" }}
               >
                 <div>
                   id-{d.id}
@@ -1186,21 +1191,21 @@ const Admin = () => {
                   </span>
                   <button
                     className={styles.editButton}
-                     onClick={(e) => {
-          e.stopPropagation();
-          handleEditDevice(d);
-        }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditDevice(d);
+                    }}
                   >
                     Редактировать
                   </button>
                   <button
                     className={styles.deleteButton}
-                     onClick={(e) => {
-          e.stopPropagation();
-          if (window.confirm("Удалить этот девайс?")) {
-            handleDeleteDevice(d.id);
-          }
-        }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm("Удалить этот девайс?")) {
+                        handleDeleteDevice(d.id);
+                      }
+                    }}
                   >
                     Удалить
                   </button>
@@ -1252,7 +1257,11 @@ const Admin = () => {
                         {devicesWithoutSubtypeInThisType.length > 0 && (
                           <div className={styles.itemList}>
                             {devicesWithoutSubtypeInThisType.map((d) => (
-                             <DeviceRow key={d.id} d={d} onOpen={setSelectedDeviceId} />
+                              <DeviceRow
+                                key={d.id}
+                                d={d}
+                                onOpen={setSelectedDeviceId}
+                              />
                             ))}
                           </div>
                         )}
@@ -1269,7 +1278,11 @@ const Admin = () => {
                               </h5>
                               <div className={styles.itemList}>
                                 {subtypeDevices.map((d) => (
-                                  <DeviceRow key={d.id} d={d} onOpen={setSelectedDeviceId} />
+                                  <DeviceRow
+                                    key={d.id}
+                                    d={d}
+                                    onOpen={setSelectedDeviceId}
+                                  />
                                 ))}
                               </div>
                             </div>
@@ -1288,7 +1301,11 @@ const Admin = () => {
                             <h5 className={styles.typeTitle}>Без подтипа</h5>
                             <div className={styles.itemList}>
                               {uniqueById(universalNoSubtype).map((d) => (
-                                <DeviceRow key={d.id} d={d} onOpen={setSelectedDeviceId} />
+                                <DeviceRow
+                                  key={d.id}
+                                  d={d}
+                                  onOpen={setSelectedDeviceId}
+                                />
                               ))}
                             </div>
                           </div>
@@ -1323,7 +1340,11 @@ const Admin = () => {
                                     </div>
                                     <div className={styles.itemList}>
                                       {list.map((d) => (
-                                        <DeviceRow key={d.id} d={d} onOpen={setSelectedDeviceId} />
+                                        <DeviceRow
+                                          key={d.id}
+                                          d={d}
+                                          onOpen={setSelectedDeviceId}
+                                        />
                                       ))}
                                     </div>
                                   </div>
@@ -2137,22 +2158,16 @@ const Admin = () => {
         }}
       />
       {selectedDeviceId && (
-  <SlideModal onClose={() => setSelectedDeviceId(null)}>
-    <Suspense
-      fallback={
-        <div style={{ padding: 16 }}>
-          Загрузка…
-        </div>
-      }
-    >
-      <DevicePageLazy id={selectedDeviceId} />
-    </Suspense>
-  </SlideModal>
-)}
-
+        <SlideModal onClose={() => setSelectedDeviceId(null)}>
+          <Suspense fallback={<div style={{ padding: 16 }}>Загрузка…</div>}>
+            <DevicePageLazy id={selectedDeviceId} />
+          </Suspense>
+        </SlideModal>
+      )}
     </div>
   );
 };
 
 export default Admin;
+
 
