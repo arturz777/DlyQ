@@ -1744,7 +1744,7 @@ const Admin = () => {
           </div>
         </TabPanel>
 
-        <TabPanel>
+         <TabPanel>
           <h2 className={styles.translationsTitle}>Переводы</h2>
 
           <button
@@ -1885,7 +1885,7 @@ const Admin = () => {
                         </select>
                       </td>
 
-                  <td>
+                      <td>
                         <select
                           value={order.status}
                           onChange={(e) =>
@@ -1907,7 +1907,7 @@ const Admin = () => {
                           )}
                         </select>
                       </td>
-                            
+
                       <td>
                         {order.status === "Waiting for courier" && (
                           <select
