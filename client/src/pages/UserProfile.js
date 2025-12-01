@@ -1,8 +1,9 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, lazy, Suspense } from "react";
 import { Context } from "../index";
 import { fetchUserOrders } from "../http/orderAPI";
 import { updateProfile, fetchProfile } from "../http/userAPI";
 import OrderSidebar from "../components/OrderSidebar";
+import SlideModal from "../components/modals/SlideModal";
 import { Settings, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -11,6 +12,8 @@ import ruFlag from "../assets/flags/ru.png";
 import enFlag from "../assets/flags/en.png";
 import estFlag from "../assets/flags/est.png";
 import styles from "./UserProfile.module.css";
+
+const DevicePageLazy = lazy(() => import("../pages/DevicePage"));
 
 const flags = {
   ru: ruFlag,
@@ -29,8 +32,9 @@ const UserProfile = () => {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [showSettings, setShowSettings] = useState(false);
-   const currentLang = i18n.language;
+  const currentLang = i18n.language;
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
   const handleBack = () => {
     navigate(-1); 
@@ -120,6 +124,20 @@ const UserProfile = () => {
         error.response?.data?.message || t("updateError", { ns: "userProfile" })
       );
     }
+  };
+
+   const handleProductClick = (product) => {
+    if (!product) return;
+
+    const deviceId =
+      product.deviceId || product.device_id || product.id || product.device?.id;
+
+    if (!deviceId) {
+      console.warn("Не удалось определить deviceId для продукта", product);
+      return;
+    }
+
+    setSelectedDeviceId(deviceId);
   };
 
  return (
@@ -215,7 +233,12 @@ const UserProfile = () => {
 
                 {order.orderDetails && order.orderDetails.length > 0 ? (
                   order.orderDetails.map((product, index) => (
-                    <div key={index} className={styles.orderCard}>
+                    <div
+                      key={index}
+                      className={styles.orderCard}
+                      onClick={() => handleProductClick(product)}
+                      style={{ cursor: "pointer" }}
+                    >
                       <img
                         src={product.image || order.deviceImage}
                         alt={product.name || "Товар"}
@@ -266,6 +289,19 @@ const UserProfile = () => {
           )}
         </div>
       </div>
+      {selectedDeviceId && (
+        <SlideModal onClose={() => setSelectedDeviceId(null)}>
+          <Suspense
+            fallback={
+              <div style={{ padding: 16 }}>
+                {t("loading", { ns: "userProfile" }) || "Загрузка..."}
+              </div>
+            }
+          >
+            <DevicePageLazy id={selectedDeviceId} />
+          </Suspense>
+        </SlideModal>
+      )}
     </div>
   );
 };
