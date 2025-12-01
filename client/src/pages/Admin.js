@@ -886,11 +886,12 @@ const Admin = () => {
 
               {outOfOpen && (
                 <div className={styles.itemList}>
-                  {outOfStockDevices.map(({ device, zeros }) => (
+                 {outOfStockDevices.map(({ device, zeros }) => (
                     <div
                       key={device.id}
                       className={styles.item}
-                      style={{ background: "#ffe5e5" }}
+                      style={{ background: "#ffe5e5", cursor: "pointer" }}
+                      onClick={() => setSelectedDeviceId(device.id)}
                     >
                       <div>
                         id-{device.id}
@@ -929,7 +930,7 @@ const Admin = () => {
                           </div>
                         </div>
                       )}
-
+                        
                       <div className={styles.buttons}>
                         <span
                           style={{
