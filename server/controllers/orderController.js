@@ -12,7 +12,9 @@ const {
   sendOrderAssignedPush,
   sendNewOrderPushToWarehouse,
 } = require("../services/pushService");
-const { sendOrderToNextCourier } = require("../services/orderDistributionService");
+const {
+  sendOrderToNextCourier,
+} = require("../services/orderDistributionService");
 const uuid = require("uuid");
 
 const Stripe = require("stripe");
@@ -262,13 +264,11 @@ const createOrder = async (req, res) => {
 
     const userId = req.user ? req.user.id : null;
 
-   const deliveryDateFromFirstItem = orderDetails[0]?.deliveryDate || null;
-    const preferredTimeFromFirstItem = orderDetails[0]?.preferredTime || null;
-    const distance = getDistanceFromWarehouse(latitude, longitude);
+   const distance = getDistanceFromWarehouse(latitude, longitude);
     const deliveryPrice = calculateDeliveryCost(totalPrice, distance);
     const courierFee = calculateDeliveryBase(distance);
 
-    let isPreorder = false;
+       let isPreorder = false;
     const devicesToUpdate = [];
 
     for (const item of orderDetails) {
@@ -278,6 +278,7 @@ const createOrder = async (req, res) => {
           .status(400)
           .json({ message: `Товар "${item.name}" не найден.` });
       }
+
       if (device.quantity < item.count && !item.isPreorder) {
         return res.status(400).json({
           message: `Недостаточно товара: ${item.name}. Осталось ${device.quantity} шт.`,
@@ -285,12 +286,33 @@ const createOrder = async (req, res) => {
       }
 
       if (device.quantity < item.count) isPreorder = true;
+
       if (device.quantity >= item.count)
         devicesToUpdate.push({ device, count: item.count });
     }
 
-    let status = isPreorder || desiredDeliveryDate ? "preorder" : "Pending";
+    const deliveryDateFromFirstItem = orderDetails[0]?.deliveryDate || null;
+    const preferredTimeFromFirstItem = orderDetails[0]?.preferredTime || null;
 
+    const hasShortagePreorder = isPreorder;
+
+    const hasScheduledPreorder =
+      !hasShortagePreorder &&
+      Boolean(deliveryDateFromFirstItem || desiredDeliveryDate);
+
+    let status =
+      hasShortagePreorder || hasScheduledPreorder ? "preorder" : "Pending";
+
+    let desiredDeliveryDateToStore = null;
+    let preferredDeliveryCommentToStore = null;
+
+    if (hasScheduledPreorder) {
+      const rawDate =
+        deliveryDateFromFirstItem || desiredDeliveryDate || null;
+      desiredDeliveryDateToStore = rawDate ? new Date(rawDate) : null;
+      preferredDeliveryCommentToStore = preferredTimeFromFirstItem || null;
+    }
+    
     let deviceImageUrl = orderDetails[0]?.image || PLACEHOLDER_IMG;
 
     if (
@@ -381,10 +403,8 @@ const createOrder = async (req, res) => {
       productName:
         orderDetails.length > 0 ? orderDetails[0].name : "Неизвестный товар",
       orderDetails: JSON.stringify(localizedOrderDetails),
-      desiredDeliveryDate: deliveryDateFromFirstItem
-        ? new Date(deliveryDateFromFirstItem)
-        : null,
-      preferredDeliveryComment: preferredTimeFromFirstItem,
+     desiredDeliveryDate: desiredDeliveryDateToStore,
+      preferredDeliveryComment: preferredDeliveryCommentToStore,
       formData: JSON.stringify(formData),
     };
 
