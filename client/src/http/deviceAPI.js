@@ -223,12 +223,10 @@ export const fetchFilter = async (
   typeId,
   subtypeId,
   brandId,
-  page,
-  limit,
   makeId,
   modelId
 ) => {
-  const raw = { typeId, subtypeId, brandId, page, limit, makeId, modelId };
+  const raw = { typeId, subtypeId, brandId, makeId, modelId };
   const params = Object.fromEntries(
     Object.entries(raw).filter(([, v]) => v !== null && v !== undefined)
   );
@@ -239,8 +237,6 @@ export const fetchFilter = async (
       params.typeId ?? "",
       params.subtypeId ?? "",
       params.brandId ?? "",
-      params.page ?? 1,
-      params.limit ?? 20,
       params.makeId ?? "",
       params.modelId ?? "",
     ].join(":");
