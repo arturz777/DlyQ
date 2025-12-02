@@ -6,6 +6,7 @@ import React, {
   useContext,
   useRef,
   useCallback,
+  useMemo,
 } from "react";
 import { Link } from "react-router-dom";
 import { Context } from "../index";
@@ -44,6 +45,23 @@ const HomePage = () => {
 
   const bottomRef = useRef(null);
 
+  const [feedTypeIndex, setFeedTypeIndex] = useState(0);
+  const [typeCursors, setTypeCursors] = useState({});
+  const [typeHasMore, setTypeHasMore] = useState({});
+
+  const orderedTypeIds = useMemo(() => {
+    const types = Array.isArray(device.types) ? device.types : [];
+    return types
+      .slice()
+      .sort((a, b) => {
+        const ao = Number(a.displayOrder ?? 0);
+        const bo = Number(b.displayOrder ?? 0);
+        return ao === bo ? Number(a.id) - Number(b.id) : ao - bo;
+      })
+      .map((t) => Number(t.id))
+      .filter(Boolean);
+  }, [device.types]);
+
   useEffect(() => {
     device.resetFeed?.();
     device.setSelectedType({});
@@ -51,37 +69,83 @@ const HomePage = () => {
     device.setSelectedBrand({});
     device.setSelectedMake({});
     device.setSelectedModel({});
+    setFeedTypeIndex(0);
+    setTypeCursors({});
+    setTypeHasMore({});
   }, [device]);
 
   const loadMore = useCallback(async () => {
     if (device.loading.devices || !device.hasMore) return;
 
-    device.setLoading("devices", true);
-    try {
-      const data = await fetchCatalogCursor({
-        typeId: undefined,
-        subtypeId: undefined,
-        brandId: undefined,
-        makeId: undefined,
-        modelId: undefined,
-        compatMode: undefined,
-        cursor: device.cursor ?? undefined,
-        sort: device.sort,
-        limit: device.limit,
-        onlyVisible: true,
-        lang: currentLang,
-      });
+    const typeIds = orderedTypeIds.slice();
+    if (!typeIds.length) return;
 
-      device.appendDevices(data.items || []);
-      device.setCursor(data.nextCursor);
-      device.setHasMore(!!data.hasMore);
-    } catch (e) {
-      console.error("cursor load error on HomePage", e);
-      device.setHasMore(false);
-    } finally {
-      device.setLoading("devices", false);
+    let idx = feedTypeIndex;
+
+    while (idx < typeIds.length) {
+      const tid = typeIds[idx];
+
+      if (typeHasMore[tid] === false) {
+        idx++;
+        continue;
+      }
+
+      device.setLoading("devices", true);
+      try {
+        const data = await fetchCatalogCursor({
+          typeId: tid,
+          subtypeId: undefined,
+          brandId: undefined,
+          makeId: undefined,
+          modelId: undefined,
+          compatMode: undefined,
+          cursor: typeCursors[tid] ?? undefined,
+          sort: device.sort,
+          limit: device.limit,
+          onlyVisible: true,
+          lang: currentLang,
+        });
+
+        const items = data.items || [];
+
+        if (!items.length) {
+          setTypeHasMore((prev) => ({ ...prev, [tid]: false }));
+          idx++;
+          continue;
+        }
+
+        device.appendDevices(items);
+
+        setTypeCursors((prev) => ({
+          ...prev,
+          [tid]: data.nextCursor || null,
+        }));
+        setTypeHasMore((prev) => ({
+          ...prev,
+          [tid]: !!data.hasMore,
+        }));
+
+        setFeedTypeIndex(idx);
+
+        return;
+      } catch (e) {
+        console.error("cursor load error on HomePage", e);
+        setTypeHasMore((prev) => ({ ...prev, [tid]: false }));
+        idx++;
+      } finally {
+        device.setLoading("devices", false);
+      }
     }
-  }, [device, currentLang]);
+
+    device.setHasMore(false);
+  }, [
+    device,
+    orderedTypeIds,
+    feedTypeIndex,
+    typeCursors,
+    typeHasMore,
+    currentLang,
+  ]);
 
   useEffect(() => {
     if (
