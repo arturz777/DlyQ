@@ -1,4 +1,11 @@
-import React, { useEffect, useContext, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useContext,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import { useSearchParams } from "react-router-dom";
@@ -40,6 +47,9 @@ const CatalogPage = observer(() => {
   const subtypesReqId = useRef(0);
   const bottomRef = useRef(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [feedTypeIndex, setFeedTypeIndex] = useState(0);
+  const [typeCursors, setTypeCursors] = useState({});
+  const [typeHasMore, setTypeHasMore] = useState({});
 
   const isAutoType =
     !!device.selectedType?.name && /авто/i.test(device.selectedType.name);
@@ -47,7 +57,186 @@ const CatalogPage = observer(() => {
   const getCompatMode = () =>
     device.selectedMake?.id || device.selectedModel?.id ? "strict" : undefined;
 
+  const orderedTypeIds = useMemo(() => {
+    const types = Array.isArray(device.types) ? device.types : [];
+    return types
+      .slice()
+      .sort((a, b) => {
+        const ao = Number(a.displayOrder ?? 0);
+        const bo = Number(b.displayOrder ?? 0);
+        return ao === bo ? Number(a.id) - Number(b.id) : ao - bo;
+      })
+      .map((t) => Number(t.id))
+      .filter(Boolean);
+  }, [device.types]);
+
   const stickyTop = isNavbarVisible ? navbarHeight : 0;
+
+  useEffect(() => {
+    setFeedTypeIndex(0);
+    setTypeCursors({});
+    setTypeHasMore({});
+  }, [
+    device.selectedType?.id,
+    device.selectedSubType?.id,
+    device.selectedBrand?.id,
+    device.selectedMake?.id,
+    device.selectedModel?.id,
+    device.sort,
+    currentLang,
+  ]);
+
+  const loadMore = useCallback(async () => {
+    // Глобальный стоп — если уже всё догрузили или сейчас идёт загрузка
+    if (device.loading.devices || !device.hasMore) return;
+
+    // === РЕЖИМ 1: выбран конкретный тип (как было раньше) ===
+    if (device.selectedType?.id) {
+      device.setLoading("devices", true);
+      try {
+        const compatMode = getCompatMode();
+        const modelId = device.selectedModel?.id ?? undefined;
+        const makeId = modelId
+          ? undefined
+          : device.selectedMake?.id ?? undefined;
+
+        const data = await fetchCatalogCursor({
+          typeId: device.selectedType?.id ?? undefined,
+          subtypeId: device.selectedSubType?.id ?? undefined,
+          brandId: device.selectedBrand?.id ?? undefined,
+          makeId,
+          modelId,
+          compatMode,
+          cursor: device.cursor ?? undefined,
+          sort: device.sort,
+          limit: device.limit,
+          onlyVisible: true,
+          lang: currentLang,
+        });
+
+        device.appendDevices(data.items || []);
+        device.setCursor(data.nextCursor);
+        device.setHasMore(!!data.hasMore);
+      } catch (e) {
+        console.error("cursor load error", e);
+        device.setHasMore(false);
+      } finally {
+        device.setLoading("devices", false);
+      }
+      return;
+    }
+
+    // === РЕЖИМ 2: НЕТ выбранного типа → «все типы по очереди» ===
+    if (!orderedTypeIds.length) {
+      // Типы ещё не загрузились — просто ждём следующего рендера
+      return;
+    }
+
+    const typeIds = orderedTypeIds.slice();
+    let idx = feedTypeIndex;
+
+    while (idx < typeIds.length) {
+      const tid = typeIds[idx];
+
+      // Этот тип уже признан "исчерпанным"
+      if (typeHasMore[tid] === false) {
+        idx++;
+        continue;
+      }
+
+      device.setLoading("devices", true);
+      try {
+        const data = await fetchCatalogCursor({
+          typeId: tid,
+          subtypeId: device.selectedSubType?.id ?? undefined,
+          brandId: device.selectedBrand?.id ?? undefined,
+          // в режиме "все типы" make/model не трогаем
+          makeId: undefined,
+          modelId: undefined,
+          compatMode: undefined,
+          cursor: typeCursors[tid] ?? undefined,
+          sort: device.sort,
+          limit: device.limit,
+          onlyVisible: true,
+          lang: currentLang,
+        });
+
+        const items = data.items || [];
+
+        if (!items.length) {
+          // У этого типа ничего нет (с учётом фильтров) — помечаем и идём к следующему
+          setTypeHasMore((prev) => ({ ...prev, [tid]: false }));
+          idx++;
+          continue;
+        }
+
+        // Добавляем товары этого типа в общий список
+        device.appendDevices(items);
+
+        // Сохраняем курсор и флаг наличия продолжения
+        setTypeCursors((prev) => ({
+          ...prev,
+          [tid]: data.nextCursor || null,
+        }));
+        setTypeHasMore((prev) => ({
+          ...prev,
+          [tid]: !!data.hasMore,
+        }));
+
+        // Запоминаем, что сейчас "кормим" именно этот тип
+        setFeedTypeIndex(idx);
+
+        // Одну порцию загрузили — на этом выходим
+        return;
+      } catch (e) {
+        console.error("cursor per-type load error", e);
+        // Если тип отстрелился с ошибкой — просто считаем его завершённым
+        setTypeHasMore((prev) => ({ ...prev, [tid]: false }));
+        idx++;
+      } finally {
+        device.setLoading("devices", false);
+      }
+    }
+
+    // Если дошли до сюда — все типы закончились
+    device.setHasMore(false);
+  }, [
+    device,
+    currentLang,
+    orderedTypeIds,
+    feedTypeIndex,
+    typeCursors,
+    typeHasMore,
+    getCompatMode,
+  ]);
+
+  useEffect(() => {
+    if (
+      device.devices.length === 0 &&
+      device.hasMore &&
+      !device.loading.devices
+    ) {
+      loadMore();
+    }
+  }, [device.devices.length, device.hasMore, device.loading.devices, loadMore]);
+
+  useEffect(() => {
+    const el = bottomRef.current;
+    if (!el) return;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          loadMore();
+        }
+      },
+      { rootMargin: "600px 0px" }
+    );
+
+    io.observe(el);
+    return () => io.disconnect();
+  }, [bottomRef, loadMore]);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -112,120 +301,6 @@ const CatalogPage = observer(() => {
       device.resetFeed?.();
     };
   }, [device]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      if (!device.hasMore || device.loading.devices) return;
-      device.setLoading("devices", true);
-      try {
-        const compatMode = getCompatMode();
-        const modelId = device.selectedModel?.id ?? undefined;
-        const makeId = modelId
-          ? undefined
-          : device.selectedMake?.id ?? undefined;
-        const data = await fetchCatalogCursor({
-          typeId: device.selectedType?.id ?? undefined,
-          subtypeId: device.selectedSubType?.id ?? undefined,
-          brandId: device.selectedBrand?.id ?? undefined,
-          makeId,
-          modelId,
-          compatMode,
-          cursor: device.cursor ?? undefined,
-          sort: device.sort,
-          limit: device.limit,
-          onlyVisible: true,
-          lang: currentLang,
-        });
-        if (cancelled) return;
-        device.appendDevices(data.items || []);
-        device.setCursor(data.nextCursor);
-        device.setHasMore(!!data.hasMore);
-      } catch (e) {
-        if (!cancelled) console.error("cursor load error", e);
-        device.setHasMore(false);
-      } finally {
-        device.setLoading("devices", false);
-      }
-    };
-    if (device.devices.length === 0) load();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    device.selectedType?.id,
-    device.selectedSubType?.id,
-    device.selectedBrand?.id,
-    device.selectedMake?.id,
-    device.selectedModel?.id,
-    device.sort,
-    currentLang,
-    device,
-  ]);
-
-  useEffect(() => {
-    const el = bottomRef.current;
-    if (!el) return;
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting && device.hasMore && !device.loading.devices) {
-          (async () => {
-            try {
-              device.setLoading("devices", true);
-
-              const compatMode = getCompatMode();
-              const modelId = device.selectedModel?.id ?? undefined;
-              const makeId = modelId
-                ? undefined
-                : device.selectedMake?.id ?? undefined;
-
-              const data = await fetchCatalogCursor({
-                typeId: device.selectedType?.id ?? undefined,
-                subtypeId: device.selectedSubType?.id ?? undefined,
-                brandId: device.selectedBrand?.id ?? undefined,
-                makeId,
-                modelId,
-                compatMode,
-                cursor: device.cursor ?? undefined,
-                sort: device.sort,
-                limit: device.limit,
-                onlyVisible: true,
-                lang: currentLang,
-              });
-
-              device.appendDevices(data.items || []);
-              device.setCursor(data.nextCursor);
-              device.setHasMore(!!data.hasMore);
-            } catch (e) {
-              console.error("cursor load error", e);
-              device.setHasMore(false);
-            } finally {
-              device.setLoading("devices", false);
-            }
-          })();
-        }
-      },
-      { rootMargin: "600px 0px" }
-    );
-
-    io.observe(el);
-    return () => io.disconnect();
-  }, [
-    bottomRef,
-    device.hasMore,
-    device.cursor,
-    device.loading.devices,
-    device.selectedType?.id,
-    device.selectedSubType?.id,
-    device.selectedBrand?.id,
-    device.selectedMake?.id,
-    device.selectedModel?.id,
-    device.sort,
-    currentLang,
-    device,
-  ]);
 
   useEffect(() => {
     let cancelled = false;
