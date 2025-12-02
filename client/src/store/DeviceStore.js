@@ -15,7 +15,7 @@ export default class DeviceStore {
     this._selectedSubType = {};
     this._selectedBrand = {};
 
-    this._limit = 1000;
+    this._limit = 50;
     this._facets = { subtypes: [], brands: [], mmSubtypeIdsAll: [] };
     this._loading = { devices: false, subtypes: false };
     this._cursor = null;
