@@ -492,6 +492,22 @@ const handleSubmit = async (event) => {
       return;
     }
 
+  if (
+      preorder &&
+      !preorder.hasMixedItems &&
+      preorder.hasOnlyStockItems &&
+      preorder.isPreorder
+    ) {
+      if (!preorder.deliveryDate) {
+        toast.error("Укажи желаемые дату и время доставки");
+        return;
+      }
+      if (!preorder.preferredTime || !preorder.preferredTime.trim()) {
+        toast.error("Напиши комментарий по желаемому времени доставки");
+        return;
+      }
+    }
+
     if (!stripe || !elements) {
       toast.error(t("payment initialization error", { ns: "paymentForm" }));
       return;
@@ -840,7 +856,7 @@ return (
               disabled={preorder.disablePreorderCheckbox}
             />
 
-            {preorder.isPreorder && (
+            {preorder.isPreorder && preorder.hasOnlyStockItems && (
               <>
                 <Form.Label>
                   {t("desired delivery datetime", { ns: "basket" })}
