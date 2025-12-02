@@ -1,4 +1,12 @@
-import React, { lazy, Suspense, useEffect, useState, useContext } from "react";
+import React, {
+  lazy,
+  Suspense,
+  useEffect,
+  useState,
+  useContext,
+  useRef,
+  useCallback,
+} from "react";
 import { Link } from "react-router-dom";
 import { Context } from "../index";
 import {
@@ -7,7 +15,7 @@ import {
   fetchRecommendedDevices,
   fetchTypes,
   fetchSubtypes,
-  fetchFilter,
+  fetchCatalogCursor,
 } from "../http/deviceAPI";
 import { useTranslation } from "react-i18next";
 import DeviceItem from "../components/DeviceItem";
@@ -34,26 +42,94 @@ const HomePage = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    device.resetFeed?.();
+    device.setSelectedType({});
+    device.setSelectedSubType({});
+    device.setSelectedBrand({});
+    device.setSelectedMake({});
+    device.setSelectedModel({});
+  }, [device]);
+
+  const loadMore = useCallback(async () => {
+    if (device.loading.devices || !device.hasMore) return;
+
+    device.setLoading("devices", true);
+    try {
+      const data = await fetchCatalogCursor({
+        typeId: undefined,
+        subtypeId: undefined,
+        brandId: undefined,
+        makeId: undefined,
+        modelId: undefined,
+        compatMode: undefined,
+        cursor: device.cursor ?? undefined,
+        sort: device.sort,
+        limit: device.limit,
+        onlyVisible: true,
+        lang: currentLang,
+      });
+
+      device.appendDevices(data.items || []);
+      device.setCursor(data.nextCursor);
+      device.setHasMore(!!data.hasMore);
+    } catch (e) {
+      console.error("cursor load error on HomePage", e);
+      device.setHasMore(false);
+    } finally {
+      device.setLoading("devices", false);
+    }
+  }, [device, currentLang]);
+
+  useEffect(() => {
+    if (
+      device.devices.length === 0 &&
+      device.hasMore &&
+      !device.loading.devices
+    ) {
+      loadMore();
+    }
+  }, [device.devices.length, device.hasMore, device.loading.devices, loadMore]);
+
+  useEffect(() => {
+    const el = bottomRef.current;
+    if (!el) return;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          loadMore();
+        }
+      },
+      { rootMargin: "600px 0px" }
+    );
+
+    io.observe(el);
+    return () => io.disconnect();
+  }, [bottomRef, loadMore]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         setLoading(true);
-        const LIMIT = 1000;
+        const LIMIT = 50;
+
         const [
           newDevicesData,
           discountedData,
           recommendedData,
           typesData,
           subtypesData,
-          catalogData,
         ] = await Promise.all([
           fetchNewDevices(LIMIT),
           fetchDiscountedDevices(LIMIT),
           fetchRecommendedDevices(undefined, LIMIT),
           fetchTypes(),
           fetchSubtypes(),
-          fetchFilter(null, null, null, 1, LIMIT, null, null),
         ]);
         if (cancelled) return;
 
@@ -85,15 +161,6 @@ const HomePage = () => {
             translations: s.translations || {},
           }))
         );
-
-        device.setSelectedType({});
-        device.setSelectedSubType({});
-        device.setSelectedBrand({});
-        device.setSelectedMake({});
-        device.setSelectedModel({});
-        device.setDevices(catalogData.rows || []);
-        device.setTotalCount?.(catalogData.count || 0);
-        device.setFacets?.(catalogData?.facets ?? { subtypes: [], brands: [] });
       } catch (err) {
         console.error("❌ Ошибка при загрузке данных:", err);
       } finally {
@@ -103,7 +170,7 @@ const HomePage = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [device]);
 
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
@@ -137,6 +204,7 @@ const HomePage = () => {
       )}
 
       <div className={styles.banner}>
+        <h1>{t("fast delivery", { ns: "homePage" })}</h1>
         <p>{t("average delivery time: 15–30 minutes", { ns: "homePage" })}</p>
       </div>
 
@@ -266,9 +334,15 @@ const HomePage = () => {
         </div>
       </section>
 
-      <div className={catalogStyles.deviceContainer} id="catalog-devices">
+      <div
+        className={catalogStyles.deviceContainer}
+        id="catalog-devices"
+        style={{ opacity: device.loading.devices ? 0.3 : 1 }}
+      >
         <DeviceList onDeviceClick={(id) => setSelectedDeviceId(id)} />
       </div>
+
+      <div ref={bottomRef} className={catalogStyles.ioSentinel} aria-hidden />
 
       {showScrollTop && (
         <button
