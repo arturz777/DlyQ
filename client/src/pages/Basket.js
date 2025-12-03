@@ -10,6 +10,7 @@ import { Elements } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom";
 import SlideModal from "../components/modals/SlideModal";
 import DevicePage from "../pages/DevicePage";
+import { isShopOpenNow } from "../utils/workHours";
 import { useTranslation } from "react-i18next";
 import styles from "./Basket.module.css";
 
@@ -63,6 +64,7 @@ const Basket = observer(() => {
   const hasMixedItems =
     basket.items.some((item) => item.isPreorder) &&
     basket.items.some((item) => !item.isPreorder);
+  const storeClosed = !isShopOpenNow();
 
   const disablePreorderCheckbox =
     hasOnlyPreorders ||
@@ -136,7 +138,6 @@ const Basket = observer(() => {
   }, [basket.items]);
 
   useEffect(() => {
-    const storeClosed = basket.items.some((item) => item.isStoreClosed);
     const allPreorders = hasOnlyPreorders;
     const anyOutOfStock = basket.items.some((item) => item.stockQuantity === 0);
 
@@ -669,6 +670,7 @@ const Basket = observer(() => {
               setDeliveryDate,
               preferredTime,
               setPreferredTime,
+              isStoreClosed: storeClosed,
             }}
           />
         </Elements>
