@@ -12,6 +12,7 @@ const warehouseRouter = require("./warehouseRouter");
 const translationRoutes = require("./translationRoutes");
 const chatRouter = require("./chatRouter");
 const configRouter = require('./configRouter');
+const shopRouter = require('./shopRouter');
 
 router.use('/user', userRouter)
 router.use('/type', typeRouter)
@@ -25,5 +26,6 @@ router.use("/warehouse", warehouseRouter);
 router.use("/translations", translationRoutes);
 router.use("/chat", chatRouter);
 router.use('/config', configRouter);
+router.use("/shop", shopRouter);
 
 module.exports = router
