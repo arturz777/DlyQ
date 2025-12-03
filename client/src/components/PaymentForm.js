@@ -856,10 +856,10 @@ return (
           <Form.Group className={styles.preorderSection}>
             {(isPreorder || hasOnlyPreorders) && (
               <div className={styles.preorderNote}>
-                {isStoreClosed
-                  ? t("preorder note out of stock", { ns: "paymentForm" })
-                  : hasOnlyPreorders
+               {isStoreClosed
                   ? t("preorder note store closed", { ns: "paymentForm" })
+                  : hasOnlyPreorders
+                  ? t("preorder note out of stock", { ns: "paymentForm" })
                   : t("preorder note scheduled", { ns: "paymentForm" })}
               </div>
             )}
