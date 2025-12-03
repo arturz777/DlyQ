@@ -82,5 +82,8 @@
   "discount": "Скидка",
   "total": "Итого",
   "estimated delivery time": "Ориентировочное время доставки",
-  "estimated preparation time": "Ожидаемое время подготовки"
+  "estimated preparation time": "Ожидаемое время подготовки",
+	"preorder note scheduled": "Это предзаказ: мы привезём заказ в выбранное вами время.",
+	"preorder note out of stock": "Это предзаказ: сейчас товара нет на складе, мы сообщим, когда он будет готов к доставке.",
+	"preorder note store closed": "Это предзаказ: магазин закрыт, мы привезём заказ в выбранное вами время."
 }
