@@ -10,7 +10,6 @@ import { Elements } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom";
 import SlideModal from "../components/modals/SlideModal";
 import DevicePage from "../pages/DevicePage";
-import { isShopOpenNow } from "../utils/workHours";
 import { useTranslation } from "react-i18next";
 import styles from "./Basket.module.css";
 
@@ -53,6 +52,7 @@ const Basket = observer(() => {
   const [availableQuantities, setAvailableQuantities] = useState({});
   const [deliveryDate, setDeliveryDate] = useState("");
   const [isPreorder, setIsPreorder] = useState(false);
+   const [storeClosed, setStoreClosed] = useState(false);
   const [preferredTime, setPreferredTime] = useState("");
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const { t, i18n } = useTranslation();
@@ -64,11 +64,11 @@ const Basket = observer(() => {
   const hasMixedItems =
     basket.items.some((item) => item.isPreorder) &&
     basket.items.some((item) => !item.isPreorder);
-  const storeClosed = !isShopOpenNow();
 
   const disablePreorderCheckbox =
-    hasOnlyPreorders ||
-    basket.items.some((item) => item.stockQuantity === 0 || item.isStoreClosed);
+  hasOnlyPreorders ||
+  storeClosed ||
+  basket.items.some((item) => item.stockQuantity === 0 || item.isStoreClosed);
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
     try {
@@ -94,6 +94,29 @@ const Basket = observer(() => {
       return false;
     }
   };
+
+   useEffect(() => {
+  let cancelled = false;
+
+  fetch(`${process.env.REACT_APP_API_URL}/shop/status`)
+    .then((res) => res.json())
+    .then((data) => {
+      if (!cancelled) {
+        setStoreClosed(
+          typeof data.isStoreClosed === "boolean"
+            ? data.isStoreClosed
+            : !data.isOpen
+        );
+      }
+    })
+    .catch((err) =>
+      console.error("Ошибка получения статуса магазина (Basket):", err)
+    );
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   useEffect(() => {
     const fetchQuantities = async () => {
@@ -148,7 +171,7 @@ const Basket = observer(() => {
     ) {
       setIsPreorder(true);
     }
-  }, [basket.items, hasOnlyPreorders, hasMixedItems, isPreorder]);
+  }, [basket.items, hasOnlyPreorders, hasMixedItems, isPreorder, storeClosed]);
 
   const handleIncrement = async (uniqueKey) => {
     const item = basket.items.find((i) => i.uniqueKey === uniqueKey);
