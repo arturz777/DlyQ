@@ -107,6 +107,19 @@ const PaymentForm = ({
 }) => {
  const { user } = useContext(Context);
   const [loading, setLoading] = useState(false);
+  const {
+    isPreorder,
+    setIsPreorder,
+    hasOnlyPreorders,
+    hasOnlyStockItems,
+    hasMixedItems,
+    disablePreorderCheckbox,
+    deliveryDate,
+    setDeliveryDate,
+    preferredTime,
+    setPreferredTime,
+    isStoreClosed,
+  } = preorder || {};
   const stripe = useStripe();
   const elements = useElements();
    const confirm = useConfirm();
@@ -837,13 +850,17 @@ return (
         </Col>
       </Row>
 
-      {preorder &&
-        (preorder.hasOnlyStockItems || preorder.hasOnlyPreorders) &&
-        !preorder.hasMixedItems && (
+     {preorder &&
+        (hasOnlyStockItems || hasOnlyPreorders) &&
+        !hasMixedItems && (
           <Form.Group className={styles.preorderSection}>
-            {(preorder.isPreorder || preorder.hasOnlyPreorders) && (
+            {(isPreorder || hasOnlyPreorders) && (
               <div className={styles.preorderNote}>
-                {t("order processed as preorder", { ns: "basket" })}
+                {isStoreClosed
+                  ? t("preorder note out of stock", { ns: "paymentForm" })
+                  : hasOnlyPreorders
+                  ? t("preorder note store closed", { ns: "paymentForm" })
+                  : t("preorder note scheduled", { ns: "paymentForm" })}
               </div>
             )}
 
