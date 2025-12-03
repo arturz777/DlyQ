@@ -7,7 +7,6 @@ import { Context } from "../index";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { isShopOpenNow } from "../utils/workHours";
 import appStore from "../store/appStore";
 import styles from "./DevicePage.module.css";
 
@@ -46,10 +45,10 @@ const DevicePage = ({ id }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [availableQuantity, setAvailableQuantity] = useState(0);
   const [isPreorder, setIsPreorder] = useState(false);
+  const [isStoreClosed, setIsStoreClosed] = useState(false);
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
   const deviceName = device.translations?.name?.[currentLang] || device.name;
-  const isStoreClosed = !isShopOpenNow();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [[page, direction], setPage] = useState([0, 0]);
   const imageIndex = activeIndex;
@@ -92,6 +91,29 @@ const DevicePage = ({ id }) => {
       return false;
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(`${process.env.REACT_APP_API_URL}/shop/status`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) {
+          setIsStoreClosed(
+            typeof data.isStoreClosed === "boolean"
+              ? data.isStoreClosed
+              : !data.isOpen
+          );
+        }
+      })
+      .catch((err) =>
+        console.error("Ошибка получения статуса магазина (DevicePage):", err)
+      );
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -329,7 +351,7 @@ const DevicePage = ({ id }) => {
   };
 
   const handleAddToBasket = async () => {
-    if (!isShopOpenNow() && !isPreorder) {
+    if (isStoreClosed && !isPreorder) {
       toast.error(
         t("the shop is closed. Click again to add to the cart", {
           ns: "deviceItem",
@@ -409,7 +431,7 @@ const DevicePage = ({ id }) => {
       ...device,
       selectedOptions,
       variantKey,
-      isPreorder: isThisPreorder,
+      isPreorder: isThisPreorder || isStoreClosed,
       stockQuantity:
         selectedVariant && (device.variants?.length || 0) > 0
           ? Number(selectedVariant.quantity) || 0
@@ -866,13 +888,13 @@ const DevicePage = ({ id }) => {
           onClick={handleAddToBasket}
           disabled={needToSelectAllOptions}
         >
-            <span className={styles.AddText}>
-      {needToSelectAllOptions
-        ? t("select a variant", { ns: "devicePage" })
-        : availableQuantity <= 0
-        ? t("out_of_stock", { ns: "devicePage" })
-        : t("add_to_cart", { ns: "devicePage" })}
-    </span>
+          <span className={styles.AddText}>
+            {needToSelectAllOptions
+              ? t("select a variant", { ns: "devicePage" })
+              : availableQuantity <= 0
+              ? t("out_of_stock", { ns: "devicePage" })
+              : t("add_to_cart", { ns: "devicePage" })}
+          </span>
           <span className={styles.AddPrice}>
             {showOld ? (
               <>
