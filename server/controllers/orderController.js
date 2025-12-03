@@ -268,6 +268,7 @@ const createOrder = async (req, res) => {
 const distance = getDistanceFromWarehouse(latitude, longitude);
     const deliveryPrice = calculateDeliveryCost(totalPrice, distance);
     const courierFee = calculateDeliveryBase(distance);
+    const isStoreClosedNow = !isShopOpenNow();
 
        let isPreorder = false;
     const devicesToUpdate = [];
