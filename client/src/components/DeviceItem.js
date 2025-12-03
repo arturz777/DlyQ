@@ -6,7 +6,6 @@ import { Context } from "../index";
 import { fetchOneDeviceCached } from "../http/deviceAPI";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
-import { isShopOpenNow } from "../utils/workHours";
 import styles from "./DeviceItem.module.css";
 
 const DeviceItem = ({ device, onClick }) => {
@@ -14,12 +13,13 @@ const DeviceItem = ({ device, onClick }) => {
   const navigate = useNavigate();
   const [availableQuantity, setAvailableQuantity] = useState(device.quantity);
   const [isPreorder, setIsPreorder] = useState(false);
+  const [isStoreClosed, setIsStoreClosed] = useState(false);
   const { t, i18n } = useTranslation();
   const cardRef = useRef(null);
   const prefetchedRef = useRef(false);
   const currentLang = i18n.language || "en";
   const deviceName = device.translations?.name?.[currentLang] || device.name;
-
+  
   const parseMaybeJSON = (v) => {
     if (typeof v === "string") {
       try {
@@ -46,6 +46,29 @@ const DeviceItem = ({ device, onClick }) => {
     prefetchedRef.current = true;
     fetchOneDeviceCached(device.id).catch(() => {});
   };
+
+  useEffect(() => {
+  let cancelled = false;
+
+  fetch(`${process.env.REACT_APP_API_URL}/shop/status`)
+    .then((res) => res.json())
+    .then((data) => {
+      if (!cancelled) {
+        setIsStoreClosed(
+          typeof data.isStoreClosed === "boolean"
+            ? data.isStoreClosed
+            : !data.isOpen
+        );
+      }
+    })
+    .catch((err) => {
+      console.error("Ошибка получения статуса магазина:", err);
+    });
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   useEffect(() => {
     if (!("IntersectionObserver" in window)) return;
@@ -113,7 +136,7 @@ const DeviceItem = ({ device, onClick }) => {
       return;
     }
 
-    if (!isShopOpenNow() && !isPreorder) {
+     if (isStoreClosed && !isPreorder) {
       toast.error(
         t("the shop is closed. Click again to add to the cart", {
           ns: "deviceItem",
@@ -161,8 +184,9 @@ const DeviceItem = ({ device, onClick }) => {
     basket.addItem({
       ...device,
       selectedOptions: {},
-      isPreorder: isThisPreorder || !isShopOpenNow(),
+      isPreorder: isThisPreorder || isStoreClosed,
       stockQuantity: Math.max(0, device.quantity - totalInBasket),
+      isStoreClosed,
     });
 
     toast.success(
