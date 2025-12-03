@@ -6,6 +6,7 @@ const os = require("os");
 const path = require("path");
 const { t } = require("../utils/translations");
 const getDistanceFromWarehouse = require("../utils/distance");
+const { isShopOpenNow } = require("../utils/shopSchedule");
 const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");  // Proda (PDFShift)
 const { supabase } = require("../config/supabaseClient");
 const {
@@ -303,12 +304,22 @@ const distance = getDistanceFromWarehouse(latitude, longitude);
     let status =
       hasShortagePreorder || hasScheduledPreorder ? "preorder" : "Pending";
 
+     let preorderReason = null;
+    if (status === "preorder") {
+      if (hasShortagePreorder) {
+        preorderReason = "out_of_stock";
+      } else if (isStoreClosedNow) {
+        preorderReason = "store_closed";
+      } else {
+        preorderReason = "scheduled";
+      }
+    }
+
     let desiredDeliveryDateToStore = null;
     let preferredDeliveryCommentToStore = null;
 
-    if (hasScheduledPreorder) {
-      const rawDate =
-        deliveryDateFromFirstItem || desiredDeliveryDate || null;
+   if (hasScheduledPreorder) {
+      const rawDate = deliveryDateFromFirstItem || desiredDeliveryDate || null;
       desiredDeliveryDateToStore = rawDate ? new Date(rawDate) : null;
       preferredDeliveryCommentToStore = preferredTimeFromFirstItem || null;
     }
@@ -406,6 +417,7 @@ const distance = getDistanceFromWarehouse(latitude, longitude);
       desiredDeliveryDate: desiredDeliveryDateToStore,
       preferredDeliveryComment: preferredDeliveryCommentToStore,
       formData: JSON.stringify(formData),
+      preorderReason,
     };
 
     if (Order.rawAttributes?.paymentIntentId) orderData.paymentIntentId = pi.id;
