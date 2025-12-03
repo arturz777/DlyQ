@@ -10,6 +10,7 @@ import { Elements } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom";
 import SlideModal from "../components/modals/SlideModal";
 import DevicePage from "../pages/DevicePage";
+import { isShopOpenNow } from "../utils/workHours";
 import { useTranslation } from "react-i18next";
 import styles from "./Basket.module.css";
 
@@ -669,6 +670,7 @@ const Basket = observer(() => {
               setDeliveryDate,
               preferredTime,
               setPreferredTime,
+              isStoreClosed: storeClosed,
             }}
           />
         </Elements>
