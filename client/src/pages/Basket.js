@@ -64,6 +64,7 @@ const Basket = observer(() => {
   const hasMixedItems =
     basket.items.some((item) => item.isPreorder) &&
     basket.items.some((item) => !item.isPreorder);
+  const storeClosed = !isShopOpenNow();
 
   const disablePreorderCheckbox =
     hasOnlyPreorders ||
@@ -137,7 +138,6 @@ const Basket = observer(() => {
   }, [basket.items]);
 
   useEffect(() => {
-    const storeClosed = basket.items.some((item) => item.isStoreClosed);
     const allPreorders = hasOnlyPreorders;
     const anyOutOfStock = basket.items.some((item) => item.stockQuantity === 0);
 
