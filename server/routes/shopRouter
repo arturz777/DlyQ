@@ -1,0 +1,19 @@
+const Router = require("express");
+const router = new Router();
+const {
+  isShopOpenNow,
+  WORK_HOURS,
+  isShopForcedClosed,
+} = require("../utils/shopSchedule");
+
+router.get("/status", (req, res) => {
+  const isOpen = isShopOpenNow();
+  res.json({
+    isOpen,
+    isStoreClosed: !isOpen,
+    workHours: WORK_HOURS,
+    forceClosed: isShopForcedClosed(),
+  });
+});
+
+module.exports = router;
