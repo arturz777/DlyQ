@@ -68,7 +68,9 @@ class WarehouseController {
 
       const orders = await Order.findAll({
         where: {
-          warehouseStatus: { [Op.not]: "ready" },
+          warehouseStatus: {
+            [Op.in]: ["pending", "processing"],
+          },
           [Op.or]: [{ warehouseId: warehouse.id }, { warehouseId: null }],
         },
         order: [["createdAt", "DESC"]],
