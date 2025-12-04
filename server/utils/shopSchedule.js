@@ -1,5 +1,5 @@
 const WORK_HOURS = {
-  weekdays: { start: 15, end: 20 },
+  weekdays: { start: 13, end: 20 },
   saturday: { start: 10, end: 22 },
   sunday: { start: 10, end: 22 },
 };
