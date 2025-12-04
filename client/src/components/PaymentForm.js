@@ -512,11 +512,7 @@ const handleSubmit = async (event) => {
       preorder.isPreorder
     ) {
       if (!preorder.deliveryDate) {
-        toast.error("Укажи желаемые дату и время доставки");
-        return;
-      }
-      if (!preorder.preferredTime || !preorder.preferredTime.trim()) {
-        toast.error("Напиши комментарий по желаемому времени доставки");
+        toast.error(t("specify the desired delivery date and time", { ns: "paymentForm" }));
         return;
       }
     }
@@ -883,7 +879,6 @@ return (
                   value={preorder.deliveryDate || ""}
                   onChange={(e) => preorder.setDeliveryDate(e.target.value)}
                   className={styles.dateInput}
-                  required
                 />
                 <Form.Label>
                   {t("preferred delivery time comment", { ns: "basket" })}
@@ -894,7 +889,6 @@ return (
                   value={preorder.preferredTime}
                   onChange={(e) => preorder.setPreferredTime(e.target.value)}
                   className={styles.commentInput}
-                  required
                 />
               </>
             )}
