@@ -505,14 +505,16 @@ const handleSubmit = async (event) => {
       return;
     }
 
-  if (
+if (
       preorder &&
       !preorder.hasMixedItems &&
       preorder.hasOnlyStockItems &&
       preorder.isPreorder
     ) {
-    if (!preorder.deliveryDate) {
-        toast.error(t("specify the desired delivery date and time", { ns: "paymentForm" }));
+      if (!preorder.deliveryDate) {
+        toast.error(
+          t("specify the desired delivery date and time", { ns: "paymentForm" })
+        );
         return;
       }
     }
