@@ -58,13 +58,15 @@ class WarehouseController {
 
       let warehouse = await Warehouse.findByPk(userId);
 
-      if (!warehouse) {
-        warehouse = await Warehouse.create({
-          id: userId,
-          name: buildWarehouseName(req.user),
-          status: "active",
-        });
-      }
+     const orders = await Order.findAll({
+        where: {
+          warehouseStatus: {
+            [Op.in]: ["pending", "processing"],
+          },
+          [Op.or]: [{ warehouseId: warehouse.id }, { warehouseId: null }],
+        },
+        order: [["createdAt", "DESC"]],
+      });
 
       const orders = await Order.findAll({
         where: {
