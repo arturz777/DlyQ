@@ -85,5 +85,6 @@
 	 "payment initialization error": "Error initializing payment system. Please try again later.",
 	"preorder note scheduled": "This is a pre-order: we will deliver your order at the time you selected.",
 	"preorder note out of stock": "This is a pre-order: the item is currently out of stock, we will notify you when it is ready for delivery.",
-	"preorder note store closed": "This is a pre-order: the store is currently closed, we will deliver your order at the time you selected."
+	"preorder note store closed": "This is a pre-order: the store is currently closed, we will deliver your order at the time you selected.",
+	"specify the desired delivery date and time": "Specify the desired delivery date and time"
 }
