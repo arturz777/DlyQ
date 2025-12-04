@@ -303,7 +303,9 @@ const createOrder = async (req, res) => {
       Boolean(deliveryDateFromFirstItem || desiredDeliveryDate);
 
     let status =
-      hasShortagePreorder || hasScheduledPreorder ? "preorder" : "Pending";
+  hasShortagePreorder || hasScheduledPreorder || isStoreClosedNow
+    ? "preorder"
+    : "Pending";
 
     let preorderReason = null;
     if (status === "preorder") {
