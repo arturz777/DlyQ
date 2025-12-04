@@ -253,7 +253,7 @@ export const fetchFilter = async (
         data ?? { rows: [], count: 0, facets: { subtypes: [], brands: [] } }
       );
     },
-    { ttlMs: 2 * 60 * 1000 }
+    { ttlMs: 5 * 1000 }
   );
 };
 
