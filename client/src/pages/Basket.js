@@ -232,19 +232,6 @@ const Basket = observer(() => {
         )
     );
 
-     const needDeliveryTime = isPreorder && hasOnlyStockItems && !hasMixedItems;
-
-    if (needDeliveryTime) {
-      if (!deliveryDate) {
-        toast.error(t("please fill in all delivery fields", { ns: "basket" }));
-        return;
-      }
-      if (!preferredTime || !preferredTime.trim()) {
-        toast.error(t("please fill in all delivery fields", { ns: "basket" }));
-        return;
-      }
-    }
-
     if (hasUnselectedOptions) {
       toast.error(t("select an option before payment", { ns: "basket" }));
       return;
