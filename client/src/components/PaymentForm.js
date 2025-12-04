@@ -512,7 +512,9 @@ const handleSubmit = async (event) => {
       preorder.isPreorder
     ) {
       if (!preorder.deliveryDate) {
-        toast.error(t("specify the desired delivery date and time", { ns: "paymentForm" }));
+        toast.error(
+          t("specify the desired delivery date and time", { ns: "paymentForm" })
+        );
         return;
       }
     }
