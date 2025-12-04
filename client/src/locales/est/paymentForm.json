@@ -12,9 +12,9 @@
 	"location not found": "Asukohta ei leitud",
 	"geolocation error": "Geolokatsiooni viga",
 	"payment method": "Makseviis",
-  "add card": "Lisa kaart",
-  "use new card": "Kasuta uut kaarti",
-  "change": "Muuda",
+	"add card": "Lisa kaart",
+	"use new card": "Kasuta uut kaarti",
+	"change": "Muuda",
 	"error fetching route": "Marsruudi hankimisel ilmnes viga",
 	"delivery cost updated": "Tarnekulu uuendatud",
 	"first name": "Eesnimi",
@@ -31,7 +31,7 @@
 	"enter floor": "Sisestage korrus",
 	"entrance": "Trepikoda",
 	"enter entrance": "Sisestage trepikoda",
-	"apartment": "Korteri number",
+	"apartment": "Korter/maja nr",
 	"enter apartment number": "Sisestage korteri number",
 	"comment": "Kommentaar",
 	"add comment": "Lisa kommentaar",
@@ -82,5 +82,9 @@
 	"discount": "Allahindlus",
 	"total": "Kokku",
 	"estimated delivery time": "Eeldatav tarneaeg",
-	"estimated preparation time": "Eeldatav valmistamisaeg"
+	"estimated preparation time": "Eeldatav valmistamisaeg",
+	"preorder note scheduled": "See on eeltellimus: toimetame tellimuse kohale teie valitud ajal.",
+	"preorder note out of stock": "See on eeltellimus: toodet ei ole hetkel laos, anname teada, kui see on tarnimiseks valmis.",
+	"preorder note store closed": "See on eeltellimus: pood on hetkel suletud, toimetame tellimuse kohale teie valitud ajal.",
+	"specify the desired delivery date and time": "Vali soovitud tarnekuupäev ja aeg"
 }
