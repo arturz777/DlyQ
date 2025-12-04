@@ -6,10 +6,16 @@ const WORK_HOURS = {
 
 let forceClosed = false;
 
+function getTallinnNow() {
+  const now = new Date();
+  const talStr = now.toLocaleString("en-US", { timeZone: "Europe/Tallinn" });
+  return new Date(talStr);
+}
+
 function isShopOpenNow() {
   if (forceClosed) return false;
 
-  const now = new Date();
+  const now = getTallinnNow();
   const hours = now.getHours();
   const day = now.getDay();
 
