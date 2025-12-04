@@ -800,50 +800,56 @@ return (
           </MapContainer>
         </div>
 
-        <Col md={6} className="mb-2">
-          <Form.Group controlId="apartment">
+      <div className={styles.flatRow}>
+          <Form.Group controlId="apartment" className={styles.flatGroup}>
             <Form.Control
+              size="sm"
               type="text"
               name="apartment"
-              placeholder={t("enter apartment number", { ns: "paymentForm" })}
+              className={styles.flatInput}
+              placeholder={t("apartment", { ns: "paymentForm" })}
               value={formData.apartment}
               onChange={handleChange}
             />
           </Form.Group>
-        </Col>
 
-        <Col md={6} className="mb-2">
-          <Form.Control
-            type="text"
-            name="floor"
-            placeholder={t("enter floor", { ns: "paymentForm" })}
-            value={formData.floor}
-            onChange={handleChange}
-          />
-        </Col>
+          <Form.Group controlId="floor" className={styles.flatGroup}>
+            <Form.Control
+              size="sm"
+              type="text"
+              name="floor"
+              className={styles.flatInput}
+              placeholder={t("floor", { ns: "paymentForm" })}
+              value={formData.floor}
+              onChange={handleChange}
+            />
+          </Form.Group>
 
-        <Col md={6} className="mb-2">
-          <Form.Control
-            type="text"
-            name="entrance"
-            placeholder={t("enter entrance", { ns: "paymentForm" })}
-            value={formData.entrance}
-            onChange={handleChange}
-          />
-        </Col>
+          <Form.Group controlId="entrance" className={styles.flatGroup}>
+            <Form.Control
+              size="sm"
+              type="text"
+              name="entrance"
+              className={styles.flatInput}
+              placeholder={t("entrance", { ns: "paymentForm" })}
+              value={formData.entrance}
+              onChange={handleChange}
+            />
+          </Form.Group>
+        </div>
 
-        <Col md={6}>
+        <div className="mb-2">
           <Form.Group controlId="comment">
             <Form.Control
               as="textarea"
-              rows={1}
+              rows={2}
               name="comment"
-              placeholder={t("add comment", { ns: "paymentForm" })}
+              placeholder={t("comment", { ns: "paymentForm" })}
               value={formData.comment}
               onChange={handleChange}
             />
           </Form.Group>
-        </Col>
+        </div>
       </Row>
 
      {preorder &&
