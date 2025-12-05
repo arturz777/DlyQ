@@ -131,6 +131,18 @@ const DeviceItem = ({ device, onClick }) => {
   const handleAddToBasket = async (e) => {
     e.stopPropagation();
 
+     let full = device;
+    try {
+      const fetched = await fetchOneDeviceCached(device.id);
+      if (fetched) full = fetched;
+    } catch {}
+
+    const optionsArr = parseMaybeJSON(full.options) || [];
+    const variantsArr = parseMaybeJSON(full.variants) || [];
+
+    const hasOptions = Array.isArray(optionsArr) && optionsArr.length > 0;
+    const hasVariants = Array.isArray(variantsArr) && variantsArr.length > 0;
+
     if (hasOptions || hasVariants) {
       goToDevicePage();
       return;
