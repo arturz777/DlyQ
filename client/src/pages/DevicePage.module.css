@@ -553,6 +553,26 @@
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
 }
 
+.DevicePageAddButtonCompact:disabled {
+  background: #ccc;
+  color: #777;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+  opacity: 1;
+}
+
+.DevicePageAddButtonCompact:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.DevicePageAddButtonCompact:disabled .AddText,
+.DevicePageAddButtonCompact:disabled .AddPrice,
+.DevicePageAddButtonCompact:disabled .Strike {
+  color: #777;
+}
+
 .DevicePageSelectedOptions {
   width: 100%;
   font-size: 14px;
