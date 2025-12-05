@@ -126,6 +126,7 @@ const PaymentForm = ({
   const [deliveryCost, setDeliveryCost] = useState(0);
   const { t } = useTranslation("paymentForm");
   const [suggestions, setSuggestions] = useState([]);
+  const [addressFocused, setAddressFocused] = useState(false);
   const [addrFetchTimer, setAddrFetchTimer] = useState(null);
   const [hydrated, setHydrated] = useState(false);
   const [savedCards, setSavedCards] = useState([]);
@@ -162,19 +163,24 @@ const [deletingId, setDeletingId] = useState(null);
     longitude: 24.753,
   });
 
-  useEffect(() => {
+ useEffect(() => {
+    if (!addressFocused) {
+      setSuggestions([]);
+      return;
+    }
+
     const q = (formData.address || "").trim();
     if (q.length < 3) {
       setSuggestions([]);
       return;
     }
 
-      const timer = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const res = await fetch(
           `${
             process.env.REACT_APP_API_URL
-          }/geo/search?q=${encodeURIComponent(q)}`
+          }api/geo/search?q=${encodeURIComponent(q)}`
         );
         const data = await res.json();
         setSuggestions(Array.isArray(data) ? data.slice(0, 5) : []);
@@ -183,8 +189,8 @@ const [deletingId, setDeletingId] = useState(null);
       }
     }, 250);
 
-      return () => clearTimeout(timer);
-  }, [formData.address]);
+    return () => clearTimeout(timer);
+  }, [formData.address, addressFocused]);
 
   useEffect(() => {
     const loadSaved = async () => {
@@ -702,7 +708,7 @@ return (
         </>
       )}
 
-      <Row className="mb-1">
+     <Row className="mb-1">
         <Form.Group className="mb-1" controlId="address">
           <div className="d-flex position-relative">
             <Form.Control
@@ -711,7 +717,10 @@ return (
               value={formData.address}
               onChange={handleChange}
               placeholder={t("enter address", { ns: "paymentForm" })}
-              onFocus={(e) => e.target.select()}
+              onFocus={(e) => {
+                setAddressFocused(true);
+                e.target.select();
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -719,9 +728,15 @@ return (
                 }
                 if (e.key === "Escape") {
                   setSuggestions([]);
+                  setAddressFocused(false);
                 }
               }}
-              onBlur={() => setTimeout(() => setSuggestions([]), 100)}
+              onBlur={() =>
+                setTimeout(() => {
+                  setSuggestions([]);
+                  setAddressFocused(false);
+                }, 120)
+              }
               autoComplete="off"
             />
 
@@ -734,7 +749,7 @@ return (
               🔍
             </Button>
 
-            {suggestions.length > 0 && (
+            {addressFocused && suggestions.length > 0 && (
               <div
                 style={{
                   position: "absolute",
