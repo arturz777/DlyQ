@@ -20,7 +20,7 @@
 }
 
 .firstCard {
-  margin-top: 70px;
+  margin-top: 10px;
 }
 .otherCards {
   margin-top: 10px;
@@ -31,6 +31,16 @@
   flex-direction: column;
   gap: 8px;
 }
+
+.sectionTitle {
+  text-align: center;
+  margin: 12px 0 6px;
+}
+
+.itemCheckbox {
+  margin-right: 10px;
+}
+
 .topRow {
   display: flex;
   gap: 10px;
@@ -58,6 +68,44 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.selectAllCheckbox {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.sectionBlock {
+  margin: 24px 0 10px;
+}
+
+.sectionTitleCenter {
+  text-align: center;
+  margin: 0 0 10px 0;
+}
+
+.sectionSubCenter {
+  text-align: center;
+  margin: 0 0 15px 0;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.sectionSelectRow {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 8px;
+}
+
+.sectionSelectAll {
+  margin: 0;
 }
 
 .optionRow {
