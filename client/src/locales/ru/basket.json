@@ -25,5 +25,10 @@
 	  "order processed as preorder": "Заказ оформляется как предзаказ",
   "all items processed as preorder": "Все позиции будут оформлены как предзаказ",
   "store closed preorder banner": "Магазин временно закрыт — все заказы оформляются как предзаказ",
-  "preorder badge": "Предзаказ"
+  "cart": "Корзина",
+  "out of stock items": "Товары нет в наличии",
+  "out-of-stock items must be paid for separately": "Товары, которых нет в наличии, оплачиваются отдельно от товаров, которые есть в наличии.",
+  "unit_pcs_short": "шт.",
+  "only_x_in_stock_reduce_qty": "В наличии только {{qtyText}} Если хотите оплатить как товар в наличии — уменьшите количество.",
+  "select all": "Выбрать все"
 }
