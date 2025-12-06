@@ -52,10 +52,44 @@ const Basket = observer(() => {
   const [availableQuantities, setAvailableQuantities] = useState({});
   const [deliveryDate, setDeliveryDate] = useState("");
   const [isPreorder, setIsPreorder] = useState(false);
-   const [storeClosed, setStoreClosed] = useState(false);
+  const [storeClosed, setStoreClosed] = useState(false);
   const [preferredTime, setPreferredTime] = useState("");
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const { t, i18n } = useTranslation();
+
+  const selectedItems = basket.selectedItems || [];
+  const selectedTotal = basket.getSelectedTotalPrice
+    ? basket.getSelectedTotalPrice()
+    : 0;
+
+  const getItemStockQty = (item) => {
+    const raw = item.stockQuantity ?? item.quantity ?? 0;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const isOOS = (item) => {
+    const qty = getItemStockQty(item);
+    const count = Number(item.count || 1);
+    return qty <= 0 || qty < count;
+  };
+
+  const isOutOfStockItem = isOOS;
+
+  const stockItems = basket.items.filter((i) => !isOutOfStockItem(i));
+  const preorderItems = basket.items.filter((i) => isOutOfStockItem(i));
+
+  const hasSelectedStock = selectedItems.some((i) => !isOOS(i));
+  const hasSelectedOOS = selectedItems.some((i) => isOOS(i));
+
+  const selectedHasOnlyPreorders =
+    selectedItems.length > 0 && selectedItems.every((i) => isOOS(i));
+
+  const selectedHasOnlyStockItems =
+    selectedItems.length > 0 && selectedItems.every((i) => !isOOS(i));
+
+  const selectedHasMixedItems =
+    selectedItems.some((i) => isOOS(i)) && selectedItems.some((i) => !isOOS(i));
 
   const hasOnlyPreorders =
     basket.items.length > 0 && basket.items.every((item) => item.isPreorder);
@@ -66,11 +100,11 @@ const Basket = observer(() => {
     basket.items.some((item) => !item.isPreorder);
 
   const disablePreorderCheckbox =
-  hasOnlyPreorders ||
-  storeClosed ||
-  basket.items.some((item) => item.stockQuantity === 0 || item.isStoreClosed);
+    selectedHasOnlyPreorders ||
+    storeClosed ||
+    selectedItems.some((item) => isOOS(item) || item.isStoreClosed);
 
-  const checkStock = async (deviceId, quantity, selectedOptions) => {
+  const fetchStockInfo = async (deviceId, quantity, selectedOptions) => {
     try {
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/device/check-stock`,
@@ -82,41 +116,45 @@ const Basket = observer(() => {
       );
 
       const data = await response.json();
-
-      if (data.status === "error") return false;
-
-      if (typeof data.isEnough === "boolean") {
-        return data.isEnough;
+      if (data.status === "error") {
+        return { isEnough: false, quantity: 0 };
       }
-      return Number(data.quantity || 0) >= Number(quantity || 0);
+
+      const qty = Number(data.quantity ?? 0);
+      const isEnough =
+        typeof data.isEnough === "boolean"
+          ? data.isEnough
+          : qty >= Number(quantity || 0);
+
+      return { isEnough, quantity: qty };
     } catch (e) {
       console.error("Ошибка при проверке наличия товара:", e);
-      return false;
+      return { isEnough: false, quantity: 0 };
     }
   };
 
-   useEffect(() => {
-  let cancelled = false;
+  useEffect(() => {
+    let cancelled = false;
 
-  fetch(`${process.env.REACT_APP_API_URL}/shop/status`)
-    .then((res) => res.json())
-    .then((data) => {
-      if (!cancelled) {
-        setStoreClosed(
-          typeof data.isStoreClosed === "boolean"
-            ? data.isStoreClosed
-            : !data.isOpen
-        );
-      }
-    })
-    .catch((err) =>
-      console.error("Ошибка получения статуса магазина (Basket):", err)
-    );
+    fetch(`${process.env.REACT_APP_API_URL}/shop/status`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) {
+          setStoreClosed(
+            typeof data.isStoreClosed === "boolean"
+              ? data.isStoreClosed
+              : !data.isOpen
+          );
+        }
+      })
+      .catch((err) =>
+        console.error("Ошибка получения статуса магазина (Basket):", err)
+      );
 
-  return () => {
-    cancelled = true;
-  };
-}, []);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const fetchQuantities = async () => {
@@ -144,7 +182,7 @@ const Basket = observer(() => {
           const data = await response.json();
 
           if (response.ok) {
-             newQuantities[item.uniqueKey] = Number(data.quantity);
+            newQuantities[item.uniqueKey] = Number(data.quantity);
           } else {
             newQuantities[item.uniqueKey] = 0;
           }
@@ -179,50 +217,62 @@ const Basket = observer(() => {
 
     const newCount = item.count + 1;
 
-  const normalizedOptions = Object.fromEntries(
+    const normalizedOptions = Object.fromEntries(
       Object.entries(item.selectedOptions || {}).map(([k, v]) => [k, getVal(v)])
     );
-    const isAvailable = await checkStock(item.id, newCount, normalizedOptions);
+    const info = await fetchStockInfo(item.id, newCount, normalizedOptions);
 
-    if (!isAvailable) {
-      const hasStocks = basket.items.some(
-        (i) => !i.isPreorder && i.uniqueKey !== uniqueKey
-      );
-      if (hasStocks) {
-        toast.error(
-          `❌ ${t("you cannot add a pre-order to the cart with regular items", {
-            ns: "deviceItem",
-          })}`
-        );
-        return;
-      }
+    item.stockQuantity = info.quantity;
+
+    if (!info.isEnough) {
       item.isPreorder = true;
-      setIsPreorder(true);
+
+      basket.setSelected(item.uniqueKey, false);
+    } else {
+      item.isPreorder = false;
     }
 
     basket.updateItemCount(uniqueKey, newCount);
   };
 
-  const handleDecrement = (uniqueKey) => {
+  const handleDecrement = async (uniqueKey) => {
+    const item = basket.items.find((i) => i.uniqueKey === uniqueKey);
+    if (!item) return;
+
     const currentCount = basket.getItemCount(uniqueKey);
-    if (currentCount > 1) {
-      basket.updateItemCount(uniqueKey, currentCount - 1);
+    if (currentCount <= 1) return;
+
+    const newCount = currentCount - 1;
+
+    const normalizedOptions = Object.fromEntries(
+      Object.entries(item.selectedOptions || {}).map(([k, v]) => [k, getVal(v)])
+    );
+
+    const info = await fetchStockInfo(item.id, newCount, normalizedOptions);
+
+    item.stockQuantity = info.quantity;
+    item.isPreorder = !info.isEnough;
+
+    if (item.isPreorder) {
+      basket.setSelected(item.uniqueKey, false);
     }
+
+    basket.updateItemCount(uniqueKey, newCount);
   };
 
   const handleRemove = (uniqueKey) => {
     basket.removeItem(uniqueKey);
   };
 
- const handlePaymentSuccess = async (payment, formData) => {
-   const paymentIntentId =
-     payment?.paymentIntentId || payment?.id || payment?.paymentIntent?.id;
-   if (!paymentIntentId) {
-     toast.error("Не удалось получить paymentIntentId");
-     return;
-   }
+  const handlePaymentSuccess = async (payment, formData) => {
+    const paymentIntentId =
+      payment?.paymentIntentId || payment?.id || payment?.paymentIntent?.id;
+    if (!paymentIntentId) {
+      toast.error("Не удалось получить paymentIntentId");
+      return;
+    }
 
-    const hasUnselectedOptions = basket.items.some(
+    const hasUnselectedOptions = (basket.selectedItems || []).some(
       (item) =>
         item.selectedOptions &&
         Object.values(item.selectedOptions).some(
@@ -240,9 +290,9 @@ const Basket = observer(() => {
     const dataToSend = {
       formData,
       paymentIntentId,
-      totalPrice: basket.getTotalPrice(),
+      totalPrice: basket.getSelectedTotalPrice(),
       language: i18n.language,
-      orderDetails: basket.items.map((item, index) => ({
+      orderDetails: (basket.selectedItems || []).map((item, index) => ({
         translations: item.translations,
         name: item.name,
         price: item.price,
@@ -276,7 +326,7 @@ const Basket = observer(() => {
       if (response.ok) {
         toast.success(t("order placed successfully", { ns: "basket" }));
         window.dispatchEvent(new Event("orderUpdated"));
-        basket.clearItems();
+        basket.removeSelectedItems();
         navigate("/");
       } else {
         toast.error(
@@ -315,38 +365,29 @@ const Basket = observer(() => {
       [optionName]: updatedOption,
     };
 
-     const normalizedOptions = Object.fromEntries(
+    const normalizedOptions = Object.fromEntries(
       Object.entries(newOptions || {}).map(([k, v]) => [k, getVal(v)])
     );
-    const isAvailable = await checkStock(
-      item.id,
-      item.count,
-      normalizedOptions
-    );
-    const isThisPreorder = !isAvailable;
-    item.isPreorder = isThisPreorder;
+    const info = await fetchStockInfo(item.id, item.count, normalizedOptions);
 
-    const otherItems = basket.items.filter(
-      (i) => i.uniqueKey !== itemUniqueKey
-    );
-    const hasPreorders = otherItems.some((i) => i.isPreorder);
-    const hasStocks = otherItems.some((i) => !i.isPreorder);
+    const qtyText = `${info.quantity} ${t("unit_pcs_short", { ns: "basket" })}`;
 
-    if (hasPreorders && !isThisPreorder) {
+    if (info.quantity > 0 && item.count > info.quantity) {
       toast.error(
-        `❌ ${t("you cannot add a regular item to the cart with a pre-order", {
-          ns: "deviceItem",
-        })}`
+        t("only_x_in_stock_reduce_qty", {
+          ns: "basket",
+          qtyText,
+        })
       );
-      return;
     }
-    if (hasStocks && isThisPreorder) {
-      toast.error(
-        `❌ ${t("you cannot add a pre-order to the cart with regular items", {
-          ns: "deviceItem",
-        })}`
-      );
-      return;
+
+    const isThisPreorder = !info.isEnough;
+
+    item.isPreorder = isThisPreorder;
+    item.stockQuantity = info.quantity;
+
+    if (isThisPreorder) {
+      basket.setSelected(itemUniqueKey, false);
     }
 
     basket.updateSelectedOption(itemUniqueKey, optionName, updatedOption);
@@ -522,6 +563,137 @@ const Basket = observer(() => {
     );
   };
 
+  const renderItem = (item, index, isFirstCard) => {
+    const variants = normalizeVariants(item);
+    const baseImages = [item.img, ...(item.thumbnails || [])].filter(Boolean);
+
+    const selectedKey = makeVariantKey(
+      Object.fromEntries(
+        Object.entries(item.selectedOptions || {}).map(([k, v]) => [
+          k,
+          getVal(v),
+        ])
+      )
+    );
+
+    const selectedVariant =
+      variants.find(
+        (v) => (v.key || makeVariantKey(v.selected || {})) === selectedKey
+      ) || null;
+
+    const displayImg =
+      selectedVariant?.image && baseImages.includes(selectedVariant.image)
+        ? selectedVariant.image
+        : item.img;
+
+    const optionsArr = parseMaybeJSON(item.options) || [];
+
+    const itemIsOOS = isOOS(item);
+
+    const disableCheckbox =
+      (itemIsOOS && hasSelectedStock) || (!itemIsOOS && hasSelectedOOS);
+
+    return (
+      <Card
+        key={item.uniqueKey}
+        className={`${styles.card} ${
+          isFirstCard ? styles.firstCard : styles.otherCards
+        }`}
+      >
+        <div className={styles.cardContent}>
+          <div className={styles.topRow}>
+            <Form.Check
+              type="checkbox"
+              className={styles.itemCheckbox}
+              checked={basket.isSelected(item.uniqueKey)}
+              onChange={() => basket.toggleSelect(item.uniqueKey)}
+              disabled={disableCheckbox}
+            />
+
+            <Image
+              className={styles.image}
+              src={displayImg}
+              alt={item.translations?.name?.[i18n.language] || item.name}
+              onClick={() => setSelectedDeviceId(item.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ")
+                  setSelectedDeviceId(item.id);
+              }}
+              style={{ cursor: "pointer" }}
+            />
+
+            <div className={styles.topInfo}>
+              <div className={styles.title}>
+                {item.translations?.name?.[i18n.language] || item.name}
+              </div>
+
+              {optionsArr.map((opt, optIndex) => (
+                <OptionPicker
+                  key={`${item.uniqueKey}-opt-${optIndex}`}
+                  item={item}
+                  option={opt}
+                  index={optIndex}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.bottomRow}>
+            <div className={styles.counter}>
+              <button onClick={() => handleDecrement(item.uniqueKey)}>-</button>
+              <span className={styles.count}>
+                {basket.getItemCount(item.uniqueKey)}
+              </span>
+              <button
+                onClick={() => handleIncrement(item.uniqueKey)}
+                disabled={
+                  !item.isPreorder &&
+                  availableQuantities[item.uniqueKey] != null &&
+                  basket.getItemCount(item.uniqueKey) >=
+                    availableQuantities[item.uniqueKey]
+                }
+              >
+                +
+              </button>
+            </div>
+
+            <div className={styles.price}>
+              €
+              {(
+                (item.price +
+                  Object.values(item.selectedOptions || {}).reduce(
+                    (sum, opt) => sum + (opt?.price || 0),
+                    0
+                  )) *
+                item.count
+              ).toFixed(2)}
+            </div>
+
+            <button
+              className={styles.buttonDelete}
+              onClick={async () => {
+                const ok = await confirm({
+                  title: t("delete", { ns: "basket" }),
+                  message: t("are you sure you want to delete this item", {
+                    ns: "basket",
+                  }),
+                  confirmText: t("delete", { ns: "basket" }),
+                  cancelText: t("cancel", { ns: "paymentForm" }),
+                  confirmVariant: "danger",
+                });
+                if (ok) handleRemove(item.uniqueKey);
+              }}
+            >
+              {t("delete", { ns: "basket" })}
+            </button>
+          </div>
+        </div>
+      </Card>
+    );
+  };
+
   return (
     <Container className={styles.container}>
       {basket.items.length === 0 ? (
@@ -529,126 +701,63 @@ const Basket = observer(() => {
           {t("cart is empty", { ns: "basket" })}
         </h2>
       ) : (
-        basket.items.map((item, index) => {
-          const variants = normalizeVariants(item);
-          const baseImages = [item.img, ...(item.thumbnails || [])].filter(
-            Boolean
-          );
-          const selectedKey = makeVariantKey(
-            Object.fromEntries(
-              Object.entries(item.selectedOptions || {}).map(([k, v]) => [
-                k,
-                getVal(v),
-              ])
-            )
-          );
-          const selectedVariant =
-            variants.find(
-              (v) => (v.key || makeVariantKey(v.selected || {})) === selectedKey
-            ) || null;
+        <>
+          {stockItems.length > 0 && (
+            <>
+              <div className={styles.sectionBlock}>
+                <h4 className={styles.sectionTitleCenter}>
+                  {t("cart", { ns: "basket" })}
+                </h4>
 
-          const displayImg =
-            selectedVariant?.image && baseImages.includes(selectedVariant.image)
-              ? selectedVariant.image
-              : item.img;
-
-          const optionsArr = parseMaybeJSON(item.options) || [];
-
-          return (
-            <Card
-              key={item.uniqueKey}
-              className={`${styles.card} ${
-                index === 0 ? styles.firstCard : styles.otherCards
-              }`}
-            >
-              <div className={styles.cardContent}>
-                <div className={styles.topRow}>
-                  <Image
-                    className={styles.image}
-                    src={displayImg}
-                    alt={item.translations?.name?.[i18n.language] || item.name}
-                    onClick={() => setSelectedDeviceId(item.id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ")
-                        setSelectedDeviceId(item.id);
-                    }}
-                    style={{ cursor: "pointer" }}
+                <div className={styles.sectionSelectRow}>
+                  <Form.Check
+                    type="checkbox"
+                    className={styles.sectionSelectAll}
+                    checked={basket.allSelectedStockItems}
+                    onChange={() => basket.toggleSelectAllStock()}
+                    disabled={stockItems.length === 0}
+                    label={t("select all", { ns: "basket" })}
                   />
-
-                  <div className={styles.topInfo}>
-                    <div className={styles.title}>
-                      {item.translations?.name?.[i18n.language] || item.name}
-                    </div>
-
-                    {optionsArr.map((opt, optIndex) => (
-                      <OptionPicker
-                        key={`${item.uniqueKey}-opt-${optIndex}`}
-                        item={item}
-                        option={opt}
-                        index={optIndex}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className={styles.bottomRow}>
-                  <div className={styles.counter}>
-                    <button onClick={() => handleDecrement(item.uniqueKey)}>
-                      -
-                    </button>
-                    <span className={styles.count}>
-                      {basket.getItemCount(item.uniqueKey)}
-                    </span>
-                    <button
-                      onClick={() => handleIncrement(item.uniqueKey)}
-                      disabled={
-                      !item.isPreorder &&
-                        availableQuantities[item.uniqueKey] != null &&
-                        basket.getItemCount(item.uniqueKey) >=
-                          availableQuantities[item.uniqueKey]
-                      }
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <div className={styles.price}>
-                    €
-                    {(
-                      (item.price +
-                        Object.values(item.selectedOptions || {}).reduce(
-                          (sum, opt) => sum + (opt?.price || 0),
-                          0
-                        )) *
-                      item.count
-                    ).toFixed(2)}
-                  </div>
-
-                  <button
-                    className={styles.buttonDelete}
-                 onClick={async () => {
-                      const ok = await confirm({
-                        title: t("delete", { ns: "basket" }),
-                        message: t(
-                          "are you sure you want to delete this item",
-                          { ns: "basket" }
-                        ),
-                        confirmText: t("delete", { ns: "basket" }),
-                        cancelText: t("cancel", { ns: "paymentForm" }),
-                        confirmVariant: "danger",
-                      });
-                      if (ok) handleRemove(item.uniqueKey);
-                    }}
-                  >
-                    {t("delete", { ns: "basket" })}
-                  </button>
                 </div>
               </div>
-            </Card>
-          );
-        })
+
+              {stockItems.map((item, index) =>
+                renderItem(item, index, index === 0)
+              )}
+            </>
+          )}
+
+          {preorderItems.length > 0 && (
+            <>
+              <div className={styles.sectionBlock}>
+                <h4 className={styles.sectionTitleCenter}>
+                  {t("out of stock items", { ns: "basket" })}
+                </h4>
+
+                <p className={styles.sectionSubCenter}>
+                  {t("out-of-stock items must be paid for separately", {
+                    ns: "basket",
+                  })}
+                </p>
+
+                <div className={styles.sectionSelectRow}>
+                  <Form.Check
+                    type="checkbox"
+                    className={styles.sectionSelectAll}
+                    checked={basket.allSelectedOOSItems}
+                    onChange={() => basket.toggleSelectAllOOS()}
+                    disabled={preorderItems.length === 0}
+                    label={t("select all", { ns: "basket" })}
+                  />
+                </div>
+              </div>
+
+              {preorderItems.map((item, index) =>
+                renderItem(item, index, stockItems.length === 0 && index === 0)
+              )}
+            </>
+          )}
+        </>
       )}
 
       {basket.items.length > 0 && (
@@ -658,23 +767,23 @@ const Basket = observer(() => {
           </h3>
           <h3 className={styles.totalPrice}>
             {t("total", { ns: "basket" })}:{" "}
-            {(basket.getTotalPrice() + deliveryCost).toFixed(2)} €
+            {(selectedTotal + deliveryCost).toFixed(2)} €
           </h3>
         </>
       )}
 
-      {basket.items.length > 0 && !hasMixedItems && (
+      {selectedItems.length > 0 && !selectedHasMixedItems && (
         <Elements stripe={stripePromise}>
           <PaymentForm
-            totalPrice={basket.getTotalPrice()}
+            totalPrice={selectedTotal}
             onPaymentSuccess={handlePaymentSuccess}
             onDeliveryCostChange={setDeliveryCost}
             preorder={{
               isPreorder,
               setIsPreorder,
-              hasOnlyPreorders,
-              hasOnlyStockItems,
-              hasMixedItems,
+              hasOnlyPreorders: selectedHasOnlyPreorders,
+              hasOnlyStockItems: selectedHasOnlyStockItems,
+              hasMixedItems: selectedHasMixedItems,
               disablePreorderCheckbox,
               deliveryDate,
               setDeliveryDate,
