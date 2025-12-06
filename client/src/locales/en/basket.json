@@ -25,5 +25,11 @@
 	 "order processed as preorder": "This order will be processed as a pre-order",
   "all items processed as preorder": "All items will be processed as a pre-order",
   "store closed preorder banner": "The store is temporarily closed — all orders will be processed as pre-orders",
-  "preorder badge": "Pre-order"
+  "preorder badge": "Pre-order",
+  "cart": "Cart",
+  "out of stock items": "Out of stock items",
+  "out-of-stock items must be paid for separately": "Out-of-stock items are paid for separately from in-stock items.",
+  "unit_pcs_short": "pcs",
+  "only_x_in_stock_reduce_qty": "Only {{qtyText}} in stock. If you want to pay as an in-stock item, reduce the quantity.",
+  "select all": "Select all"
 }
