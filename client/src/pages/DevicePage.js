@@ -59,6 +59,7 @@ const DevicePage = ({ id }) => {
       Object.entries(selectedOptions || {}).forEach(([k, v]) => {
         cleanSelected[k] = getVal(v);
       });
+
       const variantKey =
         device.variants?.length && Object.keys(cleanSelected).length
           ? makeVariantKey(cleanSelected)
@@ -68,9 +69,7 @@ const DevicePage = ({ id }) => {
         `${process.env.REACT_APP_API_URL}/device/check-stock`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             deviceId,
             quantity,
@@ -85,7 +84,7 @@ const DevicePage = ({ id }) => {
         toast.error(`❌ ${data.message}`);
         return false;
       }
-      return data.quantity >= quantity;
+      return Number(data.quantity) >= quantity;
     } catch (error) {
       console.error("Ошибка при проверке наличия товара:", error);
       return false;
@@ -152,15 +151,12 @@ const DevicePage = ({ id }) => {
 
         const normalizedVariants = (deviceData.variants || []).map((v) => {
           const sel = parseMaybeJSON(v.selected) || {};
-          return {
-            ...v,
-            selected: sel,
-            key: v.key || makeVariantKey(sel),
-          };
+          return { ...v, selected: sel, key: v.key || makeVariantKey(sel) };
         });
 
         const normalized = { ...deviceData, variants: normalizedVariants };
         if (cancelled) return;
+
         setDevice(normalized);
         setFinalPrice(Number(normalized.price) || 0);
         setActiveIndex(0);
@@ -184,6 +180,7 @@ const DevicePage = ({ id }) => {
         if (!cancelled) appStore.stopLoading();
       }
     };
+
     fetchData();
     return () => {
       cancelled = true;
@@ -400,24 +397,6 @@ const DevicePage = ({ id }) => {
     const isAvailable = await checkStock(device.id, newCount, selectedOptions);
     const isThisPreorder = !isAvailable;
 
-    if (basket.items.some((item) => item.isPreorder) && !isThisPreorder) {
-      toast.error(
-        `❌ ${t("you cannot add a regular item to the cart with a pre-order", {
-          ns: "deviceItem",
-        })}`
-      );
-      return;
-    }
-
-    if (basket.items.some((item) => !item.isPreorder) && isThisPreorder) {
-      toast.error(
-        `❌ ${t("you cannot add a pre-order to the cart with regular items", {
-          ns: "deviceItem",
-        })}`
-      );
-      return;
-    }
-
     if (!isAvailable) {
       toast.error(
         `❗ ${t(
@@ -437,9 +416,12 @@ const DevicePage = ({ id }) => {
           ? Number(selectedVariant.quantity) || 0
           : Number(device.quantity) || 0,
       isStoreClosed,
+
+      defaultSelected: !(isThisPreorder || isStoreClosed),
     };
 
     basket.addItem(newItem);
+
     toast.success(
       <>
         <strong className={styles.toastTitle}>{deviceName}</strong>
@@ -447,11 +429,7 @@ const DevicePage = ({ id }) => {
           {t("Added to cart!", { ns: "devicePage" })}
         </span>
       </>,
-      {
-        style: {
-          maxWidth: "400px",
-        },
-      }
+      { style: { maxWidth: "400px" } }
     );
 
     setAvailableQuantity((prev) => prev - 1);
@@ -495,6 +473,7 @@ const DevicePage = ({ id }) => {
     if (!device.variants?.length) {
       return (Number(valueObj.quantity) || 0) === 0;
     }
+
     const partial = Object.fromEntries(
       Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
     );
@@ -601,6 +580,7 @@ const DevicePage = ({ id }) => {
             const isSelected = selected?.value === valueObj.value;
             const available = isValueAvailable(option.name, valueObj);
             const oos = isValueOutOfStock(option.name, valueObj);
+
             return (
               <button
                 key={idx}
