@@ -6,6 +6,12 @@
 	font-size: 0.95rem;
 	text-align: center;
   }
+
+  @media (max-width: 768px) {
+  .footer {
+    display: none;
+  }
+}
   
   .container {
 	max-width: 1200px;
