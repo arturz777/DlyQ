@@ -1,12 +1,23 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { fetchProfile, updateProfile, changePassword } from "../http/userAPI";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
+import { ChatContext } from "../context/ChatContext";
 import { useTranslation } from "react-i18next";
 import styles from "./ProfileSettings.module.css";
 
+const helpLinks = [
+  { to: "/terms-of-service", key: "user Agreement" },
+  { to: "/privacy-policy", key: "privacy Policy" },
+  { to: "/return-policy", key: "warranty and Returns" },
+  { to: "/courier-policy", key: "about Couriers" },
+  { to: "/shipping-policy", key: "delivery" },
+  { to: "/cookie-policy", label: "Cookie" },
+];
+
 const ProfileSettings = ({ onBack }) => {
   const navigate = useNavigate();
+  const { openSupportChat } = useContext(ChatContext);
   const { t } = useTranslation();
   const [editField, setEditField] = useState(null);
   const [errors, setErrors] = useState({});
@@ -276,6 +287,46 @@ const ProfileSettings = ({ onBack }) => {
               <span>{t("personalization", { ns: "profileSettings" })}</span>
             </label>
           </div>
+
+          <section
+            className={styles.mobileInfoBlock}
+            aria-label="Помощь и документы"
+          >
+            <div className={styles.sectionTitleRow}>
+              <h2 className={styles.sectionTitle}>
+                {t("helpAndDocs", {
+                  ns: "profileSettings",
+                  defaultValue: "Помощь и документы",
+                })}
+              </h2>
+            </div>
+
+            <button
+              type="button"
+              className={styles.mobileSupportButton}
+              onClick={openSupportChat}
+            >
+              {t("support chat", { ns: "footer" })}
+            </button>
+
+            <div className={styles.mobileLinks}>
+              {helpLinks.map((l) => (
+                <Link key={l.to} to={l.to} className={styles.mobileLink}>
+                  {l.label || t(l.key, { ns: "footer" })}
+                </Link>
+              ))}
+            </div>
+
+            <div className={styles.mobileCompany}>
+              <span>DlyQ OÜ</span>
+              <span>• Registrikood 17268052</span>
+              <span>• KMKR EE102873957</span>
+              <span>•</span>
+              <a className={styles.mobileEmail} href="mailto:info@dlyq.ee">
+                info@dlyq.ee
+              </a>
+            </div>
+          </section>
         </div>
       </div>
     </div>
