@@ -7,6 +7,12 @@
 	text-align: center;
 	margin-bottom: 70px;
   }
+
+  @media (max-width: 768px) {
+  .footer {
+    display: none;
+  }
+}
   
   .container {
 	max-width: 1200px;
