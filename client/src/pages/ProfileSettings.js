@@ -290,15 +290,8 @@ const ProfileSettings = ({ onBack }) => {
 
           <section
             className={styles.mobileInfoBlock}
-            aria-label="Помощь и документы"
           >
             <div className={styles.sectionTitleRow}>
-              <h2 className={styles.sectionTitle}>
-                {t("helpAndDocs", {
-                  ns: "profileSettings",
-                  defaultValue: "Помощь и документы",
-                })}
-              </h2>
             </div>
 
             <button
