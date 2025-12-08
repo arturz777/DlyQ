@@ -1,7 +1,7 @@
 .dropdownWrapper {
   position: relative;
   width: 100%;
-  max-width: 280px;
+  max-width: 100%;
 }
 
 .dropdownHeader {
