@@ -1,16 +1,25 @@
 {
-	
-	  "catalog": "Catalog",
-	  "adminPanel": "Admin panel",
-	  "profile": "Profile",
-	  "cart": "Cart",
-	  "logOut": "LogOut",
-
-
-	
+	"catalog": "Catalog",
+	"adminPanel": "Admin panel",
+	"profile": "Profile",
+	"cart": "Cart",
+	"myOrders": "My orders",
+	"settings": "Settings",
+	"documents": "Documents",
+	"contacts": "Contacts",
+	"logOut": "Log out",
+	"companyLine": "DlyQ OÜ • Reg. code 17268052 • VAT EE102873957 • info@dlyq.ee",
+	"workingHours": "Working hours",
+	"workingHoursValue": "10:00-22:00",
+	"userAgreement": "Terms of Service",
+	"privacyPolicy": "Privacy Policy",
+	"warrantyReturns": "Warranty & Returns",
+	"aboutCouriers": "About Couriers",
+	"delivery": "Delivery",
+	"cookie": "Cookie",
 	"language": {
-	  "english": "English",
-	  "russian": "Russian",
-	  "estonian": "Estonian"
+		"english": "English",
+		"russian": "Russian",
+		"estonian": "Estonian"
 	}
-  }
+}
