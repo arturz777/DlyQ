@@ -20,8 +20,8 @@ import styles from "./MobileNavBar.module.css";
 
 const helpLinks = [
   { to: "/terms-of-service", tKey: "userAgreement" },
-  { to: "/privacy-policy", tKey: "privacyPolicy" },
   { to: "/return-policy", tKey: "warrantyReturns" },
+  { to: "/privacy-policy", tKey: "privacyPolicy" },
   { to: "/courier-policy", tKey: "aboutCouriers" },
   { to: "/shipping-policy", tKey: "delivery" },
   { to: "/cookie-policy", tKey: "cookie" },
