@@ -4,22 +4,12 @@ import { fetchUserOrders } from "../http/orderAPI";
 import { updateProfile, fetchProfile } from "../http/userAPI";
 import OrderSidebar from "../components/OrderSidebar";
 import SlideModal from "../components/modals/SlideModal";
-import { Settings, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
-import ruFlag from "../assets/flags/ru.png";
-import enFlag from "../assets/flags/en.png";
-import estFlag from "../assets/flags/est.png";
 import styles from "./UserProfile.module.css";
 
 const DevicePageLazy = lazy(() => import("../pages/DevicePage"));
-
-const flags = {
-  ru: ruFlag,
-  en: enFlag,
-  est: estFlag,
-};
 
 const UserProfile = () => {
   const [orders, setOrders] = useState([]);
@@ -37,31 +27,15 @@ const UserProfile = () => {
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
   const handleBack = () => {
-    navigate(-1); 
+    navigate(-1);
   };
-
-  const languages = [
-    { code: "EE", language: "est" },
-    { code: "GB", language: "en" },
-    { code: "RU", language: "ru" },
-  ];
-
-  const changeLanguage = (lng) => {
-    i18n.changeLanguage(lng); 
-    setIsLanguageMenuOpen(false);
-  };
-
-  const currentLanguage = i18n.language; 
-  const currentFlag = languages.find(
-    (lang) => lang.language === currentLanguage
-  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem("token"); 
+      const token = localStorage.getItem("token");
       const response = await axios.put(
-        `${process.env.REACT_APP_API_URL}user/profile`,
+        "http://localhost:5000/api/user/profile",
         { firstName, lastName, phone },
         {
           headers: {
@@ -75,7 +49,7 @@ const UserProfile = () => {
     }
   };
 
- const handleLogOut = () => {
+  const handleLogOut = () => {
     localStorage.removeItem("token");
     user.setUser({});
     user.setIsAuth(false);
@@ -126,7 +100,7 @@ const UserProfile = () => {
     }
   };
 
-    const handleProductClick = (product) => {
+  const handleProductClick = (product) => {
     if (!product) return;
 
     const deviceId =
@@ -144,57 +118,12 @@ const UserProfile = () => {
     <div className={styles.shopWrapper}>
       <div className={styles.mainContent}>
         <div className={styles.buttonsContainer}>
-          <div className={styles.rightButtons}>
-            <div
-              className={styles.languageSelectorWrapper}
-              onMouseLeave={() => setIsLanguageMenuOpen(false)}
-            >
-              <button
-                onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
-                className={styles.currentLanguageButton}
-              >
-                <img
-                  src={flags[currentFlag?.language] || flags["en"]}
-                  alt={currentFlag?.language}
-                  className={styles.flag}
-                />
-              </button>
-              {isLanguageMenuOpen && (
-                <div className={styles.dropdownMenu}>
-                  {languages.map((lang) => (
-                    <button
-                      key={lang.language}
-                      onClick={() => changeLanguage(lang.language)}
-                      className={styles.dropdownItem}
-                    >
-                      <img
-                        src={require(`../assets/flags/${lang.language}.png`)}
-                        alt={lang.language}
-                        className={styles.flag}
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div
-              className={styles.settingsButton}
-              onClick={() => navigate("/settings")}
-            >
-              <Settings size={20} />
-            </div>
-
-            <div className={styles.profileButtonLogOut} onClick={handleLogOut}>
-              <LogOut size={20} />
-              <span className={styles.navbarLinkTitle}></span>
-            </div>
-
+         
             <OrderSidebar
               isSidebarOpen={isSidebarOpen}
               setSidebarOpen={setSidebarOpen}
             />
-          </div>
+          
         </div>
 
         <button
