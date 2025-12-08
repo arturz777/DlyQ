@@ -237,11 +237,12 @@ const MobileNavBar = () => {
               </div>
 
               <div className={styles.profileContacts}>
-                <div>{t("companyLine", { ns: "navbar" })}</div>
                 <div>
                   {t("workingHours", { ns: "navbar" })}:{" "}
                   {t("workingHoursValue", { ns: "navbar" })}
                 </div>
+                <div>{t("companyLine", { ns: "navbar" })}</div>
+                
               </div>
 
               <div className={styles.profileDivider} />
