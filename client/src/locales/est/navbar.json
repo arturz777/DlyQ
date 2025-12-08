@@ -1,15 +1,26 @@
 {
-	
-	  "catalog": "Kataloog",
-	  "adminPanel": "Admin panel",
-	  "profile": "profiil",
-	  "cart": "Ostukorv",
-	  "logOut": "Logi välja",
-	
+	"catalog": "Kataloog",
+	"adminPanel": "Admin panel",
+	"profile": "profiil",
+	"cart": "Ostukorv",
+	"myOrders": "Minu tellimused",
+	"settings": "Seaded",
+	"documents": "Dokumendid",
+	"contacts": "Kontaktid",
+	"logOut": "Logi välja",
+	"companyLine": "DlyQ OÜ • Registrikood 17268052 • KMKR EE102873957 • info@dlyq.ee",
+	"workingHours": "Tööaeg",
+	"workingHoursValue": "10:00-22:00",
+	"userAgreement": "Kasutajatingimused",
+	"privacyPolicy": "Privaatsuspoliitika",
+	"warrantyReturns": "Garantii ja tagastused",
+	"aboutCouriers": "Kullerite kohta",
+	"delivery": "Tarne",
+	"cookie": "Cookie",
 	"language": {
-	  "english": "Inglise",
-	  "russian": "Vene",
-	  "estonian": "Eesti"
+		"english": "Inglise",
+		"russian": "Vene",
+		"estonian": "Eesti"
 	}
-  }
+}
   
