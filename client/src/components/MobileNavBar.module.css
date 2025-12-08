@@ -113,6 +113,77 @@
   padding: 10px;
 }
 
+.profileTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 2px 6px 2px;
+}
+
+.profileItemCompact {
+  padding: 8px 10px;
+}
+
+.profileLangWrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.profileLangButton {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(10, 37, 64, 0.12);
+  background: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.profileLangButton:hover {
+  background: rgba(24, 129, 255, 0.06);
+}
+
+.profileLangFlag {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(10, 37, 64, 0.15);
+}
+
+.profileLangDropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  background: #fff;
+  border: 1px solid rgba(10, 37, 64, 0.12);
+  border-radius: 10px;
+  padding: 4px;
+  display: grid;
+  gap: 4px;
+  box-shadow: 0 10px 24px rgba(10, 37, 64, 0.12);
+  z-index: 10000;
+}
+
+.profileLangItem {
+  width: 32px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.profileLangItem:hover {
+  background: rgba(24, 129, 255, 0.08);
+}
+
 .profileItem {
   width: 100%;
   display: flex;
