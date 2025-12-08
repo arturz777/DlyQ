@@ -310,11 +310,14 @@ const ProfileSettings = ({ onBack }) => {
               ))}
             </div>
 
-            <div className={styles.mobileCompany}>
-              <span>DlyQ OÜ</span>
-              <span>• Registrikood 17268052</span>
-              <span>• KMKR EE102873957</span>
-              <span>•</span>
+           <div className={styles.mobileCompany}>
+              <span>
+                {t("workingHours", { ns: "navbar" })}:{" "}
+                {t("workingHoursValue", { ns: "navbar" })}
+              </span>
+              <br />
+              <span>DlyQ OÜ • Registrikood 17268052 • KMKR EE102873957</span>
+              <br />
               <a className={styles.mobileEmail} href="mailto:info@dlyq.ee">
                 info@dlyq.ee
               </a>
