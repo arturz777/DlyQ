@@ -1,14 +1,25 @@
 {
-	
-	  "catalog": "Каталог",
-	  "adminPanel": "Админ панель",
-	  "profile": "Профиль",
-	  "cart": "Корзина",
-	  "logOut": "Выйти",
-	
+	"catalog": "Каталог",
+	"adminPanel": "Админ панель",
+	"profile": "Профиль",
+	"cart": "Корзина",
+	"myOrders": "Мои заказы",
+	"settings": "Настройки",
+	"documents": "Документы",
+	"contacts": "Контакты",
+	"logOut": "Выход",
+	"companyLine": "DlyQ OÜ • Рег. код 17268052 • VAT EE102873957 • info@dlyq.ee",
+	"workingHours": "Время работы",
+	"workingHoursValue": "10:00-22:00",
+	"userAgreement": "Пользовательское соглашение",
+	"privacyPolicy": "Политика конфиденциальности",
+	"warrantyReturns": "Гарантия и возврат",
+	"aboutCouriers": "О курьерах",
+	"delivery": "Доставка",
+	"cookie": "Cookie",
 	"language": {
-	  "english": "Английский",
-	  "russian": "Русский",
-	  "estonian": "Эстонский"
+		"english": "Английский",
+		"russian": "Русский",
+		"estonian": "Эстонский"
 	}
-  }
+}
