@@ -272,26 +272,6 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
-
-.OptionThumbImg {
-  width: 26px;
-  height: 24px;
-  object-fit: cover;
-  border-radius: 6px;
-  display: block;
-}
-.OptionThumbImgFallback {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  display: grid;
-  place-items: center;
-  background: #f4f6fb;
-  font-size: 11px;
-  color: #333;
-  padding: 2px;
-  text-align: center;
-}
 .OptionThumbLabel {
   font-size: 12px;
   line-height: 1.1;
@@ -316,10 +296,5 @@
   .OptionBtn {
     font-size: 12px;
     padding: 5px 7px;
-  }
-  .OptionThumbImg,
-  .OptionThumbImgFallback {
-    width: 28px;
-    height: 28px;
   }
 }
