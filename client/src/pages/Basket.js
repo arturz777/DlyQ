@@ -502,17 +502,6 @@ const Basket = observer(() => {
                   aria-pressed={isSelected}
                   title={valueLabel(idx, valObj)}
                 >
-                  {imgUrl ? (
-                    <img
-                      alt=""
-                      src={imgUrl}
-                      className={styles.OptionThumbImg}
-                    />
-                  ) : (
-                    <div className={styles.OptionThumbImgFallback}>
-                      {valueLabel(idx, valObj)}
-                    </div>
-                  )}
                   <span className={styles.OptionThumbLabel}>
                     {valueLabel(idx, valObj)}
                   </span>
