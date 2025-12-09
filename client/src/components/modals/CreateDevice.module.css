@@ -5,12 +5,42 @@
   margin-top: 10px;
 }
 
-.newProduct {
-  font-size: 30px;
+.basicLayout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
 }
 
+@media (min-width: 992px) {
+  .basicLayout {
+    grid-template-columns: 1fr 1fr;
+    gap: 18px 22px;
+    align-items: start;
+  }
+}
+
+.basicCard {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px 14px 16px;
+}
+
+.basicCardTitle {
+  font-weight: 600;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.basicWide {
+  grid-column: 1 / -1;
+}
+
+.newProduct,
 .recommendProduct {
-  font-size: 30px;
+  font-size: 18px;
 }
 
 .imagePreview {
@@ -124,19 +154,22 @@
   background-color: #555;
 }
 
-.wideModal :global(.modal-dialog) {
-  max-width: 760px;
+.fullscreenDialog {
+  width: 99vw;
+  max-width: 99vw;
+  height: 99vh;
+  margin: 0;
 }
 
-.wideModal {
-  --bs-modal-width: 700px;
-  max-width: 70vw;
+.fullscreenContent {
+  height: 99vh;
+  border-radius: 0;
 }
+
 
 .modalBodyScrollable {
-  max-height: 70vh;
-  overflow-y: auto;
-  padding-right: 6px;
+ overflow-y: auto;
+  height: calc(99vh - 140px);
 }
 
 .compatSection {
