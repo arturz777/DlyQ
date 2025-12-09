@@ -32,7 +32,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [name, setName] = useState("");
   const [price, setPrice] = useState(null);
   const [mainImage, setMainImage] = useState(null);
-  const [images, setImages] = useState(Array(10).fill(null));
+  const [images, setImages] = useState(Array(8).fill(null));
   const [imagePreviews, setImagePreviews] = useState([]);
   const [existingImages, setExistingImages] = useState([]);
   const [info, setInfo] = useState([]);
@@ -65,6 +65,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [pickerOpenFor, setPickerOpenFor] = useState(null);
   const [newValueText, setNewValueText] = useState({});
   const [valueDrafts, setValueDrafts] = useState({});
+  const [activeMainTab, setActiveMainTab] = useState("basic");
 
   const addValueQuick = (optionIndex) => {
     const text = (newValueText[optionIndex] || "").trim();
@@ -164,14 +165,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     options: [],
     info: [],
   });
-  const [openSections, setOpenSections] = useState({
-    basic: true,
-    price: false,
-    images: false,
-    description: false,
-    info: false,
-    optsAndVars: true,
-  });
 
   const regenerateVariantsWithMerge = () => {
     const fresh = generateVariantsFromOptions(options);
@@ -189,10 +182,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     (_, i) => currentYear - i
   );
   const yearOptions = YEARS;
-
-  const toggleSection = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
 
   useEffect(() => {
     if (variants.length) {
@@ -342,7 +331,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
       const updatedDisplayedImages = [
         ...updatedImages,
-        ...Array(10 - updatedImages.length).fill(null),
+        ...Array(8 - updatedImages.length).fill(null),
       ];
       setImages(updatedDisplayedImages);
 
@@ -467,7 +456,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     setOptions([]);
     setVariants([]);
     setMainImage(null);
-    setImages(Array(10).fill(null));
+    setImages(Array(8).fill(null));
     setImagePreviews([]);
     setExistingImages([]);
     setIsEditMode(false);
@@ -1298,9 +1287,9 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     <Modal
       show={show}
       onHide={onHide}
-      centered
-      size="lg"
-      dialogClassName={styles.wideModal}
+      fullscreen
+      dialogClassName={styles.fullscreenDialog}
+      contentClassName={styles.fullscreenContent}
     >
       <Modal.Header closeButton>
         <Modal.Title>
@@ -1308,42 +1297,61 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         </Modal.Title>
       </Modal.Header>
 
-      <Form.Group controlId="formIsNew">
-        <Form.Check
-          className={styles.newProduct}
-          type="checkbox"
-          label="Новый товар"
-          checked={isNew}
-          onChange={(e) => setIsNew(e.target.checked)}
-        />
-      </Form.Group>
-
-      <Form.Group controlId="formRecommended">
-        <Form.Check
-          className={styles.recommendProduct}
-          type="checkbox"
-          label="Рекомендованный товар"
-          checked={recommended}
-          onChange={(e) => setRecommended(e.target.checked)}
-        />
-      </Form.Group>
-
       <Modal.Body className={styles.modalBodyScrollable}>
         <Form>
-          <div className="mb-4">
-            <h5
-              onClick={() => toggleSection("basic")}
-              style={{ cursor: "pointer" }}
-            >
-              🧾 Основная информация {openSections.basic ? "▲" : "▼"}
-            </h5>
-            {openSections.basic && (
-              <>
-                <Dropdown className="mt-2 mb-2">
-                  <Dropdown.Toggle>
-                    {device.selectedType?.name || "Выберите тип"}
-                  </Dropdown.Toggle>
-                  {isSubmitted && !device.selectedType?.id && (
+          <Tabs
+            id="create-device-main-tabs"
+            activeKey={activeMainTab}
+            onSelect={(k) => k && setActiveMainTab(k)}
+            className="mb-3"
+            mountOnEnter
+          >
+            {/* ===================== ОСНОВНОЕ ===================== */}
+            <Tab eventKey="basic" title="🧾 Основное">
+              <div className={styles.basicLayout}>
+                {/* ===== Статус ===== */}
+                <div className={styles.basicCard}>
+                  <div className={styles.basicCardTitle}>🏷 Статус товара</div>
+
+                  <Form.Group controlId="formIsNew">
+                    <Form.Check
+                      className={styles.newProduct}
+                      type="checkbox"
+                      label="Новый товар"
+                      checked={isNew}
+                      onChange={(e) => setIsNew(e.target.checked)}
+                    />
+                  </Form.Group>
+
+                  <Form.Group controlId="formRecommended">
+                    <Form.Check
+                      className={styles.recommendProduct}
+                      type="checkbox"
+                      label="Рекомендованный товар"
+                      checked={recommended}
+                      onChange={(e) => setRecommended(e.target.checked)}
+                    />
+                  </Form.Group>
+                </div>
+
+                {/* ===== Название ===== */}
+                <div className={styles.basicCard}>
+                  <div className={styles.basicCardTitle}>🧾 Название</div>
+
+                  <Form.Label>Название устройства</Form.Label>
+
+                  <Tabs
+                    id="name-lang-tabs"
+                    activeKey={activeNameLang}
+                    onSelect={(k) => k && setActiveNameLang(k)}
+                    className="mb-2"
+                  >
+                    <Tab eventKey="ru" title="RU" />
+                    <Tab eventKey="en" title="EN" />
+                    <Tab eventKey="est" title="EST" />
+                  </Tabs>
+
+                  {isSubmitted && !name && (
                     <span
                       style={{
                         color: "red",
@@ -1351,382 +1359,359 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                         marginTop: "5px",
                       }}
                     >
-                      {errors.type}
+                      {errors.name}
                     </span>
                   )}
-                  <Dropdown.Menu className={styles.scrollableDropdownMenu}>
-                    {device.types.map((type) => (
-                      <Dropdown.Item
-                        onClick={() => {
-                          device.setSelectedType(type);
-                          device.clearSelectedSubType();
-                          setExtraSubtypeIds(new Set());
-                          fetchSubtypesByType(type.id).then((data) =>
-                            device.setSubtypes(data)
-                          );
-                        }}
-                        key={type.id}
-                      >
-                        {type.name}
-                      </Dropdown.Item>
-                    ))}
-                  </Dropdown.Menu>
-                </Dropdown>
 
-                {device.types.length > 0 && (
-                  <div className="mt-2">
-                    <div className="mb-1">Доп. типы (кроме выбранного):</div>
-                    {device.types
-                      .filter(
-                        (t) =>
-                          t.id !==
-                          (device.selectedType?.id ?? editableDevice?.typeId)
-                      )
-                      .map((t) => (
-                        <Form.Check
-                          key={t.id}
-                          type="checkbox"
-                          id={`extra-type-${t.id}`}
-                          label={t.name}
-                          checked={extraTypeIds.has(Number(t.id))}
-                          onChange={(e) => {
-                            const id = Number(t.id);
-                            setExtraTypeIds((prev) => {
-                              const next = new Set(prev);
-                              if (e.target.checked) next.add(id);
-                              else next.delete(id);
-                              return next;
-                            });
-                          }}
-                        />
-                      ))}
-                  </div>
-                )}
-
-                <Dropdown>
-                  <Dropdown.Toggle>
-                    {device.selectedSubType?.name ||
-                      "Выберите подтип (необязательно)"}
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu className={styles.scrollableDropdownMenu}>
-                    <Dropdown.Item
-                      onClick={() => device.setSelectedSubType(null)}
-                    >
-                      Не выбирать подтип
-                    </Dropdown.Item>
-                    {device.subtypes.map((subtype) => (
-                      <Dropdown.Item
-                        onClick={() => device.setSelectedSubType(subtype)}
-                        key={subtype.id}
-                      >
-                        {subtype.name}
-                      </Dropdown.Item>
-                    ))}
-                  </Dropdown.Menu>
-                </Dropdown>
-
-                {visibleSubtypes.length > 0 && (
-                  <div className="mt-2">
-                    <div className="mb-1">
-                      Доп. разделы (помимо выбранного):
-                    </div>
-                    {visibleSubtypes.map((st) => {
-                      const stId = Number(st.id);
-                      const primaryIdNum = Number(
-                        device.selectedSubType?.id ?? editableDevice?.subtypeId
-                      );
-                      return (
-                        <Form.Check
-                          key={stId}
-                          type="checkbox"
-                          id={`extra-st-${stId}`}
-                          label={st.name}
-                          checked={extraSubtypeIds.has(stId)}
-                          disabled={primaryIdNum === stId}
-                          onChange={(e) => {
-                            setExtraSubtypeIds((prev) => {
-                              const next = new Set(prev);
-                              if (e.target.checked) next.add(stId);
-                              else next.delete(stId);
-                              return next;
-                            });
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div className={styles.compatSection}>
-                  <h5 className={styles.compatHeader}>🚗 Совместимость авто</h5>
-
-                  <Form.Check
-                    type="checkbox"
-                    id="compat-enabled"
-                    label="Указать совместимость (марка/модель/годы)"
-                    checked={!isUniversal}
-                    onChange={(e) => {
-                      const enable = e.target.checked;
-                      setIsUniversal(!enable);
-                      if (enable && compatRows.length === 0) {
-                        addCompatRow();
-                      }
-                    }}
-                    className={styles.compatCheck}
+                  <Form.Control
+                    value={getNameValue()}
+                    onChange={(e) => updateNameValue(e.target.value)}
+                    className="option-container border p-3 rounded mb-2"
+                    placeholder={
+                      activeNameLang === "ru"
+                        ? "Введите название устройства (RU)"
+                        : activeNameLang === "en"
+                        ? "Enter device name (EN)"
+                        : "Sisesta seadme nimi (EST)"
+                    }
                   />
+                </div>
 
-                  {!isUniversal && (
-                    <>
-                      {compatRows.map((row, idx) => (
-                        <div key={idx} className={styles.compatRow}>
-                          <Form.Select
-                            className={styles.compatSelect}
-                            value={row.makeId || ""}
-                            onChange={(e) =>
-                              onCompatChange(
-                                idx,
-                                "makeId",
-                                e.target.value ? Number(e.target.value) : ""
-                              )
-                            }
-                          >
-                            <option value="">Марка...</option>
-                            {makes.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.name}
-                              </option>
-                            ))}
-                          </Form.Select>
+                {/* ===== Категории ===== */}
+                <div className={styles.basicCard}>
+                  <div className={styles.basicCardTitle}>🗂 Категории</div>
 
-                          <Form.Select
-                            className={styles.compatSelect}
-                            value={row.modelId || ""}
-                            onChange={(e) =>
-                              onCompatChange(
-                                idx,
-                                "modelId",
-                                e.target.value ? Number(e.target.value) : ""
-                              )
-                            }
-                            disabled={!row.makeId}
-                          >
-                            <option value="">Модель...</option>
-                            {(row.models || []).map((mm) => (
-                              <option key={mm.id} value={mm.id}>
-                                {mm.name}
-                              </option>
-                            ))}
-                          </Form.Select>
+                  {/* Тип */}
+                  <Dropdown className="mt-2 mb-2">
+                    <Dropdown.Toggle>
+                      {device.selectedType?.name || "Выберите тип"}
+                    </Dropdown.Toggle>
 
-                          <Form.Select
-                            className={styles.yearSelect}
-                            value={row.yearFrom ?? ""}
-                            onChange={(e) =>
-                              onCompatChange(
-                                idx,
-                                "yearFrom",
-                                e.target.value ? Number(e.target.value) : ""
-                              )
-                            }
-                          >
-                            <option value="">Год от</option>
-                            {yearOptions.map((y) => (
-                              <option key={y} value={y}>
-                                {y}
-                              </option>
-                            ))}
-                          </Form.Select>
-
-                          <Form.Select
-                            className={styles.yearSelect}
-                            value={row.yearTo ?? ""}
-                            onChange={(e) =>
-                              onCompatChange(
-                                idx,
-                                "yearTo",
-                                e.target.value ? Number(e.target.value) : ""
-                              )
-                            }
-                          >
-                            <option value="">Год до</option>
-                            {yearOptions.map((y) => (
-                              <option key={y} value={y}>
-                                {y}
-                              </option>
-                            ))}
-                          </Form.Select>
-
-                          <Button
-                            variant="outline-danger"
-                            className={styles.compatDeleteBtn}
-                            onClick={() => removeCompatRow(idx)}
-                          >
-                            Удалить
-                          </Button>
-                        </div>
-                      ))}
-
-                      <Button
-                        variant="outline-dark"
-                        className={styles.addCompatBtn}
-                        onClick={addCompatRow}
+                    {isSubmitted && !device.selectedType?.id && (
+                      <span
+                        style={{
+                          color: "red",
+                          display: "block",
+                          marginTop: "5px",
+                        }}
                       >
-                        + Добавить строку совместимости
-                      </Button>
-                    </>
+                        {errors.type}
+                      </span>
+                    )}
+
+                    <Dropdown.Menu className={styles.scrollableDropdownMenu}>
+                      {device.types.map((type) => (
+                        <Dropdown.Item
+                          onClick={() => {
+                            device.setSelectedType(type);
+                            device.clearSelectedSubType();
+                            setExtraSubtypeIds(new Set());
+                            fetchSubtypesByType(type.id).then((data) =>
+                              device.setSubtypes(data)
+                            );
+                          }}
+                          key={type.id}
+                        >
+                          {type.name}
+                        </Dropdown.Item>
+                      ))}
+                    </Dropdown.Menu>
+                  </Dropdown>
+
+                  {/* Доп. типы */}
+                  {device.types.length > 0 && (
+                    <div className="mt-2">
+                      <div className="mb-1">Доп. типы (кроме выбранного):</div>
+                      {device.types
+                        .filter(
+                          (t) =>
+                            t.id !==
+                            (device.selectedType?.id ?? editableDevice?.typeId)
+                        )
+                        .map((t) => (
+                          <Form.Check
+                            key={t.id}
+                            type="checkbox"
+                            id={`extra-type-${t.id}`}
+                            label={t.name}
+                            checked={extraTypeIds.has(Number(t.id))}
+                            onChange={(e) => {
+                              const id = Number(t.id);
+                              setExtraTypeIds((prev) => {
+                                const next = new Set(prev);
+                                if (e.target.checked) next.add(id);
+                                else next.delete(id);
+                                return next;
+                              });
+                            }}
+                          />
+                        ))}
+                    </div>
+                  )}
+
+                  {/* Подтип */}
+                  <Dropdown className="mt-3">
+                    <Dropdown.Toggle>
+                      {device.selectedSubType?.name ||
+                        "Выберите подтип (необязательно)"}
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu className={styles.scrollableDropdownMenu}>
+                      <Dropdown.Item
+                        onClick={() => device.setSelectedSubType(null)}
+                      >
+                        Не выбирать подтип
+                      </Dropdown.Item>
+                      {device.subtypes.map((subtype) => (
+                        <Dropdown.Item
+                          onClick={() => device.setSelectedSubType(subtype)}
+                          key={subtype.id}
+                        >
+                          {subtype.name}
+                        </Dropdown.Item>
+                      ))}
+                    </Dropdown.Menu>
+                  </Dropdown>
+
+                  {/* Доп. подтипы */}
+                  {visibleSubtypes.length > 0 && (
+                    <div className="mt-2">
+                      <div className="mb-1">
+                        Доп. разделы (помимо выбранного):
+                      </div>
+                      {visibleSubtypes.map((st) => {
+                        const stId = Number(st.id);
+                        const primaryIdNum = Number(
+                          device.selectedSubType?.id ??
+                            editableDevice?.subtypeId
+                        );
+
+                        return (
+                          <Form.Check
+                            key={stId}
+                            type="checkbox"
+                            id={`extra-st-${stId}`}
+                            label={st.name}
+                            checked={extraSubtypeIds.has(stId)}
+                            disabled={primaryIdNum === stId}
+                            onChange={(e) => {
+                              setExtraSubtypeIds((prev) => {
+                                const next = new Set(prev);
+                                if (e.target.checked) next.add(stId);
+                                else next.delete(stId);
+                                return next;
+                              });
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
 
-                {isSubmitted && errors.compat && (
-                  <div className="text-danger mt-2">{errors.compat}</div>
-                )}
+                {/* ===== Бренд ===== */}
+                <div className={styles.basicCard}>
+                  <div className={styles.basicCardTitle}>🏷 Бренд</div>
 
-                <Dropdown className="mt-2 mb-2">
-                  <Dropdown.Toggle>
-                    {device.selectedBrand?.name ||
-                      "Выберите бренд (необязательно)"}
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu className={styles.scrollableDropdownMenu}>
-                    <Dropdown.Item
-                      onClick={() => device.setSelectedBrand(null)}
-                    >
-                      Без бренда
-                    </Dropdown.Item>
-                    {device.brands.map((brand) => (
+                  <Dropdown className="mt-2 mb-2">
+                    <Dropdown.Toggle>
+                      {device.selectedBrand?.name ||
+                        "Выберите бренд (необязательно)"}
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu className={styles.scrollableDropdownMenu}>
                       <Dropdown.Item
-                        onClick={() => device.setSelectedBrand(brand)}
-                        key={brand.id}
+                        onClick={() => device.setSelectedBrand(null)}
                       >
-                        {brand.name}
+                        Без бренда
                       </Dropdown.Item>
-                    ))}
-                  </Dropdown.Menu>
-                </Dropdown>
-
-                <Form.Label>Название устройства</Form.Label>
-
-                <Tabs
-                  id="name-lang-tabs"
-                  activeKey={activeNameLang}
-                  onSelect={(k) => {
-                    if (k) setActiveNameLang(k);
-                  }}
-                  className="mb-2"
-                >
-                  <Tab eventKey="ru" title="RU" />
-                  <Tab eventKey="en" title="EN" />
-                  <Tab eventKey="est" title="EST" />
-                </Tabs>
-
-                {isSubmitted && !name && (
-                  <span
-                    style={{ color: "red", display: "block", marginTop: "5px" }}
-                  >
-                    {errors.name}
-                  </span>
-                )}
-
-                <Form.Control
-                  value={getNameValue()}
-                  onChange={(e) => updateNameValue(e.target.value)}
-                  className="option-container border p-3 rounded mb-2"
-                  placeholder={
-                    activeNameLang === "ru"
-                      ? "Введите название устройства (RU)"
-                      : activeNameLang === "en"
-                      ? "Enter device name (EN)"
-                      : "Sisesta seadme nimi (EST)"
-                  }
-                />
-              </>
-            )}
-          </div>
-
-          {isSubmitted && !name && (
-            <span style={{ color: "red", display: "block", marginTop: "5px" }}>
-              {errors.name}
-            </span>
-          )}
-
-          <div className="mb-4">
-            <h5
-              onClick={() => toggleSection("price")}
-              style={{ cursor: "pointer" }}
-            >
-              💰 Цены и скидки {openSections.price ? "▲" : "▼"}
-            </h5>
-            {openSections.price && (
-              <>
-                <Form.Group className="mt-2">
-                  <Form.Check
-                    type="checkbox"
-                    label="Цена включает НДС (24%)"
-                    checked={purchaseHasVAT}
-                    onChange={(e) => setPurchaseHasVAT(e.target.checked)}
-                  />
-                </Form.Group>
-
-                <Form.Group className="mt-3">
-                  <Form.Label>Закупочная цена (за единицу)</Form.Label>
-                  <Form.Control
-                    type="number"
-                    step="0.01"
-                    value={purchasePrice}
-                    onChange={(e) => setPurchasePrice(e.target.value)}
-                    placeholder="Например, 5.50"
-                  />
-                </Form.Group>
-
-                <Form.Group className="mt-3">
-                  <Form.Check
-                    type="checkbox"
-                    label="💰 Цена со скидкой"
-                    checked={discount}
-                    onChange={(e) => {
-                      setDiscount(e.target.checked);
-                      if (!e.target.checked) {
-                        setOldPrice("");
-                      }
-                    }}
-                  />
-                </Form.Group>
-
-                {discount && (
-                  <Form.Group className="mt-3">
-                    <Form.Label>Старая цена (до скидки)</Form.Label>
-                    <Form.Control
-                      type="number"
-                      value={oldPrice}
-                      onChange={(e) => setOldPrice(e.target.value)}
-                      placeholder="Старая цена (до скидки)"
-                    />
-                    {isSubmitted &&
-                      discount &&
-                      (!oldPrice || isNaN(oldPrice)) && (
-                        <span
-                          style={{
-                            color: "red",
-                            display: "block",
-                            marginTop: "5px",
-                          }}
+                      {device.brands.map((brand) => (
+                        <Dropdown.Item
+                          onClick={() => device.setSelectedBrand(brand)}
+                          key={brand.id}
                         >
-                          {errors.oldPrice}
-                        </span>
-                      )}
-                  </Form.Group>
-                )}
+                          {brand.name}
+                        </Dropdown.Item>
+                      ))}
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </div>
 
+                {/* ===== Совместимость (на всю ширину) ===== */}
+                <div className={`${styles.basicCard} ${styles.basicWide}`}>
+                  <div className={styles.basicCardTitle}>
+                    🚗 Совместимость авто
+                  </div>
+
+                  {/* Вставь сюда твой compatSection целиком */}
+                  <div className={styles.compatSection}>
+                    <Form.Check
+                      type="checkbox"
+                      id="compat-enabled"
+                      label="Указать совместимость (марка/модель/годы)"
+                      checked={!isUniversal}
+                      onChange={(e) => {
+                        const enable = e.target.checked;
+                        setIsUniversal(!enable);
+                        if (enable && compatRows.length === 0) {
+                          addCompatRow();
+                        }
+                      }}
+                      className={styles.compatCheck}
+                    />
+
+                    {!isUniversal && (
+                      <>
+                        {compatRows.map((row, idx) => (
+                          <div key={idx} className={styles.compatRow}>
+                            <Form.Select
+                              className={styles.compatSelect}
+                              value={row.makeId || ""}
+                              onChange={(e) =>
+                                onCompatChange(
+                                  idx,
+                                  "makeId",
+                                  e.target.value ? Number(e.target.value) : ""
+                                )
+                              }
+                            >
+                              <option value="">Марка...</option>
+                              {makes.map((m) => (
+                                <option key={m.id} value={m.id}>
+                                  {m.name}
+                                </option>
+                              ))}
+                            </Form.Select>
+
+                            <Form.Select
+                              className={styles.compatSelect}
+                              value={row.modelId || ""}
+                              onChange={(e) =>
+                                onCompatChange(
+                                  idx,
+                                  "modelId",
+                                  e.target.value ? Number(e.target.value) : ""
+                                )
+                              }
+                              disabled={!row.makeId}
+                            >
+                              <option value="">Модель...</option>
+                              {(row.models || []).map((mm) => (
+                                <option key={mm.id} value={mm.id}>
+                                  {mm.name}
+                                </option>
+                              ))}
+                            </Form.Select>
+
+                            <Form.Select
+                              className={styles.yearSelect}
+                              value={row.yearFrom ?? ""}
+                              onChange={(e) =>
+                                onCompatChange(
+                                  idx,
+                                  "yearFrom",
+                                  e.target.value ? Number(e.target.value) : ""
+                                )
+                              }
+                            >
+                              <option value="">Год от</option>
+                              {yearOptions.map((y) => (
+                                <option key={y} value={y}>
+                                  {y}
+                                </option>
+                              ))}
+                            </Form.Select>
+
+                            <Form.Select
+                              className={styles.yearSelect}
+                              value={row.yearTo ?? ""}
+                              onChange={(e) =>
+                                onCompatChange(
+                                  idx,
+                                  "yearTo",
+                                  e.target.value ? Number(e.target.value) : ""
+                                )
+                              }
+                            >
+                              <option value="">Год до</option>
+                              {yearOptions.map((y) => (
+                                <option key={y} value={y}>
+                                  {y}
+                                </option>
+                              ))}
+                            </Form.Select>
+
+                            <Button
+                              variant="outline-danger"
+                              className={styles.compatDeleteBtn}
+                              onClick={() => removeCompatRow(idx)}
+                            >
+                              Удалить
+                            </Button>
+                          </div>
+                        ))}
+
+                        <Button
+                          variant="outline-dark"
+                          className={styles.addCompatBtn}
+                          onClick={addCompatRow}
+                        >
+                          + Добавить строку совместимости
+                        </Button>
+                      </>
+                    )}
+                  </div>
+
+                  {isSubmitted && errors.compat && (
+                    <div className="text-danger mt-2">{errors.compat}</div>
+                  )}
+                </div>
+              </div>
+            </Tab>
+
+            {/* ===================== ЦЕНЫ ===================== */}
+            <Tab eventKey="price" title="💰 Цены">
+              <Form.Group className="mt-2">
+                <Form.Check
+                  type="checkbox"
+                  label="Цена включает НДС (24%)"
+                  checked={purchaseHasVAT}
+                  onChange={(e) => setPurchaseHasVAT(e.target.checked)}
+                />
+              </Form.Group>
+
+              <Form.Group className="mt-3">
+                <Form.Label>Закупочная цена (за единицу)</Form.Label>
+                <Form.Control
+                  type="number"
+                  step="0.01"
+                  value={purchasePrice}
+                  onChange={(e) => setPurchasePrice(e.target.value)}
+                  placeholder="Например, 5.50"
+                />
+              </Form.Group>
+
+              <Form.Group className="mt-3">
+                <Form.Check
+                  type="checkbox"
+                  label="💰 Цена со скидкой"
+                  checked={discount}
+                  onChange={(e) => {
+                    setDiscount(e.target.checked);
+                    if (!e.target.checked) setOldPrice("");
+                  }}
+                />
+              </Form.Group>
+
+              {discount && (
                 <Form.Group className="mt-3">
-                  <Form.Label>
-                    {discount ? "Новая цена (со скидкой)" : "Цена"}
-                  </Form.Label>
+                  <Form.Label>Старая цена (до скидки)</Form.Label>
                   <Form.Control
                     type="number"
-                    value={price || ""}
-                    onChange={(e) => setPrice(Number(e.target.value))}
-                    placeholder={discount ? "Новая цена (со скидкой)" : "Цена"}
+                    value={oldPrice}
+                    onChange={(e) => setOldPrice(e.target.value)}
+                    placeholder="Старая цена (до скидки)"
                   />
-                  {((isSubmitted && !price) || isNaN(price)) && (
+                  {isSubmitted && (!oldPrice || isNaN(oldPrice)) && (
                     <span
                       style={{
                         color: "red",
@@ -1734,21 +1719,34 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                         marginTop: "5px",
                       }}
                     >
-                      {errors.price}
+                      {errors.oldPrice}
                     </span>
                   )}
                 </Form.Group>
-              </>
-            )}
-          </div>
-          <div className="mb-4">
-            <h5
-              onClick={() => toggleSection("images")}
-              style={{ cursor: "pointer" }}
-            >
-              🖼 Изображения {openSections.images ? "▲" : "▼"}
-            </h5>
-            {openSections.images && (
+              )}
+
+              <Form.Group className="mt-3">
+                <Form.Label>
+                  {discount ? "Новая цена (со скидкой)" : "Цена"}
+                </Form.Label>
+                <Form.Control
+                  type="number"
+                  value={price || ""}
+                  onChange={(e) => setPrice(Number(e.target.value))}
+                  placeholder={discount ? "Новая цена (со скидкой)" : "Цена"}
+                />
+                {((isSubmitted && !price) || isNaN(price)) && (
+                  <span
+                    style={{ color: "red", display: "block", marginTop: "5px" }}
+                  >
+                    {errors.price}
+                  </span>
+                )}
+              </Form.Group>
+            </Tab>
+
+            {/* ===================== ИЗОБРАЖЕНИЯ ===================== */}
+            <Tab eventKey="images" title="🖼 Изображения">
               <div className={styles.ImageGrid}>
                 {images.map((img, index) => (
                   <div
@@ -1791,28 +1789,25 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                   </div>
                 ))}
               </div>
-            )}
-          </div>
 
-          <div className="image-preview-container mt-3">
-            {imagePreviews.map((preview, index) => (
-              <img
-                key={index}
-                src={preview}
-                alt={`preview-${index}`}
-                width="100"
-              />
-            ))}
-          </div>
-          <div className="mb-4">
-            <h5
-              style={{ cursor: "pointer" }}
-              onClick={() => toggleSection("optsAndVars")}
-            >
-              🧩 Опции и варианты {openSections.optsAndVars ? "▲" : "▼"}
-            </h5>
+              {isSubmitted && errors.img && !isEditMode && (
+                <div className="text-danger mt-2">{errors.img}</div>
+              )}
 
-            {openSections.optsAndVars && (
+              <div className="image-preview-container mt-3">
+                {imagePreviews.map((preview, index) => (
+                  <img
+                    key={index}
+                    src={preview}
+                    alt={`preview-${index}`}
+                    width="100"
+                  />
+                ))}
+              </div>
+            </Tab>
+
+            {/* ===================== ОПЦИИ И ВАРИАНТЫ ===================== */}
+            <Tab eventKey="opts" title="🧩 Опции и варианты">
               <Row className="g-3">
                 <Col md={5}>
                   <div className="d-flex align-items-center justify-content-between mb-2">
@@ -1846,7 +1841,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                     <div className="border rounded p-2">
                       {options.map((option, optionIndex) => (
                         <div key={optionIndex} className="mb-3">
-                          {/* Имя опции */}
                           <div className="d-flex gap-2 mb-2">
                             <Form.Control
                               value={getOptionNameByLang(optionIndex)}
@@ -1873,7 +1867,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                             </Button>
                           </div>
 
-                          {/* Инпут добавления значения: только RU */}
                           <div className="d-flex gap-2 mb-2">
                             <Form.Control
                               value={valueDrafts[optionIndex] || ""}
@@ -1902,7 +1895,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                             </Button>
                           </div>
 
-                          {/* Чипы значений с переводами */}
                           <div className="d-flex flex-wrap gap-2">
                             {(option.values || []).map((v, valueIndex) => (
                               <div
@@ -1940,7 +1932,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                             ))}
                           </div>
 
-                          {/* Валидация под опцией */}
                           {optionErrors[`option_${optionIndex}`] && (
                             <div className="text-danger small mt-1">
                               {optionErrors[`option_${optionIndex}`]}
@@ -2158,25 +2149,66 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                   )}
                 </Col>
               </Row>
-            )}
-          </div>
+            </Tab>
 
-          <div className="mb-4">
-            <h5
-              onClick={() => toggleSection("description")}
-              style={{ cursor: "pointer" }}
-            >
-              📄 Описание {openSections.description ? "▲" : "▼"}
-            </h5>
+            {/* ===================== ОПИСАНИЕ ===================== */}
+            <Tab eventKey="description" title="📄 Описание">
+              <Tabs
+                id="description-lang-tabs"
+                activeKey={activeDescLang}
+                onSelect={(k) => k && setActiveDescLang(k)}
+                className="mb-2"
+              >
+                <Tab eventKey="ru" title="RU" />
+                <Tab eventKey="en" title="EN" />
+                <Tab eventKey="est" title="EST" />
+              </Tabs>
 
-            {openSections.description && (
-              <div>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>
+                  {activeDescLang === "ru"
+                    ? "Описание (RU)"
+                    : activeDescLang === "en"
+                    ? "Description (EN)"
+                    : "Kirjeldus (EST)"}
+                </label>
+
+                <textarea
+                  className={styles.textarea}
+                  rows={3}
+                  value={getDescValue()}
+                  onChange={(e) => updateDescValue(e.target.value)}
+                  placeholder={
+                    activeDescLang === "ru"
+                      ? "Введите описание девайса RU (необязательно)"
+                      : activeDescLang === "en"
+                      ? "Enter device description EN (optional)"
+                      : "Sisesta seadme kirjeldus EST (valikuline)"
+                  }
+                />
+
+                {isSubmitted &&
+                  getDescValue() &&
+                  getDescValue().trim().length < 5 && (
+                    <span className={styles.errorText}>
+                      {activeDescLang === "ru"
+                        ? "Описание должно быть не менее 5 символов"
+                        : activeDescLang === "en"
+                        ? "Description must be at least 5 characters"
+                        : "Kirjeldus peab olema vähemalt 5 tähemärki"}
+                    </span>
+                  )}
+              </div>
+            </Tab>
+
+            {/* ===================== ХАРАКТЕРИСТИКИ ===================== */}
+            <Tab eventKey="info" title="⚙️ Характеристики">
+              <div className="mb-3">
+                <Form.Label>Массовый ввод характеристик</Form.Label>
+
                 <Tabs
-                  id="description-lang-tabs"
-                  activeKey={activeDescLang}
-                  onSelect={(k) => {
-                    if (k) setActiveDescLang(k);
-                  }}
+                  activeKey={activeInfoLang}
+                  onSelect={(k) => k && setActiveInfoLang(k)}
                   className="mb-2"
                 >
                   <Tab eventKey="ru" title="RU" />
@@ -2184,217 +2216,155 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                   <Tab eventKey="est" title="EST" />
                 </Tabs>
 
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>
-                    {activeDescLang === "ru"
-                      ? "Описание (RU)"
-                      : activeDescLang === "en"
-                      ? "Description (EN)"
-                      : "Kirjeldus (EST)"}
-                  </label>
+                <Form.Control
+                  as="textarea"
+                  rows={4}
+                  value={getBulkByLang(activeInfoLang)}
+                  onChange={(e) =>
+                    setBulkByLang(activeInfoLang, e.target.value)
+                  }
+                  placeholder={
+                    activeInfoLang === "ru"
+                      ? `RU: по одной характеристике в строке.\nМатериал: нержавеющая сталь\nДлина кабеля — 1.2 м\nВес - 350 г`
+                      : activeInfoLang === "en"
+                      ? `EN (optional):\nMaterial: Stainless steel\nCable length — 1.2 m\nWeight - 350 g`
+                      : `EST (valikuline):\nMaterjal: roostevaba teras\nKaabli pikkus — 1.2 m\nKaal - 350 g`
+                  }
+                />
 
-                  <textarea
-                    className={styles.textarea}
-                    rows={3}
-                    value={getDescValue()}
-                    onChange={(e) => updateDescValue(e.target.value)}
-                    placeholder={
-                      activeDescLang === "ru"
-                        ? "Введите описание девайса RU (необязательно)"
-                        : activeDescLang === "en"
-                        ? "Enter device description EN (optional)"
-                        : "Sisesta seadme kirjeldus EST (valikuline)"
-                    }
-                  />
-
-                  {isSubmitted &&
-                    getDescValue() &&
-                    getDescValue().trim().length < 5 && (
-                      <span className={styles.errorText}>
-                        {activeDescLang === "ru"
-                          ? "Описание должно быть не менее 5 символов"
-                          : activeDescLang === "en"
-                          ? "Description must be at least 5 characters"
-                          : "Kirjeldus peab olema vähemalt 5 tähemärki"}
-                      </span>
-                    )}
+                <div className="mt-2 d-flex flex-wrap gap-2">
+                  <Button
+                    variant="outline-dark"
+                    onClick={applyBulkForActiveLang}
+                  >
+                    Преобразовать для текущего языка
+                  </Button>
+                  <Button
+                    variant="outline-secondary"
+                    onClick={fillBulkFromActive}
+                  >
+                    Заполнить из текущих
+                  </Button>
                 </div>
               </div>
-            )}
-          </div>
 
-          <div className="mb-4">
-            <h5
-              onClick={() => toggleSection("info")}
-              style={{ cursor: "pointer" }}
-            >
-              ⚙️ Характеристики {openSections.info ? "▲" : "▼"}
-            </h5>
+              <hr />
 
-            {openSections.info && (
-              <>
-                <div className="mb-3">
-                  <Form.Label>Массовый ввод характеристик</Form.Label>
+              <Button variant="outline-dark" onClick={addInfo}>
+                Добавить новое свойство
+              </Button>
 
-                  <Tabs
-                    activeKey={activeInfoLang}
-                    onSelect={(k) => setActiveInfoLang(k)}
-                    className="mb-2"
+              {info.map((i, index) => (
+                <Row className="mt-3" key={`info-${index}`}>
+                  <Col md={8}>
+                    <div>
+                      <Form.Control
+                        className="mt-2"
+                        value={getInfoValue(index, "title")}
+                        onChange={(e) =>
+                          updateInfoField(index, "title", e.target.value)
+                        }
+                        placeholder={
+                          activeInfoLang === "ru"
+                            ? "Название (RU)"
+                            : activeInfoLang === "en"
+                            ? "Title (EN)"
+                            : "Nimetus (EST)"
+                        }
+                      />
+                      <Form.Control
+                        className="mt-2"
+                        value={getInfoValue(index, "description")}
+                        onChange={(e) =>
+                          updateInfoField(index, "description", e.target.value)
+                        }
+                        placeholder={
+                          activeInfoLang === "ru"
+                            ? "Описание (RU)"
+                            : activeInfoLang === "en"
+                            ? "Description (EN)"
+                            : "Kirjeldus (EST)"
+                        }
+                      />
+                    </div>
+                  </Col>
+
+                  <Col
+                    md={4}
+                    className="d-flex align-items-start justify-content-end"
                   >
-                    <Tab eventKey="ru" title="RU" />
-                    <Tab eventKey="en" title="EN" />
-                    <Tab eventKey="est" title="EST" />
-                  </Tabs>
+                    <Button
+                      onClick={() => removeInfo(i.number)}
+                      variant="outline-danger"
+                    >
+                      Удалить
+                    </Button>
+                  </Col>
+                </Row>
+              ))}
+            </Tab>
+
+            {/* ===================== СРОК ГОДНОСТИ ===================== */}
+            <Tab eventKey="expiry" title="🧪 Срок годности">
+              <div className="mt-2">
+                <div className="d-flex gap-2 flex-wrap">
+                  <Form.Select
+                    value={expiryKind}
+                    onChange={(e) => setExpiryKind(e.target.value)}
+                    style={{ maxWidth: 260 }}
+                  >
+                    <option value="">— тип срока —</option>
+                    <option value="use_by">Годен до (use_by)</option>
+                    <option value="best_before">
+                      Лучше употребить до (best_before)
+                    </option>
+                  </Form.Select>
 
                   <Form.Control
-                    as="textarea"
-                    rows={4}
-                    value={getBulkByLang(activeInfoLang)}
-                    onChange={(e) =>
-                      setBulkByLang(activeInfoLang, e.target.value)
-                    }
-                    placeholder={
-                      activeInfoLang === "ru"
-                        ? `RU: по одной характеристике в строке.\nМатериал: нержавеющая сталь\nДлина кабеля — 1.2 м\nВес - 350 г`
-                        : activeInfoLang === "en"
-                        ? `EN (optional):\nMaterial: Stainless steel\nCable length — 1.2 m\nWeight - 350 g`
-                        : `EST (valikuline):\nMaterjal: roostevaba teras\nKaabli pikkus — 1.2 m\nKaal - 350 g`
-                    }
+                    type="date"
+                    value={expiryDate || ""}
+                    onChange={(e) => setExpiryDate(e.target.value)}
+                    style={{ maxWidth: 200 }}
                   />
 
-                  <div className="mt-2 d-flex flex-wrap gap-2">
-                    <Button
-                      variant="outline-dark"
-                      onClick={applyBulkForActiveLang}
-                    >
-                      Преобразовать для текущего языка
-                    </Button>
-                    <Button
-                      variant="outline-secondary"
-                      onClick={fillBulkFromActive}
-                    >
-                      Заполнить из текущих
-                    </Button>
-                  </div>
+                  <Form.Control
+                    type="date"
+                    value={snoozeUntil || ""}
+                    onChange={(e) => setSnoozeUntil(e.target.value)}
+                    style={{ maxWidth: 200 }}
+                  />
                 </div>
 
-                <hr />
-                <Button variant="outline-dark" onClick={addInfo}>
-                  Добавить новое свойство
-                </Button>
+                {isSubmitted && errors.expiryDate && (
+                  <span style={{ color: "red" }}>{errors.expiryDate}</span>
+                )}
+              </div>
+            </Tab>
 
-                {info.map((i, index) => (
-                  <Row className="mt-3" key={`info-${index}`}>
-                    <Col md={8}>
-                      <div>
-                        <Form.Control
-                          className="mt-2"
-                          value={getInfoValue(index, "title")}
-                          onChange={(e) =>
-                            updateInfoField(index, "title", e.target.value)
-                          }
-                          placeholder={
-                            activeInfoLang === "ru"
-                              ? "Название (RU)"
-                              : activeInfoLang === "en"
-                              ? "Title (EN)"
-                              : "Nimetus (EST)"
-                          }
-                        />
-                        <Form.Control
-                          className="mt-2"
-                          value={getInfoValue(index, "description")}
-                          onChange={(e) =>
-                            updateInfoField(
-                              index,
-                              "description",
-                              e.target.value
-                            )
-                          }
-                          placeholder={
-                            activeInfoLang === "ru"
-                              ? "Описание (RU)"
-                              : activeInfoLang === "en"
-                              ? "Description (EN)"
-                              : "Kirjeldus (EST)"
-                          }
-                        />
-                      </div>
-                    </Col>
-
-                    <Col
-                      md={4}
-                      className="d-flex align-items-start justify-content-end"
-                    >
-                      <Button
-                        onClick={() => removeInfo(i.number)}
-                        variant="outline-danger"
-                      >
-                        Удалить
-                      </Button>
-                    </Col>
-                  </Row>
-                ))}
-              </>
-            )}
-          </div>
+            {/* ===================== ОСТАТКИ ===================== */}
+            <Tab eventKey="stock" title="📦 Остатки">
+              <Form.Group>
+                <Form.Label>Количество на складе</Form.Label>
+                <Form.Control
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Number(e.target.value))}
+                  min="0"
+                  disabled={variants.length > 0}
+                />
+                {variants.length > 0 && (
+                  <div className="form-text">
+                    Количество считается автоматически как сумма по вариантам.
+                  </div>
+                )}
+                {errors.quantity && variants.length === 0 && (
+                  <p className="text-danger">{errors.quantity}</p>
+                )}
+              </Form.Group>
+            </Tab>
+          </Tabs>
         </Form>
-
-        <div className="mt-3 mb-2">
-          <h6>🧪 Срок годности</h6>
-          <div className="d-flex gap-2 flex-wrap">
-            <Form.Select
-              value={expiryKind}
-              onChange={(e) => setExpiryKind(e.target.value)}
-              style={{ maxWidth: 260 }}
-            >
-              <option value="">— тип срока —</option>
-              <option value="use_by">Годен до (use_by)</option>
-              <option value="best_before">
-                Лучше употребить до (best_before)
-              </option>
-            </Form.Select>
-
-            <Form.Control
-              type="date"
-              value={expiryDate || ""}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              style={{ maxWidth: 200 }}
-              placeholder="Дата годности"
-            />
-
-            <Form.Control
-              type="date"
-              value={snoozeUntil || ""}
-              onChange={(e) => setSnoozeUntil(e.target.value)}
-              style={{ maxWidth: 200 }}
-              placeholder="Snooze до (необязательно)"
-            />
-          </div>
-          {isSubmitted && errors.expiryDate && (
-            <span style={{ color: "red" }}>{errors.expiryDate}</span>
-          )}
-        </div>
       </Modal.Body>
-
-      <Form.Group>
-        <Form.Label>Количество на складе</Form.Label>
-        <Form.Control
-          type="number"
-          value={quantity}
-          onChange={(e) => setQuantity(Number(e.target.value))}
-          min="0"
-          disabled={variants.length > 0}
-        />
-        {variants.length > 0 && (
-          <div className="form-text">
-            Количество считается автоматически как сумма по вариантам.
-          </div>
-        )}
-        {errors.quantity && variants.length === 0 && (
-          <p className="text-danger">{errors.quantity}</p>
-        )}
-      </Form.Group>
 
       <Modal.Footer>
         <Button variant="outline-danger" onClick={onHide}>
@@ -2414,6 +2384,8 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
             : "Добавить устройство"}
         </Button>
       </Modal.Footer>
+
+      {/* ====== МОДАЛКА ВЫБОРА ФОТО ДЛЯ ВАРИАНТА (оставляем как было) ====== */}
       <Modal
         show={pickerOpenFor !== null}
         onHide={() => setPickerOpenFor(null)}
