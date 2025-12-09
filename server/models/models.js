@@ -206,6 +206,7 @@ const Order = sequelize.define(
     desiredDeliveryDate: { type: DataTypes.DATE, allowNull: true },
     preferredDeliveryComment: { type: DataTypes.TEXT, allowNull: true },
     processingTime: { type: DataTypes.STRING, allowNull: true },
+    processingStartTime: { type: DataTypes.DATE, allowNull: true },
     formData: { type: DataTypes.JSON, allowNull: true },
     orderDetails: { type: DataTypes.JSON, allowNull: true },
     courierId: { type: DataTypes.INTEGER, allowNull: true },
