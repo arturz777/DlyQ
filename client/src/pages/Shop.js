@@ -23,12 +23,12 @@ import DeviceItem from "../components/DeviceItem";
 import DeviceList from "../components/DeviceList";
 import OrderSidebar from "../components/OrderSidebar";
 import SlideModal from "../components/modals/SlideModal";
-import styles from "./HomePage.module.css";
+import styles from "./Shop.module.css";
 import catalogStyles from "./CatalogPage.module.css";
 
 const DevicePageLazy = lazy(() => import("../pages/DevicePage"));
 
-const HomePage = () => {
+const Shop = () => {
   const { device } = useContext(Context);
   const [newDevices, setNewDevices] = useState([]);
   const [discountedDevices, setDiscountedDevices] = useState([]);
@@ -434,4 +434,4 @@ const HomePage = () => {
   );
 };
 
-export default HomePage;
+export default Shop;
