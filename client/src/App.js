@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, useLocation } from "react-router-dom";
 import AppRouter from "./components/AppRouter";
 import NavBar from "./components/NavBar";
 import { observer } from "mobx-react-lite";
@@ -22,6 +22,46 @@ import "./locales/i18n";
 import "./App.css";
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
+
+const AppLayout = observer(() => {
+  const location = useLocation();
+
+  const hideLayout =
+    location.pathname.startsWith("/seller-admin/") ||
+    location.pathname === "/courier" ||
+    location.pathname === "/warehouse";
+
+  return (
+    <>
+      {appStore.isLoading && <LoadingBar />}
+
+      <Elements stripe={stripePromise}>
+        {!hideLayout && <NavBar />}
+        <AppRouter />
+        {!hideLayout && <OrderSidebar />}
+      </Elements>
+
+      {!hideLayout && (
+        <>
+          <MobileNavBar maintenanceMode={appStore.maintenance.enabled} />
+          <CookieConsent />
+          <ChatModal />
+          <Footer maintenanceMode={appStore.maintenance.enabled} />
+        </>
+      )}
+
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        newestOnTop
+        limit={3}
+        pauseOnFocusLoss
+        theme="colored"
+        style={{ zIndex: 2147483647 }}
+      />
+    </>
+  );
+});
 
 const App = observer(() => {
   const { user } = useContext(Context);
@@ -102,29 +142,7 @@ const App = observer(() => {
       }}
     >
       <BrowserRouter>
-        {appStore.isLoading && <LoadingBar />}
-        <Elements stripe={stripePromise}>
-          <NavBar />
-          <AppRouter />
-          <OrderSidebar />
-        </Elements>
-
-        <MobileNavBar maintenanceMode={appStore.maintenance.enabled} />
-
-        <CookieConsent />
-        <ChatModal />
-
-        <Footer maintenanceMode={appStore.maintenance.enabled} />
-
-        <ToastContainer
-          position="top-right"
-          autoClose={3000}
-          newestOnTop
-          limit={3}
-          pauseOnFocusLoss
-          theme="colored"
-          style={{ zIndex: 2147483647 }}
-        />
+        <AppLayout />
       </BrowserRouter>
     </ChatContext.Provider>
   );
