@@ -27,6 +27,29 @@ class BasketStore {
     return qty <= 0 || qty < count;
   }
 
+  getItemSellerId(item) {
+    const n = Number(item?.sellerId);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  get selectedSellerId() {
+    for (const i of this.selectedItems) {
+      const sid = this.getItemSellerId(i);
+      if (sid) return sid;
+    }
+    return null;
+  }
+
+  get hasSelectedDifferentSellers() {
+    const ids = new Set();
+    for (const i of this.selectedItems) {
+      const sid = this.getItemSellerId(i);
+      if (sid) ids.add(sid);
+      if (ids.size > 1) return true;
+    }
+    return false;
+  }
+
   get stockItems() {
     return this._items.filter((i) => !this.isOOS(i));
   }
@@ -63,6 +86,13 @@ class BasketStore {
 
     if (itemIsOOS && this.hasSelectedStockItems) return false;
     if (!itemIsOOS && this.hasSelectedPreorders) return false;
+
+    const activeSellerId = this.selectedSellerId;
+    const itemSellerId = this.getItemSellerId(item);
+
+    if (activeSellerId && itemSellerId && activeSellerId !== itemSellerId) {
+      return false;
+    }
 
     return true;
   }
@@ -118,6 +148,19 @@ class BasketStore {
         }
       }
     }
+
+    const allowedSellerId = this.selectedSellerId;
+
+    if (allowedSellerId) {
+      for (const item of this._items) {
+        if (!this._selected[item.uniqueKey]) continue;
+
+        const sid = this.getItemSellerId(item);
+        if (sid && sid !== allowedSellerId) {
+          this._selected[item.uniqueKey] = false;
+        }
+      }
+    }
   }
 
   cleanupSelectionKeys() {
@@ -160,6 +203,7 @@ class BasketStore {
     for (const item of this.stockItems) {
       this._selected[item.uniqueKey] = true;
     }
+    this.normalizeSelectionConflicts();
   }
 
   selectAllOOS() {
@@ -167,6 +211,7 @@ class BasketStore {
     for (const item of this.oosItems) {
       this._selected[item.uniqueKey] = true;
     }
+    this.normalizeSelectionConflicts();
   }
 
   toggleSelectAllStock() {
@@ -175,6 +220,7 @@ class BasketStore {
     } else {
       this.selectAllStock();
     }
+    this.normalizeSelectionConflicts();
     this.saveSelection();
   }
 
@@ -184,6 +230,7 @@ class BasketStore {
     } else {
       this.selectAllOOS();
     }
+    this.normalizeSelectionConflicts();
     this.saveSelection();
   }
 
@@ -200,6 +247,25 @@ class BasketStore {
   }
 
   addItem(item) {
+    const newSellerId = this.getItemSellerId(item);
+    const existingSellerIds = new Set(
+      this._items.map((i) => this.getItemSellerId(i))
+    );
+
+    if (existingSellerIds.size > 0) {
+      if (!existingSellerIds.has(newSellerId)) {
+        const ok = window.confirm(
+          "В корзине уже есть товары другого продавца. Очистить корзину и добавить этот товар?"
+        );
+
+        if (!ok) {
+          return;
+        }
+
+        this.clearItems();
+      }
+    }
+
     const uniqueKey = JSON.stringify({
       id: item.id,
       options: item.selectedOptions,
@@ -230,8 +296,14 @@ class BasketStore {
     this._items.push(newItem);
 
     if (this._selected[uniqueKey] == null) {
+      const activeSellerId = this.selectedSellerId;
+      const itemSellerId = this.getItemSellerId(newItem);
+
+      const sellerOk =
+        !activeSellerId || !itemSellerId || activeSellerId === itemSellerId;
+
       const defaultSelected =
-        !this.isOOS(newItem) && !this.hasSelectedPreorders;
+        sellerOk && !this.isOOS(newItem) && !this.hasSelectedPreorders;
 
       this._selected[uniqueKey] = defaultSelected;
     }
@@ -308,6 +380,10 @@ class BasketStore {
 
   get totalItems() {
     return this._items.reduce((sum, item) => sum + item.count, 0);
+  }
+
+  clearAll() {
+    this.clearItems();
   }
 
   clearItems() {
