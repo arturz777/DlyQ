@@ -13,6 +13,8 @@ const translationRoutes = require("./translationRoutes");
 const chatRouter = require("./chatRouter");
 const configRouter = require('./configRouter');
 const shopRouter = require('./shopRouter');
+const sellerRouter = require("./sellerRouter");
+const menuRouter = require("./menuRouter");
 
 router.use('/user', userRouter)
 router.use('/type', typeRouter)
@@ -27,5 +29,7 @@ router.use("/translations", translationRoutes);
 router.use("/chat", chatRouter);
 router.use('/config', configRouter);
 router.use("/shop", shopRouter);
+router.use("/seller", sellerRouter);
+router.use("/menu", menuRouter);
 
 module.exports = router
