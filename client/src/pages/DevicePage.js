@@ -81,7 +81,6 @@ const DevicePage = ({ id }) => {
 
       const data = await response.json();
       if (data.status === "error") {
-        toast.error(`❌ ${data.message}`);
         return false;
       }
       return Number(data.quantity) >= quantity;
@@ -348,16 +347,6 @@ const DevicePage = ({ id }) => {
   };
 
   const handleAddToBasket = async () => {
-    if (isStoreClosed && !isPreorder) {
-      toast.error(
-        t("the shop is closed. Click again to add to the cart", {
-          ns: "deviceItem",
-        })
-      );
-      setIsPreorder(true);
-      return;
-    }
-
     if ((device.variants?.length || 0) > 0) {
       if ((device.options?.length || 0) === 0) {
         toast.error("❌ Для товара с вариантами должны быть настроены опции.");
@@ -397,19 +386,13 @@ const DevicePage = ({ id }) => {
     const isAvailable = await checkStock(device.id, newCount, selectedOptions);
     const isThisPreorder = !isAvailable;
 
-    if (!isAvailable) {
-      toast.error(
-        `❗ ${t(
-          "product is out of stock, but has been added to the cart as a pre-order",
-          { ns: "deviceItem" }
-        )}`
-      );
-    }
-
     const newItem = {
       ...device,
       selectedOptions,
       variantKey,
+
+      sellerId: device.sellerId ?? null,
+
       isPreorder: isThisPreorder || isStoreClosed,
       stockQuantity:
         selectedVariant && (device.variants?.length || 0) > 0
