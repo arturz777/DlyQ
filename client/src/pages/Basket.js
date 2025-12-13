@@ -44,6 +44,8 @@ const normalizeVariants = (item) => {
   });
 };
 
+const isRestaurantItem = (item) => item?.isRestaurantItem === true;
+
 const Basket = observer(() => {
   const { basket } = useContext(Context);
   const navigate = useNavigate();
@@ -62,17 +64,13 @@ const Basket = observer(() => {
     ? basket.getSelectedTotalPrice()
     : 0;
 
-  const getItemStockQty = (item) => {
-    const raw = item.stockQuantity ?? item.quantity ?? 0;
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : 0;
-  };
-
-  const isOOS = (item) => {
-    const qty = getItemStockQty(item);
-    const count = Number(item.count || 1);
-    return qty <= 0 || qty < count;
-  };
+  const isOOS = (item) =>
+    isRestaurantItem(item)
+      ? false
+      : typeof basket.isOOS === "function"
+      ? basket.isOOS(item)
+      : Number(item.stockQuantity ?? item.quantity ?? 0) <
+        Number(item.count || 1);
 
   const isOutOfStockItem = isOOS;
 
@@ -161,6 +159,11 @@ const Basket = observer(() => {
       const newQuantities = {};
 
       for (const item of basket.items) {
+        if (isRestaurantItem(item)) {
+          newQuantities[item.uniqueKey] = null;
+          continue;
+        }
+
         try {
           const response = await fetch(
             `${process.env.REACT_APP_API_URL}/device/check-stock`,
@@ -217,6 +220,11 @@ const Basket = observer(() => {
 
     const newCount = item.count + 1;
 
+    if (isRestaurantItem(item)) {
+      basket.updateItemCount(uniqueKey, newCount);
+      return;
+    }
+
     const normalizedOptions = Object.fromEntries(
       Object.entries(item.selectedOptions || {}).map(([k, v]) => [k, getVal(v)])
     );
@@ -226,7 +234,6 @@ const Basket = observer(() => {
 
     if (!info.isEnough) {
       item.isPreorder = true;
-
       basket.setSelected(item.uniqueKey, false);
     } else {
       item.isPreorder = false;
@@ -243,6 +250,11 @@ const Basket = observer(() => {
     if (currentCount <= 1) return;
 
     const newCount = currentCount - 1;
+
+    if (isRestaurantItem(item)) {
+      basket.updateItemCount(uniqueKey, newCount);
+      return;
+    }
 
     const normalizedOptions = Object.fromEntries(
       Object.entries(item.selectedOptions || {}).map(([k, v]) => [k, getVal(v)])
@@ -269,6 +281,11 @@ const Basket = observer(() => {
       payment?.paymentIntentId || payment?.id || payment?.paymentIntent?.id;
     if (!paymentIntentId) {
       toast.error("Не удалось получить paymentIntentId");
+      return;
+    }
+
+    if (basket.hasSelectedDifferentSellers) {
+      toast.error("Нельзя оформить заказ с товарами разных продавцов");
       return;
     }
 
@@ -301,6 +318,7 @@ const Basket = observer(() => {
         image: item.img,
         selectedOptions: item.selectedOptions || {},
         isPreorder: item.isPreorder || isPreorder,
+        isRestaurantItem: item.isRestaurantItem === true,
         preferredTime:
           index === 0 && (item.isPreorder || isPreorder) ? preferredTime : null,
         deliveryDate:
@@ -579,8 +597,19 @@ const Basket = observer(() => {
 
     const itemIsOOS = isOOS(item);
 
+    const selectedSellerId = basket.selectedSellerId ?? null;
+    const itemSellerId =
+      typeof basket.getItemSellerId === "function"
+        ? basket.getItemSellerId(item)
+        : Number(item?.sellerId) || null;
+
+    const disableBySeller =
+      selectedSellerId && itemSellerId && selectedSellerId !== itemSellerId;
+
     const disableCheckbox =
-      (itemIsOOS && hasSelectedStock) || (!itemIsOOS && hasSelectedOOS);
+      disableBySeller ||
+      (itemIsOOS && hasSelectedStock) ||
+      (!itemIsOOS && hasSelectedOOS);
 
     return (
       <Card
@@ -761,28 +790,36 @@ const Basket = observer(() => {
         </>
       )}
 
-      {selectedItems.length > 0 && !selectedHasMixedItems && (
-        <Elements stripe={stripePromise}>
-          <PaymentForm
-            totalPrice={selectedTotal}
-            onPaymentSuccess={handlePaymentSuccess}
-            onDeliveryCostChange={setDeliveryCost}
-            preorder={{
-              isPreorder,
-              setIsPreorder,
-              hasOnlyPreorders: selectedHasOnlyPreorders,
-              hasOnlyStockItems: selectedHasOnlyStockItems,
-              hasMixedItems: selectedHasMixedItems,
-              disablePreorderCheckbox,
-              deliveryDate,
-              setDeliveryDate,
-              preferredTime,
-              setPreferredTime,
-              isStoreClosed: storeClosed,
-            }}
-          />
-        </Elements>
+      {basket.hasSelectedDifferentSellers && (
+        <div className={styles.sectionSubCenter}>
+          Нельзя выбрать товары разных продавцов. Пожалуйста, оформите отдельно.
+        </div>
       )}
+
+      {selectedItems.length > 0 &&
+        !selectedHasMixedItems &&
+        !basket.hasSelectedDifferentSellers && (
+          <Elements stripe={stripePromise}>
+            <PaymentForm
+              totalPrice={selectedTotal}
+              onPaymentSuccess={handlePaymentSuccess}
+              onDeliveryCostChange={setDeliveryCost}
+              preorder={{
+                isPreorder,
+                setIsPreorder,
+                hasOnlyPreorders: selectedHasOnlyPreorders,
+                hasOnlyStockItems: selectedHasOnlyStockItems,
+                hasMixedItems: selectedHasMixedItems,
+                disablePreorderCheckbox,
+                deliveryDate,
+                setDeliveryDate,
+                preferredTime,
+                setPreferredTime,
+                isStoreClosed: storeClosed,
+              }}
+            />
+          </Elements>
+        )}
 
       {selectedDeviceId && (
         <SlideModal onClose={() => setSelectedDeviceId(null)}>
