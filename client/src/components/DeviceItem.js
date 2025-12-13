@@ -3,7 +3,7 @@ import { Card } from "react-bootstrap";
 import Image from "react-bootstrap/Image";
 import { useNavigate } from "react-router-dom";
 import { Context } from "../index";
-import { fetchOneDeviceCached } from "../http/deviceAPI";
+import { fetchOneDevice } from "../http/deviceAPI";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import styles from "./DeviceItem.module.css";
@@ -16,7 +16,6 @@ const DeviceItem = ({ device, onClick }) => {
   const [isStoreClosed, setIsStoreClosed] = useState(false);
   const { t, i18n } = useTranslation();
   const cardRef = useRef(null);
-  const prefetchedRef = useRef(false);
   const currentLang = i18n.language || "en";
   const deviceName = device.translations?.name?.[currentLang] || device.name;
 
@@ -41,12 +40,6 @@ const DeviceItem = ({ device, onClick }) => {
       ? onClick(device.id)
       : navigate(`/device/${device.id}`);
 
-  const prefetchDetails = () => {
-    if (prefetchedRef.current) return;
-    prefetchedRef.current = true;
-    fetchOneDeviceCached(device.id).catch(() => {});
-  };
-
   useEffect(() => {
     let cancelled = false;
 
@@ -68,26 +61,6 @@ const DeviceItem = ({ device, onClick }) => {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  useEffect(() => {
-    if (!("IntersectionObserver" in window)) return;
-    const el = cardRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            prefetchDetails();
-            io.disconnect();
-            break;
-          }
-        }
-      },
-      { rootMargin: "200px" }
-    );
-    io.observe(el);
-    return () => io.disconnect();
   }, []);
 
   const toNum = (v) => {
@@ -128,12 +101,64 @@ const DeviceItem = ({ device, onClick }) => {
     }
   };
 
+  const ensureSingleSeller = (rawNewSellerId) => {
+    const normalizeSellerId = (sid) => {
+      const n = Number(sid);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+
+    const newSellerId = normalizeSellerId(rawNewSellerId);
+
+    const sellerIds = basket.items.map((it) =>
+      typeof basket.getItemSellerId === "function"
+        ? basket.getItemSellerId(it)
+        : normalizeSellerId(it.sellerId)
+    );
+
+    if (sellerIds.length === 0) return true;
+
+    const unique = Array.from(new Set(sellerIds));
+
+    if (unique.length === 1 && unique[0] === newSellerId) {
+      return true;
+    }
+
+    const ok = window.confirm(
+      "В корзине уже есть товары другого продавца. Очистить корзину и добавить этот товар?"
+    );
+
+    if (!ok) {
+      return false;
+    }
+
+    if (typeof basket.clearAll === "function") {
+      basket.clearAll();
+    } else {
+      basket.items.slice().forEach((it) => {
+        if (typeof basket.removeItem === "function" && it.uniqueKey) {
+          basket.removeItem(it.uniqueKey);
+        }
+      });
+    }
+
+    return true;
+  };
+
   const handleAddToBasket = async (e) => {
     e.stopPropagation();
 
+    const newSellerId =
+      Number(device.sellerId || device.seller?.id || 0) || null;
+
+    if (typeof ensureSingleSeller === "function") {
+      if (!ensureSingleSeller(newSellerId)) {
+        return;
+      }
+    }
+
     let full = device;
     try {
-      const fetched = await fetchOneDeviceCached(device.id);
+      const fetched = await fetchOneDevice(device.id);
       if (fetched) full = fetched;
     } catch {}
 
@@ -149,16 +174,6 @@ const DeviceItem = ({ device, onClick }) => {
       return;
     }
 
-    if (isStoreClosed && !isPreorder) {
-      toast.error(
-        t("the shop is closed. Click again to add to the cart", {
-          ns: "deviceItem",
-        })
-      );
-      setIsPreorder(true);
-      return;
-    }
-
     const itemsInBasket = basket.items.filter((item) => item.id === device.id);
     const totalInBasket = itemsInBasket.reduce(
       (s, it) => s + (it.count || 0),
@@ -169,24 +184,20 @@ const DeviceItem = ({ device, onClick }) => {
     const isAvailable = await checkStock(device.id, newCount);
     const isThisPreorder = !isAvailable;
 
-    if (!isAvailable) {
-      toast.error(
-        `❗ ${t(
-          "product is out of stock, but has been added to the cart as a pre-order",
-          { ns: "deviceItem" }
-        )}`
-      );
-    }
-
-    basket.addItem({
+    const itemForBasket = {
       ...full,
       selectedOptions: {},
       variantKey: null,
+
+      sellerId: full.sellerId ?? device.sellerId ?? newSellerId,
+
       isPreorder: isThisPreorder || isStoreClosed,
       stockQuantity: Math.max(0, (full.quantity ?? 0) - totalInBasket),
       isStoreClosed,
       defaultSelected: !(isThisPreorder || isStoreClosed),
-    });
+    };
+
+    basket.addItem(itemForBasket);
 
     toast.success(
       <>
@@ -202,13 +213,7 @@ const DeviceItem = ({ device, onClick }) => {
   };
 
   return (
-    <div
-      ref={cardRef}
-      onClick={goToDevicePage}
-      onMouseEnter={prefetchDetails}
-      onFocus={prefetchDetails}
-      onTouchStart={prefetchDetails}
-    >
+    <div ref={cardRef} onClick={goToDevicePage}>
       <Card className={styles.card}>
         {discountPercentage !== null && (
           <div className={styles.discountBadge}>-{discountPercentage}%</div>
