@@ -22,6 +22,22 @@ import {
   fetchAllOrdersForAdmin,
   adminUpdateOrderStatus,
 } from "../http/orderAPI";
+import {
+  fetchSellers,
+  createSeller,
+  updateSeller,
+  deactivateSeller,
+} from "../http/sellerAPI";
+import {
+  fetchMenuCategories,
+  fetchMenuItems,
+  deactivateMenuCategory,
+  deactivateMenuItem,
+  toggleMenuItemAvailability,
+} from "../http/menuAPI";
+import CreateMenuCategory from "../components/modals/CreateMenuCategory";
+import CreateMenuItem from "../components/modals/CreateMenuItem";
+import CreateSeller from "../components/modals/CreateSeller";
 import CreateBrand from "../components/modals/CreateBrand";
 import CreateDevice from "../components/modals/CreateDevice";
 import CreateType from "../components/modals/CreateType";
@@ -78,6 +94,17 @@ const Admin = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOption, setSortOption] = useState("priceAsc");
 
+  const [sellers, setSellers] = useState([]);
+  const [activeSellerId, setActiveSellerId] = useState(null);
+  const [menuCategories, setMenuCategories] = useState([]);
+  const [menuItems, setMenuItems] = useState([]);
+  const [menuCategoryVisible, setMenuCategoryVisible] = useState(false);
+  const [menuItemVisible, setMenuItemVisible] = useState(false);
+  const [editableMenuCategory, setEditableMenuCategory] = useState(null);
+  const [editableMenuItem, setEditableMenuItem] = useState(null);
+
+  const [sellerVisible, setSellerVisible] = useState(false);
+  const [editableSeller, setEditableSeller] = useState(null);
   const [translations, setTranslations] = useState([]);
   const [editKey, setEditKey] = useState(null);
   const [editLang, setEditLang] = useState(null);
@@ -155,12 +182,54 @@ const Admin = () => {
       setDevices(data.rows || data)
     );
     fetchTranslations().then(setTranslations);
+    fetchSellers(false).then(setSellers).catch(console.error);
   }, []);
 
   useEffect(() => {
     fetchAllOrdersForAdmin().then(setAllOrders);
     fetchMakes().then(setMakes).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (!activeSellerId && sellers?.length) {
+      const firstActive = sellers.find((s) => s.isActive) || sellers[0];
+      setActiveSellerId(firstActive?.id ?? null);
+    }
+  }, [sellers, activeSellerId]);
+
+  useEffect(() => {
+    if (!activeSellerId) return;
+
+    fetchMenuCategories(activeSellerId)
+      .then(setMenuCategories)
+      .catch(console.error);
+
+    fetchMenuItems(activeSellerId).then(setMenuItems).catch(console.error);
+  }, [activeSellerId]);
+
+  const openCreateSellerModal = () => {
+    setEditableSeller(null);
+    setSellerVisible(true);
+  };
+
+  const handleEditSeller = (seller) => {
+    setEditableSeller(seller);
+    setSellerVisible(true);
+  };
+
+  const handleDeactivateSeller = async (id) => {
+    const ok = window.confirm("Деактивировать магазин?");
+    if (!ok) return;
+
+    try {
+      await deactivateSeller(id);
+      const next = await fetchSellers(false);
+      setSellers(next);
+    } catch (e) {
+      console.error(e);
+      alert("Не удалось деактивировать магазин");
+    }
+  };
 
   const handleStatusChange = async (
     orderId,
@@ -244,6 +313,44 @@ const Admin = () => {
 
     fetchData();
   }, []);
+
+   const getMenuImgSrc = (img) => {
+    if (!img) return null;
+    const base = process.env.REACT_APP_API_URL;
+    if (/^https?:\/\//i.test(img)) return img;
+    if (img.startsWith("/")) return `${base}${img}`;
+    return `${base}/${img}`;
+  };
+
+   const handleEditMenuItem = (item) => {
+    setEditableMenuItem(item);
+    setMenuItemVisible(true);
+  };
+
+  const handleToggleMenuItemAvailability = async (id, next) => {
+    try {
+      await toggleMenuItemAvailability(id, next);
+      const items = await fetchMenuItems(activeSellerId);
+      setMenuItems(items);
+    } catch (e) {
+      console.error(e);
+      alert("Не удалось изменить доступность блюда");
+    }
+  };
+
+  const handleDeactivateMenuItem = async (id) => {
+    const ok = window.confirm("Деактивировать блюдо?");
+    if (!ok) return;
+
+    try {
+      await deactivateMenuItem(id);
+      const items = await fetchMenuItems(activeSellerId);
+      setMenuItems(items);
+    } catch (e) {
+      console.error(e);
+      alert("Не удалось деактивировать блюдо");
+    }
+  };
 
   const handleToggleVisibility = async (id, next) => {
     const prev = devices;
@@ -700,7 +807,7 @@ const Admin = () => {
       );
     }
 
-    return (
+     return (
       <div className={styles.compatRow}>
         <div className={styles.compatChips}>
           {compat.map((c, i) => {
@@ -735,7 +842,7 @@ const Admin = () => {
     );
   };
 
-return (
+  return (
     <div className={styles.adminPanelContainer}>
       <Tabs>
         <TabList>
@@ -752,6 +859,8 @@ return (
           </Tab>
           <Tab>Бухгалтерия</Tab>
           <Tab>Настройки</Tab>
+          <Tab>Магазины</Tab>
+          <Tab>Меню</Tab>
         </TabList>
 
         <TabPanel>
@@ -2065,6 +2174,226 @@ return (
             <span className={styles.toggleLabel}>Режим обслуживания</span>
           </label>
         </TabPanel>
+
+        <TabPanel>
+          <div className={styles.actionButtons}>
+            <button
+              onClick={openCreateSellerModal}
+              className={styles.actionButton}
+            >
+              Добавить магазин
+            </button>
+          </div>
+
+          <div className={styles.itemList}>
+            {sellers.length === 0 ? (
+              <p>Магазинов пока нет</p>
+            ) : (
+              sellers.map((s) => (
+                <div key={s.id} className={styles.item}>
+                  <span>
+                    <strong>{s.name}</strong>{" "}
+                    <span style={{ color: "#777" }}>
+                      {s.slug ? `(${s.slug})` : ""}
+                    </span>
+                  </span>
+
+                  <div className={styles.buttons}>
+                    <span
+                      style={{
+                        marginRight: 12,
+                        color: s.isActive ? "green" : "red",
+                      }}
+                    >
+                      {s.isActive ? "Активен" : "Неактивен"}
+                    </span>
+
+                    <button
+                      className={styles.editButton}
+                      onClick={() => handleEditSeller(s)}
+                    >
+                      Редактировать
+                    </button>
+
+                    {s.isActive && (
+                      <button
+                        className={styles.deleteButton}
+                        onClick={() => handleDeactivateSeller(s.id)}
+                      >
+                        Деактивировать
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </TabPanel>
+
+        <TabPanel>
+          <div className={styles.actionButtons}>
+            <select
+              value={activeSellerId || ""}
+              onChange={(e) => setActiveSellerId(Number(e.target.value))}
+              className={styles.select}
+            >
+              <option value="" disabled>
+                Выберите ресторан
+              </option>
+              {sellers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} {s.isActive ? "" : "(неактивен)"}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={() => {
+                setEditableMenuCategory(null);
+                setMenuCategoryVisible(true);
+              }}
+              className={styles.actionButton}
+              disabled={!activeSellerId}
+            >
+              + Категория
+            </button>
+
+            <button
+              onClick={() => {
+                setEditableMenuItem(null);
+                setMenuItemVisible(true);
+              }}
+              className={styles.actionButton}
+              disabled={!activeSellerId}
+            >
+              + Блюдо
+            </button>
+          </div>
+
+          {!activeSellerId ? (
+            <p>Выберите ресторан</p>
+          ) : (
+            <div>
+              <h4>Категории</h4>
+              <div className={styles.itemList}>
+                {menuCategories.map((cat) => (
+                  <div key={cat.id} className={styles.item}>
+                    <span>
+                      <strong>{cat.name}</strong>
+                    </span>
+                    <div className={styles.buttons}>
+                      <button
+                        className={styles.editButton}
+                        onClick={() => {
+                          setEditableMenuCategory(cat);
+                          setMenuCategoryVisible(true);
+                        }}
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        className={styles.deleteButton}
+                        onClick={async () => {
+                          if (!window.confirm("Деактивировать категорию?"))
+                            return;
+                          await deactivateMenuCategory(cat.id, activeSellerId);
+                          const next = await fetchMenuCategories(
+                            activeSellerId
+                          );
+                          setMenuCategories(next);
+                        }}
+                      >
+                        Деактивировать
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <h4 style={{ marginTop: 20 }}>Блюда</h4>
+              <div className={styles.itemList}>
+                {menuItems.map((item) => {
+                  const src = getMenuImgSrc(item.img);
+
+                  return (
+                    <div key={item.id} className={styles.item}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
+                        {src && (
+                          <Image
+                            src={src}
+                            alt={item.name}
+                            style={{
+                              width: 44,
+                              height: 44,
+                              objectFit: "cover",
+                              borderRadius: 6,
+                            }}
+                          />
+                        )}
+
+                        <span>
+                          <strong>{item.name}</strong> — {item.price} €
+                        </span>
+                      </div>
+
+                      <div className={styles.buttons}>
+                        <span
+                          style={{ color: item.isAvailable ? "green" : "red" }}
+                        >
+                          {item.isAvailable ? "Доступно" : "Недоступно"}
+                        </span>
+
+                        <button
+                          className={styles.editButton}
+                          onClick={() => {
+                            setEditableMenuItem(item);
+                            setMenuItemVisible(true);
+                          }}
+                        >
+                          Редактировать
+                        </button>
+
+                        <button
+                          className={styles.editButton}
+                          onClick={async () => {
+                            await toggleMenuItemAvailability(
+                              item.id,
+                              activeSellerId,
+                              !item.isAvailable
+                            );
+                            const next = await fetchMenuItems(activeSellerId);
+                            setMenuItems(next);
+                          }}
+                        >
+                          {item.isAvailable ? "Скрыть" : "Показать"}
+                        </button>
+
+                        <button
+                          className={styles.deleteButton}
+                          onClick={async () => {
+                            if (!window.confirm("Деактивировать блюдо?"))
+                              return;
+                            await deactivateMenuItem(item.id, activeSellerId);
+                            const next = await fetchMenuItems(activeSellerId);
+                            setMenuItems(next);
+                          }}
+                        >
+                          Деактивировать
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </TabPanel>
       </Tabs>
 
       <CreateBrand
@@ -2147,6 +2476,48 @@ return (
           fetchSubtypes().then(setSubtypes);
         }}
       />
+      <CreateSeller
+        show={sellerVisible}
+        editableSeller={editableSeller}
+        onHide={() => {
+          setSellerVisible(false);
+          setEditableSeller(null);
+          fetchSellers(false).then(setSellers);
+        }}
+        onSaved={() => {
+          fetchSellers(false).then(setSellers);
+        }}
+      />
+
+      <CreateMenuCategory
+        show={menuCategoryVisible}
+        sellerId={activeSellerId}
+        editableCategory={editableMenuCategory}
+        onHide={() => {
+          setMenuCategoryVisible(false);
+          setEditableMenuCategory(null);
+        }}
+        onSaved={async () => {
+          const cats = await fetchMenuCategories(activeSellerId);
+          setMenuCategories(cats);
+        }}
+      />
+
+      <CreateMenuItem
+        show={menuItemVisible}
+        sellerId={activeSellerId}
+        editableItem={editableMenuItem}
+        categories={menuCategories}
+        onHide={() => {
+          setMenuItemVisible(false);
+          setEditableMenuItem(null);
+        }}
+        onSaved={async () => {
+          const items = await fetchMenuItems(activeSellerId);
+          setMenuItems(items);
+        }}
+      />
+
       <StockQuickAdjustModal
         show={quickAdjustVisible}
         onHide={() => setQuickAdjustVisible(false)}
@@ -2169,5 +2540,6 @@ return (
 };
 
 export default Admin;
+
 
 
