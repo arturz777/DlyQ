@@ -1,6 +1,44 @@
 const sequelize = require("../db");
 const { DataTypes } = require("sequelize");
 
+const SellerUser = sequelize.define("seller_user", {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  sellerId: { type: DataTypes.INTEGER, allowNull: false },
+  userId: { type: DataTypes.INTEGER, allowNull: false },
+  roleInSeller: { type: DataTypes.STRING, defaultValue: "owner" },
+});
+
+const Seller = sequelize.define("seller", {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  name: { type: DataTypes.STRING, allowNull: false },
+  slug: { type: DataTypes.STRING, allowNull: true, unique: true },
+  isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+});
+
+const MenuCategory = sequelize.define("menu_category", {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  sellerId: { type: DataTypes.INTEGER, allowNull: false },
+  img: { type: DataTypes.STRING, allowNull: true },
+  name: { type: DataTypes.STRING, allowNull: false },
+  displayOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
+  isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+});
+
+const MenuItem = sequelize.define("menu_item", {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  sellerId: { type: DataTypes.INTEGER, allowNull: false },
+  categoryId: { type: DataTypes.INTEGER, allowNull: true },
+
+  name: { type: DataTypes.STRING, allowNull: false },
+  description: { type: DataTypes.TEXT, allowNull: true },
+  price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+  img: { type: DataTypes.STRING, allowNull: true },
+
+  isAvailable: { type: DataTypes.BOOLEAN, defaultValue: true },
+  displayOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
+  isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+});
+
 const User = sequelize.define("user", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   email: { type: DataTypes.STRING, unique: true },
@@ -24,6 +62,7 @@ const BasketDevice = sequelize.define("basket_device", {
 
 const Device = sequelize.define("device", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  sellerId: { type: DataTypes.INTEGER, allowNull: false },
   name: { type: DataTypes.STRING, unique: true, allowNull: false },
   price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   oldPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
@@ -190,8 +229,9 @@ const Order = sequelize.define(
   {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     userId: { type: DataTypes.INTEGER, allowNull: true },
+    sellerId: { type: DataTypes.INTEGER, allowNull: true },
     totalPrice: { type: DataTypes.NUMERIC(10, 2), allowNull: false },
-   deliveryPrice: {
+    deliveryPrice: {
       type: DataTypes.NUMERIC(10, 2),
       allowNull: false,
       defaultValue: 0,
@@ -229,7 +269,7 @@ const Order = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
-     offerCourierId: {
+    offerCourierId: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
@@ -261,6 +301,7 @@ const Warehouse = sequelize.define("warehouse", {
   name: { type: DataTypes.STRING, allowNull: false },
   status: { type: DataTypes.STRING, defaultValue: "offline" },
   expoPushToken: { type: DataTypes.STRING, allowNull: true },
+  sellerId: { type: DataTypes.INTEGER, allowNull: true },
 });
 
 const OrderDecline = sequelize.define(
@@ -283,7 +324,7 @@ const OrderDecline = sequelize.define(
     },
   },
   {
-    tableName: "order_declines",
+    tableName: "order_decline",
     timestamps: true,
     indexes: [
       {
@@ -341,9 +382,21 @@ const ChatMessage = sequelize.define("chatMessage", {
   },
 });
 
-const Setting = sequelize.define('setting', {
+const Setting = sequelize.define("setting", {
   key: { type: DataTypes.STRING, primaryKey: true },
   value: { type: DataTypes.JSONB, allowNull: true },
+});
+
+Seller.hasMany(MenuCategory, { foreignKey: "sellerId", as: "menuCategories" });
+MenuCategory.belongsTo(Seller, { foreignKey: "sellerId", as: "seller" });
+
+Seller.hasMany(MenuItem, { foreignKey: "sellerId", as: "menuItems" });
+MenuItem.belongsTo(Seller, { foreignKey: "sellerId", as: "seller" });
+
+MenuCategory.hasMany(MenuItem, { foreignKey: "categoryId", as: "items" });
+MenuItem.belongsTo(MenuCategory, {
+  foreignKey: "categoryId",
+  as: "category",
 });
 
 Chat.hasMany(ChatParticipant, { as: "participants" });
@@ -355,6 +408,40 @@ ChatMessage.belongsTo(Chat);
 User.hasMany(ChatParticipant, { foreignKey: "userId" });
 ChatParticipant.belongsTo(User, { foreignKey: "userId", as: "user" });
 
+User.belongsToMany(Seller, {
+  through: SellerUser,
+  as: "sellers",
+  foreignKey: "userId",
+  otherKey: "sellerId",
+});
+
+Seller.belongsToMany(User, {
+  through: SellerUser,
+  as: "users",
+  foreignKey: "sellerId",
+  otherKey: "userId",
+});
+
+Seller.hasMany(SellerUser, {
+  foreignKey: "sellerId",
+  as: "members",
+});
+
+SellerUser.belongsTo(Seller, {
+  foreignKey: "sellerId",
+  as: "seller",
+});
+
+User.hasMany(SellerUser, {
+  foreignKey: "userId",
+  as: "sellerLinks",
+});
+
+SellerUser.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
 Warehouse.hasMany(Order);
 Order.belongsTo(Warehouse);
 
@@ -364,6 +451,9 @@ Order.belongsTo(Courier);
 User.hasMany(Order);
 Order.belongsTo(User);
 
+Seller.hasMany(Order);
+Order.belongsTo(Seller);
+
 User.hasOne(Basket);
 Basket.belongsTo(User);
 
@@ -372,6 +462,9 @@ Rating.belongsTo(User);
 
 Basket.hasMany(BasketDevice);
 BasketDevice.belongsTo(Basket);
+
+Seller.hasMany(Device);
+Device.belongsTo(Seller);
 
 Type.hasMany(Device);
 Device.belongsTo(Type);
@@ -498,4 +591,8 @@ module.exports = {
   ChatMessage,
   Setting,
   OrderDecline,
+  Seller,
+  MenuCategory,
+  MenuItem,
+  SellerUser,
 };
