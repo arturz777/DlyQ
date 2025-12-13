@@ -15,8 +15,16 @@ export default class DeviceStore {
     this._selectedSubType = {};
     this._selectedBrand = {};
 
+    this._selectedSeller = {};
     this._limit = 50;
-    this._facets = { subtypes: [], brands: [], mmSubtypeIdsAll: [] };
+    this._facets = {
+      subtypes: [],
+      brands: [],
+      mmSubtypeIdsAll: [],
+      mmOnlySubtypeIds: [],
+      universalSubtypeIds: [],
+    };
+
     this._loading = { devices: false, subtypes: false };
     this._cursor = null;
     this._hasMore = true;
@@ -25,6 +33,19 @@ export default class DeviceStore {
     this._totalCount = 0;
 
     makeAutoObservable(this);
+  }
+
+  setSelectedSeller(seller) {
+    const same = this._selectedSeller.id === seller?.id;
+    this._selectedSeller = same ? {} : seller || {};
+
+    this._selectedType = {};
+    this._selectedSubType = {};
+    this._selectedBrand = {};
+    this._selectedMake = {};
+    this._selectedModel = {};
+
+    this.resetFeed();
   }
 
   setTypes(v) {
@@ -51,7 +72,13 @@ export default class DeviceStore {
 
   setFacets(v) {
     const next = typeof v === "function" ? v(this._facets) : v;
-    this._facets = next || { subtypes: [], brands: [], mmSubtypeIdsAll: [] };
+    this._facets = next || {
+      subtypes: [],
+      brands: [],
+      mmSubtypeIdsAll: [],
+      mmOnlySubtypeIds: [],
+      universalSubtypeIds: [],
+    };
   }
 
   setCursor(c) {
@@ -60,17 +87,29 @@ export default class DeviceStore {
   setHasMore(h) {
     this._hasMore = !!h;
   }
- setLoading(k, v) {
-  if (Object.prototype.hasOwnProperty.call(this._loading, k)) {
-    this._loading[k] = !!v;
+  setLoading(k, v) {
+    if (Object.prototype.hasOwnProperty.call(this._loading, k)) {
+      this._loading[k] = !!v;
+    }
   }
-}
   setLimit(n) {
-    this._limit = n || this._limit;
+    const next = Number(n);
+    if (!Number.isFinite(next) || next <= 0) return;
+    if (next === this._limit) return;
+    this._limit = next;
+    this.resetFeed();
   }
 
   setSort(v) {
-    const allowed = ["price_desc", "price_asc", "id_desc", "rating_desc"];
+    const allowed = [
+      "price_desc",
+      "price_asc",
+      "id_desc",
+      "id_asc",
+      "rating_desc",
+      "new_desc",
+    ];
+
     this._sort = allowed.includes(v) ? v : "price_desc";
     this.resetFeed();
   }
@@ -80,7 +119,7 @@ export default class DeviceStore {
   }
 
   setActiveType(type) {
-    this._selectedType = type || {};
+    this.setSelectedType(type);
   }
 
   setTotalCount(n) {
@@ -92,9 +131,13 @@ export default class DeviceStore {
     this._cursor = null;
     this._hasMore = true;
     this._loading.devices = false;
+    this._totalCount = 0;
   }
   appendDevices(items) {
-    this._devices = [...this._devices, ...(items || [])];
+    const next = items || [];
+    const map = new Map(this._devices.map((d) => [d.id, d]));
+    next.forEach((d) => map.set(d.id, d));
+    this._devices = Array.from(map.values());
   }
 
   setSelectedType(type) {
@@ -192,7 +235,6 @@ export default class DeviceStore {
   get devices() {
     return this._devices;
   }
-
   get selectedType() {
     return this._selectedType;
   }
@@ -208,7 +250,9 @@ export default class DeviceStore {
   get selectedBrand() {
     return this._selectedBrand;
   }
-
+  get selectedSeller() {
+    return this._selectedSeller;
+  }
   get limit() {
     return this._limit;
   }
@@ -241,6 +285,7 @@ export default class DeviceStore {
       makeId: this._selectedMake.id ?? null,
       modelId: this._selectedModel.id ?? null,
       brandId: this._selectedBrand.id ?? null,
+      sellerId: this._selectedSeller.id ?? null,
       limit: this._limit,
       cursor: this._cursor,
       sort: this._sort,
