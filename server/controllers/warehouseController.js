@@ -1,9 +1,39 @@
-const { Order, Warehouse } = require("../models/models");
+const { Order, Warehouse, SellerUser } = require("../models/models");
 const { Op } = require("sequelize");
 const { sendOrderAssignedPush } = require("../services/pushService");
 const {
   sendOrderToNextCourier,
 } = require("../services/orderDistributionService");
+
+async function getOrCreateWarehouseForUser(user) {
+  const userId = user.id;
+  let warehouse = await Warehouse.findByPk(userId);
+
+  if (!warehouse) {
+    const payload = {
+      id: userId,
+      name: buildWarehouseName(user),
+      status: "active",
+    };
+
+    if (user.role === "SELLER") {
+      const link = await SellerUser.findOne({ where: { userId } });
+      if (link) {
+        payload.sellerId = link.sellerId;
+      }
+    }
+
+    warehouse = await Warehouse.create(payload);
+  } else if (!warehouse.sellerId && user.role === "SELLER") {
+    const link = await SellerUser.findOne({ where: { userId } });
+    if (link) {
+      warehouse.sellerId = link.sellerId;
+      await warehouse.save();
+    }
+  }
+
+  return warehouse;
+}
 
 function buildWarehouseName(user) {
   const parts = [];
@@ -30,15 +60,7 @@ class WarehouseController {
         return res.status(400).json({ message: "Токен не передан." });
       }
 
-      let warehouse = await Warehouse.findByPk(userId);
-      if (!warehouse) {
-        warehouse = await Warehouse.create({
-          id: userId,
-          name: buildWarehouseName(req.user),
-          status: "active",
-        });
-      }
-
+      const warehouse = await getOrCreateWarehouseForUser(req.user);
       warehouse.expoPushToken = token;
       await warehouse.save();
 
@@ -56,23 +78,25 @@ class WarehouseController {
         return res.status(401).json({ message: "Вы не авторизованы." });
       }
 
-      let warehouse = await Warehouse.findByPk(userId);
+      const warehouse = await getOrCreateWarehouseForUser(req.user);
 
-      if (!warehouse) {
-        warehouse = await Warehouse.create({
-          id: userId,
-          name: buildWarehouseName(req.user),
-          status: "active",
-        });
+      const where = {
+        warehouseStatus: {
+          [Op.in]: ["pending", "processing"],
+        },
+        [Op.or]: [{ warehouseId: warehouse.id }, { warehouseId: null }],
+      };
+
+      if (warehouse.sellerId) {
+        where.sellerId = warehouse.sellerId;
+      } else {
+        where.sellerId = {
+          [Op.or]: [null, 0],
+        };
       }
 
       const orders = await Order.findAll({
-        where: {
-          warehouseStatus: {
-            [Op.in]: ["pending", "processing"],
-          },
-          [Op.or]: [{ warehouseId: warehouse.id }, { warehouseId: null }],
-        },
+        where,
         order: [["createdAt", "DESC"]],
       });
 
@@ -99,17 +123,17 @@ class WarehouseController {
         return res.status(401).json({ message: "Вы не авторизованы." });
       }
 
-      let warehouse = await Warehouse.findByPk(userId);
+      const warehouse = await getOrCreateWarehouseForUser(req.user);
 
-      if (!warehouse) {
-        warehouse = await Warehouse.create({
-          id: userId,
-          name: buildWarehouseName(req.user),
-          status: "active",
-        });
+      const whereOrder = { id };
+
+      if (warehouse.sellerId) {
+        whereOrder.sellerId = warehouse.sellerId;
+      } else {
+        whereOrder.sellerId = { [Op.or]: [null, 0] };
       }
 
-      const order = await Order.findByPk(id);
+      const order = await Order.findOne({ where: whereOrder });
       if (!order) {
         return res.status(404).json({ message: "Заказ не найден" });
       }
@@ -141,8 +165,23 @@ class WarehouseController {
   async completeOrder(req, res) {
     try {
       const { id } = req.params;
+      const userId = req.user?.id;
 
-      const order = await Order.findByPk(id);
+      if (!userId) {
+        return res.status(401).json({ message: "Вы не авторизованы." });
+      }
+
+      const warehouse = await getOrCreateWarehouseForUser(req.user);
+
+      const whereOrder = { id };
+
+      if (warehouse.sellerId) {
+        whereOrder.sellerId = warehouse.sellerId;
+      } else {
+        whereOrder.sellerId = { [Op.or]: [null, 0] };
+      }
+
+      const order = await Order.findOne({ where: whereOrder });
       if (!order) {
         return res.status(404).json({ message: "Заказ не найден" });
       }
