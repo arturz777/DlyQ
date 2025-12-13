@@ -115,6 +115,7 @@ class DeviceController {
   async create(req, res, next) {
     try {
       let {
+        sellerId,
         name,
         price,
         oldPrice,
@@ -225,6 +226,16 @@ class DeviceController {
 
       expiryKind = expiryKind || null;
       expiryDate = expiryDate || null;
+
+      if (expiryKind === "use_by" && expiryDate) {
+        const today = new Date().toISOString().slice(0, 10);
+        if (expiryDate < today) {
+          return res.status(400).json({
+            message: "Для use_by дата годности не может быть в прошлом.",
+          });
+        }
+      }
+
       snoozeUntil = snoozeUntil || null;
 
       if (!name || !price || !typeId) {
@@ -237,6 +248,7 @@ class DeviceController {
       const isVisible = req.body.isVisible === "false" ? false : true;
 
       const device = await Device.create({
+        sellerId: Number(sellerId) || 1,
         name,
         price,
         oldPrice: oldPrice || null,
@@ -319,15 +331,6 @@ class DeviceController {
         }
       } catch (e) {
         console.error("Не удалось сохранить доп. типы:", e.message);
-      }
-
-      if (expiryKind === "use_by" && expiryDate) {
-        const today = new Date().toISOString().slice(0, 10);
-        if (expiryDate < today) {
-          return res.status(400).json({
-            message: "Для use_by дата годности не может быть в прошлом.",
-          });
-        }
       }
 
       if (info) {
@@ -488,9 +491,10 @@ class DeviceController {
     }
   }
 
-async getAll(req, res) {
+  async getAll(req, res) {
     try {
       let {
+        sellerId,
         brandId,
         typeId,
         subtypeId,
@@ -527,7 +531,10 @@ async getAll(req, res) {
       const onlyVisible =
         String(req.query.onlyVisible).toLowerCase() === "true";
 
+      sellerId = Number(sellerId) || null;
+
       const where = {};
+      if (sellerId) where.sellerId = sellerId;
       if (onlyVisible) where.isVisible = true;
       if (brandId != null) where.brandId = brandId;
       if (isNew !== undefined) where.isNew = isNew === "true";
@@ -649,9 +656,9 @@ async getAll(req, res) {
       if (deviceIds.length > 0) {
         translations = await Translation.findAll({
           where: {
-            key: {
-              [Op.or]: deviceIds.map((id) => ({ [Op.like]: `device_${id}.%` })),
-            },
+            [Op.or]: deviceIds.map((id) => ({
+              key: { [Op.like]: `device_${id}.%` },
+            })),
           },
         });
       }
@@ -1349,12 +1356,15 @@ async getAll(req, res) {
 
   async getNewDevices(req, res) {
     try {
-      let { limit = 50 } = req.query;
+      let { limit = 50, sellerId } = req.query;
       limit = parseInt(limit, 10) || 50;
 
       const onlyVisible = req.query.onlyVisible !== "false";
       const where = { isNew: true };
       if (onlyVisible) where.isVisible = true;
+
+      sellerId = Number(sellerId) || null;
+      if (sellerId) where.sellerId = sellerId;
 
       const devices = await Device.findAll({
         where,
@@ -1408,7 +1418,7 @@ async getAll(req, res) {
 
       const device = await Device.findByPk(id);
       if (!device) {
-        return res.status(404).json({ message: "Товар не найден" });
+        return res.status(404).json({ message: "Device not found" });
       }
 
       device.isNew = isNew === "true";
@@ -1422,12 +1432,15 @@ async getAll(req, res) {
 
   async getDiscountedDevices(req, res) {
     try {
-      let { limit } = req.query;
+      let { limit, sellerId } = req.query;
       limit = limit ? parseInt(limit, 10) : 50;
 
       const onlyVisible = req.query.onlyVisible !== "false";
       const where = { discount: true };
       if (onlyVisible) where.isVisible = true;
+
+      sellerId = Number(sellerId) || null;
+      if (sellerId) where.sellerId = sellerId;
 
       const devices = await Device.findAndCountAll({
         where,
@@ -1446,12 +1459,15 @@ async getAll(req, res) {
 
   async getRecommendedDevices(req, res) {
     try {
-      let { limit } = req.query;
+      let { limit, sellerId } = req.query;
       limit = limit ? parseInt(limit, 10) : 50;
 
       const onlyVisible = req.query.onlyVisible !== "false";
       const where = { recommended: true };
       if (onlyVisible) where.isVisible = true;
+
+      sellerId = Number(sellerId) || null;
+      if (sellerId) where.sellerId = sellerId;
 
       const devices = await Device.findAndCountAll({
         where,
@@ -1515,7 +1531,7 @@ async getAll(req, res) {
     }
   }
 
- async filter(req, res) {
+  async filter(req, res) {
     try {
       const toInt = (v) => {
         const n = Number(v);
@@ -1532,6 +1548,7 @@ async getAll(req, res) {
       };
 
       let {
+        sellerId,
         brandId,
         typeId,
         subtypeId,
@@ -1557,7 +1574,10 @@ async getAll(req, res) {
           : 1000;
       const offset = (page - 1) * limit;
 
+      sellerId = Number(sellerId) || null;
+
       const baseWhere = {};
+      if (sellerId) baseWhere.sellerId = sellerId;
       if (brandId != null) baseWhere.brandId = brandId;
       if (isNew !== undefined) baseWhere.isNew = isNew === "true";
       if (discount !== undefined) baseWhere.discount = discount === "true";
@@ -1862,6 +1882,7 @@ async getAll(req, res) {
     JOIN "subtypes" s ON s.id = COALESCE(ds."subtypeId", d."subtypeId")
     WHERE s."typeId" = :typeId
       ${onlyVisible ? 'AND d."isVisible" = TRUE' : ""}
+      ${sellerId ? 'AND d."sellerId" = :sellerId' : ""}
       AND EXISTS (
         SELECT 1
         FROM "device_compatibilities" dc
@@ -1870,7 +1891,7 @@ async getAll(req, res) {
           AND (dc."makeId" IS NOT NULL OR dc."modelId" IS NOT NULL)
       )
   `,
-          { replacements: { typeId } }
+          { replacements: { typeId, ...(sellerId ? { sellerId } : {}) } }
         );
 
         mmSubtypeIdsAll = rows.map((r) => Number(r.subtypeId)).filter(Boolean);
@@ -1878,27 +1899,27 @@ async getAll(req, res) {
 
       let universalSubtypeIds = [];
       if (typeId != null) {
-        const [rowsUni] = await sequelize.query(`
+        const [rowsUni] = await sequelize.query(
+          `
       SELECT DISTINCT COALESCE(ds."subtypeId", d."subtypeId") AS "subtypeId"
       FROM "devices" d
       LEFT JOIN "device_subtypes" ds ON ds."deviceId" = d.id
       WHERE (${onlyVisible ? 'd."isVisible" = TRUE AND ' : ""} 1=1)
+      ${sellerId ? 'AND d."sellerId" = :sellerId' : ""}
       ${brandId != null ? `AND d."brandId" = ${Number(brandId)}` : ""}
         AND (
              EXISTS (SELECT 1 FROM "device_compatibilities" dc WHERE dc."deviceId"=d.id AND dc."isUniversal"=TRUE)
           OR NOT EXISTS (SELECT 1 FROM "device_compatibilities" dc2 WHERE dc2."deviceId"=d.id)
         )
-        ${
-          typeId != null
-            ? `AND EXISTS (
+        AND EXISTS (
            SELECT 1 FROM "subtypes" s
-           WHERE s.id = COALESCE(ds."subtypeId", d."subtypeId") AND s."typeId" = ${Number(
-             typeId
-           )}
-        )`
-            : ""
-        }
-    `);
+           WHERE s.id = COALESCE(ds."subtypeId", d."subtypeId") 
+             AND s."typeId" = ${Number(typeId)}
+        )
+    `,
+          { replacements: { ...(sellerId ? { sellerId } : {}) } }
+        );
+
         universalSubtypeIds = rowsUni
           .map((r) => Number(r.subtypeId))
           .filter(Boolean);
@@ -1926,12 +1947,13 @@ async getAll(req, res) {
     }
   }
 
- async cursor(req, res) {
+  async cursor(req, res) {
     try {
       const toInt = (v) => {
         const n = Number(v);
         return Number.isInteger(n) && n > 0 ? n : null;
       };
+      const sellerId = toInt(req.query.sellerId);
       const brandId = toInt(req.query.brandId);
       const typeId = toInt(req.query.typeId);
       const subtypeId = toInt(req.query.subtypeId);
@@ -1962,6 +1984,11 @@ async getAll(req, res) {
       const where = [];
       const repl = { lim_plus: limit + 1 };
       if (onlyVisible) where.push(`d."isVisible" = TRUE`);
+      if (sellerId) {
+        where.push(`d."sellerId" = :sellerId`);
+        repl.sellerId = sellerId;
+      }
+
       if (brandId) {
         where.push(`d."brandId" = :brandId`);
         repl.brandId = brandId;
@@ -2197,13 +2224,13 @@ async getAll(req, res) {
       return res.status(500).json({ message: "Ошибка курсорного фида" });
     }
   }
-  
+
   async updateVisibility(req, res) {
     try {
       const { id } = req.params;
       const { isVisible } = req.body;
       const device = await Device.findByPk(id);
-      if (!device) return res.status(404).json({ message: "Товар не найден" });
+      if (!device) return res.status(404).json({ message: "Device not found" });
 
       const next =
         typeof isVisible === "boolean"
@@ -2212,7 +2239,7 @@ async getAll(req, res) {
           ? isVisible === "true"
           : Boolean(isVisible);
 
-     device.isVisible = next;
+      device.isVisible = next;
       await device.save();
       return res.json({ id: device.id, isVisible: device.isVisible });
     } catch (e) {
@@ -2230,18 +2257,16 @@ async getAll(req, res) {
       if (!id || !Number.isInteger(deltaInt) || deltaInt === 0) {
         return res
           .status(400)
-          .json({ message: "Нужны id и целочисленный delta (не 0)" });
+          .json({ message: "id and non-zero integer delta are required" });
       }
 
       const device = await Device.findByPk(id);
-      if (!device) return res.status(404).json({ message: "Товар не найден" });
+      if (!device) return res.status(404).json({ message: "Device not found" });
 
       const variants = await DeviceVariant.findAll({ where: { deviceId: id } });
       if (variants.length > 0) {
         if (!selectedOptions || Object.keys(selectedOptions).length === 0) {
-          return res
-            .status(400)
-            .json({ message: "Нужно selectedOptions для варианта" });
+          return res.status(400).json({ code: "OPTIONS_REQUIRED_FOR_VARIANT" });
         }
 
         const clean = Object.fromEntries(
@@ -2251,16 +2276,12 @@ async getAll(req, res) {
 
         const variant = variants.find((v) => v.key === key);
         if (!variant) {
-          return res
-            .status(400)
-            .json({ message: "Такого варианта не существует" });
+          return res.status(400).json({ code: "VARIANT_NOT_FOUND" });
         }
 
         const newQty = (Number(variant.quantity) || 0) + deltaInt;
         if (newQty < 0) {
-          return res
-            .status(400)
-            .json({ message: "Недостаточно остатка у выбранного варианта" });
+          return res.status(400).json({ code: "NOT_ENOUGH_STOCK_FOR_VARIANT" });
         }
 
         variant.quantity = newQty;
@@ -2291,9 +2312,7 @@ async getAll(req, res) {
 
       if (applyToOptions) {
         if (!selectedOptions || Object.keys(selectedOptions).length === 0) {
-          return res.status(400).json({
-            message: "У этого товара есть опции. Укажи selectedOptions.",
-          });
+          return res.status(400).json({ code: "OPTIONS_REQUIRED" });
         }
 
         const [optName, sel] = Object.entries(selectedOptions)[0];
@@ -2303,21 +2322,21 @@ async getAll(req, res) {
         if (!opt) {
           return res
             .status(400)
-            .json({ message: `Опция "${optName}" не найдена` });
+            .json({ code: "OPTION_NOT_FOUND", optionName: optName });
         }
 
         const val = (opt.values || []).find((v) => v.value === selValue);
         if (!val) {
           return res.status(400).json({
-            message: `Значение "${selValue}" в опции "${optName}" не найдено`,
+            code: "OPTION_VALUE_NOT_FOUND",
+            optionName: optName,
+            value: selValue,
           });
         }
 
         const newQty = (Number(val.quantity) || 0) + deltaInt;
         if (newQty < 0) {
-          return res
-            .status(400)
-            .json({ message: "Недостаточно остатка по выбранной опции" });
+          return res.status(400).json({ code: "NOT_ENOUGH_STOCK_FOR_OPTION" });
         }
         val.quantity = newQty;
 
@@ -2335,7 +2354,7 @@ async getAll(req, res) {
       } else {
         const newQty = (Number(device.quantity) || 0) + deltaInt;
         if (newQty < 0) {
-          return res.status(400).json({ message: "Недостаточно остатка" });
+          return res.status(400).json({ code: "NOT_ENOUGH_STOCK" });
         }
         device.quantity = newQty;
         await device.save();
@@ -2343,21 +2362,23 @@ async getAll(req, res) {
       }
     } catch (e) {
       console.error("adjustStock error:", e);
-      return res.status(500).json({ message: "Ошибка изменения остатков" });
+      return res.status(500).json({ message: "STOCK_ADJUST_ERROR" });
     }
   }
 
   async search(req, res, next) {
     try {
-      const { q } = req.query;
+      const { q, sellerId } = req.query;
+      const sid = Number(sellerId) || null;
       const onlyVisible = req.query.onlyVisible !== "false";
       if (!q)
         return res.status(400).json({ message: "Параметр поиска не указан" });
 
       const baseWhere = { name: { [Op.iLike]: `%${q}%` } };
       if (onlyVisible) baseWhere.isVisible = true;
+      if (sid) baseWhere.sellerId = sid;
 
-      const qEsc = String(q).replace(/'/g, "''"); // ЭКРАНИРУЕМ!
+      const qEsc = String(q).replace(/'/g, "''");
 
       const devices = await Device.findAll({
         where: baseWhere,
@@ -2426,18 +2447,15 @@ async getAll(req, res) {
       });
 
       if (!device)
-        return res.json({ status: "error", message: "Товар не найден" });
+        return res.json({ status: "error", message: "Device not found" });
       if (Array.isArray(device.variants) && device.variants.length) {
         if (!selectedOptions || !Object.keys(selectedOptions).length) {
-          return res.json({ status: "error", message: "Нужно выбрать опции" });
+          return res.json({ status: "error", code: "OPTIONS_REQUIRED" });
         }
         const key = makeVariantKey(selectedOptions);
         const variant = device.variants.find((v) => v.key === key);
         if (!variant)
-          return res.json({
-            status: "error",
-            message: "Такой вариант недоступен",
-          });
+          return res.json({ status: "error", code: "VARIANT_NOT_FOUND" });
 
         const requested = Number(quantity ?? 0);
         const available = Number(variant.quantity) || 0;
@@ -2448,7 +2466,6 @@ async getAll(req, res) {
           isEnough,
           quantity: available,
           variantId: variant.id,
-          message: isEnough ? "Товар в наличии" : "Недостаточно на складе",
         });
       }
 
@@ -2470,7 +2487,7 @@ async getAll(req, res) {
           if (!value)
             return res.json({
               status: "error",
-              message: `Опция ${selectedValue.value} не найдена.`,
+              code: "OPTION_VALUE_NOT_FOUND",
             });
           availableQuantity = Number(value.quantity) || 0;
         }
@@ -2479,21 +2496,20 @@ async getAll(req, res) {
       if (availableQuantity < Number(quantity)) {
         return res.json({
           status: "error",
-          message: "Недостаточно на складе",
           quantity: availableQuantity,
+          code: "NOT_ENOUGH_STOCK",
         });
       }
 
       return res.json({
         status: "success",
-        message: "Товар в наличии",
         quantity: availableQuantity,
       });
     } catch (error) {
       console.error("Ошибка при проверке наличия товара:", error);
       return res.json({
         status: "error",
-        message: "Ошибка сервера при проверке наличия товара.",
+        message: "STOCK_CHECK_SERVER_ERROR",
       });
     }
   }
