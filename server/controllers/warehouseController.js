@@ -14,14 +14,13 @@ function safeParse(v) {
       return [];
     }
   }
-  return v; // уже объект/массив (JSON/JSONB)
+  return v;
 }
 
 async function getOrCreateWarehouseForUser(user) {
   const userId = user.id;
   const role = String(user.role || "").toUpperCase();
 
-  // SELLER -> склад по sellerId
   if (role === "SELLER") {
     const link = await SellerUser.findOne({ where: { userId } });
     if (!link) return null;
@@ -39,7 +38,6 @@ async function getOrCreateWarehouseForUser(user) {
     return warehouse;
   }
 
-  // ADMIN/WAREHOUSE -> общий склад
   let warehouse = await Warehouse.findOne({
     where: { sellerId: null },
     order: [["id", "ASC"]],
@@ -115,7 +113,6 @@ class WarehouseController {
       if (warehouse.sellerId) {
         where.sellerId = warehouse.sellerId;
       } else {
-        // sellerId IS NULL OR sellerId=0
         where[Op.and] = [{ [Op.or]: [{ sellerId: null }, { sellerId: 0 }] }];
       }
 
