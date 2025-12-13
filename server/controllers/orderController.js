@@ -272,14 +272,21 @@ const createOrder = async (req, res) => {
 
        let isPreorder = false;
     const devicesToUpdate = [];
+    const sellerIds = new Set();
 
     for (const item of orderDetails) {
-      const device = await Device.findByPk(item.deviceId);
+      if (item.isRestaurantItem) {
+        continue;
+      }
+      const deviceId = item.deviceId ?? item.id;
+      const device = await Device.findByPk(deviceId);
       if (!device) {
         return res
           .status(400)
           .json({ message: `Товар "${item.name}" не найден.` });
       }
+
+      if (device.sellerId) sellerIds.add(device.sellerId);
 
       if (device.quantity < item.count && !item.isPreorder) {
         return res.status(400).json({
@@ -292,6 +299,14 @@ const createOrder = async (req, res) => {
       if (device.quantity >= item.count)
         devicesToUpdate.push({ device, count: item.count });
     }
+
+    if (sellerIds.size > 1) {
+      return res.status(400).json({
+        message: "Нельзя оформить заказ с товарами разных продавцов",
+      });
+    }
+
+    const sellerId = sellerIds.size === 1 ? Array.from(sellerIds)[0] : null;
 
     const deliveryDateFromFirstItem = orderDetails[0]?.deliveryDate || null;
     const preferredTimeFromFirstItem = orderDetails[0]?.preferredTime || null;
@@ -402,6 +417,7 @@ const createOrder = async (req, res) => {
     });
 
   const orderData = {
+    sellerId,
       userId,
       totalPrice: Number(totalPrice) + Number(deliveryPrice),
       deliveryPrice,
