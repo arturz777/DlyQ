@@ -30,7 +30,7 @@ function mustEnv(name) {
 const PUBLIC_URL = mustEnv("PUBLIC_URL").replace(/\/+$/, "");
 const COMPANY = {
   email: mustEnv("COMPANY_EMAIL"),
-  site: (process.env.COMPANY_SITE || process.env.SITE_URL || "dlyq-staging.netlify.app").trim(),
+  site: (process.env.COMPANY_SITE || process.env.SITE_URL || "dlyq.ee").trim(),
 };
 const SUPABASE_IMAGE_BUCKET =
   process.env.SUPABASE_IMAGE_BUCKET || process.env.SUPABASE_BUCKET || "images";
@@ -265,21 +265,28 @@ const createOrder = async (req, res) => {
 
     const userId = req.user ? req.user.id : null;
 
-const distance = getDistanceFromWarehouse(latitude, longitude);
+   const distance = getDistanceFromWarehouse(latitude, longitude);
     const deliveryPrice = calculateDeliveryCost(totalPrice, distance);
     const courierFee = calculateDeliveryBase(distance);
     const isStoreClosedNow = !isShopOpenNow();
 
        let isPreorder = false;
     const devicesToUpdate = [];
+    const sellerIds = new Set();
 
     for (const item of orderDetails) {
-      const device = await Device.findByPk(item.deviceId);
+      if (item.isRestaurantItem) {
+        continue;
+      }
+      const deviceId = item.deviceId ?? item.id;
+      const device = await Device.findByPk(deviceId);
       if (!device) {
         return res
           .status(400)
           .json({ message: `Товар "${item.name}" не найден.` });
       }
+
+      if (device.sellerId) sellerIds.add(device.sellerId);
 
       if (device.quantity < item.count && !item.isPreorder) {
         return res.status(400).json({
@@ -292,6 +299,14 @@ const distance = getDistanceFromWarehouse(latitude, longitude);
       if (device.quantity >= item.count)
         devicesToUpdate.push({ device, count: item.count });
     }
+
+    if (sellerIds.size > 1) {
+      return res.status(400).json({
+        message: "Нельзя оформить заказ с товарами разных продавцов",
+      });
+    }
+
+    const sellerId = sellerIds.size === 1 ? Array.from(sellerIds)[0] : null;
 
     const deliveryDateFromFirstItem = orderDetails[0]?.deliveryDate || null;
     const preferredTimeFromFirstItem = orderDetails[0]?.preferredTime || null;
@@ -307,7 +322,7 @@ const distance = getDistanceFromWarehouse(latitude, longitude);
     ? "preorder"
     : "Pending";
 
-     let preorderReason = null;
+    let preorderReason = null;
     if (status === "preorder") {
       if (hasShortagePreorder) {
         preorderReason = "out_of_stock";
@@ -321,12 +336,12 @@ const distance = getDistanceFromWarehouse(latitude, longitude);
     let desiredDeliveryDateToStore = null;
     let preferredDeliveryCommentToStore = null;
 
-   if (hasScheduledPreorder) {
+    if (hasScheduledPreorder) {
       const rawDate = deliveryDateFromFirstItem || desiredDeliveryDate || null;
       desiredDeliveryDateToStore = rawDate ? new Date(rawDate) : null;
       preferredDeliveryCommentToStore = preferredTimeFromFirstItem || null;
     }
-
+    
     let deviceImageUrl = orderDetails[0]?.image || PLACEHOLDER_IMG;
 
     if (
@@ -402,6 +417,7 @@ const distance = getDistanceFromWarehouse(latitude, longitude);
     });
 
   const orderData = {
+    sellerId,
       userId,
       totalPrice: Number(totalPrice) + Number(deliveryPrice),
       deliveryPrice,
@@ -417,10 +433,10 @@ const distance = getDistanceFromWarehouse(latitude, longitude);
       productName:
         orderDetails.length > 0 ? orderDetails[0].name : "Неизвестный товар",
       orderDetails: JSON.stringify(localizedOrderDetails),
-      desiredDeliveryDate: desiredDeliveryDateToStore,
+     desiredDeliveryDate: desiredDeliveryDateToStore,
       preferredDeliveryComment: preferredDeliveryCommentToStore,
       formData: JSON.stringify(formData),
-      preorderReason,
+    preorderReason,
     };
 
     if (Order.rawAttributes?.paymentIntentId) orderData.paymentIntentId = pi.id;
