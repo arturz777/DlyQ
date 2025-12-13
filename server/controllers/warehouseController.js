@@ -5,31 +5,52 @@ const {
   sendOrderToNextCourier,
 } = require("../services/orderDistributionService");
 
+function safeParse(v) {
+  if (!v) return [];
+  if (typeof v === "string") {
+    try {
+      return JSON.parse(v);
+    } catch {
+      return [];
+    }
+  }
+  return v; // уже объект/массив (JSON/JSONB)
+}
+
 async function getOrCreateWarehouseForUser(user) {
   const userId = user.id;
-  let warehouse = await Warehouse.findByPk(userId);
+  const role = String(user.role || "").toUpperCase();
+
+  // SELLER -> склад по sellerId
+  if (role === "SELLER") {
+    const link = await SellerUser.findOne({ where: { userId } });
+    if (!link) return null;
+
+    const sellerId = link.sellerId;
+
+    let warehouse = await Warehouse.findOne({ where: { sellerId } });
+    if (!warehouse) {
+      warehouse = await Warehouse.create({
+        name: buildWarehouseName(user),
+        status: "active",
+        sellerId,
+      });
+    }
+    return warehouse;
+  }
+
+  // ADMIN/WAREHOUSE -> общий склад
+  let warehouse = await Warehouse.findOne({
+    where: { sellerId: null },
+    order: [["id", "ASC"]],
+  });
 
   if (!warehouse) {
-    const payload = {
-      id: userId,
-      name: buildWarehouseName(user),
+    warehouse = await Warehouse.create({
+      name: "Main warehouse",
       status: "active",
-    };
-
-    if (user.role === "SELLER") {
-      const link = await SellerUser.findOne({ where: { userId } });
-      if (link) {
-        payload.sellerId = link.sellerId;
-      }
-    }
-
-    warehouse = await Warehouse.create(payload);
-  } else if (!warehouse.sellerId && user.role === "SELLER") {
-    const link = await SellerUser.findOne({ where: { userId } });
-    if (link) {
-      warehouse.sellerId = link.sellerId;
-      await warehouse.save();
-    }
+      sellerId: null,
+    });
   }
 
   return warehouse;
@@ -52,15 +73,17 @@ class WarehouseController {
       const { token } = req.body;
       const userId = req.user?.id;
 
-      if (!userId) {
+      if (!userId)
         return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      if (!token) {
-        return res.status(400).json({ message: "Токен не передан." });
-      }
+      if (!token) return res.status(400).json({ message: "Токен не передан." });
 
       const warehouse = await getOrCreateWarehouseForUser(req.user);
+      if (!warehouse) {
+        return res.status(403).json({
+          message: "SELLER не привязан к sellerId (SellerUser отсутствует)",
+        });
+      }
+
       warehouse.expoPushToken = token;
       await warehouse.save();
 
@@ -73,26 +96,27 @@ class WarehouseController {
 
   async getWarehouseOrders(req, res) {
     try {
-      const userId = req.user.id;
-      if (!userId) {
+      const userId = req.user?.id;
+      if (!userId)
         return res.status(401).json({ message: "Вы не авторизованы." });
-      }
 
       const warehouse = await getOrCreateWarehouseForUser(req.user);
+      if (!warehouse) {
+        return res.status(403).json({
+          message: "SELLER не привязан к sellerId (SellerUser отсутствует)",
+        });
+      }
 
       const where = {
-        warehouseStatus: {
-          [Op.in]: ["pending", "processing"],
-        },
+        warehouseStatus: { [Op.in]: ["pending", "processing"] },
         [Op.or]: [{ warehouseId: warehouse.id }, { warehouseId: null }],
       };
 
       if (warehouse.sellerId) {
         where.sellerId = warehouse.sellerId;
       } else {
-        where.sellerId = {
-          [Op.or]: [null, 0],
-        };
+        // sellerId IS NULL OR sellerId=0
+        where[Op.and] = [{ [Op.or]: [{ sellerId: null }, { sellerId: 0 }] }];
       }
 
       const orders = await Order.findAll({
@@ -102,7 +126,7 @@ class WarehouseController {
 
       const formattedOrders = orders.map((order) => ({
         ...order.toJSON(),
-        orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
+        orderDetails: safeParse(order.orderDetails),
         preorderDate: order.desiredDeliveryDate || null,
       }));
 
@@ -117,26 +141,24 @@ class WarehouseController {
     try {
       const { id } = req.params;
       const { processingTime } = req.body;
-      const userId = req.user.id;
 
-      if (!userId) {
+      const userId = req.user?.id;
+      if (!userId)
         return res.status(401).json({ message: "Вы не авторизованы." });
-      }
 
       const warehouse = await getOrCreateWarehouseForUser(req.user);
+      if (!warehouse) {
+        return res.status(403).json({
+          message: "SELLER не привязан к sellerId (SellerUser отсутствует)",
+        });
+      }
 
       const whereOrder = { id };
-
-      if (warehouse.sellerId) {
-        whereOrder.sellerId = warehouse.sellerId;
-      } else {
-        whereOrder.sellerId = { [Op.or]: [null, 0] };
-      }
+      if (warehouse.sellerId) whereOrder.sellerId = warehouse.sellerId;
+      else whereOrder[Op.or] = [{ sellerId: null }, { sellerId: 0 }];
 
       const order = await Order.findOne({ where: whereOrder });
-      if (!order) {
-        return res.status(404).json({ message: "Заказ не найден" });
-      }
+      if (!order) return res.status(404).json({ message: "Заказ не найден" });
 
       order.warehouseStatus = "processing";
       order.processingTime = processingTime;
@@ -166,25 +188,22 @@ class WarehouseController {
     try {
       const { id } = req.params;
       const userId = req.user?.id;
-
-      if (!userId) {
+      if (!userId)
         return res.status(401).json({ message: "Вы не авторизованы." });
-      }
 
       const warehouse = await getOrCreateWarehouseForUser(req.user);
+      if (!warehouse) {
+        return res.status(403).json({
+          message: "SELLER не привязан к sellerId (SellerUser отсутствует)",
+        });
+      }
 
       const whereOrder = { id };
-
-      if (warehouse.sellerId) {
-        whereOrder.sellerId = warehouse.sellerId;
-      } else {
-        whereOrder.sellerId = { [Op.or]: [null, 0] };
-      }
+      if (warehouse.sellerId) whereOrder.sellerId = warehouse.sellerId;
+      else whereOrder[Op.or] = [{ sellerId: null }, { sellerId: 0 }];
 
       const order = await Order.findOne({ where: whereOrder });
-      if (!order) {
-        return res.status(404).json({ message: "Заказ не найден" });
-      }
+      if (!order) return res.status(404).json({ message: "Заказ не найден" });
 
       order.warehouseStatus = "ready";
       order.status = "Ready for pickup";
@@ -195,11 +214,8 @@ class WarehouseController {
       io.emit("orderStatusUpdate", { id: order.id, status: order.status });
 
       try {
-        if (order.courierId) {
-          await sendOrderAssignedPush(order);
-        } else {
-          await sendOrderToNextCourier(order);
-        }
+        if (order.courierId) await sendOrderAssignedPush(order);
+        else await sendOrderToNextCourier(order);
       } catch (err) {
         console.error("push error (warehouse.completeOrder):", err);
       }
