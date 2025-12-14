@@ -78,6 +78,12 @@ server.listen(PORT, () => console.log(`🚀 Сервер запущен на п�
 io.on("connection", (socket) => {
   console.log("🟢 Клиент подключился:", socket.id);
 
+  socket.on("joinWarehouseRoom", ({ sellerId }) => {
+    const room = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
+    socket.join(room);
+    console.log("✅ socket joined room:", room, "socket:", socket.id);
+  });
+
   socket.on("disconnect", () => {
     console.log("🔴 Клиент отключился:", socket.id);
   });
@@ -87,7 +93,8 @@ const chatSocket = require("./sockets/chatSocket");
 chatSocket(io);
 
 const notifyNewOrder = (order) => {
-  io.emit("newOrder", order);
+  const room = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
+  io.to(room).emit("newOrder", order);
 };
 
 app.use(errorHandler);
