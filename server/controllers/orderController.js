@@ -36,7 +36,7 @@ function mustEnv(name) {
 const PUBLIC_URL = mustEnv("PUBLIC_URL").replace(/\/+$/, "");
 const COMPANY = {
   email: mustEnv("COMPANY_EMAIL"),
-  site: (process.env.COMPANY_SITE || process.env.SITE_URL || "dlyq.ee").trim(),
+  site: (process.env.COMPANY_SITE || process.env.SITE_URL || "dlyq-staging.netlify.app").trim(),
 };
 const SUPABASE_IMAGE_BUCKET =
   process.env.SUPABASE_IMAGE_BUCKET || process.env.SUPABASE_BUCKET || "images";
