@@ -1,5 +1,11 @@
 const sendEmail = require("../services/emailService");
-const { Order, Device, Translation, Courier } = require("../models/models");
+const {
+  Order,
+  Device,
+  MenuItem,
+  Translation,
+  Courier,
+} = require("../models/models");
 const { Op } = require("sequelize");
 const fs = require("fs");
 const os = require("os");
@@ -276,8 +282,17 @@ const createOrder = async (req, res) => {
 
     for (const item of orderDetails) {
       if (item.isRestaurantItem) {
+        const menuItemId = Number(item.menuItemId ?? item.itemId ?? item.id);
+        const menuItem = await MenuItem.findByPk(menuItemId);
+        if (!menuItem) {
+          return res
+            .status(400)
+            .json({ message: `Блюдо не найдено (id: ${menuItemId})` });
+        }
+        if (menuItem.sellerId) sellerIds.add(menuItem.sellerId);
         continue;
       }
+      
       const deviceId = item.deviceId ?? item.id;
       const device = await Device.findByPk(deviceId);
       if (!device) {
