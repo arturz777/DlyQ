@@ -180,7 +180,7 @@ const [deletingId, setDeletingId] = useState(null);
         const res = await fetch(
           `${
             process.env.REACT_APP_API_URL
-          }api/geo/search?q=${encodeURIComponent(q)}`
+          }/geo/search?q=${encodeURIComponent(q)}`
         );
         const data = await res.json();
         setSuggestions(Array.isArray(data) ? data.slice(0, 5) : []);
