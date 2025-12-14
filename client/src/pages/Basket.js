@@ -309,21 +309,28 @@ const Basket = observer(() => {
       paymentIntentId,
       totalPrice: basket.getSelectedTotalPrice(),
       language: i18n.language,
-      orderDetails: (basket.selectedItems || []).map((item, index) => ({
-        translations: item.translations,
-        name: item.name,
-        price: item.price,
-        count: item.count,
-        deviceId: item.id,
-        image: item.img,
-        selectedOptions: item.selectedOptions || {},
-        isPreorder: item.isPreorder || isPreorder,
-        isRestaurantItem: item.isRestaurantItem === true,
-        preferredTime:
-          index === 0 && (item.isPreorder || isPreorder) ? preferredTime : null,
-        deliveryDate:
-          index === 0 && (item.isPreorder || isPreorder) ? deliveryDate : null,
-      })),
+       orderDetails: (basket.selectedItems || []).map((item, index) => {
+        const isRest = item.isRestaurantItem === true;
+        return {
+          translations: item.translations,
+          name: item.name,
+          price: item.price,
+          count: item.count,
+          image: item.img,
+          selectedOptions: item.selectedOptions || {},
+          isPreorder: item.isPreorder || isPreorder,
+          isRestaurantItem: isRest,
+          ...(isRest ? { menuItemId: item.id } : { deviceId: item.id }),
+          preferredTime:
+            index === 0 && (item.isPreorder || isPreorder)
+              ? preferredTime
+              : null,
+          deliveryDate:
+            index === 0 && (item.isPreorder || isPreorder)
+              ? deliveryDate
+              : null,
+        };
+      }),
     };
 
     try {
