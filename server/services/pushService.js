@@ -37,15 +37,21 @@ async function sendWarehouseOrderPushToCourier(order, courier) {
 
 async function sendNewOrderPushToWarehouse(order) {
   try {
-    const warehouses = await Warehouse.findAll({
-      where: {
-        expoPushToken: { [Op.ne]: null },
-        status: "active",
-      },
-    });
+    const where = {
+      expoPushToken: { [Op.ne]: null },
+      status: "active",
+    };
+
+    if (order.sellerId) {
+      where.sellerId = order.sellerId;
+    } else {
+      where[Op.or] = [{ sellerId: null }, { sellerId: 0 }];
+    }
+
+    const warehouses = await Warehouse.findAll({ where });
 
     if (!warehouses.length) {
-      console.warn("sendNewOrderPushToWarehouse: нет складов с токенами");
+      console.warn("sendNewOrderPushToWarehouse: нет складов для этого sellerId");
       return;
     }
 
@@ -57,11 +63,12 @@ async function sendNewOrderPushToWarehouse(order) {
       data: {
         type: "warehouse_new",
         orderId: String(order.id),
+        sellerId: String(order.sellerId ?? ""),
       },
     };
 
     for (const wh of warehouses) {
-      console.log("📨 Пуш на склад:", wh.id);
+      console.log("📨 Пуш на склад:", wh.id, "sellerId:", wh.sellerId);
       await sendFcmToToken(wh.expoPushToken, payload);
     }
   } catch (err) {
