@@ -31,8 +31,6 @@ async function sendOrderToNextCourier(order) {
 
   const now = new Date();
 
-  // 🔥 НОВОЕ: считаем курьеров занятыми не только по courierId,
-  // но и по активным офферам (offerCourierId + offerExpiresAt > now)
   const busyOrders = await Order.findAll({
     where: {
       [Op.or]: [
