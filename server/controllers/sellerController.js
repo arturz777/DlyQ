@@ -1,5 +1,6 @@
 const ApiError = require("../error/ApiError");
-const { Seller, SellerUser, User } = require("../models/models");
+const { Seller, SellerUser, User, Warehouse } = require("../models/models");
+const sequelize = require("../db");
 
 const makeSlug = (name = "") =>
   String(name)
@@ -62,11 +63,12 @@ class SellerController {
   }
 
   async create(req, res, next) {
+    const t = await sequelize.transaction();
     try {
       const { name, slug, isActive, kind, img, ownerUserId } = req.body;
 
       if (!name) {
-        return next(ApiError.badRequest("Название магазина обязательно"));
+        throw ApiError.badRequest("Название магазина обязательно");
       }
 
       const finalName = String(name).trim();
@@ -74,59 +76,77 @@ class SellerController {
       const isActiveNorm = parseBool(isActive, true);
 
       if (finalSlug) {
-        const exists = await Seller.findOne({ where: { slug: finalSlug } });
+        const exists = await Seller.findOne({
+          where: { slug: finalSlug },
+          transaction: t,
+        });
         if (exists) {
-          return next(ApiError.badRequest("Такой slug уже занят"));
+          throw ApiError.badRequest("Такой slug уже занят");
         }
       }
 
-      const seller = await Seller.create({
-        name: finalName,
-        slug: finalSlug || null,
-        kind: kind ?? null,
-        img: img ?? null,
-        isActive: isActiveNorm,
+      const seller = await Seller.create(
+        {
+          name: finalName,
+          slug: finalSlug || null,
+          kind: kind ?? null,
+          img: img ?? null,
+          isActive: isActiveNorm,
+        },
+        { transaction: t }
+      );
+
+      await Warehouse.findOrCreate({
+        where: { sellerId: seller.id },
+        defaults: {
+          name: `Склад: ${seller.name}`,
+          status: "active",
+          sellerId: seller.id,
+        },
+        transaction: t,
       });
 
       if (ownerUserId) {
         const uid = Number(ownerUserId);
         if (!uid) {
-          return next(ApiError.badRequest("ownerUserId должен быть числом"));
+          throw ApiError.badRequest("ownerUserId должен быть числом");
         }
 
-        const user = await User.findByPk(uid);
+        const user = await User.findByPk(uid, { transaction: t });
         if (!user) {
-          return next(
-            ApiError.badRequest("ownerUserId: пользователь не найден")
-          );
+          throw ApiError.badRequest("ownerUserId: пользователь не найден");
         }
 
         await SellerUser.findOrCreate({
           where: { sellerId: seller.id, userId: uid },
           defaults: { roleInSeller: "owner" },
+          transaction: t,
         });
 
         const roleUpper = String(user.role || "").toUpperCase();
         if (roleUpper !== "ADMIN" && roleUpper !== "SELLER") {
           user.role = "SELLER";
-          await user.save();
+          await user.save({ transaction: t });
         }
       }
 
+      await t.commit();
       return res.json(seller);
     } catch (e) {
-      next(e);
+      await t.rollback();
+      return next(e);
     }
   }
 
   async update(req, res, next) {
+    const t = await sequelize.transaction();
     try {
       const { id } = req.params;
       const { name, slug, isActive, kind, img, ownerUserId } = req.body;
 
-      const seller = await Seller.findByPk(Number(id));
+      const seller = await Seller.findByPk(Number(id), { transaction: t });
       if (!seller) {
-        return next(ApiError.notFound("Магазин не найден"));
+        throw ApiError.notFound("Магазин не найден");
       }
 
       if (name !== undefined) {
@@ -137,9 +157,12 @@ class SellerController {
         const finalSlug = slug ? String(slug).trim() : null;
 
         if (finalSlug) {
-          const exists = await Seller.findOne({ where: { slug: finalSlug } });
+          const exists = await Seller.findOne({
+            where: { slug: finalSlug },
+            transaction: t,
+          });
           if (exists && exists.id !== seller.id) {
-            return next(ApiError.badRequest("Такой slug уже занят"));
+            throw ApiError.badRequest("Такой slug уже занят");
           }
         }
 
@@ -159,54 +182,74 @@ class SellerController {
         seller.isActive = activeNorm;
       }
 
-      await seller.save();
+      await seller.save({ transaction: t });
+
+      const [wh] = await Warehouse.findOrCreate({
+        where: { sellerId: seller.id },
+        defaults: {
+          name: `Склад: ${seller.name}`,
+          status: "active",
+          sellerId: seller.id,
+        },
+        transaction: t,
+      });
+
+      const nextName = `Склад: ${seller.name}`;
+      if (wh.name !== nextName) {
+        wh.name = nextName;
+        await wh.save({ transaction: t });
+      }
 
       if (ownerUserId) {
         const uid = Number(ownerUserId);
         if (!uid) {
-          return next(ApiError.badRequest("ownerUserId должен быть числом"));
+          throw ApiError.badRequest("ownerUserId должен быть числом");
         }
 
-        const user = await User.findByPk(uid);
+        const user = await User.findByPk(uid, { transaction: t });
         if (!user) {
-          return next(
-            ApiError.badRequest("ownerUserId: пользователь не найден")
-          );
+          throw ApiError.badRequest("ownerUserId: пользователь не найден");
         }
 
         await SellerUser.findOrCreate({
           where: { sellerId: seller.id, userId: uid },
           defaults: { roleInSeller: "owner" },
+          transaction: t,
         });
 
         const roleUpper = String(user.role || "").toUpperCase();
         if (roleUpper !== "ADMIN" && roleUpper !== "SELLER") {
           user.role = "SELLER";
-          await user.save();
+          await user.save({ transaction: t });
         }
       }
 
+      await t.commit();
       return res.json(seller);
     } catch (e) {
-      next(e);
+      await t.rollback();
+      return next(e);
     }
   }
 
   async deactivate(req, res, next) {
+    const t = await sequelize.transaction();
     try {
       const { id } = req.params;
 
-      const seller = await Seller.findByPk(Number(id));
+      const seller = await Seller.findByPk(Number(id), { transaction: t });
       if (!seller) {
-        return next(ApiError.notFound("Магазин не найден"));
+        throw ApiError.notFound("Магазин не найден");
       }
 
       seller.isActive = false;
-      await seller.save();
+      await seller.save({ transaction: t });
 
+      await t.commit();
       return res.json({ message: "Магазин деактивирован", seller });
     } catch (e) {
-      next(e);
+      await t.rollback();
+      return next(e);
     }
   }
 }
