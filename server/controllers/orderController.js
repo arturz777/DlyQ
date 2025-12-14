@@ -476,7 +476,8 @@ const createOrder = async (req, res) => {
     }
 
     const io = req.app.get("io");
-    io.emit("newOrder", order);
+    const room = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
+    io.to(room).emit("newOrder", order);
 
    const generateSummaryItems = (items) => {
   return items
