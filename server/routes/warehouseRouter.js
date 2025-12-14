@@ -32,4 +32,11 @@ router.post(
   warehouseController.savePushToken
 );
 
+router.get(
+  "/me",
+  authMiddleware,
+  roleMiddleware("WAREHOUSE", "SELLER", "ADMIN"),
+  warehouseController.getMe
+);
+
 module.exports = router;
