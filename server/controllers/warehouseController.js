@@ -21,7 +21,7 @@ async function getOrCreateWarehouseForUser(user) {
   const userId = user.id;
   const role = String(user.role || "").toUpperCase();
 
-  if (role === "SELLER") {
+  if (role === "SELLER" || role === "WAREHOUSE") {
     const link = await SellerUser.findOne({ where: { userId } });
     if (!link) return null;
 
