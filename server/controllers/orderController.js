@@ -475,8 +475,9 @@ const createOrder = async (req, res) => {
       await device.update({ quantity: device.quantity - count });
     }
 
-    const io = req.app.get("io");
-    io.emit("newOrder", order);
+   const io = req.app.get("io");
+    const room = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
+    io.to(room).emit("newOrder", order);
 
    const generateSummaryItems = (items) => {
   return items
