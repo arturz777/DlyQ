@@ -66,6 +66,17 @@ function buildWarehouseName(user) {
 }
 
 class WarehouseController {
+  async getMe(req, res) {
+    const warehouse = await getOrCreateWarehouseForUser(req.user);
+    if (!warehouse) return res.status(403).json({ message: "No warehouse" });
+
+    return res.json({
+      warehouseId: warehouse.id,
+      sellerId: warehouse.sellerId || null,
+      role: req.user.role,
+    });
+  }
+
   async savePushToken(req, res) {
     try {
       const { token } = req.body;
@@ -82,10 +93,12 @@ class WarehouseController {
         });
       }
 
-      warehouse.expoPushToken = token;
+      warehouse.expoPushToken = token || null;
       await warehouse.save();
 
-      return res.json({ message: "Push-токен склада сохранён" });
+      return res.json({
+        message: token ? "Push-токен сохранён" : "Push-токен очищен",
+      });
     } catch (error) {
       console.error("❌ Ошибка сохранения push-токена склада:", error);
       return res.status(500).json({ message: "Ошибка сервера" });
