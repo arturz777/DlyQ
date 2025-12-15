@@ -92,9 +92,15 @@ io.on("connection", (socket) => {
 const chatSocket = require("./sockets/chatSocket");
 chatSocket(io);
 
+const getWarehouseRoom = (sellerId) =>
+  sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
+
 const notifyNewOrder = (order) => {
-  const room = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
+  const sellerId = order?.sellerId ?? null;
+  const room = getWarehouseRoom(sellerId);
+
   io.to(room).emit("newOrder", order);
+  console.log("📣 newOrder ->", room, "order:", order.id, "sellerId:", sellerId);
 };
 
 app.use(errorHandler);
