@@ -21,37 +21,49 @@ async function getOrCreateWarehouseForUser(user) {
   const userId = user.id;
   const role = String(user.role || "").toUpperCase();
 
-  if (role === "SELLER" || role === "WAREHOUSE") {
-    const link = await SellerUser.findOne({ where: { userId } });
-    if (!link) return null;
+  const getOrCreateMain = async () => {
+    let wh = await Warehouse.findOne({
+      where: { sellerId: null },
+      order: [["id", "ASC"]],
+    });
 
-    const sellerId = link.sellerId;
+    if (!wh) {
+      wh = await Warehouse.create({
+        name: "Main warehouse",
+        status: "active",
+        sellerId: null,
+      });
+    }
+    return wh;
+  };
 
-    let warehouse = await Warehouse.findOne({ where: { sellerId } });
-    if (!warehouse) {
-      warehouse = await Warehouse.create({
+  const getOrCreateBySeller = async (sellerId) => {
+    let wh = await Warehouse.findOne({ where: { sellerId } });
+    if (!wh) {
+      wh = await Warehouse.create({
         name: buildWarehouseName(user),
         status: "active",
         sellerId,
       });
     }
-    return warehouse;
+    return wh;
+  };
+
+  if (role === "ADMIN") return getOrCreateMain();
+
+  if (role === "SELLER") {
+    const link = await SellerUser.findOne({ where: { userId } });
+    if (!link) return null;
+    return getOrCreateBySeller(link.sellerId);
   }
 
-  let warehouse = await Warehouse.findOne({
-    where: { sellerId: null },
-    order: [["id", "ASC"]],
-  });
-
-  if (!warehouse) {
-    warehouse = await Warehouse.create({
-      name: "Main warehouse",
-      status: "active",
-      sellerId: null,
-    });
+  if (role === "WAREHOUSE") {
+    const link = await SellerUser.findOne({ where: { userId } });
+    if (link?.sellerId) return getOrCreateBySeller(link.sellerId);
+    return getOrCreateMain();
   }
 
-  return warehouse;
+  return null;
 }
 
 function buildWarehouseName(user) {
@@ -68,7 +80,9 @@ function buildWarehouseName(user) {
 class WarehouseController {
   async getMe(req, res) {
     const warehouse = await getOrCreateWarehouseForUser(req.user);
-    if (!warehouse) return res.status(403).json({ message: "No warehouse" });
+    if (!warehouse) {
+      return res.status(403).json({ message: "Нет доступа к складу" });
+    }
 
     return res.json({
       warehouseId: warehouse.id,
@@ -78,32 +92,33 @@ class WarehouseController {
   }
 
   async savePushToken(req, res) {
-  try {
-    const { token } = req.body;
-    const userId = req.user?.id;
+    try {
+      const { token } = req.body;
+      const userId = req.user?.id;
 
-    if (!userId) return res.status(401).json({ message: "Вы не авторизованы." });
+      if (!userId)
+        return res.status(401).json({ message: "Вы не авторизованы." });
 
-    const warehouse = await getOrCreateWarehouseForUser(req.user);
-    if (!warehouse) {
-      return res.status(403).json({ message: "SELLER не привязан к sellerId" });
-    }
+      const warehouse = await getOrCreateWarehouseForUser(req.user);
+      if (!warehouse) {
+        return res.status(403).json({ message: "Нет доступа к складу" });
+      }
 
-    if (!token) {
-      warehouse.expoPushToken = null;
+      if (!token) {
+        warehouse.expoPushToken = null;
+        await warehouse.save();
+        return res.json({ message: "Push-токен склада удалён" });
+      }
+
+      warehouse.expoPushToken = token;
       await warehouse.save();
-      return res.json({ message: "Push-токен склада удалён" });
+
+      return res.json({ message: "Push-токен склада сохранён" });
+    } catch (error) {
+      console.error("❌ Ошибка сохранения push-токена склада:", error);
+      return res.status(500).json({ message: "Ошибка сервера" });
     }
-
-    warehouse.expoPushToken = token;
-    await warehouse.save();
-
-    return res.json({ message: "Push-токен склада сохранён" });
-  } catch (error) {
-    console.error("❌ Ошибка сохранения push-токена склада:", error);
-    return res.status(500).json({ message: "Ошибка сервера" });
   }
-}
 
   async getWarehouseOrders(req, res) {
     try {
@@ -113,9 +128,7 @@ class WarehouseController {
 
       const warehouse = await getOrCreateWarehouseForUser(req.user);
       if (!warehouse) {
-        return res.status(403).json({
-          message: "SELLER не привязан к sellerId (SellerUser отсутствует)",
-        });
+        return res.status(403).json({ message: "Нет доступа к складу" });
       }
 
       const where = {
@@ -158,9 +171,7 @@ class WarehouseController {
 
       const warehouse = await getOrCreateWarehouseForUser(req.user);
       if (!warehouse) {
-        return res.status(403).json({
-          message: "SELLER не привязан к sellerId (SellerUser отсутствует)",
-        });
+        return res.status(403).json({ message: "Нет доступа к складу" });
       }
 
       const whereOrder = { id };
@@ -203,9 +214,7 @@ class WarehouseController {
 
       const warehouse = await getOrCreateWarehouseForUser(req.user);
       if (!warehouse) {
-        return res.status(403).json({
-          message: "SELLER не привязан к sellerId (SellerUser отсутствует)",
-        });
+        return res.status(403).json({ message: "Нет доступа к складу" });
       }
 
       const whereOrder = { id };
