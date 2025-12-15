@@ -78,32 +78,32 @@ class WarehouseController {
   }
 
   async savePushToken(req, res) {
-    try {
-      const { token } = req.body;
-      const userId = req.user?.id;
+  try {
+    const { token } = req.body;
+    const userId = req.user?.id;
 
-      if (!userId)
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      if (!token) return res.status(400).json({ message: "Токен не передан." });
+    if (!userId) return res.status(401).json({ message: "Вы не авторизованы." });
 
-      const warehouse = await getOrCreateWarehouseForUser(req.user);
-      if (!warehouse) {
-        return res.status(403).json({
-          message: "SELLER не привязан к sellerId (SellerUser отсутствует)",
-        });
-      }
-
-      warehouse.expoPushToken = token || null;
-      await warehouse.save();
-
-      return res.json({
-        message: token ? "Push-токен сохранён" : "Push-токен очищен",
-      });
-    } catch (error) {
-      console.error("❌ Ошибка сохранения push-токена склада:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
+    const warehouse = await getOrCreateWarehouseForUser(req.user);
+    if (!warehouse) {
+      return res.status(403).json({ message: "SELLER не привязан к sellerId" });
     }
+
+    if (!token) {
+      warehouse.expoPushToken = null;
+      await warehouse.save();
+      return res.json({ message: "Push-токен склада удалён" });
+    }
+
+    warehouse.expoPushToken = token;
+    await warehouse.save();
+
+    return res.json({ message: "Push-токен склада сохранён" });
+  } catch (error) {
+    console.error("❌ Ошибка сохранения push-токена склада:", error);
+    return res.status(500).json({ message: "Ошибка сервера" });
   }
+}
 
   async getWarehouseOrders(req, res) {
     try {
