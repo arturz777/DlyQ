@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchSellers } from "../http/sellerAPI";
+import mainStoreImg from "../assets/main-store.png";
 import styles from "./MainPage.module.css";
+
+const MAIN_SHOP_PATH = "/shop";
 
 const MainPage = () => {
   const [sellers, setSellers] = useState([]);
@@ -16,7 +19,7 @@ const MainPage = () => {
         setSellers(list || []);
       } catch (e) {
         console.error(e);
-        setError("Не удалось загрузить магазины");
+        setError("Не удалось загрузить рестораны");
       } finally {
         setLoading(false);
       }
@@ -39,41 +42,74 @@ const MainPage = () => {
     navigate(`/seller/${slugOrId}`, { state: { seller: s } });
   };
 
+  const handleOpenMainShop = () => {
+    navigate(MAIN_SHOP_PATH);
+  };
+
+  const SkeletonList = ({ count = 4 }) => (
+    <div className={styles.bannerList} aria-hidden="true">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className={`${styles.banner} ${styles.skeleton}`}>
+          <div className={styles.skeletonImg} />
+          <div className={styles.skeletonContent}>
+            <div className={styles.skeletonLine} />
+            <div className={styles.skeletonPill} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className={styles.wrapper}>
-      <h1 className={styles.title}>Выберите магазин</h1>
 
-      {loading && (
-        <div className={styles.loading}>Загружаем списoк магазинов…</div>
-      )}
+      <button
+        className={`${styles.banner} ${styles.mainStore}`}
+        onClick={handleOpenMainShop}
+        type="button"
+      >
+      <img src={mainStoreImg} alt="DlyQ Market" className={styles.bannerImg} />
+        <div className={styles.bannerOverlay} />
+
+        <div className={styles.bannerContent}>
+          <div className={styles.bannerTitle}>DlyQ Market</div>
+        </div>
+      </button>
+
+      <div className={styles.sectionHeader} style={{ marginTop: 18 }}>
+      </div>
 
       {error && <div className={styles.error}>{error}</div>}
 
-      {!loading && !error && sellers.length === 0 && (
-        <div className={styles.empty}>Пока нет доступных магазинов</div>
+      {loading && (
+        <>
+          <SkeletonList count={4} />
+        </>
       )}
 
       {!loading && !error && sellers.length > 0 && (
-        <div className={styles.grid}>
+        <div className={styles.bannerList}>
           {sellers.map((s) => {
             const src = getSellerImgSrc(s.img);
 
             return (
               <button
                 key={s.id}
-                className={styles.card}
+                className={styles.banner}
                 onClick={() => handleOpenSeller(s)}
                 type="button"
               >
                 {src ? (
-                  <img src={src} alt={s.name} className={styles.img} />
+                  <img src={src} alt={s.name} className={styles.bannerImg} />
                 ) : (
-                  <div className={styles.imgPlaceholder} />
+                  <div className={styles.bannerImgPlaceholder} />
                 )}
 
-                <div className={styles.cardBottom}>
-                  <div className={styles.name}>{s.name}</div>
-                  {s.kind && <div className={styles.kind}>{s.kind}</div>}
+                <div className={styles.bannerOverlay} />
+
+                <div className={styles.bannerContent}>
+                  <div className={styles.bannerTitle}>{s.name}</div>
+                  {s.kind && <div className={styles.badge}>{s.kind}</div>}
                 </div>
               </button>
             );
