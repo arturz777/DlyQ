@@ -25,9 +25,20 @@
 }
 
 .headerInfo {
-  display: flex;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 80px 1fr 80px;
   align-items: center;
   gap: 16px;
+}
+
+.headerText {
+  text-align: center;
+}
+
+.headerStub {
+  width: 80px;
+  height: 80px;
 }
 
 .headerImg {
@@ -39,7 +50,7 @@
 
 .sellerName {
   margin: 0;
-  font-size: 24px;
+  font-size: 30px;
 }
 
 .sellerKind {
@@ -53,9 +64,11 @@
 }
 
 .categoriesNav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  position: sticky;
+  top: 70px;
+  z-index: 50;
+  background: #fff;
+  padding: 8px 0;
   margin-bottom: 16px;
 }
 
@@ -70,6 +83,20 @@
 
 .categoryChip:hover {
   background: #d1d5db;
+}
+
+@media (max-width: 768px) {
+  .categoriesNav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 10px;
+  }
+
+  .categoryChip {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
 }
 
 .categorySection {
@@ -114,6 +141,13 @@
   border-radius: 12px;
   border: 1px solid #e5e7eb;
   background: #ffffff;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.itemCard:hover {
+  background: #fafafa;
 }
 
 .itemImg {
@@ -156,23 +190,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.badgeAvailable,
-.badgeUnavailable {
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.badgeAvailable {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.badgeUnavailable {
-  background: #fee2e2;
-  color: #b91c1c;
 }
 
 .addButton {
