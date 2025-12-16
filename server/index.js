@@ -76,16 +76,16 @@ app.use("/api/payments", paymentsRouter);
 server.listen(PORT, () => console.log(`🚀 Сервер запущен на порту ${PORT}`));
 
 io.on("connection", (socket) => {
-  console.log("🟢 Клиент подключился:", socket.id);
-
   socket.on("joinWarehouseRoom", ({ sellerId }) => {
+    for (const r of socket.rooms) {
+      if (typeof r === "string" && r.startsWith("warehouse:")) {
+        socket.leave(r);
+      }
+    }
+
     const room = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
     socket.join(room);
     console.log("✅ socket joined room:", room, "socket:", socket.id);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("🔴 Клиент отключился:", socket.id);
   });
 });
 
@@ -96,11 +96,9 @@ const getWarehouseRoom = (sellerId) =>
   sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
 
 const notifyNewOrder = (order) => {
-  const sellerId = order?.sellerId ?? null;
-  const room = getWarehouseRoom(sellerId);
-
+  const sellerId = order?.sellerId;
+  const room = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
   io.to(room).emit("newOrder", order);
-  console.log("📣 newOrder ->", room, "order:", order.id, "sellerId:", sellerId);
 };
 
 app.use(errorHandler);
