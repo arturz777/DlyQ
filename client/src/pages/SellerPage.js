@@ -4,6 +4,8 @@ import { toast } from "react-toastify";
 import { Context } from "../index";
 import { fetchSellers } from "../http/sellerAPI";
 import { fetchMenuCategories, fetchMenuItems } from "../http/menuAPI";
+import SlideModal from "../components/modals/SlideModal";
+import DishModal from "../components/DishModal";
 import styles from "./SellerPage.module.css";
 
 const API_BASE = process.env.REACT_APP_API_URL;
@@ -27,7 +29,12 @@ const SellerPage = () => {
   const [loading, setLoading] = useState(true);
   const [menuLoading, setMenuLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isStoreClosed, setIsStoreClosed] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState(null);
+
+  const selectedItem = useMemo(
+    () => items.find((x) => String(x.id) === String(selectedItemId)) || null,
+    [items, selectedItemId]
+  );
 
   const itemsByCategory = useMemo(() => {
     const map = {};
@@ -133,46 +140,39 @@ const SellerPage = () => {
     return true;
   };
 
-  const handleAddToBasket = (e, item) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!item.isAvailable) {
+  const addToBasket = (item, qty = 1) => {
+    if (!item?.isAvailable) {
       toast.error("Блюдо сейчас недоступно");
       return;
     }
 
     const newSellerId = seller?.id ? Number(seller.id) : null;
-
     if (typeof ensureSingleSeller === "function") {
-      if (!ensureSingleSeller(newSellerId)) {
-        return;
-      }
+      if (!ensureSingleSeller(newSellerId)) return;
     }
 
-    const basketItem = {
-      id: item.id,
-      name: item.name,
-      price: Number(item.price) || 0,
-      img: item.img || null,
-      sellerId: newSellerId,
+    for (let i = 0; i < qty; i++) {
+      const basketItem = {
+        id: item.id,
+        name: item.name,
+        price: Number(item.price) || 0,
+        img: item.img || null,
+        sellerId: newSellerId,
+        isRestaurantItem: true,
+        isPreorder: false,
+        defaultSelected: true,
+        selectedOptions: {},
+        variantKey: null,
+        stockQuantity:
+          typeof item.stockQuantity === "number"
+            ? item.stockQuantity
+            : typeof item.quantity === "number"
+            ? item.quantity
+            : 999999,
+      };
 
-      isRestaurantItem: true,
-
-      isPreorder: false,
-      defaultSelected: true,
-      selectedOptions: {},
-      variantKey: null,
-
-      stockQuantity:
-        typeof item.stockQuantity === "number"
-          ? item.stockQuantity
-          : typeof item.quantity === "number"
-          ? item.quantity
-          : 999999,
-    };
-
-    basket.addItem(basketItem);
+      basket.addItem(basketItem);
+    }
 
     toast.success(
       <>
@@ -203,22 +203,25 @@ const SellerPage = () => {
       {seller && (
         <header className={styles.header}>
           <div className={styles.headerInfo}>
-            {seller.img && (
+            {seller.img ? (
               <img
                 src={getMenuImgSrc(seller.img)}
                 alt={seller.name}
                 className={styles.headerImg}
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
+                onError={(e) => (e.currentTarget.style.display = "none")}
               />
+            ) : (
+              <div className={styles.headerStub} />
             )}
-            <div>
+
+            <div className={styles.headerText}>
               <h1 className={styles.sellerName}>{seller.name}</h1>
               {seller.kind && (
                 <div className={styles.sellerKind}>{seller.kind}</div>
               )}
             </div>
+
+            <div className={styles.headerStub} aria-hidden="true" />
           </div>
         </header>
       )}
@@ -282,7 +285,17 @@ const SellerPage = () => {
                       const imgSrc = getMenuImgSrc(item.img);
 
                       return (
-                        <div key={item.id} className={styles.itemCard}>
+                        <div
+                          key={item.id}
+                          className={styles.itemCard}
+                          onClick={() => setSelectedItemId(item.id)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ")
+                              setSelectedItemId(item.id);
+                          }}
+                        >
                           {imgSrc && (
                             <img
                               src={imgSrc}
@@ -312,23 +325,17 @@ const SellerPage = () => {
                             </div>
 
                             <div className={styles.itemBottomRow}>
-                              <span
-                                className={
-                                  item.isAvailable
-                                    ? styles.badgeAvailable
-                                    : styles.badgeUnavailable
-                                }
-                              >
-                                {item.isAvailable
-                                  ? "Доступно"
-                                  : "Нет в наличии"}
-                              </span>
+                              <span></span>
 
                               <button
                                 type="button"
                                 className={styles.addButton}
                                 disabled={!item.isAvailable}
-                                onClick={(e) => handleAddToBasket(e, item)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  addToBasket(item, 1);
+                                }}
                               >
                                 Добавить
                               </button>
@@ -347,6 +354,21 @@ const SellerPage = () => {
             <div className={styles.emptyMenu}>Меню пока пустое</div>
           )}
         </div>
+      )}
+      {selectedItem && (
+        <SlideModal
+          title={selectedItem.name}
+          onClose={() => setSelectedItemId(null)}
+        >
+          <DishModal
+            item={selectedItem}
+            seller={seller}
+            getImgSrc={getMenuImgSrc}
+            onAdd={(qty) => {
+              addToBasket(selectedItem, qty);
+            }}
+          />
+        </SlideModal>
       )}
     </div>
   );
