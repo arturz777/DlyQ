@@ -10,6 +10,9 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
   const [kind, setKind] = useState("");
   const [img, setImg] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [address, setAddress] = useState("");
+  const [pickupLat, setPickupLat] = useState("");
+  const [pickupLng, setPickupLng] = useState("");
 
   const [ownerUserId, setOwnerUserId] = useState("");
 
@@ -23,6 +26,10 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
       setSlug(editableSeller?.slug || "");
       setKind(editableSeller?.kind || "");
       setImg(editableSeller?.img || "");
+      setAddress(editableSeller?.address || "");
+      setPickupLat(editableSeller?.pickupLat ?? "");
+      setPickupLng(editableSeller?.pickupLng ?? "");
+
       setIsActive(
         editableSeller?.isActive === undefined
           ? true
@@ -37,6 +44,9 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
       setImg("");
       setIsActive(true);
       setOwnerUserId("");
+      setAddress("");
+      setPickupLat("");
+      setPickupLng("");
     }
   }, [show, isEdit, editableSeller]);
 
@@ -46,48 +56,61 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
   };
 
   const handleSubmit = async () => {
-    if (!name.trim()) {
-      alert("Введите название магазина");
+  if (!name.trim()) {
+    alert("Введите название магазина");
+    return;
+  }
+
+  const latNum = pickupLat === "" ? null : Number(pickupLat);
+  const lngNum = pickupLng === "" ? null : Number(pickupLng);
+
+  if (
+    (pickupLat !== "" || pickupLng !== "") &&
+    (!Number.isFinite(latNum) || !Number.isFinite(lngNum))
+  ) {
+    alert("pickupLat/pickupLng должны быть числами");
+    return;
+  }
+
+  if ((latNum == null) !== (lngNum == null)) {
+    alert("Нужно указать и pickupLat, и pickupLng (или оставить оба пустыми)");
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const payload = {
+      name: name.trim(),
+      slug: slug.trim() || undefined,
+      kind: kind.trim() || undefined,
+      img: img.trim() || undefined,
+      isActive,
+
+      address: address.trim() || undefined,
+      pickupLat: latNum ?? undefined,
+      pickupLng: lngNum ?? undefined,
+    };
+
+    const ownerIdNum = Number(ownerUserId);
+    if (ownerUserId && !ownerIdNum) {
+      alert("ownerUserId должен быть числом");
       return;
     }
+    if (ownerIdNum) payload.ownerUserId = ownerIdNum;
 
-    setLoading(true);
-    try {
-      const payload = {
-        name: name.trim(),
-        slug: slug.trim() || undefined,
-        kind: kind.trim() || undefined,
-        img: img.trim() || undefined,
-        isActive,
-      };
+    const saved = isEdit
+      ? await updateSeller(editableSeller.id, payload)
+      : await createSeller(payload);
 
-      const ownerIdNum = Number(ownerUserId);
-      if (ownerUserId && !ownerIdNum) {
-        alert("ownerUserId должен быть числом");
-        setLoading(false);
-        return;
-      }
-
-      if (ownerIdNum) {
-        payload.ownerUserId = ownerIdNum;
-      }
-
-      let saved;
-      if (isEdit) {
-        saved = await updateSeller(editableSeller.id, payload);
-      } else {
-        saved = await createSeller(payload);
-      }
-
-      onSaved?.(saved);
-      onHide?.();
-    } catch (e) {
-      console.error(e);
-      alert(e?.response?.data?.message || "Ошибка сохранения магазина");
-    } finally {
-      setLoading(false);
-    }
-  };
+    onSaved?.(saved);
+    onHide?.();
+  } catch (e) {
+    console.error(e);
+    alert(e?.response?.data?.message || "Ошибка сохранения магазина");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <Modal show={show} onHide={handleClose} centered>
@@ -135,6 +158,34 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
             />
             <Form.Text>
               Позже можно будет сделать загрузку файла, пока достаточно URL.
+            </Form.Text>
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Адрес магазина</Form.Label>
+            <Form.Control
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Город, улица, дом..."
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Координаты (для расчёта дистанции)</Form.Label>
+            <div style={{ display: "flex", gap: 10 }}>
+              <Form.Control
+                value={pickupLat}
+                onChange={(e) => setPickupLat(e.target.value)}
+                placeholder="pickupLat (например 59.437)"
+              />
+              <Form.Control
+                value={pickupLng}
+                onChange={(e) => setPickupLng(e.target.value)}
+                placeholder="pickupLng (например 24.753)"
+              />
+            </div>
+            <Form.Text>
+              Если lat/lon пустые — дистанция считаться не будет.
             </Form.Text>
           </Form.Group>
 
