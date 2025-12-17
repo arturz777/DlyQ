@@ -258,6 +258,14 @@ const Order = sequelize.define(
     deliveryLat: { type: DataTypes.FLOAT, allowNull: true },
     deliveryLng: { type: DataTypes.FLOAT, allowNull: true },
     deliveryAddress: { type: DataTypes.STRING, allowNull: false },
+    orderType: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "parcel",
+    },
+    pickupAddress: { type: DataTypes.STRING, allowNull: true },
+    pickupLat: { type: DataTypes.FLOAT, allowNull: true },
+    pickupLng: { type: DataTypes.FLOAT, allowNull: true },
     deviceImage: {
       type: DataTypes.STRING,
       allowNull: false,
