@@ -1,6 +1,6 @@
 const { Op } = require("sequelize");
 const fetch = require("node-fetch");
-const { Order, Courier, OrderDecline } = require("../models/models");
+const { Order, Courier, OrderDecline, Seller } = require("../models/models");
 const {
   sendOrderToNextCourier,
 } = require("../services/orderDistributionService");
@@ -134,6 +134,7 @@ class CourierController {
           "courierId",
           "offerExpiresAt",
           "offerCourierId",
+          "sellerId",
         ],
       });
 
@@ -141,10 +142,33 @@ class CourierController {
         return res.json([]);
       }
 
-      const formattedOrders = orders.map((order) => ({
-        ...order.toJSON(),
-        orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
-      }));
+      const sellerIds = [
+        ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
+      ];
+
+      const sellers = sellerIds.length
+        ? await Seller.findAll({
+            where: { id: sellerIds },
+            attributes: ["id", "address", "pickupLat", "pickupLng"],
+          })
+        : [];
+
+      const sellerMap = new Map(sellers.map((s) => [s.id, s]));
+
+      const formattedOrders = orders.map((order) => {
+        const o = order.toJSON();
+        const s = o.sellerId ? sellerMap.get(o.sellerId) : null;
+
+        return {
+          ...o,
+          orderDetails: order.orderDetails
+            ? JSON.parse(order.orderDetails)
+            : [],
+          pickupAddress: s?.address || null,
+          pickupLat: s?.pickupLat ?? null,
+          pickupLng: s?.pickupLng ?? null,
+        };
+      });
 
       return res.json(formattedOrders);
     } catch (error) {
@@ -207,6 +231,8 @@ class CourierController {
             : null,
       });
 
+      const s = order.sellerId ? await Seller.findByPk(order.sellerId) : null;
+
       return res.json({
         id: order.id,
         status: order.status,
@@ -216,6 +242,10 @@ class CourierController {
         deliveryPrice: order.deliveryPrice,
         courierFee: order.courierFee,
         courierId: order.courierId,
+
+        pickupAddress: s?.address || null,
+        pickupLat: s?.pickupLat ?? null,
+        pickupLng: s?.pickupLng ?? null,
       });
     } catch (error) {
       console.error("❌ Ошибка принятия заказа:", error);
@@ -394,9 +424,9 @@ class CourierController {
         return res.status(401).json({ message: "Вы не авторизованы." });
       }
 
-      if (!lat || !lng) {
-        return res.status(400).json({ message: "Координаты не переданы." });
-      }
+      if (lat == null || lng == null) {
+  return res.status(400).json({ message: "Координаты не переданы." });
+}
 
       let courier = await Courier.findByPk(courierId);
 
