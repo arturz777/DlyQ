@@ -1,0 +1,112 @@
+.container {
+  padding-top: 16px;
+  padding-bottom: 24px;
+  margin-top: 80px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.title {
+  margin: 0;
+}
+
+.card {
+  border-radius: 14px;
+}
+
+.switchRow {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.mapWrap {
+  height: 340px;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  position: relative;
+}
+
+.mapHint {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.addrRow {
+  display: flex;
+  gap: 8px;
+}
+
+.suggestBox {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 6px;
+  margin-bottom: 8px;
+}
+
+.suggestItem {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+}
+.suggestItem:hover {
+  background: #f9fafb;
+}
+
+.quoteBox {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.quoteRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.quoteMuted {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.stripeField {
+  margin-top: 10px;
+}
+
+.stripeLabel {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.stripeBox {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fff;
+}
+
+.smallMuted {
+  font-size: 12px;
+  color: #6b7280;
+}
