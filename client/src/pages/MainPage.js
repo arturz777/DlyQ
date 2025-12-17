@@ -62,13 +62,28 @@ const MainPage = () => {
 
   return (
     <div className={styles.wrapper}>
+      <button
+        className={styles.banner}
+        onClick={() => navigate("/parcel")}
+        type="button"
+      >
+        <div className={styles.bannerOverlay} />
+        <div className={styles.bannerContent}>
+          <div className={styles.bannerTitle}>📦 Доставка посылки</div>
+          <div className={styles.badge}>Из пункта A в пункт B</div>
+        </div>
+      </button>
 
       <button
         className={`${styles.banner} ${styles.mainStore}`}
         onClick={handleOpenMainShop}
         type="button"
       >
-      <img src={mainStoreImg} alt="DlyQ Market" className={styles.bannerImg} />
+        <img
+          src={mainStoreImg}
+          alt="DlyQ Market"
+          className={styles.bannerImg}
+        />
         <div className={styles.bannerOverlay} />
 
         <div className={styles.bannerContent}>
@@ -76,8 +91,7 @@ const MainPage = () => {
         </div>
       </button>
 
-      <div className={styles.sectionHeader} style={{ marginTop: 18 }}>
-      </div>
+      <div className={styles.sectionHeader} style={{ marginTop: 18 }}></div>
 
       {error && <div className={styles.error}>{error}</div>}
 
