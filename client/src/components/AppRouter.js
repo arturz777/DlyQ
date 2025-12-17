@@ -10,6 +10,7 @@ import LoadingBar from "./LoadingBar";
 import SellerAdminPage from "../pages/SellerAdminPage";
 import MainPage from "../pages/MainPage";
 import SellerPage from "../pages/SellerPage";
+import ParcelPage from "../pages/ParcelPage";
 
 const Basket = lazy(() => import("../pages/Basket"));
 const CatalogPage = lazy(() => import("../pages/CatalogPage"));
@@ -109,6 +110,7 @@ const AppRouter = () => {
 
         <Route path="/catalog" element={<CatalogPage />} />
         <Route path="/basket" element={<Basket />} />
+        <Route path="/parcel" element={<ParcelPage />} />
 
         <Route path="*" element={<Navigate to={SHOP_ROUTE} />} />
       </Routes>
