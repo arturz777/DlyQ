@@ -13,7 +13,6 @@ import {
   CardExpiryElement,
   CardCvcElement,
 } from "@stripe/react-stripe-js";
-
 import {
   MapContainer,
   TileLayer,
@@ -23,7 +22,6 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-
 import styles from "./ParcelPage.module.css";
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
@@ -105,13 +103,10 @@ function ParcelCheckout() {
 
   const [suggestions, setSuggestions] = useState([]);
   const [focusedField, setFocusedField] = useState(null);
-
   const [quote, setQuote] = useState(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
-
   const [savedCards, setSavedCards] = useState([]);
   const [selectedPmId, setSelectedPmId] = useState("new");
-
   const [payLoading, setPayLoading] = useState(false);
 
   const canQuote = useMemo(() => {
@@ -132,7 +127,7 @@ function ParcelCheckout() {
 
     try {
       const res = await fetch(
-        `${process.env.REACT_APP_API_URL}api/geo/reverse?lat=${lat}&lon=${lng}`
+        `${process.env.REACT_APP_API_URL}/geo/reverse?lat=${lat}&lon=${lng}`
       );
       const data = await res.json();
       const addr = data.short_display_name || data.display_name || "";
@@ -199,7 +194,7 @@ function ParcelCheckout() {
         if (!user.isAuth) return;
 
         const res = await fetch(
-          `${process.env.REACT_APP_API_URL}api/payments/payment-methods`,
+          `${process.env.REACT_APP_API_URL}/payments/payment-methods`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -237,7 +232,7 @@ function ParcelCheckout() {
         const res = await fetch(
           `${
             process.env.REACT_APP_API_URL
-          }api/geo/search?q=${encodeURIComponent(q)}`
+          }/geo/search?q=${encodeURIComponent(q)}`
         );
         const data = await res.json();
         setSuggestions(Array.isArray(data) ? data.slice(0, 6) : []);
@@ -259,7 +254,7 @@ function ParcelCheckout() {
       setQuoteLoading(true);
       try {
         const res = await fetch(
-          `${process.env.REACT_APP_API_URL}api/parcel/quote`,
+          `${process.env.REACT_APP_API_URL}/parcel/quote`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -319,7 +314,7 @@ function ParcelCheckout() {
       const amountCents = Math.round(Number(quote.price) * 100);
 
       const piRes = await fetch(
-        `${process.env.REACT_APP_API_URL}api/payments/create-intent`,
+        `${process.env.REACT_APP_API_URL}/payments/create-intent`,
         {
           method: "POST",
           headers: {
@@ -398,7 +393,7 @@ function ParcelCheckout() {
       }
 
       const createRes = await fetch(
-        `${process.env.REACT_APP_API_URL}api/parcel/create`,
+        `${process.env.REACT_APP_API_URL}/parcel/create`,
         {
           method: "POST",
           headers: {
