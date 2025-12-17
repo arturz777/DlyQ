@@ -65,7 +65,17 @@ class SellerController {
   async create(req, res, next) {
     const t = await sequelize.transaction();
     try {
-      const { name, slug, isActive, kind, img, ownerUserId } = req.body;
+      const {
+        name,
+        slug,
+        isActive,
+        kind,
+        img,
+        ownerUserId,
+        address,
+        pickupLat,
+        pickupLng,
+      } = req.body;
 
       if (!name) {
         throw ApiError.badRequest("Название магазина обязательно");
@@ -85,6 +95,26 @@ class SellerController {
         }
       }
 
+      // ... slug checks выше остаются
+
+      const latNum =
+        pickupLat == null || pickupLat === "" ? null : Number(pickupLat);
+      const lngNum =
+        pickupLng == null || pickupLng === "" ? null : Number(pickupLng);
+
+      if (
+        (latNum != null || lngNum != null) &&
+        (!Number.isFinite(latNum) || !Number.isFinite(lngNum))
+      ) {
+        throw ApiError.badRequest("pickupLat/pickupLng должны быть числами");
+      }
+
+      if ((latNum == null) !== (lngNum == null)) {
+        throw ApiError.badRequest(
+          "Нужно указать и pickupLat, и pickupLng (или оставить оба пустыми)"
+        );
+      }
+
       const seller = await Seller.create(
         {
           name: finalName,
@@ -92,6 +122,10 @@ class SellerController {
           kind: kind ?? null,
           img: img ?? null,
           isActive: isActiveNorm,
+
+          address: address ? String(address).trim() : null,
+          pickupLat: latNum,
+          pickupLng: lngNum,
         },
         { transaction: t }
       );
@@ -142,7 +176,47 @@ class SellerController {
     const t = await sequelize.transaction();
     try {
       const { id } = req.params;
-      const { name, slug, isActive, kind, img, ownerUserId } = req.body;
+      const {
+        name,
+        slug,
+        isActive,
+        kind,
+        img,
+        ownerUserId,
+        address,
+        pickupLat,
+        pickupLng,
+      } = req.body;
+
+      let latNum = undefined;
+      let lngNum = undefined;
+
+      if (pickupLat !== undefined) {
+        latNum =
+          pickupLat == null || pickupLat === "" ? null : Number(pickupLat);
+        if (latNum !== null && !Number.isFinite(latNum)) {
+          throw ApiError.badRequest("pickupLat должен быть числом");
+        }
+      }
+
+      if (pickupLng !== undefined) {
+        lngNum =
+          pickupLng == null || pickupLng === "" ? null : Number(pickupLng);
+        if (lngNum !== null && !Number.isFinite(lngNum)) {
+          throw ApiError.badRequest("pickupLng должен быть числом");
+        }
+      }
+
+      if (pickupLat !== undefined && pickupLng !== undefined) {
+        if ((latNum == null) !== (lngNum == null)) {
+          throw ApiError.badRequest(
+            "Нужно указать и pickupLat, и pickupLng (или оставить оба пустыми)"
+          );
+        }
+      }
+
+      if (pickupLat !== undefined) seller.pickupLat = latNum;
+      if (pickupLng !== undefined) seller.pickupLng = lngNum;
 
       const seller = await Seller.findByPk(Number(id), { transaction: t });
       if (!seller) {
@@ -168,21 +242,50 @@ class SellerController {
 
         seller.slug = finalSlug;
       }
-
       if (kind !== undefined) {
         seller.kind = kind || null;
       }
-
       if (img !== undefined) {
         seller.img = img || null;
       }
-
       const activeNorm = parseBool(isActive, null);
       if (activeNorm !== null) {
         seller.isActive = activeNorm;
       }
+      if (address !== undefined) {
+        seller.address = address ? String(address).trim() : null;
+      }
 
-      await seller.save({ transaction: t });
+      if (pickupLat !== undefined || pickupLng !== undefined) {
+        // берём текущие значения и "накатываем" изменения
+        let nextLat = seller.pickupLat;
+        let nextLng = seller.pickupLng;
+
+        if (pickupLat !== undefined) {
+          nextLat =
+            pickupLat == null || pickupLat === "" ? null : Number(pickupLat);
+          if (nextLat !== null && !Number.isFinite(nextLat)) {
+            throw ApiError.badRequest("pickupLat должен быть числом");
+          }
+        }
+
+        if (pickupLng !== undefined) {
+          nextLng =
+            pickupLng == null || pickupLng === "" ? null : Number(pickupLng);
+          if (nextLng !== null && !Number.isFinite(nextLng)) {
+            throw ApiError.badRequest("pickupLng должен быть числом");
+          }
+        }
+
+        if ((nextLat == null) !== (nextLng == null)) {
+          throw ApiError.badRequest(
+            "Нужно указать и pickupLat, и pickupLng (или оставить оба пустыми)"
+          );
+        }
+
+        seller.pickupLat = nextLat;
+        seller.pickupLng = nextLng;
+      }
 
       const [wh] = await Warehouse.findOrCreate({
         where: { sellerId: seller.id },
