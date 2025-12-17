@@ -13,6 +13,9 @@ const Seller = sequelize.define("seller", {
   name: { type: DataTypes.STRING, allowNull: false },
   slug: { type: DataTypes.STRING, allowNull: true, unique: true },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+   address: { type: DataTypes.STRING, allowNull: true },
+  pickupLat: { type: DataTypes.DOUBLE, allowNull: true },
+  pickupLng: { type: DataTypes.DOUBLE, allowNull: true },
 });
 
 const MenuCategory = sequelize.define("menu_category", {
