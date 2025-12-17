@@ -5,6 +5,28 @@ const {
   sendOrderToNextCourier,
 } = require("../services/orderDistributionService");
 
+const PARCEL_FLOW = [
+  "Accepted",
+  "Arrived at pickup",
+  "In transit",
+  "Arrived at destination",
+  "Delivered",
+];
+
+const COURIER_ACTIVE_STATUSES = [
+  "Waiting for courier",
+  "Ready for pickup",
+  "Accepted",
+  "Arrived at pickup",
+  "In transit",
+  "Arrived at destination",
+];
+
+function canMoveParcel(from, to) {
+  const i = PARCEL_FLOW.indexOf(from);
+  return i !== -1 && PARCEL_FLOW[i + 1] === to;
+}
+
 function buildCourierName(user) {
   const parts = [];
   if (user.firstName) parts.push(user.firstName);
@@ -87,15 +109,14 @@ class CourierController {
         });
       }
 
-     return res.json({
-  id: courier.id,
-  name: courier.name,
-  status: courier.status,
-  currentLat: courier.currentLat,
-  currentLng: courier.currentLng,
-  expoPushToken: courier.expoPushToken,
-});
-
+      return res.json({
+        id: courier.id,
+        name: courier.name,
+        status: courier.status,
+        currentLat: courier.currentLat,
+        currentLng: courier.currentLng,
+        expoPushToken: courier.expoPushToken,
+      });
     } catch (error) {
       console.error("❌ Ошибка получения курьера:", error);
       return res.status(500).json({ message: "Ошибка сервера" });
@@ -116,14 +137,7 @@ class CourierController {
 
       const orders = await Order.findAll({
         where: {
-          status: {
-            [Op.in]: [
-              "Waiting for courier",
-              "Ready for pickup",
-              "Picked up",
-              "Arrived at destination",
-            ],
-          },
+          status: { [Op.in]: COURIER_ACTIVE_STATUSES },
           [Op.or]: [
             { courierId: courierId },
             { courierId: null, offerCourierId: courierId },
@@ -173,9 +187,9 @@ class CourierController {
           orderDetails: order.orderDetails
             ? JSON.parse(order.orderDetails)
             : [],
-          pickupAddress: s?.address || null,
-          pickupLat: s?.pickupLat ?? null,
-          pickupLng: s?.pickupLng ?? null,
+          pickupAddress: o.pickupAddress || s?.address || null,
+          pickupLat: o.pickupLat ?? s?.pickupLat ?? null,
+          pickupLng: o.pickupLng ?? s?.pickupLng ?? null,
         };
       });
 
@@ -221,9 +235,9 @@ class CourierController {
 
       order.courierId = courierId;
       order.acceptedAt = new Date();
-
       order.offerCourierId = null;
       order.offerExpiresAt = null;
+      order.status = "Accepted";
 
       await order.save();
 
@@ -339,9 +353,25 @@ class CourierController {
           .json({ message: "Этот заказ вам не принадлежит." });
       }
 
+      const isParcel = order.orderType === "parcel";
+
+      if (isParcel) {
+        if (!canMoveParcel(order.status, status)) {
+          return res.status(400).json({
+            message: `Нельзя перейти ${order.status} → ${status}`,
+          });
+        }
+      }
+
       order.status = status;
 
-      if (order.status === "Picked up") {
+      if (isParcel && status === "In transit") {
+        const estimatedTime = await calculateRouteTime(order);
+        order.estimatedTime = estimatedTime;
+        order.pickupStartTime = new Date();
+      }
+
+      if (!isParcel && status === "Picked up") {
         const estimatedTime = await calculateRouteTime(order);
         order.estimatedTime = estimatedTime;
         order.pickupStartTime = new Date();
