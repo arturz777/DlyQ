@@ -54,7 +54,14 @@ class CourierController {
   async getAllCouriers(req, res) {
     try {
       const couriers = await Courier.findAll({
-        attributes: ["id", "name", "currentLat", "currentLng", "status"],
+        attributes: [
+          "id",
+          "name",
+          "currentLat",
+          "currentLng",
+          "status",
+          "expoPushToken",
+        ],
       });
       res.json(couriers);
     } catch (error) {
@@ -80,13 +87,15 @@ class CourierController {
         });
       }
 
-      return res.json({
-        id: courier.id,
-        name: courier.name,
-        status: courier.status,
-        currentLat: courier.currentLat,
-        currentLng: courier.currentLng,
-      });
+     return res.json({
+  id: courier.id,
+  name: courier.name,
+  status: courier.status,
+  currentLat: courier.currentLat,
+  currentLng: courier.currentLng,
+  expoPushToken: courier.expoPushToken,
+});
+
     } catch (error) {
       console.error("❌ Ошибка получения курьера:", error);
       return res.status(500).json({ message: "Ошибка сервера" });
@@ -425,8 +434,8 @@ class CourierController {
       }
 
       if (lat == null || lng == null) {
-  return res.status(400).json({ message: "Координаты не переданы." });
-}
+        return res.status(400).json({ message: "Координаты не переданы." });
+      }
 
       let courier = await Courier.findByPk(courierId);
 
