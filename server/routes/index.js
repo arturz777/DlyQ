@@ -1,35 +1,37 @@
-const Router = require('express')
-const router = new Router()
-const deviceRouter = require('./deviceRouter')
-const userRouter = require('./userRouter')
-const brandRouter = require('./brandRouter')
-const typeRouter = require('./typeRouter')
-const orderController = require('../controllers/orderController');
-const subtypeRouter = require('./subtypeRouter');
-const orderRouter = require('./orderRouter');
+const Router = require("express");
+const router = new Router();
+const deviceRouter = require("./deviceRouter");
+const userRouter = require("./userRouter");
+const brandRouter = require("./brandRouter");
+const typeRouter = require("./typeRouter");
+const orderController = require("../controllers/orderController");
+const subtypeRouter = require("./subtypeRouter");
+const orderRouter = require("./orderRouter");
 const courierRouter = require("./courierRouter");
 const warehouseRouter = require("./warehouseRouter");
 const translationRoutes = require("./translationRoutes");
 const chatRouter = require("./chatRouter");
-const configRouter = require('./configRouter');
-const shopRouter = require('./shopRouter');
+const configRouter = require("./configRouter");
+const shopRouter = require("./shopRouter");
 const sellerRouter = require("./sellerRouter");
 const menuRouter = require("./menuRouter");
+const parcelRouter = require("./parcelRouter");
 
-router.use('/user', userRouter)
-router.use('/type', typeRouter)
-router.use('/brand', brandRouter)
-router.use('/device', deviceRouter)
-router.post('/create', orderController.createOrder);
-router.use('/subtype', subtypeRouter);
-router.use('/order', orderRouter);
+router.use("/user", userRouter);
+router.use("/type", typeRouter);
+router.use("/brand", brandRouter);
+router.use("/device", deviceRouter);
+router.post("/create", orderController.createOrder);
+router.use("/subtype", subtypeRouter);
+router.use("/order", orderRouter);
 router.use("/couriers", courierRouter);
 router.use("/warehouse", warehouseRouter);
 router.use("/translations", translationRoutes);
 router.use("/chat", chatRouter);
-router.use('/config', configRouter);
+router.use("/config", configRouter);
 router.use("/shop", shopRouter);
 router.use("/seller", sellerRouter);
 router.use("/menu", menuRouter);
+router.use("/parcel", parcelRouter);
 
-module.exports = router
+module.exports = router;
