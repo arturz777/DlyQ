@@ -188,39 +188,36 @@ class SellerController {
         pickupLng,
       } = req.body;
 
-      let latNum = undefined;
-      let lngNum = undefined;
+      const seller = await Seller.findByPk(Number(id), { transaction: t });
+      if (!seller) throw ApiError.notFound("Магазин не найден");
 
-      if (pickupLat !== undefined) {
-        latNum =
-          pickupLat == null || pickupLat === "" ? null : Number(pickupLat);
-        if (latNum !== null && !Number.isFinite(latNum)) {
+      if (pickupLat !== undefined || pickupLng !== undefined) {
+        let nextLat =
+          pickupLat === undefined
+            ? seller.pickupLat
+            : pickupLat == null || pickupLat === ""
+            ? null
+            : Number(pickupLat);
+
+        let nextLng =
+          pickupLng === undefined
+            ? seller.pickupLng
+            : pickupLng == null || pickupLng === ""
+            ? null
+            : Number(pickupLng);
+
+        if (nextLat !== null && !Number.isFinite(nextLat))
           throw ApiError.badRequest("pickupLat должен быть числом");
-        }
-      }
-
-      if (pickupLng !== undefined) {
-        lngNum =
-          pickupLng == null || pickupLng === "" ? null : Number(pickupLng);
-        if (lngNum !== null && !Number.isFinite(lngNum)) {
+        if (nextLng !== null && !Number.isFinite(nextLng))
           throw ApiError.badRequest("pickupLng должен быть числом");
-        }
-      }
 
-      if (pickupLat !== undefined && pickupLng !== undefined) {
-        if ((latNum == null) !== (lngNum == null)) {
+        if ((nextLat == null) !== (nextLng == null))
           throw ApiError.badRequest(
             "Нужно указать и pickupLat, и pickupLng (или оставить оба пустыми)"
           );
-        }
-      }
 
-      if (pickupLat !== undefined) seller.pickupLat = latNum;
-      if (pickupLng !== undefined) seller.pickupLng = lngNum;
-
-      const seller = await Seller.findByPk(Number(id), { transaction: t });
-      if (!seller) {
-        throw ApiError.notFound("Магазин не найден");
+        seller.pickupLat = nextLat;
+        seller.pickupLng = nextLng;
       }
 
       if (name !== undefined) {
@@ -242,50 +239,14 @@ class SellerController {
 
         seller.slug = finalSlug;
       }
-      if (kind !== undefined) {
-        seller.kind = kind || null;
-      }
-      if (img !== undefined) {
-        seller.img = img || null;
-      }
       const activeNorm = parseBool(isActive, null);
-      if (activeNorm !== null) {
-        seller.isActive = activeNorm;
-      }
-      if (address !== undefined) {
+      if (activeNorm !== null) seller.isActive = activeNorm;
+
+      if (kind !== undefined) seller.kind = kind || null;
+      if (img !== undefined) seller.img = img || null;
+
+      if (address !== undefined)
         seller.address = address ? String(address).trim() : null;
-      }
-
-      if (pickupLat !== undefined || pickupLng !== undefined) {
-        // берём текущие значения и "накатываем" изменения
-        let nextLat = seller.pickupLat;
-        let nextLng = seller.pickupLng;
-
-        if (pickupLat !== undefined) {
-          nextLat =
-            pickupLat == null || pickupLat === "" ? null : Number(pickupLat);
-          if (nextLat !== null && !Number.isFinite(nextLat)) {
-            throw ApiError.badRequest("pickupLat должен быть числом");
-          }
-        }
-
-        if (pickupLng !== undefined) {
-          nextLng =
-            pickupLng == null || pickupLng === "" ? null : Number(pickupLng);
-          if (nextLng !== null && !Number.isFinite(nextLng)) {
-            throw ApiError.badRequest("pickupLng должен быть числом");
-          }
-        }
-
-        if ((nextLat == null) !== (nextLng == null)) {
-          throw ApiError.badRequest(
-            "Нужно указать и pickupLat, и pickupLng (или оставить оба пустыми)"
-          );
-        }
-
-        seller.pickupLat = nextLat;
-        seller.pickupLng = nextLng;
-      }
 
       const [wh] = await Warehouse.findOrCreate({
         where: { sellerId: seller.id },
