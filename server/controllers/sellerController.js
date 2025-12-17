@@ -95,8 +95,6 @@ class SellerController {
         }
       }
 
-      // ... slug checks выше остаются
-
       const latNum =
         pickupLat == null || pickupLat === "" ? null : Number(pickupLat);
       const lngNum =
@@ -122,7 +120,6 @@ class SellerController {
           kind: kind ?? null,
           img: img ?? null,
           isActive: isActiveNorm,
-
           address: address ? String(address).trim() : null,
           pickupLat: latNum,
           pickupLng: lngNum,
@@ -191,6 +188,7 @@ class SellerController {
       const seller = await Seller.findByPk(Number(id), { transaction: t });
       if (!seller) throw ApiError.notFound("Магазин не найден");
 
+      // --- Координаты (можно менять одной парой или очищать обе)
       if (pickupLat !== undefined || pickupLng !== undefined) {
         let nextLat =
           pickupLat === undefined
@@ -220,9 +218,7 @@ class SellerController {
         seller.pickupLng = nextLng;
       }
 
-      if (name !== undefined) {
-        seller.name = String(name).trim();
-      }
+      if (name !== undefined) seller.name = String(name).trim();
 
       if (slug !== undefined) {
         const finalSlug = slug ? String(slug).trim() : null;
@@ -239,6 +235,7 @@ class SellerController {
 
         seller.slug = finalSlug;
       }
+
       const activeNorm = parseBool(isActive, null);
       if (activeNorm !== null) seller.isActive = activeNorm;
 
@@ -248,6 +245,10 @@ class SellerController {
       if (address !== undefined)
         seller.address = address ? String(address).trim() : null;
 
+      // ✅ ВОТ ЭТОГО У ТЕБЯ НЕ ХВАТАЛО:
+      await seller.save({ transaction: t });
+
+      // --- Склад
       const [wh] = await Warehouse.findOrCreate({
         where: { sellerId: seller.id },
         defaults: {
@@ -264,11 +265,10 @@ class SellerController {
         await wh.save({ transaction: t });
       }
 
+      // --- Владелец
       if (ownerUserId) {
         const uid = Number(ownerUserId);
-        if (!uid) {
-          throw ApiError.badRequest("ownerUserId должен быть числом");
-        }
+        if (!uid) throw ApiError.badRequest("ownerUserId должен быть числом");
 
         const user = await User.findByPk(uid, { transaction: t });
         if (!user) {
@@ -302,9 +302,7 @@ class SellerController {
       const { id } = req.params;
 
       const seller = await Seller.findByPk(Number(id), { transaction: t });
-      if (!seller) {
-        throw ApiError.notFound("Магазин не найден");
-      }
+      if (!seller) throw ApiError.notFound("Магазин не найден");
 
       seller.isActive = false;
       await seller.save({ transaction: t });
