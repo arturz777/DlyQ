@@ -60,7 +60,7 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     return null;
   };
 
-  const loadOrder = async () => {
+ const loadOrder = async () => {
     try {
       const activeOrder = await fetchActiveOrder();
 
@@ -94,17 +94,21 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
           const remaining = Math.max(totalSeconds - elapsed, 0);
 
           setTimeLeft(remaining);
-        } else if (
-          activeOrder.status === "Picked up" &&
-          activeOrder.estimatedTime &&
-          activeOrder.pickupStartTime
-        ) {
-          const started = new Date(activeOrder.pickupStartTime).getTime();
-          const now = Date.now();
-          const elapsed = Math.floor((now - started) / 1000);
-          const remaining = Math.max(activeOrder.estimatedTime - elapsed, 0);
+        } else {
+          const isParcel = activeOrder.orderType === "parcel";
+          const inTransitStatus = isParcel ? "In transit" : "Picked up";
 
-          setTimeLeft(remaining);
+          if (
+            activeOrder.status === inTransitStatus &&
+            activeOrder.estimatedTime &&
+            activeOrder.pickupStartTime
+          ) {
+            const started = new Date(activeOrder.pickupStartTime).getTime();
+            const now = Date.now();
+            const elapsed = Math.floor((now - started) / 1000);
+            const remaining = Math.max(activeOrder.estimatedTime - elapsed, 0);
+            setTimeLeft(remaining);
+          }
         }
 
         if (activeOrder.courierLocation) {
@@ -163,32 +167,37 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
           updatedOrder.status === "Waiting for courier" &&
           updatedOrder.processingTime
         ) {
-          const [value, unit] = updatedOrder.processingTime.split(" "); // Разделяем число и единицу измерения
+          const [value, unit] = updatedOrder.processingTime.split(" ");
           let timeInSeconds = 0;
 
           if (unit.includes(`${t("minutes", { ns: "orderSidebar" })}`)) {
-            timeInSeconds = parseInt(value, 10) * 60; // Минуты → секунды
+            timeInSeconds = parseInt(value, 10) * 60;
           } else if (unit.includes(`${t("days", { ns: "orderSidebar" })}`)) {
-            timeInSeconds = parseInt(value, 10) * 24 * 60 * 60; // Дни → секунды
+            timeInSeconds = parseInt(value, 10) * 24 * 60 * 60;
           }
 
           setTimeLeft(timeInSeconds);
-        } else if (
-          updatedOrder.status === "Picked up" &&
-          updatedOrder.estimatedTime &&
-          updatedOrder.pickupStartTime
-        ) {
-          const started = new Date(updatedOrder.pickupStartTime).getTime();
-          const now = Date.now();
-          const elapsed = Math.floor((now - started) / 1000);
-          const remaining = Math.max(updatedOrder.estimatedTime - elapsed, 0);
+        } else {
+          const isParcel = updatedOrder.orderType === "parcel";
+          const inTransitStatus = isParcel ? "In transit" : "Picked up";
 
-          setTimeLeft(remaining);
-        } else if (
-          updatedOrder.status === "Arrived at destination" ||
-          updatedOrder.status === "Delivered"
-        ) {
-          setTimeLeft(null);
+          if (
+            updatedOrder.status === inTransitStatus &&
+            updatedOrder.estimatedTime &&
+            updatedOrder.pickupStartTime
+          ) {
+            const started = new Date(updatedOrder.pickupStartTime).getTime();
+            const now = Date.now();
+            const elapsed = Math.floor((now - started) / 1000);
+            const remaining = Math.max(updatedOrder.estimatedTime - elapsed, 0);
+
+            setTimeLeft(remaining);
+          } else if (
+            updatedOrder.status === "Arrived at destination" ||
+            updatedOrder.status === "Delivered"
+          ) {
+            setTimeLeft(null);
+          }
         }
 
         if (updatedOrder.courierLocation && updatedOrder.accepted === true) {
@@ -239,12 +248,12 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   }, [timeLeft]);
 
   const formatTime = (seconds) => {
-    if (seconds <= 0) return `${t("zero seconds", { ns: "orderSidebar" })}`; // Если время вышло
+    if (seconds <= 0) return `${t("zero seconds", { ns: "orderSidebar" })}`;
 
-    const days = Math.floor(seconds / (24 * 60 * 60)); // Количество дней
-    const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60)); // Оставшиеся часы
-    const mins = Math.floor((seconds % (60 * 60)) / 60); // Оставшиеся минуты
-    const secs = seconds % 60; // Оставшиеся секунды
+    const days = Math.floor(seconds / (24 * 60 * 60));
+    const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
+    const mins = Math.floor((seconds % (60 * 60)) / 60);
+    const secs = seconds % 60;
 
     let result = "";
     if (days > 0) result += `${days} ${t("days", { ns: "orderSidebar" })} `;
@@ -253,7 +262,7 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     if (secs > 0 && days === 0 && hours === 0)
       result += `${secs} ${t("seconds", { ns: "orderSidebar" })} `;
 
-    return result.trim(); 
+    return result.trim();
   };
 
   const fetchRoute = async (start, end) => {
@@ -300,6 +309,8 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     }
   };
 
+  const isParcel = order?.orderType === "parcel";
+
   return (
     <>
       {showIcon && setSidebarOpen && (
@@ -307,7 +318,7 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
           className={styles.floatingIcon}
           onClick={() => setSidebarOpen(true)}
         >
-           {t("order", { ns: "userProfile" })}
+          {t("order", { ns: "userProfile" })}
         </div>
       )}
       <div className={`${styles.sidebar} ${isSidebarOpen ? styles.open : ""}`}>
@@ -341,17 +352,46 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
                       `${t("waiting for order confirmation", {
                         ns: "orderSidebar",
                       })}`)}
-                  {order?.status === "Waiting for courier" &&
+
+                  {isParcel &&
+                    order?.status === "Waiting for courier" &&
+                    "Ожидание курьера"}
+                  {isParcel &&
+                    order?.status === "Accepted" &&
+                    "Курьер принял заказ и едет в пункт A"}
+                  {isParcel &&
+                    order?.status === "Arrived at pickup" &&
+                    "Курьер прибыл в пункт A"}
+                  {isParcel &&
+                    order?.status === "In transit" &&
+                    "Курьер забрал посылку"}
+                  {isParcel &&
+                    order?.status === "Arrived at destination" &&
+                    "Курьер прибыл в пункт B"}
+                  {isParcel &&
+                    order?.status === "Delivered" &&
+                    "Заказ доставлен"}
+
+                  {!isParcel &&
+                    order?.status === "Waiting for courier" &&
                     `${t("order accepted", { ns: "orderSidebar" })}`}
-                  {order?.status === "Ready for pickup" &&
+
+                  {!isParcel &&
+                    order?.status === "Ready for pickup" &&
                     `${t("order is ready waiting for the courier", {
                       ns: "orderSidebar",
                     })}`}
-                  {order?.status === "Picked up" &&
-                    `${t("courier is on the way", { ns: "orderSidebar" })}`}
-                  {order?.status === "Arrived at destination" &&
+
+                  {!isParcel &&
+                    order?.status === "Picked up" &&
+                    "Курьер забрал заказ"}
+
+                  {!isParcel &&
+                    order?.status === "Arrived at destination" &&
                     `${t("courier has arrived", { ns: "orderSidebar" })}`}
-                  {order?.status === "Delivered" &&
+
+                  {!isParcel &&
+                    order?.status === "Delivered" &&
                     `${t("order delivered", { ns: "orderSidebar" })}`}
                 </span>
               </p>
@@ -367,12 +407,19 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
                 </p>
               )}
 
-            {order?.status === "Picked up" && timeLeft !== null && (
-              <p>
-                <strong>{t("time in transit", { ns: "orderSidebar" })}</strong>{" "}
-                🚗 {formatTime(timeLeft)}
-              </p>
-            )}
+            {((order?.orderType === "parcel" &&
+              order?.status === "In transit") ||
+              (order?.orderType !== "parcel" &&
+                order?.status === "Picked up")) &&
+              timeLeft !== null && (
+                <p>
+                  <strong>
+                    {t("time in transit", { ns: "orderSidebar" })}
+                  </strong>{" "}
+                  🚗 {formatTime(timeLeft)}
+                </p>
+              )}
+
             <div className={styles.mapContainer}>
               <MapContainer
                 center={[order.deliveryLat, order.deliveryLng]}
@@ -400,9 +447,18 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
                 />
                 {courierLocation &&
                   (isAccepted ||
-                    ["Picked up", "Arrived at destination"].includes(
-                      order?.status
-                    )) && (
+                    (isParcel
+                      ? [
+                          "Accepted",
+                          "Arrived at pickup",
+                          "In transit",
+                          "Arrived at destination",
+                        ].includes(order?.status)
+                      : [
+                          "Accepted",
+                          "Picked up",
+                          "Arrived at destination",
+                        ].includes(order?.status))) && (
                     <Marker
                       position={[courierLocation.lat, courierLocation.lng]}
                       icon={courierIcon}
