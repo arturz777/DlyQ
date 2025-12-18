@@ -261,7 +261,7 @@ const Order = sequelize.define(
     orderType: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "parcel",
+      defaultValue: "shop",
     },
     pickupAddress: { type: DataTypes.STRING, allowNull: true },
     pickupLat: { type: DataTypes.FLOAT, allowNull: true },
