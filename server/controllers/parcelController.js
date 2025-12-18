@@ -177,7 +177,6 @@ class ParcelController {
 
       try {
         const io = req.app.get("io");
-        io.to("warehouse:main").emit("newOrder", order);
       } catch {}
 
       return res.status(201).json(order);
