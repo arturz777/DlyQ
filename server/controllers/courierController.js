@@ -13,6 +13,14 @@ const PARCEL_FLOW = [
   "Delivered",
 ];
 
+const PARCEL_STATUSES = new Set([
+  "Accepted",
+  "Arrived at pickup",
+  "In transit",
+  "Arrived at destination",
+  "Delivered",
+]);
+
 const COURIER_ACTIVE_STATUSES = [
   "Waiting for courier",
   "Ready for pickup",
@@ -36,6 +44,19 @@ function buildCourierName(user) {
   if (full) return full;
   if (user.email) return user.email;
   return `Courier #${user.id}`;
+}
+
+function safeParse(v, fallback) {
+  if (v == null) return fallback;
+  if (typeof v === "string") {
+    try {
+      return JSON.parse(v);
+    } catch {
+      return fallback;
+    }
+  }
+  if (typeof v === "object") return v;
+  return fallback;
 }
 
 class CourierController {
@@ -147,7 +168,11 @@ class CourierController {
         order: [["createdAt", "DESC"]],
         attributes: [
           "id",
+          "orderType",
           "status",
+          "pickupAddress",
+          "pickupLat",
+          "pickupLng",
           "deliveryLat",
           "deliveryLng",
           "deliveryAddress",
@@ -182,14 +207,20 @@ class CourierController {
         const o = order.toJSON();
         const s = o.sellerId ? sellerMap.get(o.sellerId) : null;
 
+        const isParcel = o.orderType === "parcel";
+
         return {
           ...o,
-          orderDetails: order.orderDetails
-            ? JSON.parse(order.orderDetails)
-            : [],
-          pickupAddress: o.pickupAddress || s?.address || null,
-          pickupLat: o.pickupLat ?? s?.pickupLat ?? null,
-          pickupLng: o.pickupLng ?? s?.pickupLng ?? null,
+          orderDetails: safeParse(order.orderDetails, []),
+          pickupAddress: isParcel
+            ? o.pickupAddress || null
+            : o.pickupAddress || s?.address || null,
+          pickupLat: isParcel
+            ? o.pickupLat ?? null
+            : o.pickupLat ?? s?.pickupLat ?? null,
+          pickupLng: isParcel
+            ? o.pickupLng ?? null
+            : o.pickupLng ?? s?.pickupLng ?? null,
         };
       });
 
@@ -254,21 +285,39 @@ class CourierController {
             : null,
       });
 
-      const s = order.sellerId ? await Seller.findByPk(order.sellerId) : null;
+      const isParcel = order.orderType === "parcel";
+
+      let pickupAddress = null,
+        pickupLat = null,
+        pickupLng = null;
+
+      if (isParcel) {
+        pickupAddress = order.pickupAddress || null;
+        pickupLat = order.pickupLat ?? null;
+        pickupLng = order.pickupLng ?? null;
+      } else {
+        const s = order.sellerId ? await Seller.findByPk(order.sellerId) : null;
+        pickupAddress = order.pickupAddress || s?.address || null;
+        pickupLat = order.pickupLat ?? s?.pickupLat ?? null;
+        pickupLng = order.pickupLng ?? s?.pickupLng ?? null;
+      }
 
       return res.json({
         id: order.id,
+        orderType: order.orderType,
         status: order.status,
+
         deliveryLat: order.deliveryLat,
         deliveryLng: order.deliveryLng,
         deliveryAddress: order.deliveryAddress,
+
         deliveryPrice: order.deliveryPrice,
         courierFee: order.courierFee,
         courierId: order.courierId,
 
-        pickupAddress: s?.address || null,
-        pickupLat: s?.pickupLat ?? null,
-        pickupLng: s?.pickupLng ?? null,
+        pickupAddress,
+        pickupLat,
+        pickupLng,
       });
     } catch (error) {
       console.error("❌ Ошибка принятия заказа:", error);
@@ -356,6 +405,11 @@ class CourierController {
       const isParcel = order.orderType === "parcel";
 
       if (isParcel) {
+        if (!PARCEL_STATUSES.has(status)) {
+          return res
+            .status(400)
+            .json({ message: "Неверный статус для parcel" });
+        }
         if (!canMoveParcel(order.status, status)) {
           return res.status(400).json({
             message: `Нельзя перейти ${order.status} → ${status}`,
