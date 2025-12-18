@@ -432,6 +432,7 @@ const createOrder = async (req, res) => {
     });
 
   const orderData = {
+    orderType: "shop",
     sellerId,
       userId,
       totalPrice: Number(totalPrice) + Number(deliveryPrice),
