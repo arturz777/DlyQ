@@ -24,7 +24,7 @@ const PARCEL_STATUSES = new Set([
 const COURIER_ACTIVE_STATUSES = [
   "Waiting for courier",
   "Ready for pickup",
-  "Picked up", 
+  "Picked up",
   "Accepted",
   "Arrived at pickup",
   "In transit",
@@ -270,10 +270,7 @@ class CourierController {
       order.offerCourierId = null;
       order.offerExpiresAt = null;
       const isParcel = order.orderType === "parcel";
-
-     if (isParcel) {
-  order.status = "Accepted";
-}
+      order.status = "Accepted";
 
       await order.save();
 
