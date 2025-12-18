@@ -259,12 +259,20 @@ class CourierController {
           .json({ message: "Заказ уже занят или не доступен для курьера." });
       }
 
+      const prevStatus = order.status;
+      const isParcel = order.orderType === "parcel";
+
       order.courierId = courierId;
       order.acceptedAt = new Date();
       order.offerCourierId = null;
       order.offerExpiresAt = null;
-      const isParcel = order.orderType === "parcel";
-      order.status = "Accepted";
+
+      if (isParcel) {
+        order.status = "Accepted";
+      } else {
+        order.status =
+          prevStatus === "Ready for pickup" ? "Ready for pickup" : "Accepted";
+      }
 
       await order.save();
 
