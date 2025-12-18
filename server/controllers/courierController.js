@@ -7,19 +7,12 @@ const {
 
 const PARCEL_FLOW = [
   "Accepted",
-  "Arrived at pickup",
   "In transit",
   "Arrived at destination",
   "Delivered",
 ];
 
-const PARCEL_STATUSES = new Set([
-  "Accepted",
-  "Arrived at pickup",
-  "In transit",
-  "Arrived at destination",
-  "Delivered",
-]);
+const PARCEL_STATUSES = new Set(PARCEL_FLOW);
 
 const COURIER_ACTIVE_STATUSES = [
   "Waiting for courier",
