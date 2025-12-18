@@ -139,7 +139,7 @@ class ParcelController {
         deliveryPrice: Number(price),
         courierFee: Number(courierFee),
 
-        status: "Ready for pickup",
+        status: "Waiting for courier",
         warehouseStatus: "pending",
         courierId: null,
 
