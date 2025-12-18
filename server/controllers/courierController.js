@@ -7,6 +7,7 @@ const {
 
 const PARCEL_FLOW = [
   "Accepted",
+  "Arrived at pickup",
   "In transit",
   "Arrived at destination",
   "Delivered",
