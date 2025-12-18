@@ -118,6 +118,19 @@ function ParcelCheckout() {
     );
   }, [pickup, delivery]);
 
+  const reverseGeocode = async (lat, lng) => {
+    const res = await fetch(
+      `${process.env.REACT_APP_API_URL}/geo/reverse?lat=${lat}&lon=${lng}`
+    );
+
+    if (!res.ok) {
+      throw new Error(`reverse failed: ${res.status}`);
+    }
+
+    const data = await res.json();
+    return data.short_display_name || data.display_name || "";
+  };
+
   const setPointFromClick = async (which, lat, lng) => {
     if (which === "pickup") {
       setPickup((p) => ({ ...p, lat, lng }));
@@ -125,19 +138,22 @@ function ParcelCheckout() {
       setDelivery((d) => ({ ...d, lat, lng }));
     }
 
-    try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/geo/reverse?lat=${lat}&lon=${lng}`
-      );
-      const data = await res.json();
-      const addr = data.short_display_name || data.display_name || "";
+    const fallback = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
+    try {
+      const addr = await reverseGeocode(lat, lng);
       if (which === "pickup") {
-        setPickup((p) => ({ ...p, address: addr || p.address }));
+        setPickup((p) => ({ ...p, address: addr || fallback || p.address }));
       } else {
-        setDelivery((d) => ({ ...d, address: addr || d.address }));
+        setDelivery((d) => ({ ...d, address: addr || fallback || d.address }));
       }
-    } catch {}
+    } catch (e) {
+      if (which === "pickup") {
+        setPickup((p) => ({ ...p, address: p.address || fallback }));
+      } else {
+        setDelivery((d) => ({ ...d, address: d.address || fallback }));
+      }
+    }
   };
 
   const applyPlace = (which, place) => {
@@ -160,16 +176,37 @@ function ParcelCheckout() {
   };
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    let cancelled = false;
+
+    const fillPickupAddress = async (lat, lng) => {
+      try {
+        const addr = await reverseGeocode(lat, lng);
+        if (!cancelled && addr) {
+          setPickup((p) => ({ ...p, address: p.address || addr }));
+        }
+      } catch {}
+    };
+
+    fillPickupAddress(pickup.lat, pickup.lng);
+
+    if (!navigator.geolocation) return () => {};
+
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
+
         setCenter({ lat, lng });
         setPickup((p) => ({ ...p, lat, lng }));
+
+        await fillPickupAddress(lat, lng);
       },
       () => {}
     );
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
