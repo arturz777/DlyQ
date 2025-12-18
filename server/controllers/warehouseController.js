@@ -131,7 +131,8 @@ class WarehouseController {
         return res.status(403).json({ message: "Нет доступа к складу" });
       }
 
-      const where = {
+     const where = {
+        orderType: { [Op.ne]: "parcel" },
         warehouseStatus: { [Op.in]: ["pending", "processing"] },
         [Op.or]: [{ warehouseId: warehouse.id }, { warehouseId: null }],
       };
