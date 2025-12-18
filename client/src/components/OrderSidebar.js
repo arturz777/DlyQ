@@ -355,16 +355,16 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
 
                   {isParcel &&
                     order?.status === "Waiting for courier" &&
-                    "Ожидание курьера"}
+                    "Поиск курьера..."}
                   {isParcel &&
                     order?.status === "Accepted" &&
-                    "Курьер принял заказ и едет в пункт A"}
+                    "Курьер едет в пункт A"}
                   {isParcel &&
                     order?.status === "Arrived at pickup" &&
                     "Курьер прибыл в пункт A"}
                   {isParcel &&
                     order?.status === "In transit" &&
-                    "Курьер забрал посылку"}
+                    "Курьер едет в пункт Б"}
                   {isParcel &&
                     order?.status === "Arrived at destination" &&
                     "Курьер прибыл в пункт B"}
