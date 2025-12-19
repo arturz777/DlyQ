@@ -85,7 +85,7 @@ const DevicePage = ({ id }) => {
       }
       return Number(data.quantity) >= quantity;
     } catch (error) {
-      console.error("Ошибка при проверке наличия товара:", error);
+      console.error("Error checking stock:", error);
       return false;
     }
   };
@@ -105,7 +105,7 @@ const DevicePage = ({ id }) => {
         }
       })
       .catch((err) =>
-        console.error("Ошибка получения статуса магазина (DevicePage):", err)
+        console.error("Error fetching store status (DevicePage):", err)
       );
 
     return () => {
@@ -173,7 +173,7 @@ const DevicePage = ({ id }) => {
         const recommended = await fetchRecommendedDevices(normalized.type);
         if (!cancelled) setRecommendedDevices(recommended);
       } catch (error) {
-        toast.error("❌ Ошибка загрузки устройства");
+        toast.error(`❌ ${t("failed to load product", { ns: "devicePage" })}`);
         console.error(error);
       } finally {
         if (!cancelled) appStore.stopLoading();
@@ -299,6 +299,13 @@ const DevicePage = ({ id }) => {
     setActiveIndex(idx !== -1 ? idx : 0);
   }, [selectedVariant?.image, images]);
 
+  const dateLocale = (() => {
+  const l = (i18n.language || "en").toLowerCase();
+  if (l.startsWith("ru")) return "ru-RU";
+  if (l === "est" || l.startsWith("et")) return "et-EE";
+  return "en-GB";
+})();
+
   const hyphenLang = (() => {
     const l = (i18n.language || "ru").toLowerCase();
     if (l.startsWith("ru")) return "ru";
@@ -349,7 +356,11 @@ const DevicePage = ({ id }) => {
   const handleAddToBasket = async () => {
     if ((device.variants?.length || 0) > 0) {
       if ((device.options?.length || 0) === 0) {
-        toast.error("❌ Для товара с вариантами должны быть настроены опции.");
+        toast.error(
+  `❌ ${t("options must be configured for products with variants", {
+    ns: "devicePage",
+  })}`
+);
         return;
       }
       const allChosen = device.options.every(
@@ -360,7 +371,11 @@ const DevicePage = ({ id }) => {
         return;
       }
       if (!selectedVariant) {
-        toast.error("❌ Такой комбинации вариантов не существует.");
+        toast.error(
+          `❌ ${t("this variant combination does not exist", {
+            ns: "devicePage",
+          })}`
+        );
         return;
       }
     }
@@ -780,9 +795,7 @@ const DevicePage = ({ id }) => {
                           : t("expiry_date", { ns: "devicePage" })}
                       </strong>
                       <span>
-                        {new Date(device.expiryDate).toLocaleDateString(
-                          "ru-RU"
-                        )}
+                        {new Date(device.expiryDate).toLocaleDateString(dateLocale)}
                       </span>
                     </span>
                   </div>
@@ -838,7 +851,7 @@ const DevicePage = ({ id }) => {
                     : t("expiry_date", { ns: "devicePage" })}
                 </strong>
                 <span>
-                  {new Date(device.expiryDate).toLocaleDateString("ru-RU")}
+                  {new Date(device.expiryDate).toLocaleDateString(dateLocale)}
                 </span>
               </span>
             </div>
