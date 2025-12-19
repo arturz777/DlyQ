@@ -109,6 +109,25 @@ function ParcelCheckout() {
   const [selectedPmId, setSelectedPmId] = useState("new");
   const [payLoading, setPayLoading] = useState(false);
 
+  const recipientComplete = useMemo(() => {
+    if (!user.isAuth) return false;
+    const phone = normalizePhone(formData.phone);
+    return (
+      !!formData.firstName.trim() &&
+      !!formData.lastName.trim() &&
+      !!formData.email.trim() &&
+      !!phone
+    );
+  }, [
+    user.isAuth,
+    formData.firstName,
+    formData.lastName,
+    formData.email,
+    formData.phone,
+  ]);
+
+  const showRecipientBlock = !recipientComplete;
+
   const canQuote = useMemo(() => {
     return (
       pickup?.lat != null &&
@@ -118,41 +137,51 @@ function ParcelCheckout() {
     );
   }, [pickup, delivery]);
 
+  const reverseGeocode = async (lat, lng) => {
+    const res = await fetch(
+      `${process.env.REACT_APP_API_URL}/geo/reverse?lat=${lat}&lon=${lng}`
+    );
+    if (!res.ok) throw new Error(`reverse failed: ${res.status}`);
+    const data = await res.json();
+    return data.short_display_name || data.display_name || "";
+  };
+
   const setPointFromClick = async (which, lat, lng) => {
-    if (which === "pickup") {
-      setPickup((p) => ({ ...p, lat, lng }));
-    } else {
-      setDelivery((d) => ({ ...d, lat, lng }));
-    }
+    if (which === "pickup") setPickup((p) => ({ ...p, lat, lng }));
+    else setDelivery((d) => ({ ...d, lat, lng }));
+
+    const fallback = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
     try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/geo/reverse?lat=${lat}&lon=${lng}`
-      );
-      const data = await res.json();
-      const addr = data.short_display_name || data.display_name || "";
-
+      const addr = await reverseGeocode(lat, lng);
       if (which === "pickup") {
-        setPickup((p) => ({ ...p, address: addr || p.address }));
+        setPickup((p) => ({ ...p, address: addr || fallback || p.address }));
       } else {
-        setDelivery((d) => ({ ...d, address: addr || d.address }));
+        setDelivery((d) => ({ ...d, address: addr || fallback || d.address }));
       }
-    } catch {}
+    } catch (e) {
+      if (which === "pickup") {
+        setPickup((p) => ({ ...p, address: p.address || fallback }));
+      } else {
+        setDelivery((d) => ({ ...d, address: d.address || fallback }));
+      }
+    }
   };
 
   const applyPlace = (which, place) => {
     const addr = place.short_display_name || place.display_name || "";
     const lat = Number(place.lat);
     const lng = Number(place.lon);
-
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
     if (which === "pickup") {
       setPickup({ address: addr, lat, lng });
       setCenter({ lat, lng });
+      setActivePoint("pickup");
     } else {
       setDelivery({ address: addr, lat, lng });
       setCenter({ lat, lng });
+      setActivePoint("delivery");
     }
 
     setSuggestions([]);
@@ -160,16 +189,37 @@ function ParcelCheckout() {
   };
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    let cancelled = false;
+
+    const fillPickupAddress = async (lat, lng) => {
+      try {
+        const addr = await reverseGeocode(lat, lng);
+        if (!cancelled && addr) {
+          setPickup((p) => ({ ...p, address: p.address || addr }));
+        }
+      } catch {}
+    };
+
+    fillPickupAddress(pickup.lat, pickup.lng);
+
+    if (!navigator.geolocation) return () => {};
+
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
+
         setCenter({ lat, lng });
         setPickup((p) => ({ ...p, lat, lng }));
+
+        await fillPickupAddress(lat, lng);
       },
       () => {}
     );
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -195,16 +245,13 @@ function ParcelCheckout() {
 
         const res = await fetch(
           `${process.env.REACT_APP_API_URL}/payments/payment-methods`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
 
         if (!res.ok) return;
         const data = await res.json();
         const cards = Array.isArray(data.cards) ? data.cards : [];
         setSavedCards(cards);
-
         if (cards.length > 0) setSelectedPmId(cards[0].id);
       } catch {}
     })();
@@ -443,12 +490,7 @@ function ParcelCheckout() {
 
   return (
     <Container className={styles.container}>
-      <div className={styles.headerRow}>
-        <h2 className={styles.title}>📦 Доставка посылки</h2>
-        <Button variant="outline-secondary" onClick={() => navigate("/")}>
-          На главную
-        </Button>
-      </div>
+      <h2 className={styles.title}>📦 Доставка посылки</h2>
 
       {!token && (
         <Card className="mb-3">
@@ -462,27 +504,82 @@ function ParcelCheckout() {
       )}
 
       <Row className="g-3">
-        <Col lg={7}>
+        <Col xs={12}>
           <Card className={styles.card}>
             <Card.Body>
-              <div className={styles.switchRow}>
-                <Button
-                  variant={
-                    activePoint === "pickup" ? "primary" : "outline-primary"
-                  }
-                  onClick={() => setActivePoint("pickup")}
-                >
-                  Точка A (забрать)
-                </Button>
-                <Button
-                  variant={
-                    activePoint === "delivery" ? "primary" : "outline-primary"
-                  }
-                  onClick={() => setActivePoint("delivery")}
-                >
-                  Точка B (доставить)
-                </Button>
-              </div>
+              <Form.Group className="mb-2">
+                <Form.Label>Точка A (забрать)</Form.Label>
+                <div className={styles.addrRow}>
+                  <Form.Control
+                    value={pickup.address}
+                    onChange={(e) =>
+                      setPickup((p) => ({ ...p, address: e.target.value }))
+                    }
+                    onFocus={() => {
+                      setActivePoint("pickup");
+                      setFocusedField("pickupAddress");
+                    }}
+                    onBlur={() => setTimeout(() => setFocusedField(null), 120)}
+                    placeholder="Введите адрес или выберите на карте"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline-secondary"
+                    onClick={() => setActivePoint("pickup")}
+                    title="Выбирать точку A кликом по карте"
+                  >
+                    🎯
+                  </Button>
+                </div>
+              </Form.Group>
+
+              <Form.Group className="mb-2">
+                <Form.Label>Точка B (доставить)</Form.Label>
+                <div className={styles.addrRow}>
+                  <Form.Control
+                    value={delivery.address}
+                    onChange={(e) =>
+                      setDelivery((d) => ({ ...d, address: e.target.value }))
+                    }
+                    onFocus={() => {
+                      setActivePoint("delivery");
+                      setFocusedField("deliveryAddress");
+                    }}
+                    onBlur={() => setTimeout(() => setFocusedField(null), 120)}
+                    placeholder="Введите адрес или выберите на карте"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline-secondary"
+                    onClick={() => setActivePoint("delivery")}
+                    title="Выбирать точку B кликом по карте"
+                  >
+                    🎯
+                  </Button>
+                </div>
+              </Form.Group>
+
+              {focusedField && suggestions.length > 0 && (
+                <div className={styles.suggestBox}>
+                  {suggestions.map((s, i) => (
+                    <div
+                      key={i}
+                      className={styles.suggestItem}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyPlace(
+                          focusedField === "pickupAddress"
+                            ? "pickup"
+                            : "delivery",
+                          s
+                        );
+                      }}
+                    >
+                      {s.short_display_name || s.display_name}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className={styles.mapWrap}>
                 <MapContainer
@@ -521,74 +618,6 @@ function ParcelCheckout() {
                 </div>
               </div>
 
-              <hr />
-
-              <Form.Group className="mb-2">
-                <Form.Label>Точка A (забрать)</Form.Label>
-                <div className={styles.addrRow}>
-                  <Form.Control
-                    value={pickup.address}
-                    onChange={(e) =>
-                      setPickup((p) => ({ ...p, address: e.target.value }))
-                    }
-                    onFocus={() => setFocusedField("pickupAddress")}
-                    onBlur={() => setTimeout(() => setFocusedField(null), 120)}
-                    placeholder="Введите адрес или выберите на карте"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline-secondary"
-                    onClick={() => setActivePoint("pickup")}
-                  >
-                    🎯
-                  </Button>
-                </div>
-              </Form.Group>
-
-              <Form.Group className="mb-2">
-                <Form.Label>Точка B (доставить)</Form.Label>
-                <div className={styles.addrRow}>
-                  <Form.Control
-                    value={delivery.address}
-                    onChange={(e) =>
-                      setDelivery((d) => ({ ...d, address: e.target.value }))
-                    }
-                    onFocus={() => setFocusedField("deliveryAddress")}
-                    onBlur={() => setTimeout(() => setFocusedField(null), 120)}
-                    placeholder="Введите адрес или выберите на карте"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline-secondary"
-                    onClick={() => setActivePoint("delivery")}
-                  >
-                    🎯
-                  </Button>
-                </div>
-              </Form.Group>
-
-              {focusedField && suggestions.length > 0 && (
-                <div className={styles.suggestBox}>
-                  {suggestions.map((s, i) => (
-                    <div
-                      key={i}
-                      className={styles.suggestItem}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        applyPlace(
-                          focusedField === "pickupAddress"
-                            ? "pickup"
-                            : "delivery",
-                          s
-                        );
-                      }}
-                    >
-                      {s.short_display_name || s.display_name}
-                    </div>
-                  ))}
-                </div>
-              )}
-
               <div className={styles.quoteBox}>
                 {quoteLoading && <div>Расчёт стоимости...</div>}
                 {!quoteLoading && quote && (
@@ -611,56 +640,62 @@ function ParcelCheckout() {
           </Card>
         </Col>
 
-        <Col lg={5}>
+        <Col xs={12}>
           <Card className={styles.card}>
             <Card.Body>
-              <h5 className="mb-3">Данные получателя</h5>
+              {showRecipientBlock && (
+                <>
+                  <h5 className="mb-3">Данные получателя</h5>
 
-              <Row className="g-2">
-                <Col md={6}>
-                  <Form.Control
-                    placeholder="Имя"
-                    value={formData.firstName}
-                    onChange={(e) =>
-                      setFormData((p) => ({ ...p, firstName: e.target.value }))
-                    }
-                    disabled={user.isAuth}
-                  />
-                </Col>
-                <Col md={6}>
-                  <Form.Control
-                    placeholder="Фамилия"
-                    value={formData.lastName}
-                    onChange={(e) =>
-                      setFormData((p) => ({ ...p, lastName: e.target.value }))
-                    }
-                    disabled={user.isAuth}
-                  />
-                </Col>
-              </Row>
+                  <Row className="g-2">
+                    <Col xs={12}>
+                      <Form.Control
+                        placeholder="Имя"
+                        value={formData.firstName}
+                        onChange={(e) =>
+                          setFormData((p) => ({
+                            ...p,
+                            firstName: e.target.value,
+                          }))
+                        }
+                      />
+                    </Col>
+                    <Col xs={12}>
+                      <Form.Control
+                        placeholder="Фамилия"
+                        value={formData.lastName}
+                        onChange={(e) =>
+                          setFormData((p) => ({
+                            ...p,
+                            lastName: e.target.value,
+                          }))
+                        }
+                      />
+                    </Col>
+                    <Col xs={12}>
+                      <Form.Control
+                        placeholder="Email"
+                        value={formData.email}
+                        onChange={(e) =>
+                          setFormData((p) => ({ ...p, email: e.target.value }))
+                        }
+                      />
+                    </Col>
+                    <Col xs={12}>
+                      <Form.Control
+                        placeholder="Телефон"
+                        value={formData.phone}
+                        onChange={(e) =>
+                          setFormData((p) => ({ ...p, phone: e.target.value }))
+                        }
+                        disabled={user.isAuth && !!user.user?.phone?.trim()}
+                      />
+                    </Col>
+                  </Row>
 
-              <Row className="g-2 mt-2">
-                <Col md={6}>
-                  <Form.Control
-                    placeholder="Email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData((p) => ({ ...p, email: e.target.value }))
-                    }
-                    disabled={user.isAuth}
-                  />
-                </Col>
-                <Col md={6}>
-                  <Form.Control
-                    placeholder="Телефон"
-                    value={formData.phone}
-                    onChange={(e) =>
-                      setFormData((p) => ({ ...p, phone: e.target.value }))
-                    }
-                    disabled={user.isAuth && !!user.user?.phone?.trim()}
-                  />
-                </Col>
-              </Row>
+                  <hr />
+                </>
+              )}
 
               <Form.Control
                 className="mt-2"
@@ -708,7 +743,7 @@ function ParcelCheckout() {
                   </div>
 
                   <Row className="g-2">
-                    <Col md={6}>
+                    <Col xs={12}>
                       <div className={styles.stripeField}>
                         <div className={styles.stripeLabel}>Срок</div>
                         <div className={styles.stripeBox}>
@@ -716,7 +751,7 @@ function ParcelCheckout() {
                         </div>
                       </div>
                     </Col>
-                    <Col md={6}>
+                    <Col xs={12}>
                       <div className={styles.stripeField}>
                         <div className={styles.stripeLabel}>CVC</div>
                         <div className={styles.stripeBox}>
