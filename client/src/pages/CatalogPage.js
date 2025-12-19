@@ -87,10 +87,8 @@ const CatalogPage = observer(() => {
   ]);
 
   const loadMore = useCallback(async () => {
-    // Глобальный стоп — если уже всё догрузили или сейчас идёт загрузка
     if (device.loading.devices || !device.hasMore) return;
 
-    // === РЕЖИМ 1: выбран конкретный тип (как было раньше) ===
     if (device.selectedType?.id) {
       device.setLoading("devices", true);
       try {
@@ -126,9 +124,7 @@ const CatalogPage = observer(() => {
       return;
     }
 
-    // === РЕЖИМ 2: НЕТ выбранного типа → «все типы по очереди» ===
     if (!orderedTypeIds.length) {
-      // Типы ещё не загрузились — просто ждём следующего рендера
       return;
     }
 
@@ -138,7 +134,6 @@ const CatalogPage = observer(() => {
     while (idx < typeIds.length) {
       const tid = typeIds[idx];
 
-      // Этот тип уже признан "исчерпанным"
       if (typeHasMore[tid] === false) {
         idx++;
         continue;
@@ -150,7 +145,6 @@ const CatalogPage = observer(() => {
           typeId: tid,
           subtypeId: device.selectedSubType?.id ?? undefined,
           brandId: device.selectedBrand?.id ?? undefined,
-          // в режиме "все типы" make/model не трогаем
           makeId: undefined,
           modelId: undefined,
           compatMode: undefined,
@@ -164,16 +158,13 @@ const CatalogPage = observer(() => {
         const items = data.items || [];
 
         if (!items.length) {
-          // У этого типа ничего нет (с учётом фильтров) — помечаем и идём к следующему
           setTypeHasMore((prev) => ({ ...prev, [tid]: false }));
           idx++;
           continue;
         }
 
-        // Добавляем товары этого типа в общий список
         device.appendDevices(items);
 
-        // Сохраняем курсор и флаг наличия продолжения
         setTypeCursors((prev) => ({
           ...prev,
           [tid]: data.nextCursor || null,
@@ -183,14 +174,11 @@ const CatalogPage = observer(() => {
           [tid]: !!data.hasMore,
         }));
 
-        // Запоминаем, что сейчас "кормим" именно этот тип
         setFeedTypeIndex(idx);
 
-        // Одну порцию загрузили — на этом выходим
         return;
       } catch (e) {
         console.error("cursor per-type load error", e);
-        // Если тип отстрелился с ошибкой — просто считаем его завершённым
         setTypeHasMore((prev) => ({ ...prev, [tid]: false }));
         idx++;
       } finally {
@@ -198,7 +186,6 @@ const CatalogPage = observer(() => {
       }
     }
 
-    // Если дошли до сюда — все типы закончились
     device.setHasMore(false);
   }, [
     device,
@@ -272,7 +259,7 @@ const CatalogPage = observer(() => {
         device.setBrands(brandsData || []);
         device.setMakes(makesData || []);
       } catch (error) {
-        console.error("Ошибка загрузки начальных данных:", error);
+        console.error("Error loading initial data:", error);
       }
     };
 
@@ -343,7 +330,7 @@ const CatalogPage = observer(() => {
           device.setModels([]);
         }
       } catch (e) {
-        console.error("Ошибка загрузки моделей:", e);
+       console.error("Error loading models:", e);
       }
     };
     loadModels();
@@ -373,7 +360,7 @@ const CatalogPage = observer(() => {
         );
       } catch (err) {
         if (id === subtypesReqId.current) {
-          console.error("Ошибка при загрузке подтипов:", err);
+          console.error("Error loading subtypes:", err);
         }
       } finally {
         if (id === subtypesReqId.current) device.setLoading("subtypes", false);
