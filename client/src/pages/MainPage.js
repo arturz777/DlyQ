@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchSellers } from "../http/sellerAPI";
 import mainStoreImg from "../assets/main-store.png";
+import { useTranslation } from "react-i18next";
 import styles from "./MainPage.module.css";
 
 const MAIN_SHOP_PATH = "/shop";
@@ -11,6 +12,7 @@ const MainPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const load = async () => {
