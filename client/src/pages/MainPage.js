@@ -70,7 +70,6 @@ const MainPage = () => {
         <div className={styles.bannerOverlay} />
         <div className={styles.bannerContent}>
           <div className={styles.bannerTitle}>📦 Доставка посылки</div>
-          <div className={styles.badge}>Из пункта A в пункт B</div>
         </div>
       </button>
 
