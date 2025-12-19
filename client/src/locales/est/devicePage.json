@@ -1,14 +1,14 @@
 {
-	"description": "Kirjeldus:",
-	"Place a pre-order": "Tee eeltellimus",
-	"out_of_stock": "Pole saadaval",
-	"add_to_cart": "Lisa",
-	"total": "Kokku",
-	"Select": "Valige",
-	"Added to cart!": "Lisatud ostukorvi!",
+  "description": "Kirjeldus:",
+  "Place a pre-order": "Tee eeltellimus",
+  "out_of_stock": "Pole saadaval",
+  "add_to_cart": "Lisa",
+  "total": "Kokku",
+  "Select": "Valige",
+  "Added to cart!": "Lisatud ostukorvi!",
   "Product is out of stock!": "Toode pole laos saadaval!",
   "select a variant": "Vali variant!",
-	"select product options": "Valige toote valikud",
+  "select product options": "Valige toote valikud",
   "Loading...": "Laadimine...",
   "preferred delivery time text": "Eeltellimuse kommentaar",
   "write preferred delivery time": "Näiteks: eelistatud tarneaeg, erisoovid jne.",
@@ -17,5 +17,8 @@
   "product photos are provided": "Tootefotod on esitatud üksnes illustreerival eesmärgil. Välimuses võivad esineda väikesed erinevused.",
   "use_by": "Kõlblik kuni",
   "best_before": "Parim enne",
-  "expiry_date": "Kõlblikkusaeg"
+  "expiry_date": "Kõlblikkusaeg",
+  "failed to load product": "Toote laadimine ebaõnnestus",
+  "options must be configured for products with variants": "Variatsioonidega toodetel peavad valikud olema seadistatud",
+  "this variant combination does not exist": "Sellist variatsiooni kombinatsiooni ei ole olemas"
 }
