@@ -204,13 +204,13 @@ const Auth = observer(() => {
                   user.setUser(userData);
                   user.setIsAuth(true);
                   navigate(SHOP_ROUTE);
-                } catch (e) {
+               } catch (e) {
                   console.error(e);
-                  alert("Ошибка при входе через Google");
+                  alert(t("an error occurred while signing in with Google", { ns: "auth" }));
                 }
               }}
               onError={() => {
-                alert("Не удалось войти через Google");
+                alert(t("failed to sign in with Google", { ns: "auth" }));
               }}
             />
           </div>
