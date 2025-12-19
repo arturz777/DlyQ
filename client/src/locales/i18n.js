@@ -27,6 +27,7 @@ import courierPolicyEst from './est/courierPolicy.json';
 import brandBarEst from './est/brandBar.json';
 import maintenanceEst from './est/maintenance.json';
 import chatBoxEst from './est/chatBox.json';
+import mainPageEst from './est/mainPage.json';
 
 import navbarEn from './en/navbar.json';
 import searchbarEn from './en/searchbar.json';
@@ -52,6 +53,7 @@ import courierPolicyEn from './en/courierPolicy.json';
 import brandBarEn from './en/brandBar.json';
 import maintenanceEn from './en/maintenance.json';
 import chatBoxEn from './en/chatBox.json';
+import mainPageEn from './en/mainPage.json';
 
 import navbarRu from './ru/navbar.json';
 import searchbarRu from './ru/searchbar.json';
@@ -77,6 +79,7 @@ import courierPolicyRu from './ru/courierPolicy.json';
 import brandBarRu from './ru/brandBar.json';
 import maintenanceRu from './ru/maintenance.json';
 import chatBoxRu from './ru/chatBox.json';
+import mainPageRu from './ru/mainPage.json';
 
 
 i18n
@@ -114,6 +117,7 @@ i18n
         brandBar: brandBarEn,
         maintenance: maintenanceEn,
         chatBox: chatBoxEn,
+        mainPage: mainPageEn,
       },
       ru: {
         navbar: navbarRu,
@@ -140,6 +144,7 @@ i18n
         brandBar: brandBarRu,
         maintenance: maintenanceRu,
         chatBox: chatBoxRu,
+        mainPage: mainPageRu,
       },
       est: {
         navbar: navbarEst,
@@ -166,6 +171,7 @@ i18n
         brandBar: brandBarEst,
         maintenance: maintenanceEst,
         chatBox: chatBoxEst,
+        mainPage: mainPageEst,
       },
     },
 
