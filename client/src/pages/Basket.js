@@ -126,7 +126,7 @@ const Basket = observer(() => {
 
       return { isEnough, quantity: qty };
     } catch (e) {
-      console.error("Ошибка при проверке наличия товара:", e);
+      console.error("Error checking stock:", e);
       return { isEnough: false, quantity: 0 };
     }
   };
@@ -146,7 +146,7 @@ const Basket = observer(() => {
         }
       })
       .catch((err) =>
-        console.error("Ошибка получения статуса магазина (Basket):", err)
+       console.error("Error fetching store status (Basket):", err)
       );
 
     return () => {
@@ -190,7 +190,7 @@ const Basket = observer(() => {
             newQuantities[item.uniqueKey] = 0;
           }
         } catch (error) {
-          console.error("Ошибка при проверке наличия товара:", error);
+          console.error("Error checking stock:", error);
           newQuantities[item.uniqueKey] = 0;
         }
       }
@@ -280,12 +280,12 @@ const Basket = observer(() => {
     const paymentIntentId =
       payment?.paymentIntentId || payment?.id || payment?.paymentIntent?.id;
     if (!paymentIntentId) {
-      toast.error("Не удалось получить paymentIntentId");
+     toast.error(t("failed to get paymentIntentId", { ns: "basket" }));
       return;
     }
 
     if (basket.hasSelectedDifferentSellers) {
-      toast.error("Нельзя оформить заказ с товарами разных продавцов");
+     t("you cannot place an order with items from different sellers", { ns: "basket" })
       return;
     }
 
@@ -799,7 +799,7 @@ const Basket = observer(() => {
 
       {basket.hasSelectedDifferentSellers && (
         <div className={styles.sectionSubCenter}>
-          Нельзя выбрать товары разных продавцов. Пожалуйста, оформите отдельно.
+           {t("you cannot select items from different sellers. please place separate orders", { ns: "basket" })}
         </div>
       )}
 
