@@ -4,27 +4,12 @@
   margin-top: 80px;
 }
 
-.headerRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
 .title {
-  margin: 0;
+  margin: 0 0 12px;
 }
 
 .card {
   border-radius: 14px;
-}
-
-.switchRow {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
 }
 
 .mapWrap {
@@ -70,7 +55,7 @@
 }
 
 .quoteBox {
-  margin-top: 8px;
+  margin-top: 10px;
   padding: 10px 12px;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
