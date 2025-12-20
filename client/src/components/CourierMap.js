@@ -29,7 +29,7 @@ const CourierMap = ({ couriers }) => {
               key={courier.id}
               position={[courier.currentLat, courier.currentLng]}
             >
-              <Popup>{courier.name || `Курьер #${courier.id}`}</Popup>
+              <Popup>{courier.name || `Courier #${courier.id}`}</Popup>
             </Marker>
           ))}
       </MapContainer>
