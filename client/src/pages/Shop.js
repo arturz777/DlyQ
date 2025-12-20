@@ -226,7 +226,7 @@ const Shop = () => {
           }))
         );
       } catch (err) {
-        console.error("❌ Ошибка при загрузке данных:", err);
+        console.error("❌ Error while loading data:", err);
       } finally {
         if (!cancelled) setLoading(false);
       }
