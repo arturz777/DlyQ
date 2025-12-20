@@ -7,6 +7,7 @@
 	"updateSuccess": "Data successfully updated!",
 	"updateError": "Error updating data",
 	"back": "← Back",
+	"logout": "Log out",
 	"myOrders": "My orders",
 	"order": "Order",
 	"totalAmount": "Total amount:",
@@ -16,6 +17,9 @@
 	"orderImage": "Order image",
 	"orderSummary": "Order summary:",
 	"orderTotalPrice": "Total price:",
-	"noOrders": "You have no orders yet."
-  }
+	"noOrders": "You have no orders yet.",
+	"product": "Product",
+	"not specified": "Not specified",
+	"order image": "Order image"
+}
   
