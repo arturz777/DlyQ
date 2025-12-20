@@ -7,5 +7,6 @@
 	"pre-order only": "Ainult ettetellimine",
 	"Select an option": "Valige valik",
 	"you cannot add a pre-order to the cart with regular items": "Ei saa lisada eeltellimust ostukorvi koos tavakaupadega!",
-	"you cannot add a regular item to the cart with a pre-order": "Tavalist toodet ei saa lisada ostukorvi koos eeltellimusega!"
+	"you cannot add a regular item to the cart with a pre-order": "Tavalist toodet ei saa lisada ostukorvi koos eeltellimusega!",
+	  "cart has items from another seller. clear cart and add this item?": "Sinu ostukorvis on juba teise müüja tooted. Kas tühjendame ostukorvi ja lisame selle toote?"
 }
