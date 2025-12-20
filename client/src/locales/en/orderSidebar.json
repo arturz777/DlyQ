@@ -20,5 +20,17 @@
 	"minutes": "min",
 	"seconds": "sec",
 	"zero seconds": "0 seconds",
-	"no active order": "No active order:"
+	"no active order": "No active order:",
+	"order": "Order",
+	"route fetch error": "Route fetch error:",
+	"complete order error": "Order completion error:",
+	"parcel searching courier...": "Searching for a courier...",
+	"parcel courier going to point A": "Courier is heading to point A",
+	"parcel courier arrived at point A": "Courier arrived at point A",
+	"parcel courier going to point B": "Courier is heading to point B",
+	"parcel courier arrived at point B": "Courier arrived at point B",
+	"parcel delivered": "Order delivered",
+	"courier picked up the order": "Courier picked up the order",
+	"courier": "Courier",
+	"warehouse": "Warehouse"
 }
