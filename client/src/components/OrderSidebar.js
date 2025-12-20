@@ -16,7 +16,7 @@ import L from "leaflet";
 import { useTranslation } from "react-i18next";
 import styles from "./OrderSidebar.module.css";
 
-const socket = io("https://dlyq-backend-staging.onrender.com");
+const socket = io(process.env.REACT_APP_API_URL);
 
 const WAREHOUSE_LOCATION = { lat: 59.51372, lng: 24.828888 };
 
@@ -33,6 +33,13 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const courierMarkerRef = useRef(null);
+
+  const dateLocale = (() => {
+    const l = String(i18n.language || "en").toLowerCase();
+    if (l.startsWith("ru")) return "ru-RU";
+    if (l === "est" || l.startsWith("et")) return "et-EE";
+    return "en-GB";
+  })();
 
   const courierIcon = new L.Icon({
     iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png", // 🚗 машинка
@@ -60,7 +67,7 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     return null;
   };
 
-const loadOrder = async () => {
+  const loadOrder = async () => {
     try {
       const activeOrder = await fetchActiveOrder();
 
@@ -84,8 +91,10 @@ const loadOrder = async () => {
           const [value, unit] = activeOrder.processingTime.split(" ");
           let totalSeconds = 0;
 
-          if (unit.includes("мин")) totalSeconds = parseInt(value, 10) * 60;
-          else if (unit.includes("дн"))
+          if (unit.includes("min")) totalSeconds = parseInt(value, 10) * 60;
+          else if (unit.includes("hour"))
+            totalSeconds = parseInt(value, 10) * 60 * 60;
+          else if (unit.includes("day"))
             totalSeconds = parseInt(value, 10) * 24 * 60 * 60;
 
           const started = new Date(activeOrder.updatedAt).getTime();
@@ -130,7 +139,7 @@ const loadOrder = async () => {
         setShowIcon(false);
       }
     } catch (error) {
-      console.warn("Нет активного заказа:", error);
+      console.warn(t("no active order", { ns: "orderSidebar" }), error);
       setOrder(null);
       setShowIcon(false);
     }
@@ -285,7 +294,7 @@ const loadOrder = async () => {
         setRouteTime(Math.round(durationInSeconds));
       }
     } catch (error) {
-      console.error("Ошибка получения маршрута:", error);
+      console.error(t("route fetch error", { ns: "orderSidebar" }), error);
     }
   };
 
@@ -305,7 +314,7 @@ const loadOrder = async () => {
       setShowIcon(false);
       window.dispatchEvent(new Event("orderUpdated"));
     } catch (error) {
-      console.error("Ошибка завершения заказа:", error);
+      console.error(t("complete order error", { ns: "orderSidebar" }), error);
     }
   };
 
@@ -334,7 +343,7 @@ const loadOrder = async () => {
                 <strong>{t("preorder", { ns: "orderSidebar" })}</strong>
                 {t("scheduled delivery", { ns: "orderSidebar" })}{" "}
                 <span className={styles.preorderDate}>
-                  {new Date(preorderDate).toLocaleString("ru-RU", {
+                  {new Date(preorderDate).toLocaleString(dateLocale, {
                     year: "numeric",
                     month: "2-digit",
                     day: "2-digit",
@@ -355,22 +364,35 @@ const loadOrder = async () => {
 
                   {isParcel &&
                     order?.status === "Waiting for courier" &&
-                    "Поиск курьера..."}
+                    t("parcel searching courier...", { ns: "orderSidebar" })}
+
                   {isParcel &&
                     order?.status === "Accepted" &&
-                    "Курьер едет в пункт A"}
+                    t("parcel courier going to point A", {
+                      ns: "orderSidebar",
+                    })}
+
                   {isParcel &&
                     order?.status === "Arrived at pickup" &&
-                    "Курьер прибыл в пункт A"}
+                    t("parcel courier arrived at point A", {
+                      ns: "orderSidebar",
+                    })}
+
                   {isParcel &&
                     order?.status === "In transit" &&
-                    "Курьер едет в пункт Б"}
+                    t("parcel courier going to point B", {
+                      ns: "orderSidebar",
+                    })}
+
                   {isParcel &&
                     order?.status === "Arrived at destination" &&
-                    "Курьер прибыл в пункт B"}
+                    t("parcel courier arrived at point B", {
+                      ns: "orderSidebar",
+                    })}
+
                   {isParcel &&
                     order?.status === "Delivered" &&
-                    "Заказ доставлен"}
+                    t("parcel delivered", { ns: "orderSidebar" })}
 
                   {!isParcel &&
                     order?.status === "Waiting for courier" &&
@@ -384,7 +406,7 @@ const loadOrder = async () => {
 
                   {!isParcel &&
                     order?.status === "Picked up" &&
-                    "Курьер забрал заказ"}
+                    t("courier picked up the order", { ns: "orderSidebar" })}
 
                   {!isParcel &&
                     order?.status === "Arrived at destination" &&
@@ -464,7 +486,7 @@ const loadOrder = async () => {
                       icon={courierIcon}
                       ref={courierMarkerRef}
                     >
-                      <Popup>🚗 Курьер</Popup>
+                      <Popup>🚗 {t("courier", { ns: "orderSidebar" })}</Popup>
                     </Marker>
                   )}
 
@@ -481,7 +503,7 @@ const loadOrder = async () => {
                     })
                   }
                 >
-                  <Popup>📦 Склад</Popup>
+                  <Popup>📦 {t("warehouse", { ns: "orderSidebar" })}</Popup>
                 </Marker>
               </MapContainer>
             </div>
