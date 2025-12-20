@@ -65,7 +65,7 @@ const SellerPage = () => {
             ) || null;
 
           if (!currentSeller) {
-            setError("Магазин не найден");
+            setError(t("store not found", { ns: "sellerPage" }));
             setLoading(false);
             setMenuLoading(false);
             return;
@@ -88,7 +88,7 @@ const SellerPage = () => {
         setMenuLoading(false);
       } catch (e) {
         console.error(e);
-        setError(e.message || "Ошибка загрузки данных");
+        setError(e.message || t("data loading error", { ns: "sellerPage" }));
         setLoading(false);
         setMenuLoading(false);
       }
@@ -120,7 +120,12 @@ const SellerPage = () => {
     }
 
     const ok = window.confirm(
-      "В корзине уже есть товары другого продавца. Очистить корзину и добавить этот товар?"
+      t(
+        "cart contains items from another seller. clear cart and add this item?",
+        {
+          ns: "sellerPage",
+        }
+      )
     );
 
     if (!ok) {
@@ -142,7 +147,7 @@ const SellerPage = () => {
 
   const addToBasket = (item, qty = 1) => {
     if (!item?.isAvailable) {
-      toast.error("Блюдо сейчас недоступно");
+      toast.error(t("dish is currently unavailable", { ns: "sellerPage" }));
       return;
     }
 
@@ -177,7 +182,7 @@ const SellerPage = () => {
     toast.success(
       <>
         <strong>{item.name}</strong>
-        <div>Добавлено в корзину</div>
+        <div>{t("added to cart", { ns: "sellerPage" })}</div>
       </>
     );
   };
@@ -185,7 +190,9 @@ const SellerPage = () => {
   if (loading && !seller) {
     return (
       <div className={styles.pageWrapper}>
-        <div className={styles.center}>Загружаем магазин…</div>
+        <div className={styles.center}>
+          {t("loading store...", { ns: "sellerPage" })}
+        </div>
       </div>
     );
   }
@@ -229,7 +236,9 @@ const SellerPage = () => {
       {error && seller && <div className={styles.error}>{error}</div>}
 
       {menuLoading ? (
-        <div className={styles.center}>Загружаем меню…</div>
+        <div className={styles.center}>
+          {t("loading menu...", { ns: "sellerPage" })}
+        </div>
       ) : (
         <div className={styles.menuWrapper}>
           {categories.length > 0 && (
@@ -278,7 +287,9 @@ const SellerPage = () => {
                 </div>
 
                 {catItems.length === 0 ? (
-                  <div className={styles.emptyCategory}>Пока нет блюд</div>
+                  <div className={styles.emptyCategory}>
+                    {t("no dishes yet", { ns: "sellerPage" })}
+                  </div>
                 ) : (
                   <div className={styles.itemsList}>
                     {catItems.map((item) => {
@@ -337,7 +348,7 @@ const SellerPage = () => {
                                   addToBasket(item, 1);
                                 }}
                               >
-                                Добавить
+                                {t("add", { ns: "sellerPage" })}
                               </button>
                             </div>
                           </div>
@@ -351,7 +362,9 @@ const SellerPage = () => {
           })}
 
           {!categories.length && !error && (
-            <div className={styles.emptyMenu}>Меню пока пустое</div>
+            <div className={styles.emptyMenu}>
+              {t("menu is empty for now", { ns: "sellerPage" })}
+            </div>
           )}
         </div>
       )}
