@@ -29,6 +29,9 @@ import maintenanceEst from './est/maintenance.json';
 import chatBoxEst from './est/chatBox.json';
 import mainPageEst from './est/mainPage.json';
 import parcelPageEst from './est/parcelPage.json';
+import sellerAdminPageEst from './est/sellerAdminPage.json';
+import sellerPageEst from './est/sellerPage.json';
+import dishModalEst from './est/dishModal.json';
 
 import navbarEn from './en/navbar.json';
 import searchbarEn from './en/searchbar.json';
@@ -56,6 +59,9 @@ import maintenanceEn from './en/maintenance.json';
 import chatBoxEn from './en/chatBox.json';
 import mainPageEn from './en/mainPage.json';
 import parcelPageEn from './en/parcelPage.json';
+import sellerAdminPageEn from './en/sellerAdminPage.json';
+import sellerPageEn from './en/sellerPage.json';
+import dishModalEn from './en/dishModal.json';
 
 import navbarRu from './ru/navbar.json';
 import searchbarRu from './ru/searchbar.json';
@@ -83,6 +89,9 @@ import maintenanceRu from './ru/maintenance.json';
 import chatBoxRu from './ru/chatBox.json';
 import mainPageRu from './ru/mainPage.json';
 import parcelPageRu from './ru/parcelPage.json';
+import sellerAdminPageRu from './ru/sellerAdminPage.json';
+import sellerPageRu from './ru/sellerPage.json';
+import dishModalRu from './ru/dishModal.json';
 
 
 i18n
@@ -122,6 +131,9 @@ i18n
         chatBox: chatBoxEn,
         mainPage: mainPageEn,
         parcelPage: parcelPageEn,
+        sellerAdminPage: sellerAdminPageEn,
+        sellerPage: sellerPageEn,
+        dishModal: dishModalEn,
       },
       ru: {
         navbar: navbarRu,
@@ -150,6 +162,9 @@ i18n
         chatBox: chatBoxRu,
         mainPage: mainPageRu,
         parcelPage: parcelPageRu,
+        sellerAdminPage: sellerAdminPageRu,
+        sellerPage: sellerPageRu,
+        dishModal: dishModalRu,
       },
       est: {
         navbar: navbarEst,
@@ -178,6 +193,9 @@ i18n
         chatBox: chatBoxEst,
         mainPage: mainPageEst,
         parcelPage: parcelPageEst,
+        sellerAdminPage: sellerAdminPageEst,
+        sellerPage: sellerPageEst,
+        dishModal: dishModalEst,
       },
     },
 
