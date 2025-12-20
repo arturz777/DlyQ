@@ -1,0 +1,12 @@
+{
+  "store not found": "Магазин не найден",
+  "data loading error": "Ошибка загрузки данных",
+  "cart contains items from another seller. clear cart and add this item?": "В корзине уже есть товары другого продавца. Очистить корзину и добавить этот товар?",
+  "dish is currently unavailable": "Блюдо сейчас недоступно",
+  "added to cart": "Добавлено в корзину",
+  "loading store...": "Загружаем магазин...",
+  "loading menu...": "Загружаем меню...",
+  "no dishes yet": "Пока нет блюд",
+  "add": "Добавить",
+  "menu is empty for now": "Меню пока пустое"
+}
