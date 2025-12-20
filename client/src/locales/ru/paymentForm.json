@@ -86,5 +86,8 @@
 	"preorder note scheduled": "Это предзаказ: мы привезём заказ в выбранное вами время.",
 	"preorder note out of stock": "Это предзаказ: сейчас товара нет на складе, мы сообщим, когда он будет готов к доставке.",
 	"preorder note store closed": "Это предзаказ: магазин закрыт, мы привезём заказ в выбранное вами время.",
-	"specify the desired delivery date and time": "Укажи желаемые дату и время доставки"
+	"specify the desired delivery date and time": "Укажи желаемые дату и время доставки",
+	"failed to load or parse userFormData": "Ошибка загрузки/парсинга userFormData",
+  "failed to save form": "Не удалось сохранить форму",
+  "payment status": "Статус платежа: {{status}}"
 }
