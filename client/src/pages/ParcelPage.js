@@ -22,6 +22,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { useTranslation } from "react-i18next";
 import styles from "./ParcelPage.module.css";
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
@@ -65,6 +66,7 @@ const ClickPicker = ({ activePoint, setPointFromClick }) => {
 function ParcelCheckout() {
   const { user } = useContext(Context);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const stripe = useStripe();
   const elements = useElements();
@@ -73,7 +75,9 @@ function ParcelCheckout() {
 
   useEffect(() => {
     if (!token) {
-      toast.info("Для доставки посылки нужно войти в аккаунт");
+      toast.info(
+        t("you need to sign in to use parcel delivery", { ns: "parcelPage" })
+      );
     }
   }, [token]);
 
@@ -185,7 +189,7 @@ function ParcelCheckout() {
     }
 
     setSuggestions([]);
-    toast.success("Адрес выбран");
+    toast.success(t("address selected", { ns: "parcelPage" }));
   };
 
   useEffect(() => {
@@ -334,25 +338,38 @@ function ParcelCheckout() {
     e.preventDefault();
 
     if (!token) {
-      toast.error("Нужно войти в аккаунт");
+      toast.error(t("you must be signed in", { ns: "parcelPage" }));
       navigate("/login");
       return;
     }
 
     if (!quote?.price) {
-      toast.error("Выберите точки A и B (или подождите расчёт цены)");
+      toast.error(
+        t("select points A and B (or wait for the price calculation)", {
+          ns: "parcelPage",
+        })
+      );
       return;
     }
 
     const phoneNormalized = normalizePhone(formData.phone);
-    if (!phoneNormalized) return toast.error("Телефон обязателен");
-    if (!formData.firstName.trim()) return toast.error("Имя обязательно");
-    if (!formData.email.trim()) return toast.error("Email обязателен");
-    if (!pickup.address.trim()) return toast.error("Укажите адрес точки A");
-    if (!delivery.address.trim()) return toast.error("Укажите адрес точки B");
+    if (!phoneNormalized)
+      return toast.error(t("phone is required", { ns: "parcelPage" }));
+    if (!formData.firstName.trim())
+      return toast.error(t("first name is required", { ns: "parcelPage" }));
+    if (!formData.email.trim())
+      return toast.error(t("email is required", { ns: "parcelPage" }));
+    if (!pickup.address.trim())
+      return toast.error(
+        t("enter pickup address (point A)", { ns: "parcelPage" })
+      );
+    if (!delivery.address.trim())
+      return toast.error(
+        t("enter delivery address (point B)", { ns: "parcelPage" })
+      );
 
     if (!stripe || !elements) {
-      toast.error("Stripe не готов");
+      toast.error(t("stripe is not ready", { ns: "parcelPage" }));
       return;
     }
 
@@ -382,7 +399,7 @@ function ParcelCheckout() {
       );
 
       if (!piRes.ok) {
-        toast.error("Не удалось создать платёж");
+        toast.error(t("failed to create payment", { ns: "parcelPage" }));
         setPayLoading(false);
         return;
       }
@@ -398,7 +415,9 @@ function ParcelCheckout() {
       } else {
         const cardEl = elements.getElement(CardNumberElement);
         if (!cardEl) {
-          toast.error("CardNumberElement не найден");
+          toast.error(
+            t("CardNumberElement was not found", { ns: "parcelPage" })
+          );
           setPayLoading(false);
           return;
         }
@@ -417,12 +436,17 @@ function ParcelCheckout() {
 
       const { error, paymentIntent } = confirmResult;
       if (error) {
-        toast.error(error.message || "Ошибка оплаты");
+        toast.error(error.message || t("payment error", { ns: "parcelPage" }));
         setPayLoading(false);
         return;
       }
       if (paymentIntent?.status !== "succeeded") {
-        toast.error(`Статус платежа: ${paymentIntent?.status || "unknown"}`);
+        toast.error(
+          t("payment status: {{status}}", {
+            ns: "parcelPage",
+            status: paymentIntent?.status || t("unknown", { ns: "parcelPage" }),
+          })
+        );
         setPayLoading(false);
         return;
       }
@@ -433,7 +457,11 @@ function ParcelCheckout() {
           const upd = await fetchProfile();
           user.setUser({ ...user.user, phone: upd.phone });
         } catch {
-          toast.error("Не удалось сохранить телефон в профиле");
+          toast.error(
+            t("failed to save phone number to your profile", {
+              ns: "parcelPage",
+            })
+          );
           setPayLoading(false);
           return;
         }
@@ -473,16 +501,25 @@ function ParcelCheckout() {
       const created = await createRes.json();
 
       if (!createRes.ok) {
-        toast.error(created?.message || "Не удалось создать заказ посылки");
+        toast.error(
+          created?.message ||
+            t("failed to create parcel order", { ns: "parcelPage" })
+        );
         setPayLoading(false);
         return;
       }
 
-      toast.success("Заказ посылки создан! Курьер скоро получит оффер ✅");
+      toast.success(
+        t("parcel order created! the courier will receive the offer soon ✅", {
+          ns: "parcelPage",
+        })
+      );
       navigate("/");
     } catch (err) {
       console.error(err);
-      toast.error("Ошибка при оплате/создании заказа");
+      toast.error(
+        t("error while paying/creating the order", { ns: "parcelPage" })
+      );
     } finally {
       setPayLoading(false);
     }
@@ -490,14 +527,22 @@ function ParcelCheckout() {
 
   return (
     <Container className={styles.container}>
-      <h2 className={styles.title}>📦 Доставка посылки</h2>
+      <h2 className={styles.title}>
+        📦 {t("parcel delivery", { ns: "parcelPage" })}
+      </h2>
 
       {!token && (
         <Card className="mb-3">
           <Card.Body>
             <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-              <div>Чтобы оформить доставку посылки, нужно войти в аккаунт.</div>
-              <Button onClick={() => navigate("/login")}>Войти</Button>
+              <div>
+                {t("to order parcel delivery, you need to sign in", {
+                  ns: "parcelPage",
+                })}
+              </div>
+              <Button onClick={() => navigate("/login")}>
+                {t("sign in", { ns: "parcelPage" })}
+              </Button>
             </div>
           </Card.Body>
         </Card>
@@ -508,7 +553,9 @@ function ParcelCheckout() {
           <Card className={styles.card}>
             <Card.Body>
               <Form.Group className="mb-2">
-                <Form.Label>Точка A (забрать)</Form.Label>
+                <Form.Label>
+                  {t("point A (pickup)", { ns: "parcelPage" })}
+                </Form.Label>
                 <div className={styles.addrRow}>
                   <Form.Control
                     value={pickup.address}
@@ -520,13 +567,17 @@ function ParcelCheckout() {
                       setFocusedField("pickupAddress");
                     }}
                     onBlur={() => setTimeout(() => setFocusedField(null), 120)}
-                    placeholder="Введите адрес или выберите на карте"
+                    placeholder={t("enter an address or choose on the map", {
+                      ns: "parcelPage",
+                    })}
                   />
                   <Button
                     type="button"
                     variant="outline-secondary"
                     onClick={() => setActivePoint("pickup")}
-                    title="Выбирать точку A кликом по карте"
+                    title={t("pick point A by clicking on the map", {
+                      ns: "parcelPage",
+                    })}
                   >
                     🎯
                   </Button>
@@ -534,7 +585,9 @@ function ParcelCheckout() {
               </Form.Group>
 
               <Form.Group className="mb-2">
-                <Form.Label>Точка B (доставить)</Form.Label>
+                <Form.Label>
+                  {t("point B (deliver)", { ns: "parcelPage" })}
+                </Form.Label>
                 <div className={styles.addrRow}>
                   <Form.Control
                     value={delivery.address}
@@ -546,13 +599,17 @@ function ParcelCheckout() {
                       setFocusedField("deliveryAddress");
                     }}
                     onBlur={() => setTimeout(() => setFocusedField(null), 120)}
-                    placeholder="Введите адрес или выберите на карте"
+                    placeholder={t("enter an address or choose on the map", {
+                      ns: "parcelPage",
+                    })}
                   />
                   <Button
                     type="button"
                     variant="outline-secondary"
                     onClick={() => setActivePoint("delivery")}
-                    title="Выбирать точку B кликом по карте"
+                    title={t("pick point B by clicking on the map", {
+                      ns: "parcelPage",
+                    })}
                   >
                     🎯
                   </Button>
@@ -613,26 +670,38 @@ function ParcelCheckout() {
                 </MapContainer>
 
                 <div className={styles.mapHint}>
-                  Клик по карте ставит маркер для:{" "}
-                  <b>{activePoint === "pickup" ? "точки A" : "точки B"}</b>
+                  {t("click on the map sets marker for", { ns: "parcelPage" })}:{" "}
+                  <b>
+                    {activePoint === "pickup"
+                      ? t("point A", { ns: "parcelPage" })
+                      : t("point B", { ns: "parcelPage" })}
+                  </b>
                 </div>
               </div>
 
               <div className={styles.quoteBox}>
-                {quoteLoading && <div>Расчёт стоимости...</div>}
+                {quoteLoading && (
+                  <div>{t("calculating price...", { ns: "parcelPage" })}</div>
+                )}
                 {!quoteLoading && quote && (
                   <div className={styles.quoteRow}>
                     <div>
-                      Дистанция: <b>{quote.distanceKm} км</b>
+                      {t("distance", { ns: "parcelPage" })}:{" "}
+                      <b>
+                        {quote.distanceKm} {t("km", { ns: "parcelPage" })}
+                      </b>
                     </div>
                     <div>
-                      Стоимость: <b>{Number(quote.price).toFixed(2)} €</b>
+                      {t("price", { ns: "parcelPage" })}:{" "}
+                      <b>{Number(quote.price).toFixed(2)} €</b>
                     </div>
                   </div>
                 )}
                 {!quoteLoading && !quote && (
                   <div className={styles.quoteMuted}>
-                    Выберите обе точки (A и B), чтобы рассчитать стоимость.
+                    {t("select both points (A and B) to calculate the price", {
+                      ns: "parcelPage",
+                    })}
                   </div>
                 )}
               </div>
@@ -645,12 +714,14 @@ function ParcelCheckout() {
             <Card.Body>
               {showRecipientBlock && (
                 <>
-                  <h5 className="mb-3">Данные получателя</h5>
+                  <h5 className="mb-3">
+                    {t("recipient details", { ns: "parcelPage" })}
+                  </h5>
 
                   <Row className="g-2">
                     <Col xs={12}>
                       <Form.Control
-                        placeholder="Имя"
+                        placeholder={t("first name", { ns: "parcelPage" })}
                         value={formData.firstName}
                         onChange={(e) =>
                           setFormData((p) => ({
@@ -662,7 +733,7 @@ function ParcelCheckout() {
                     </Col>
                     <Col xs={12}>
                       <Form.Control
-                        placeholder="Фамилия"
+                        placeholder={t("last name", { ns: "parcelPage" })}
                         value={formData.lastName}
                         onChange={(e) =>
                           setFormData((p) => ({
@@ -674,7 +745,7 @@ function ParcelCheckout() {
                     </Col>
                     <Col xs={12}>
                       <Form.Control
-                        placeholder="Email"
+                        placeholder={t("email", { ns: "parcelPage" })}
                         value={formData.email}
                         onChange={(e) =>
                           setFormData((p) => ({ ...p, email: e.target.value }))
@@ -683,7 +754,7 @@ function ParcelCheckout() {
                     </Col>
                     <Col xs={12}>
                       <Form.Control
-                        placeholder="Телефон"
+                        placeholder={t("phone", { ns: "parcelPage" })}
                         value={formData.phone}
                         onChange={(e) =>
                           setFormData((p) => ({ ...p, phone: e.target.value }))
@@ -701,7 +772,10 @@ function ParcelCheckout() {
                 className="mt-2"
                 as="textarea"
                 rows={2}
-                placeholder="Комментарий (что за посылка, как забрать, код домофона и т.п.)"
+                placeholder={t(
+                  "comment (what is inside, how to pick up, intercom code, etc.)",
+                  { ns: "parcelPage" }
+                )}
                 value={formData.comment}
                 onChange={(e) =>
                   setFormData((p) => ({ ...p, comment: e.target.value }))
@@ -710,7 +784,7 @@ function ParcelCheckout() {
 
               <hr />
 
-              <h5 className="mb-2">Оплата</h5>
+              <h5 className="mb-2">{t("payment", { ns: "parcelPage" })}</h5>
 
               {savedCards.length > 0 && (
                 <Form.Select
@@ -723,20 +797,26 @@ function ParcelCheckout() {
                       {(c.brand || "CARD").toUpperCase()} •••• {c.last4}
                     </option>
                   ))}
-                  <option value="new">Новая карта</option>
+                  <option value="new">
+                    {t("new card", { ns: "parcelPage" })}
+                  </option>
                 </Form.Select>
               )}
 
               {savedCards.length === 0 && (
                 <div className={styles.smallMuted}>
-                  Нет сохранённых карт — оплатите новой картой.
+                  {t("no saved cards — pay with a new card", {
+                    ns: "parcelPage",
+                  })}
                 </div>
               )}
 
               {(selectedPmId === "new" || savedCards.length === 0) && (
                 <>
                   <div className={styles.stripeField}>
-                    <div className={styles.stripeLabel}>Номер карты</div>
+                    <div className={styles.stripeLabel}>
+                      {t("card number", { ns: "parcelPage" })}
+                    </div>
                     <div className={styles.stripeBox}>
                       <CardNumberElement />
                     </div>
@@ -745,7 +825,9 @@ function ParcelCheckout() {
                   <Row className="g-2">
                     <Col xs={12}>
                       <div className={styles.stripeField}>
-                        <div className={styles.stripeLabel}>Срок</div>
+                        <div className={styles.stripeLabel}>
+                          {t("expiry date", { ns: "parcelPage" })}
+                        </div>
                         <div className={styles.stripeBox}>
                           <CardExpiryElement />
                         </div>
@@ -769,16 +851,14 @@ function ParcelCheckout() {
                 disabled={payLoading || !stripe || !quote?.price}
               >
                 {payLoading
-                  ? "Оплата..."
+                  ? t("paying...", { ns: "parcelPage" })
                   : quote?.price
-                  ? `Оплатить ${Number(quote.price).toFixed(2)} €`
-                  : "Выберите точки A и B"}
+                  ? t("pay {{amount}} €", {
+                      ns: "parcelPage",
+                      amount: Number(quote.price).toFixed(2),
+                    })
+                  : t("select points A and B", { ns: "parcelPage" })}
               </Button>
-
-              <div className={styles.smallMuted + " mt-2"}>
-                После оплаты заказ уйдёт курьерам как обычный оффер (как у
-                ресторанов).
-              </div>
             </Card.Body>
           </Card>
         </Col>
