@@ -16,5 +16,8 @@
 	"orderImage": "Изображение заказа",
 	"orderSummary": "Общий заказ:",
 	"orderTotalPrice": "Сумма:",
-	"noOrders": "У вас пока нет заказов."
-  }
+	"noOrders": "У вас пока нет заказов.",
+	"product": "Товар",
+	"not specified": "Не указано",
+	"order image": "Изображение заказа"
+}
