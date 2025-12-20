@@ -31,7 +31,7 @@ const SearchBar = () => {
         setResults(processedDevices);
         setSelectedIndex(-1);
       } catch (err) {
-        console.error("Ошибка поиска:", err);
+         console.error("Search error:", err);
         setResults([]);
       }
     } else {
@@ -60,10 +60,10 @@ const SearchBar = () => {
           if (devices.length > 0) {
             handleResultClick(devices[0].id);
           } else {
-            console.log("Устройства не найдены");
+            console.log("No devices found");
           }
         } catch (err) {
-          console.error("Ошибка поиска при Enter:", err);
+         console.error("Search error on Enter:", err);
         }
       }
     }
