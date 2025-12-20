@@ -21,7 +21,7 @@ const DishModal = ({ item, seller, getImgSrc, onAdd }) => {
               {imgSrc ? (
                 <img
                   src={imgSrc}
-                  alt={item?.name || "Dish"}
+                  alt={item?.name || t("dish", { ns: "dishModal" })}
                   className={`${deviceStyles.DevicePageMainImage} ${styles.mainImg}`}
                   onError={(e) => (e.currentTarget.style.display = "none")}
                 />
@@ -78,7 +78,7 @@ const DishModal = ({ item, seller, getImgSrc, onAdd }) => {
               disabled={!isAvailable}
               onClick={() => onAdd?.(qty)}
             >
-              Добавить • {total.toFixed(2)} €
+              {t("add", { ns: "dishModal" })} • {total.toFixed(2)} €
             </button>
 
             <div className={styles.mobileBar}>
@@ -110,7 +110,9 @@ const DishModal = ({ item, seller, getImgSrc, onAdd }) => {
                   onClick={() => onAdd?.(qty)}
                 >
                   <span className={deviceStyles.AddText}>
-                    {isAvailable ? "Добавить" : "Нет в наличии"}
+                  {isAvailable
+                      ? t("add", { ns: "dishModal" })
+                      : t("out of stock", { ns: "dishModal" })}
                   </span>
                   <span className={deviceStyles.AddPrice}>
                     {total.toFixed(2)} €
