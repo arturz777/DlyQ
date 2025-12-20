@@ -86,5 +86,8 @@
 	"preorder note scheduled": "See on eeltellimus: toimetame tellimuse kohale teie valitud ajal.",
 	"preorder note out of stock": "See on eeltellimus: toodet ei ole hetkel laos, anname teada, kui see on tarnimiseks valmis.",
 	"preorder note store closed": "See on eeltellimus: pood on hetkel suletud, toimetame tellimuse kohale teie valitud ajal.",
-	"specify the desired delivery date and time": "Vali soovitud tarnekuupäev ja aeg"
+	"specify the desired delivery date and time": "Vali soovitud tarnekuupäev ja aeg",
+	 "failed to load or parse userFormData": "userFormData laadimine/parsimine ebaõnnestus",
+  "failed to save form": "Vormi salvestamine ebaõnnestus",
+  "payment status": "Makse staatus: {{status}}"
 }
