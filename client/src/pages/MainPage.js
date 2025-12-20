@@ -21,7 +21,7 @@ const MainPage = () => {
         setSellers(list || []);
       } catch (e) {
         console.error(e);
-        setError(t("failed to load restaurants", { ns: "delivery" }));
+        setError(t("failed to load restaurants", { ns: "mainPage" }));
       } finally {
         setLoading(false);
       }
@@ -72,7 +72,7 @@ const MainPage = () => {
         <div className={styles.bannerOverlay} />
         <div className={styles.bannerContent}>
         <div className={styles.bannerTitle}>
-            📦 {t("parcel delivery", { ns: "delivery" })}
+            📦 {t("parcel delivery", { ns: "mainPage" })}
           </div>
         </div>
       </button>
