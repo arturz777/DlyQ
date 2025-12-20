@@ -20,5 +20,17 @@
 	"minutes": "min",
 	"seconds": "sek",
 	"zero seconds": "0 sekundit",
-	"no active order": "Aktiivseid tellimusi pole:"
+	"no active order": "Aktiivseid tellimusi pole:",
+	"order": "Tellimus",
+	"route fetch error": "Marsruudi päring ebaõnnestus:",
+	"complete order error": "Tellimuse lõpetamise viga:",
+	"parcel searching courier...": "Kulleri otsing...",
+	"parcel courier going to point A": "Kuller sõidab punkti A",
+	"parcel courier arrived at point A": "Kuller jõudis punkti A",
+	"parcel courier going to point B": "Kuller sõidab punkti B",
+	"parcel courier arrived at point B": "Kuller jõudis punkti B",
+	"parcel delivered": "Tellimus on kohale toimetatud",
+	"courier picked up the order": "Kuller võttis tellimuse peale",
+	"courier": "Kuller",
+	"warehouse": "Ladu"
 }
