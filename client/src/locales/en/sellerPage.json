@@ -1,0 +1,12 @@
+{
+  "store not found": "Store not found",
+  "data loading error": "Data loading error",
+  "cart contains items from another seller. clear cart and add this item?": "Your cart already contains items from another seller. Clear the cart and add this item?",
+  "dish is currently unavailable": "This dish is currently unavailable",
+  "added to cart": "Added to cart",
+  "loading store...": "Loading store...",
+  "loading menu...": "Loading menu...",
+  "no dishes yet": "No dishes yet",
+  "add": "Add",
+  "menu is empty for now": "The menu is empty for now"
+}
