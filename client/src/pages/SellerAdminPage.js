@@ -14,6 +14,7 @@ import { login } from "../http/userAPI";
 import Image from "react-bootstrap/Image";
 import CreateMenuCategory from "../components/modals/CreateMenuCategory";
 import CreateMenuItem from "../components/modals/CreateMenuItem";
+import { useTranslation } from "react-i18next";
 import styles from "./SellerAdminPage.module.css";
 
 const API_BASE = process.env.REACT_APP_API_URL;
@@ -36,12 +37,10 @@ const SellerAdminPage = () => {
   const [menuCategories, setMenuCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(false);
-
   const [menuCategoryVisible, setMenuCategoryVisible] = useState(false);
   const [menuItemVisible, setMenuItemVisible] = useState(false);
   const [editableMenuCategory, setEditableMenuCategory] = useState(null);
   const [editableMenuItem, setEditableMenuItem] = useState(null);
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
@@ -49,8 +48,8 @@ const SellerAdminPage = () => {
   const [accessChecked, setAccessChecked] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [accessError, setAccessError] = useState("");
-
   const [menuOpen, setMenuOpen] = useState(false);
+  const { t } = useTranslation();
 
   const handleRetryAsAnotherUser = () => {
     localStorage.removeItem("token");
@@ -70,7 +69,7 @@ const SellerAdminPage = () => {
       setMenuItems(items || []);
     } catch (e) {
       console.error(e);
-      alert("Не удалось загрузить меню");
+      alert(t("failed to load menu", { ns: "sellerAdminPage" }));
     } finally {
       setLoading(false);
     }
@@ -97,7 +96,8 @@ const SellerAdminPage = () => {
         if (cancelled) return;
         setHasAccess(false);
         setAccessError(
-          e?.response?.data?.message || "Нет доступа к этому магазину"
+          e?.response?.data?.message ||
+            t("no access to this store", { ns: "sellerAdminPage" })
         );
       } finally {
         if (!cancelled) {
@@ -140,23 +140,39 @@ const SellerAdminPage = () => {
       );
     } catch (e) {
       console.error(e);
-      alert("Не удалось изменить доступность блюда");
+      alert(t("failed to change dish availability", { ns: "sellerAdminPage" }));
     }
   };
 
   const handleDeactivateItem = async (it) => {
-    if (!window.confirm(`Деактивировать блюдо "${it.name}"?`)) return;
+    if (
+      !window.confirm(
+        t('deactivate dish "{{name}}"?', {
+          ns: "sellerAdminPage",
+          name: it.name,
+        })
+      )
+    )
+      return;
     try {
       await deactivateMenuItem(it.id, sid);
       await reload();
     } catch (e) {
       console.error(e);
-      alert("Не удалось деактивировать блюдо");
+      alert(t("failed to deactivate dish", { ns: "sellerAdminPage" }));
     }
   };
 
   const handleDeactivateCategory = async (cat) => {
-    if (!window.confirm(`Деактивировать категорию "${cat.name}"?`)) return;
+    if (
+      !window.confirm(
+        t('deactivate category "{{name}}"?', {
+          ns: "sellerAdminPage",
+          name: cat.name,
+        })
+      )
+    )
+      return;
     try {
       await deactivateMenuCategory(cat.id, sid);
       const cats = await fetchMenuCategories(sid);
@@ -165,7 +181,7 @@ const SellerAdminPage = () => {
       setMenuItems(items || []);
     } catch (e) {
       console.error(e);
-      alert("Не удалось деактивировать категорию");
+      alert(t("failed to deactivate category", { ns: "sellerAdminPage" }));
     }
   };
 
@@ -173,7 +189,7 @@ const SellerAdminPage = () => {
     e.preventDefault();
     setAuthError("");
     if (!email.trim() || !password.trim()) {
-      setAuthError("Введите e-mail и пароль");
+      setAuthError(t("enter email and password", { ns: "sellerAdminPage" }));
       return;
     }
 
@@ -185,7 +201,10 @@ const SellerAdminPage = () => {
     } catch (err) {
       console.error(err);
       setAuthError(
-        err?.response?.data?.message || "Ошибка входа. Проверьте данные."
+        err?.response?.data?.message ||
+          t("login error. please check your details.", {
+            ns: "sellerAdminPage",
+          })
       );
     } finally {
       setAuthLoading(false);
@@ -206,7 +225,11 @@ const SellerAdminPage = () => {
   };
 
   if (!sid)
-    return <div style={{ padding: 20 }}>sellerId не найден в адресе</div>;
+    return (
+      <div style={{ padding: 20 }}>
+        {t("sellerId was not found in the URL", { ns: "sellerAdminPage" })}
+      </div>
+    );
 
   const role = String(user.user?.role || "").toUpperCase();
 
@@ -214,29 +237,32 @@ const SellerAdminPage = () => {
     return (
       <div className={styles.authWrapper}>
         <div className={styles.authBox}>
-          <h2 className={styles.authTitle}>Вход в админку ресторана</h2>
+          <h2 className={styles.authTitle}>
+            {t("restaurant admin login", { ns: "sellerAdminPage" })}
+          </h2>
+
           {authError && <div className={styles.authError}>{authError}</div>}
 
           <form onSubmit={handleAuthSubmit} className={styles.authForm}>
             <label className={styles.authLabel}>
-              E-mail
+              {t("email", { ns: "sellerAdminPage" })}
               <input
                 className={styles.authInput}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="email"
+                placeholder={t("email", { ns: "sellerAdminPage" })}
               />
             </label>
 
             <label className={styles.authLabel}>
-              Пароль
+              {t("password", { ns: "sellerAdminPage" })}
               <input
                 className={styles.authInput}
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Пароль"
+                placeholder={t("password", { ns: "sellerAdminPage" })}
               />
             </label>
 
@@ -245,7 +271,9 @@ const SellerAdminPage = () => {
               className={styles.authButton}
               disabled={authLoading}
             >
-              {authLoading ? "Входим…" : "Войти"}
+              {authLoading
+                ? t("signing in...", { ns: "sellerAdminPage" })
+                : t("sign in", { ns: "sellerAdminPage" })}
             </button>
           </form>
         </div>
@@ -257,7 +285,9 @@ const SellerAdminPage = () => {
     return (
       <div className={styles.authWrapper}>
         <div className={styles.authBox}>
-          <h2 className={styles.authTitle}>Проверяем доступ…</h2>
+          <h2 className={styles.authTitle}>
+            {t("checking access...", { ns: "sellerAdminPage" })}
+          </h2>
         </div>
       </div>
     );
@@ -267,7 +297,9 @@ const SellerAdminPage = () => {
     return (
       <div className={styles.authWrapper}>
         <div className={styles.authBox}>
-          <h2 className={styles.authTitle}>Нет доступа к этому магазину</h2>
+          <h2 className={styles.authTitle}>
+            {t("no access to this store", { ns: "sellerAdminPage" })}
+          </h2>
           {accessError && (
             <p style={{ textAlign: "center", marginBottom: 8 }}>
               {accessError}
@@ -278,7 +310,9 @@ const SellerAdminPage = () => {
             className={styles.authButton}
             onClick={handleRelogin}
           >
-            Попробовать войти другим аккаунтом
+            {t("try signing in with another account", {
+              ns: "sellerAdminPage",
+            })}
           </button>
         </div>
       </div>
@@ -286,15 +320,20 @@ const SellerAdminPage = () => {
   }
 
   const displayName =
-    user.user?.email || user.user?.name || user.user?.phone || "Пользователь";
+    user.user?.email ||
+    user.user?.name ||
+    user.user?.phone ||
+    t("user", { ns: "sellerAdminPage" });
 
   return (
     <div className={styles.adminPageRoot}>
       <header className={styles.topBar}>
         <div className={styles.brandBlock}>
-          <div className={styles.brandTitle}>Админка ресторана</div>
+          <div className={styles.brandTitle}>
+            {t("restaurant admin", { ns: "sellerAdminPage" })}
+          </div>
           <div className={styles.brandSubtitle}>
-            Управление меню и настройками
+            {t("manage menu and settings", { ns: "sellerAdminPage" })}
           </div>
         </div>
 
@@ -318,8 +357,10 @@ const SellerAdminPage = () => {
                   setMenuOpen(false);
                 }}
               >
-                Настройки ресторана
-                <span className={styles.menuItemSoon}>скоро</span>
+                {t("restaurant settings", { ns: "sellerAdminPage" })}
+                <span className={styles.menuItemSoon}>
+                  {t("soon", { ns: "sellerAdminPage" })}
+                </span>
               </button>
 
               <button
@@ -329,8 +370,10 @@ const SellerAdminPage = () => {
                   setMenuOpen(false);
                 }}
               >
-                Время работы
-                <span className={styles.menuItemSoon}>скоро</span>
+                {t("working hours", { ns: "sellerAdminPage" })}
+                <span className={styles.menuItemSoon}>
+                  {t("soon", { ns: "sellerAdminPage" })}
+                </span>
               </button>
 
               <button
@@ -340,8 +383,10 @@ const SellerAdminPage = () => {
                   setMenuOpen(false);
                 }}
               >
-                Доставка и самовывоз
-                <span className={styles.menuItemSoon}>скоро</span>
+                {t("delivery and pickup", { ns: "sellerAdminPage" })}
+                <span className={styles.menuItemSoon}>
+                  {t("soon", { ns: "sellerAdminPage" })}
+                </span>
               </button>
 
               <button
@@ -351,8 +396,10 @@ const SellerAdminPage = () => {
                   setMenuOpen(false);
                 }}
               >
-                Оплата и интеграции
-                <span className={styles.menuItemSoon}>скоро</span>
+                {t("payments and integrations", { ns: "sellerAdminPage" })}
+                <span className={styles.menuItemSoon}>
+                  {t("soon", { ns: "sellerAdminPage" })}
+                </span>
               </button>
 
               <div className={styles.menuDivider} />
@@ -362,7 +409,7 @@ const SellerAdminPage = () => {
                 className={`${styles.menuItemButton} ${styles.menuItemDanger}`}
                 onClick={handleLogout}
               >
-                Выйти
+                {t("sign out", { ns: "sellerAdminPage" })}
               </button>
             </div>
           )}
@@ -370,7 +417,9 @@ const SellerAdminPage = () => {
       </header>
 
       <div className={styles.adminPanelContainer}>
-        <h2 style={{ marginBottom: 16 }}>Меню</h2>
+        <h2 style={{ marginBottom: 16 }}>
+          {t("menu", { ns: "sellerAdminPage" })}
+        </h2>
 
         <div className={styles.actionButtons}>
           <button
@@ -381,7 +430,7 @@ const SellerAdminPage = () => {
               setMenuCategoryVisible(true);
             }}
           >
-            + Категория
+            {t("+ category", { ns: "sellerAdminPage" })}
           </button>
 
           <button
@@ -392,11 +441,11 @@ const SellerAdminPage = () => {
               setMenuItemVisible(true);
             }}
           >
-            + Блюдо
+            {t("+ dish", { ns: "sellerAdminPage" })}
           </button>
         </div>
 
-        {loading && <p>Загрузка меню…</p>}
+        {loading && <p>{t("loading menu...", { ns: "sellerAdminPage" })}</p>}
 
         {(menuCategories || []).map((cat) => {
           const list = itemsByCategory.get(cat.id) || [];
@@ -420,20 +469,22 @@ const SellerAdminPage = () => {
                       setMenuCategoryVisible(true);
                     }}
                   >
-                    Редактировать
+                    {t("edit", { ns: "sellerAdminPage" })}
                   </button>
                   <button
                     type="button"
                     className={styles.deleteButton}
                     onClick={() => handleDeactivateCategory(cat)}
                   >
-                    Деактивировать
+                    {t("deactivate", { ns: "sellerAdminPage" })}
                   </button>
                 </div>
               </div>
 
               {list.length === 0 ? (
-                <div style={{ color: "#666" }}>Пока нет блюд</div>
+                <div style={{ color: "#666" }}>
+                  {t("no dishes yet", { ns: "sellerAdminPage" })}
+                </div>
               ) : (
                 <div className={styles.itemList}>
                   {list.map((it) => {
@@ -481,7 +532,9 @@ const SellerAdminPage = () => {
                               color: it.isAvailable ? "green" : "red",
                             }}
                           >
-                            {it.isAvailable ? "Доступно" : "Недоступно"}
+                            {it.isAvailable
+                              ? t("available", { ns: "sellerAdminPage" })
+                              : t("unavailable", { ns: "sellerAdminPage" })}
                           </span>
 
                           <button
@@ -492,7 +545,7 @@ const SellerAdminPage = () => {
                               setMenuItemVisible(true);
                             }}
                           >
-                            Редактировать
+                            {t("edit", { ns: "sellerAdminPage" })}
                           </button>
 
                           <button
@@ -500,7 +553,9 @@ const SellerAdminPage = () => {
                             type="button"
                             onClick={() => handleToggleAvail(it)}
                           >
-                            {it.isAvailable ? "Скрыть" : "Показать"}
+                            {it.isAvailable
+                              ? t("hide", { ns: "sellerAdminPage" })
+                              : t("show", { ns: "sellerAdminPage" })}
                           </button>
 
                           <button
@@ -508,7 +563,7 @@ const SellerAdminPage = () => {
                             type="button"
                             onClick={() => handleDeactivateItem(it)}
                           >
-                            Деактивировать
+                            {t("deactivate", { ns: "sellerAdminPage" })}
                           </button>
                         </div>
                       </div>
@@ -521,9 +576,13 @@ const SellerAdminPage = () => {
         })}
 
         <div style={{ marginBottom: 22 }}>
-          <h3 style={{ marginBottom: 10 }}>Без категории</h3>
+          <h3 style={{ marginBottom: 10 }}>
+            {t("uncategorized", { ns: "sellerAdminPage" })}
+          </h3>
           {(itemsByCategory.get("no") || []).length === 0 ? (
-            <div style={{ color: "#666" }}>Пусто</div>
+            <div style={{ color: "#666" }}>
+              {t("empty", { ns: "sellerAdminPage" })}
+            </div>
           ) : (
             <div className={styles.itemList}>
               {(itemsByCategory.get("no") || []).map((it) => {
@@ -571,7 +630,9 @@ const SellerAdminPage = () => {
                           color: it.isAvailable ? "green" : "red",
                         }}
                       >
-                        {it.isAvailable ? "Доступно" : "Недоступно"}
+                        {it.isAvailable
+                          ? t("available", { ns: "sellerAdminPage" })
+                          : t("unavailable", { ns: "sellerAdminPage" })}
                       </span>
 
                       <button
@@ -582,7 +643,7 @@ const SellerAdminPage = () => {
                           setMenuItemVisible(true);
                         }}
                       >
-                        Редактировать
+                        {t("edit", { ns: "sellerAdminPage" })}
                       </button>
 
                       <button
@@ -590,7 +651,9 @@ const SellerAdminPage = () => {
                         type="button"
                         onClick={() => handleToggleAvail(it)}
                       >
-                        {it.isAvailable ? "Скрыть" : "Показать"}
+                        {it.isAvailable
+                          ? t("hide", { ns: "sellerAdminPage" })
+                          : t("show", { ns: "sellerAdminPage" })}
                       </button>
 
                       <button
@@ -598,7 +661,7 @@ const SellerAdminPage = () => {
                         type="button"
                         onClick={() => handleDeactivateItem(it)}
                       >
-                        Деактивировать
+                        {t("deactivate", { ns: "sellerAdminPage" })}
                       </button>
                     </div>
                   </div>
