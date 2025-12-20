@@ -7,5 +7,6 @@
 	"pre-order only": "Pre-order only",
 	"Select an option": "Select an option",
 	"you cannot add a pre-order to the cart with regular items": "You cannot add a pre-order to the cart with regular items!",
-	"you cannot add a regular item to the cart with a pre-order": "You cannot add a regular item to the cart with a pre-order!"
+	"you cannot add a regular item to the cart with a pre-order": "You cannot add a regular item to the cart with a pre-order!",
+	  "cart has items from another seller. clear cart and add this item?": "Your cart already contains items from another seller. Clear the cart and add this item?"
 }
