@@ -443,7 +443,10 @@ const [deletingId, setDeletingId] = useState(null);
           }));
         }
       } catch (e) {
-        console.error("Ошибка загрузки/парсинга userFormData", e);
+        console.error(
+          t("failed to load or parse userFormData", { ns: "paymentForm" }),
+          e
+        );
       } finally {
         setHydrated(true);
       }
@@ -472,7 +475,7 @@ const [deletingId, setDeletingId] = useState(null);
         })
       );
     } catch (e) {
-      console.warn("Не удалось сохранить форму", e);
+      console.warn(t("failed to save form", { ns: "paymentForm" }), e);
     }
   }, [formData, hydrated]);
 
@@ -603,7 +606,12 @@ const handleSubmit = async (event) => {
       }
 
       if (paymentIntent?.status !== "succeeded") {
-        toast.error(`Статус платежа: ${paymentIntent?.status || "unknown"}`);
+        toast.error(
+          t("payment status", {
+            ns: "paymentForm",
+            status: paymentIntent?.status || "unknown",
+          })
+        );
         setLoading(false);
         return;
       }
