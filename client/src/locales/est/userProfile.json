@@ -7,6 +7,7 @@
 	"updateSuccess": "Andmed on edukalt uuendatud!",
 	"updateError": "Andmete uuendamise viga",
 	"back": "← Tagasi",
+	"logout": "Logi välja",
 	"myOrders": "Minu tellimused",
 	"order": "Tellimus",
 	"totalAmount": "Kogusumma:",
@@ -16,5 +17,8 @@
 	"orderImage": "Tellimuse pilt",
 	"orderSummary": "Tellimuse kokkuvõte:",
 	"orderTotalPrice": "Summa:",
-	"noOrders": "Teil pole veel tellimusi."
-  }
+	"noOrders": "Teil pole veel tellimusi.",
+	"product": "Toode",
+	"not specified": "Pole märgitud",
+	"order image": "Tellimuse pilt"
+}
