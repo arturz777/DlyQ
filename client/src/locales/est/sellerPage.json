@@ -1,0 +1,12 @@
+{
+  "store not found": "Poodi ei leitud",
+  "data loading error": "Andmete laadimise viga",
+  "cart contains items from another seller. clear cart and add this item?": "Sinu ostukorvis on juba teise müüja tooteid. Kas tühjendada ostukorv ja lisada see toode?",
+  "dish is currently unavailable": "See roog ei ole praegu saadaval",
+  "added to cart": "Lisatud ostukorvi",
+  "loading store...": "Poe laadimine...",
+  "loading menu...": "Menüü laadimine...",
+  "no dishes yet": "Rooke veel ei ole",
+  "add": "Lisa",
+  "menu is empty for now": "Menüü on praegu tühi"
+}
