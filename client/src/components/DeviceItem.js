@@ -55,7 +55,7 @@ const DeviceItem = ({ device, onClick }) => {
         }
       })
       .catch((err) => {
-        console.error("Ошибка получения статуса магазина:", err);
+        console.error("Error fetching store status:", err);
       });
 
     return () => {
@@ -123,8 +123,10 @@ const DeviceItem = ({ device, onClick }) => {
       return true;
     }
 
-    const ok = window.confirm(
-      "В корзине уже есть товары другого продавца. Очистить корзину и добавить этот товар?"
+     const ok = window.confirm(
+      t("cart has items from another seller. clear cart and add this item?", {
+        ns: "deviceItem",
+      })
     );
 
     if (!ok) {
