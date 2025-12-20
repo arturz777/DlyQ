@@ -26,35 +26,14 @@ const UserProfile = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
-  const handleBack = () => {
-    navigate(-1);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.put(
-        "http://localhost:5000/api/user/profile",
-        { firstName, lastName, phone },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      alert(t("profileUpdated", { ns: "userProfile" }));
-    } catch (error) {
-      console.error("Ошибка обновления профиля", error);
-    }
-  };
-
-  const handleLogOut = () => {
-    localStorage.removeItem("token");
-    user.setUser({});
-    user.setIsAuth(false);
-    navigate("/login");
-  };
+  const uiLocale = i18n.language?.toLowerCase().startsWith("ru")
+    ? "ru-RU"
+    : i18n.language?.toLowerCase().startsWith("en")
+    ? "en-GB"
+    : i18n.language?.toLowerCase() === "est" ||
+      i18n.language?.toLowerCase().startsWith("et")
+    ? "et-EE"
+    : "en-GB";
 
   const translateStatus = (status) => {
     const statuses = {
@@ -89,17 +68,6 @@ const UserProfile = () => {
     });
   }, []);
 
-  const handleSave = async () => {
-    try {
-      await updateProfile({ firstName, lastName, phone });
-      toast.success(t("updateSuccess", { ns: "userProfile" }));
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || t("updateError", { ns: "userProfile" })
-      );
-    }
-  };
-
   const handleProductClick = (product) => {
     if (!product) return;
 
@@ -107,7 +75,7 @@ const UserProfile = () => {
       product.deviceId || product.device_id || product.id || product.device?.id;
 
     if (!deviceId) {
-      console.warn("Не удалось определить deviceId для продукта", product);
+      console.warn("Failed to determine deviceId for product", product);
       return;
     }
 
@@ -118,12 +86,10 @@ const UserProfile = () => {
     <div className={styles.shopWrapper}>
       <div className={styles.mainContent}>
         <div className={styles.buttonsContainer}>
-         
             <OrderSidebar
               isSidebarOpen={isSidebarOpen}
               setSidebarOpen={setSidebarOpen}
             />
-          
         </div>
 
         <button
@@ -150,7 +116,7 @@ const UserProfile = () => {
                   </span>
                   <span>{translateStatus(order.status)}</span>
                   <span>
-                    {new Date(order.createdAt).toLocaleString("ru-RU", {
+                   {new Date(order.createdAt).toLocaleString(uiLocale, {
                       day: "2-digit",
                       month: "2-digit",
                       year: "numeric",
@@ -170,7 +136,9 @@ const UserProfile = () => {
                     >
                       <img
                         src={product.image || order.deviceImage}
-                        alt={product.name || "Товар"}
+                        alt={
+                          product.name || t("product", { ns: "userProfile" })
+                        }
                         className={styles.deviceImage}
                       />
                       <div className={styles.orderDetails}>
@@ -180,11 +148,14 @@ const UserProfile = () => {
                         </span>
                         <span>
                           {t("quantity", { ns: "userProfile" })}{" "}
-                          {product.count || "Не указано"}
+                          {product.count ||
+                            t("not specified", { ns: "userProfile" })}
                         </span>
                         <span>
                           {t("price", { ns: "userProfile" })}{" "}
-                          {product.price ? `${product.price} €` : "Не указана"}
+                          {product.price
+                            ? `${product.price} €`
+                            : t("not specified", { ns: "userProfile" })}
                         </span>
                       </div>
                     </div>
@@ -193,7 +164,7 @@ const UserProfile = () => {
                   <div className={styles.orderCard}>
                     <img
                       src={order.deviceImage}
-                      alt="Изображение заказа"
+                      alt={t("order image", { ns: "userProfile" })}
                       className={styles.deviceImage}
                     />
                     <div className={styles.orderDetails}>
@@ -223,7 +194,7 @@ const UserProfile = () => {
           <Suspense
             fallback={
               <div style={{ padding: 16 }}>
-                {t("loading", { ns: "userProfile" }) || "Загрузка..."}
+                {t("loading", { ns: "userProfile" })}
               </div>
             }
           >
