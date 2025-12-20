@@ -443,7 +443,10 @@ const PaymentForm = ({
           }));
         }
       } catch (e) {
-        console.error("Ошибка загрузки/парсинга userFormData", e);
+        console.error(
+          t("failed to load or parse userFormData", { ns: "paymentForm" }),
+          e
+        );
       } finally {
         setHydrated(true);
       }
@@ -472,7 +475,7 @@ const PaymentForm = ({
         })
       );
     } catch (e) {
-      console.warn("Не удалось сохранить форму", e);
+      console.warn(t("failed to save form", { ns: "paymentForm" }), e);
     }
   }, [formData, hydrated]);
 
@@ -602,8 +605,13 @@ if (
         return;
       }
 
-      if (paymentIntent?.status !== "succeeded") {
-        toast.error(`Статус платежа: ${paymentIntent?.status || "unknown"}`);
+    if (paymentIntent?.status !== "succeeded") {
+        toast.error(
+          t("payment status", {
+            ns: "paymentForm",
+            status: paymentIntent?.status || "unknown",
+          })
+        );
         setLoading(false);
         return;
       }
