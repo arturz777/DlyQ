@@ -28,6 +28,7 @@ import brandBarEst from './est/brandBar.json';
 import maintenanceEst from './est/maintenance.json';
 import chatBoxEst from './est/chatBox.json';
 import mainPageEst from './est/mainPage.json';
+import parcelPageEst from './est/parcelPage.json';
 
 import navbarEn from './en/navbar.json';
 import searchbarEn from './en/searchbar.json';
@@ -54,6 +55,7 @@ import brandBarEn from './en/brandBar.json';
 import maintenanceEn from './en/maintenance.json';
 import chatBoxEn from './en/chatBox.json';
 import mainPageEn from './en/mainPage.json';
+import parcelPageEn from './en/parcelPage.json';
 
 import navbarRu from './ru/navbar.json';
 import searchbarRu from './ru/searchbar.json';
@@ -80,6 +82,7 @@ import brandBarRu from './ru/brandBar.json';
 import maintenanceRu from './ru/maintenance.json';
 import chatBoxRu from './ru/chatBox.json';
 import mainPageRu from './ru/mainPage.json';
+import parcelPageRu from './ru/parcelPage.json';
 
 
 i18n
@@ -118,6 +121,7 @@ i18n
         maintenance: maintenanceEn,
         chatBox: chatBoxEn,
         mainPage: mainPageEn,
+        parcelPage: parcelPageEn,
       },
       ru: {
         navbar: navbarRu,
@@ -145,6 +149,7 @@ i18n
         maintenance: maintenanceRu,
         chatBox: chatBoxRu,
         mainPage: mainPageRu,
+        parcelPage: parcelPageRu,
       },
       est: {
         navbar: navbarEst,
@@ -172,6 +177,7 @@ i18n
         maintenance: maintenanceEst,
         chatBox: chatBoxEst,
         mainPage: mainPageEst,
+        parcelPage: parcelPageEst,
       },
     },
 
