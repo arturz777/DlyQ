@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchSellers } from "../http/sellerAPI";
 import mainStoreImg from "../assets/main-store.png";
+import parcelDeliveryImg from "../assets/parcel-delivery.png";
 import { useTranslation } from "react-i18next";
 import styles from "./MainPage.module.css";
 
@@ -69,9 +70,15 @@ const MainPage = () => {
         onClick={() => navigate("/parcel")}
         type="button"
       >
+        <img
+          src={parcelDeliveryImg}
+          alt="Parcel delivery"
+          className={styles.bannerImg}
+        />
         <div className={styles.bannerOverlay} />
+
         <div className={styles.bannerContent}>
-        <div className={styles.bannerTitle}>
+          <div className={styles.bannerTitle}>
             📦 {t("parcel delivery", { ns: "mainPage" })}
           </div>
         </div>
