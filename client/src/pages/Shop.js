@@ -281,9 +281,6 @@ const Shop = () => {
                 to={`/catalog?typeId=${type.id}`}
                 className={styles.category}
               >
-                {type.img && (
-                  <img src={type.img} alt="" className={styles.categoryIcon} />
-                )}
                 {type.translations?.name?.[currentLang] || type.name}
               </Link>
             ))}
@@ -306,13 +303,6 @@ const Shop = () => {
                       to={`/catalog?typeId=${type.id}`}
                       className={styles.dropdownItem}
                     >
-                      {type.img && (
-                        <img
-                          src={type.img}
-                          alt=""
-                          className={styles.categoryIcon}
-                        />
-                      )}
                       <span className={styles.dropdownItemLabel}>
                         {type.translations?.name?.[currentLang] || type.name}
                       </span>
@@ -329,9 +319,6 @@ const Shop = () => {
               to={`/catalog?typeId=${type.id}`}
               className={styles.category}
             >
-              {type.img && (
-                <img src={type.img} alt="" className={styles.categoryIcon} />
-              )}
               {type.translations?.name?.[currentLang] || type.name}
             </Link>
           ))
