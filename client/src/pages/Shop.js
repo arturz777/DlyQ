@@ -278,7 +278,7 @@ const Shop = () => {
             {types.slice(0, 5).map((type) => (
               <Link
                 key={type.id}
-                to={`/catalog?typeId=${type.id}`}
+                to={`/catalog?typeId=${type.id}&scroll=1`}
                 className={styles.category}
               >
                 {type.translations?.name?.[currentLang] || type.name}
@@ -300,7 +300,7 @@ const Shop = () => {
                   {types.slice(5).map((type) => (
                     <Link
                       key={type.id}
-                      to={`/catalog?typeId=${type.id}`}
+                      to={`/catalog?typeId=${type.id}&scroll=1`}
                       className={styles.dropdownItem}
                     >
                       <span className={styles.dropdownItemLabel}>
@@ -316,7 +316,7 @@ const Shop = () => {
           types.map((type) => (
             <Link
               key={type.id}
-              to={`/catalog?typeId=${type.id}`}
+              to={`/catalog?typeId=${type.id}&scroll=1`}
               className={styles.category}
             >
               {type.translations?.name?.[currentLang] || type.name}
