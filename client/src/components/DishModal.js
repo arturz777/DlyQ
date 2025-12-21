@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from "react";
 import deviceStyles from "../pages/DevicePage.module.css";
+import { useTranslation } from "react-i18next";
 import styles from "./DishModal.module.css";
 
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
 const DishModal = ({ item, seller, getImgSrc, onAdd }) => {
   const [qty, setQty] = useState(1);
+  const { t } = useTranslation();
 
   const imgSrc = useMemo(() => getImgSrc?.(item?.img), [getImgSrc, item?.img]);
   const price = Number(item?.price || 0);
