@@ -6,6 +6,7 @@ import { fetchSellers } from "../http/sellerAPI";
 import { fetchMenuCategories, fetchMenuItems } from "../http/menuAPI";
 import SlideModal from "../components/modals/SlideModal";
 import DishModal from "../components/DishModal";
+import { useTranslation } from "react-i18next";
 import styles from "./SellerPage.module.css";
 
 const API_BASE = process.env.REACT_APP_API_URL;
@@ -30,6 +31,7 @@ const SellerPage = () => {
   const [menuLoading, setMenuLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedItemId, setSelectedItemId] = useState(null);
+  const { t } = useTranslation();
 
   const selectedItem = useMemo(
     () => items.find((x) => String(x.id) === String(selectedItemId)) || null,
