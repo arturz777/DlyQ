@@ -42,6 +42,8 @@ const CatalogPage = observer(() => {
   const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
   const typeIdFromUrl = searchParams.get("typeId");
+  const shouldScrollOnEnter = searchParams.get("scroll") === "1";
+  const didAutoScrollRef = useRef(false);
   const currentLang = i18n.language || "en";
 
   const subtypesReqId = useRef(0);
@@ -50,9 +52,35 @@ const CatalogPage = observer(() => {
   const [feedTypeIndex, setFeedTypeIndex] = useState(0);
   const [typeCursors, setTypeCursors] = useState({});
   const [typeHasMore, setTypeHasMore] = useState({});
-
+  const mobileTypesRowRef = useRef(null);
   const isAutoType =
     !!device.selectedType?.name && /авто/i.test(device.selectedType.name);
+
+  const ensureActiveTypeVisible = useCallback(
+    (behavior = "smooth") => {
+      const row = mobileTypesRowRef.current;
+      const id = device.selectedType?.id;
+      if (!row || !id) return;
+
+      const pill = row.querySelector(`[data-type-pill="${id}"]`);
+      if (!pill) return;
+
+      const rowRect = row.getBoundingClientRect();
+      const pillRect = pill.getBoundingClientRect();
+      const isHiddenLeft = pillRect.left < rowRect.left;
+      const isHiddenRight = pillRect.right > rowRect.right;
+      if (!isHiddenLeft && !isHiddenRight) return;
+
+      const targetLeft =
+        pill.offsetLeft - (row.clientWidth / 2 - pill.clientWidth / 2);
+
+      const maxLeft = row.scrollWidth - row.clientWidth;
+      const clamped = Math.max(0, Math.min(targetLeft, maxLeft));
+
+      row.scrollTo({ left: clamped, behavior });
+    },
+    [device.selectedType?.id]
+  );
 
   const getCompatMode = () =>
     device.selectedMake?.id || device.selectedModel?.id ? "strict" : undefined;
@@ -71,6 +99,15 @@ const CatalogPage = observer(() => {
   }, [device.types]);
 
   const stickyTop = isNavbarVisible ? navbarHeight : 0;
+
+  useEffect(() => {
+    didAutoScrollRef.current = false;
+  }, [typeIdFromUrl, shouldScrollOnEnter]);
+
+  useEffect(() => {
+    if (!showStickySubtypes) return;
+    requestAnimationFrame(() => ensureActiveTypeVisible("auto"));
+  }, [showStickySubtypes, ensureActiveTypeVisible]);
 
   useEffect(() => {
     setFeedTypeIndex(0);
@@ -330,7 +367,7 @@ const CatalogPage = observer(() => {
           device.setModels([]);
         }
       } catch (e) {
-       console.error("Error loading models:", e);
+        console.error("Error loading models:", e);
       }
     };
     loadModels();
@@ -409,6 +446,53 @@ const CatalogPage = observer(() => {
     io.observe(el);
     return () => io.disconnect();
   }, [device.selectedType?.id]);
+
+  useEffect(() => {
+    if (!shouldScrollOnEnter) return;
+
+    const id = Number(typeIdFromUrl);
+    if (!id) return;
+
+    if (device.selectedType?.id !== id) return;
+
+    if (didAutoScrollRef.current) return;
+    didAutoScrollRef.current = true;
+
+    const label =
+      device.selectedType?.translations?.name?.[currentLang] ||
+      device.selectedType?.name ||
+      "";
+
+    const targetId = /авто/i.test(label) ? "make-filter" : "subtype-filter";
+
+    let tries = 0;
+    const run = () => {
+      const el = document.getElementById(targetId);
+
+      if (!el && tries < 20) {
+        tries++;
+        requestAnimationFrame(run);
+        return;
+      }
+      if (!el) return;
+
+      const fixed = document.querySelector(".mobileStickyFilter");
+      const offset = fixed ? fixed.offsetHeight + 10 : 10;
+
+      const y = el.getBoundingClientRect().top + window.scrollY - offset;
+
+      window.scrollTo({ top: y, behavior: "smooth" });
+      window.dispatchEvent(new CustomEvent("catalog:reached-subtype"));
+    };
+
+    requestAnimationFrame(run);
+  }, [
+    shouldScrollOnEnter,
+    typeIdFromUrl,
+    device.selectedType?.id,
+    currentLang,
+    device,
+  ]);
 
   useEffect(() => {
     const handleScroll = () => setShowScrollTop(window.scrollY > 300);
@@ -520,13 +604,17 @@ const CatalogPage = observer(() => {
         >
           {device.selectedType?.id ? (
             <>
-              <div className={catalogStyles.mobileTypesRow}>
+              <div
+                ref={mobileTypesRowRef}
+                className={catalogStyles.mobileTypesRow}
+              >
                 {device.types.map((type) => {
                   const isActive = type.id === device.selectedType?.id;
                   const label =
                     type.translations?.name?.[currentLang] || type.name || "";
                   return (
                     <button
+                      data-type-pill={type.id}
                       key={type.id}
                       type="button"
                       className={
@@ -541,6 +629,7 @@ const CatalogPage = observer(() => {
                         device.setSelectedType(type);
 
                         setTimeout(() => {
+                          ensureActiveTypeVisible("smooth");
                           const isAuto = /авто/i.test(label);
                           const targetId = isAuto
                             ? "make-filter"
