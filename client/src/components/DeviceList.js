@@ -3,6 +3,7 @@ import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import DeviceItem from "./DeviceItem";
 import { useTranslation } from "react-i18next";
+import catalogSuggestImg from "../assets/catalog-suggest.png";
 import styles from "./DeviceList.module.css";
 
 const DeviceList = observer(({ onDeviceClick }) => {
@@ -11,6 +12,12 @@ const DeviceList = observer(({ onDeviceClick }) => {
   const currentLang = i18n.language || "en";
   const selectedSubtypeId = Number(device.selectedSubType?.id) || null;
   const forcedTypeId = Number(device.selectedType?.id) || null;
+
+  const mmAllSet = useMemo(() => {
+    return new Set(
+      (device.facets?.mmSubtypeIdsAll || []).map((x) => Number(x))
+    );
+  }, [device.facets?.mmSubtypeIdsAll]);
 
   const grouped = useMemo(() => {
     const types = Array.isArray(device.types) ? device.types : [];
@@ -190,6 +197,97 @@ const DeviceList = observer(({ onDeviceClick }) => {
     );
   }
 
+  const extractAutoPairs = (d) => {
+    const pairs = [];
+
+    const pushPair = (make, model) => {
+      const m = (make || "").toString().trim();
+      const mo = (model || "").toString().trim();
+      if (!m && !mo) return;
+      pairs.push({ make: m || "Без марки", model: mo || "Без модели" });
+    };
+
+    const compat0 = Array.isArray(d?.compat)
+      ? d.compat
+      : d?.compat
+      ? [d.compat]
+      : [];
+    compat0.forEach((c) => {
+      pushPair(c?.make?.name || c?.makeName, c?.model?.name || c?.modelName);
+    });
+
+    pushPair(d?.make?.name || d?.makeName, d?.model?.name || d?.modelName);
+
+    const compatArrays = [
+      d?.compatibilities,
+      d?.compatibility,
+      d?.mmCompatibilities,
+      d?.autoCompatibilities,
+      d?.carCompatibilities,
+    ].filter(Array.isArray);
+
+    compatArrays.forEach((arr) => {
+      arr.forEach((c) => {
+        pushPair(
+          c?.make?.name || c?.makeName || c?.brand?.name,
+          c?.model?.name || c?.modelName
+        );
+      });
+    });
+
+    if (Array.isArray(d?.models)) {
+      d.models.forEach((m) => {
+        const modelName = m?.name || m?.modelName;
+        const makeName =
+          m?.make?.name ||
+          m?.makeName ||
+          (m?.makeId && Array.isArray(device.makes)
+            ? device.makes.find((x) => Number(x.id) === Number(m.makeId))?.name
+            : null);
+
+        pushPair(makeName, modelName);
+      });
+    }
+
+    const uniq = new Map();
+    pairs.forEach((p) => uniq.set(`${p.make}|||${p.model}`, p));
+    const arr = Array.from(uniq.values());
+
+    const hasRealModel = arr.some((p) => p.model !== "Без модели");
+    if (hasRealModel) {
+      const makesWithRealModel = new Set(
+        arr.filter((p) => p.model !== "Без модели").map((p) => p.make)
+      );
+      return arr.filter(
+        (p) => !(p.model === "Без модели" && makesWithRealModel.has(p.make))
+      );
+    }
+
+    return arr;
+  };
+
+  const getMakeForUniversal = (d) => {
+    const pairs = extractAutoPairs(d);
+    if (!pairs.length) return "Без марки";
+    const uniqMakes = Array.from(new Set(pairs.map((p) => p.make)));
+    return uniqMakes.length === 1 ? uniqMakes[0] : "Несколько марок";
+  };
+
+  const splitByMake = (arr) => {
+    const map = new Map();
+    (arr || []).forEach((d) => {
+      const label = getMakeForUniversal(d);
+      if (!map.has(label)) map.set(label, []);
+      map.get(label).push(d);
+    });
+
+    return Array.from(map.entries()).sort(([a], [b]) => {
+      if (a === "Без марки") return 1;
+      if (b === "Без марки") return -1;
+      return a.localeCompare(b, "ru");
+    });
+  };
+
   return (
     <div>
       {orderedTypeIds.map((tid) => {
@@ -210,10 +308,20 @@ const DeviceList = observer(({ onDeviceClick }) => {
           return ao - bo;
         });
 
+        const typeLabel = group.typeName || "";
+        const isAutoTypeHere =
+          /авто/i.test(typeLabel) || /auto/i.test(typeLabel);
+
+        const universalSubArr = isAutoTypeHere
+          ? subArr.filter((s) => !mmAllSet.has(Number(s.subtypeId)))
+          : subArr;
+
+        const mmSubArr = isAutoTypeHere
+          ? subArr.filter((s) => mmAllSet.has(Number(s.subtypeId)))
+          : [];
+
         return (
           <div key={tid} className={styles.section}>
-            <p className={styles.sectionTitle}>{group.typeName}</p>
-
             {hasNoSubtype && (
               <div className={styles.deviceGrid}>
                 {group.noSubtypeDevices.map((d) => (
@@ -222,8 +330,12 @@ const DeviceList = observer(({ onDeviceClick }) => {
               </div>
             )}
 
-            {subArr.map((sub) => {
+            {universalSubArr.map((sub) => {
               if (!sub.devices.length) return null;
+
+              const makeGroups = isAutoTypeHere ? splitByMake(sub.devices) : [];
+              const showMakeHeaders = makeGroups.length > 1;
+
               return (
                 <div
                   key={sub.subtypeId}
@@ -231,21 +343,199 @@ const DeviceList = observer(({ onDeviceClick }) => {
                   className={styles.subtypeSection}
                 >
                   <p className={styles.subtypeTitle}>{sub.subtypeName}</p>
-                  <div className={styles.deviceGrid}>
-                    {sub.devices.map((d) => (
-                      <DeviceItem
-                        key={d.id}
-                        device={d}
-                        onClick={onDeviceClick}
-                      />
-                    ))}
-                  </div>
+
+                  {isAutoTypeHere ? (
+                    makeGroups.map(([makeLabel, items]) => (
+                      <div key={`${sub.subtypeId}-${makeLabel}`}>
+                        {showMakeHeaders && (
+                          <p
+                            className={styles.subtypeTitle}
+                            style={{
+                              fontSize: 14,
+                              marginTop: 20,
+                              marginBottom: 20,
+                            }}
+                          >
+                            {makeLabel}
+                          </p>
+                        )}
+
+                        <div className={styles.deviceGrid}>
+                          {items.map((d) => (
+                            <DeviceItem
+                              key={d.id}
+                              device={d}
+                              onClick={onDeviceClick}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className={styles.deviceGrid}>
+                      {sub.devices.map((d) => (
+                        <DeviceItem
+                          key={d.id}
+                          device={d}
+                          onClick={onDeviceClick}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
+
+            {isAutoTypeHere &&
+              (() => {
+                const buckets = new Map();
+
+                const put = (make, model, sub, dev) => {
+                  const key = `${make}|||${model}`;
+                  if (!buckets.has(key)) {
+                    buckets.set(key, {
+                      make,
+                      model,
+                      subtypes: new Map(),
+                    });
+                  }
+                  const bucket = buckets.get(key);
+
+                  if (!bucket.subtypes.has(sub.subtypeId)) {
+                    bucket.subtypes.set(sub.subtypeId, {
+                      subtypeId: sub.subtypeId,
+                      subtypeName: sub.subtypeName,
+                      displayOrder: Number(sub.displayOrder ?? 0),
+                      items: [],
+                    });
+                  }
+
+                  bucket.subtypes.get(sub.subtypeId).items.push(dev);
+                };
+
+                mmSubArr.forEach((sub) => {
+                  if (!sub.devices?.length) return;
+
+                  sub.devices.forEach((d) => {
+                    const pairs = extractAutoPairs(d);
+
+                    if (!pairs.length) {
+                      put("Без марки", "Без модели", sub, d);
+                      return;
+                    }
+
+                    pairs.forEach((p) => put(p.make, p.model, sub, d));
+                  });
+                });
+
+                const orderedBuckets = Array.from(buckets.values()).sort(
+                  (a, b) => {
+                    if (a.make === "Без марки" && b.make !== "Без марки")
+                      return 1;
+                    if (b.make === "Без марки" && a.make !== "Без марки")
+                      return -1;
+                    const mk = a.make.localeCompare(b.make, "ru");
+                    if (mk !== 0) return mk;
+                    return a.model.localeCompare(b.model, "ru");
+                  }
+                );
+
+                orderedBuckets.forEach((bucket) => {
+                  bucket.subtypes.forEach((st) => {
+                    const seen = new Set();
+                    st.items = st.items.filter(
+                      (x) => x?.id && !seen.has(x.id) && (seen.add(x.id), true)
+                    );
+                  });
+                });
+
+                const safeId = (s) => String(s).replace(/[^a-zA-Z0-9_-]/g, "_");
+
+                return orderedBuckets.map((bucket) => {
+                  const subtypesArr = Array.from(bucket.subtypes.values()).sort(
+                    (a, b) => {
+                      const ao = Number(a.displayOrder ?? 0);
+                      const bo = Number(b.displayOrder ?? 0);
+                      if (ao === bo)
+                        return Number(a.subtypeId) - Number(b.subtypeId);
+                      return ao - bo;
+                    }
+                  );
+
+                  const canUseSubtypeAnchors = Boolean(
+                    device.selectedModel?.id
+                  );
+
+                  return (
+                    <div key={`mmgrp-${bucket.make}-${bucket.model}`}>
+                      <p
+                        className={styles.subtypeTitle}
+                        style={{
+                          fontSize: 16,
+                          marginTop: 40,
+                          marginBottom: 20,
+                        }}
+                      >
+                        {bucket.make} • {bucket.model}
+                      </p>
+
+                      {subtypesArr.map((st) => (
+                        <div
+                          key={`mm-${bucket.make}-${bucket.model}-${st.subtypeId}`}
+                          id={
+                            canUseSubtypeAnchors
+                              ? `subtype-${st.subtypeId}`
+                              : `mm-${safeId(bucket.make)}-${safeId(
+                                  bucket.model
+                                )}-${st.subtypeId}`
+                          }
+                          className={styles.subtypeSection}
+                        >
+                          <p className={styles.subtypeTitle}>
+                            {st.subtypeName}
+                          </p>
+                          <div className={styles.deviceGrid}>
+                            {st.items.map((d) => (
+                              <DeviceItem
+                                key={d.id}
+                                device={d}
+                                onClick={onDeviceClick}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                });
+              })()}
           </div>
         );
       })}
+
+      <div className={styles.catalogBottomBanner}>
+        <img src={catalogSuggestImg} alt="" className={styles.bannerImg} />
+
+        <div className={styles.bannerOverlay}>
+          <div className={styles.bannerTop}>
+            <div className={styles.bannerTitle}>Ищете что-то конкретное?</div>
+
+            <div className={styles.bannerText}>
+              Напишите нам, какой товар вы хотели бы видеть — мы постараемся
+              добавить его в ассортимент.
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className={styles.bannerBtn}
+            onClick={() => {}}
+            title="Предложить товар"
+          >
+            Предложить товар
+          </button>
+        </div>
+      </div>
     </div>
   );
 });
