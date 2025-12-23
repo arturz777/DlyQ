@@ -336,6 +336,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
 
         return (
           <div key={tid} className={styles.section}>
+            <p className={styles.sectionTitle}>{group.typeName}</p>
             {hasNoSubtype && (
               <div className={styles.deviceGrid}>
                 {group.noSubtypeDevices.map((d) => (
