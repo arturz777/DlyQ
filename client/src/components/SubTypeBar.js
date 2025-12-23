@@ -1,10 +1,10 @@
-import React, { useContext, useMemo, useRef } from "react";
+import React, { useContext, useMemo } from "react";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import { useTranslation } from "react-i18next";
 import styles from "./SubTypeBar.module.css";
 
-const SubTypeBar = observer(({ variant = "default" }) => {
+const SubTypeBar = observer(({ variant = "default", onPick, activeId }) => {
   const { device } = useContext(Context);
   const { i18n } = useTranslation();
   const currentLang = i18n.language || "en";
@@ -22,9 +22,6 @@ const SubTypeBar = observer(({ variant = "default" }) => {
     if (!device.selectedType?.id) return [];
 
     const selectedTypeId = Number(device.selectedType.id);
-    const selectedMakeId = device.selectedMake?.id
-      ? Number(device.selectedMake.id)
-      : null;
     const selectedModelId = device.selectedModel?.id
       ? Number(device.selectedModel.id)
       : null;
@@ -37,9 +34,11 @@ const SubTypeBar = observer(({ variant = "default" }) => {
     if (variant === "default") {
       const facets = device.facets?.subtypes || [];
       if (!facets.length) return baseFromType;
+
       const countsById = new Map(
         facets.map((f) => [Number(f.id), Number(f.count) || 0])
       );
+
       return baseFromType
         .filter((s) => countsById.has(Number(s.id)))
         .map((s) => ({ ...s, count: countsById.get(Number(s.id)) }));
@@ -50,39 +49,20 @@ const SubTypeBar = observer(({ variant = "default" }) => {
       if (!selectedModelId) return [];
 
       const mmAll = new Set((device.facets?.mmSubtypeIdsAll || []).map(Number));
-
       const facets = device.facets?.subtypes || [];
+
       if (facets.length) {
         const idSet = new Set(facets.map((f) => Number(f.id)));
         const countById = new Map(
           facets.map((f) => [Number(f.id), Number(f.count || 0)])
         );
+
         return baseFromType
           .filter((s) => idSet.has(Number(s.id)) && mmAll.has(Number(s.id)))
           .map((s) => ({ ...s, count: countById.get(Number(s.id)) || 0 }));
       }
 
-      const subtypeTypeIdById = new Map(
-        (device.subtypes || []).map((s) => [Number(s.id), Number(s.typeId)])
-      );
-      const idsFromDevices = new Set();
-
-      for (const d of device.devices || []) {
-        const sIds = new Set();
-        if (d.subtypeId) sIds.add(Number(d.subtypeId));
-        if (d.subtype?.id) sIds.add(Number(d.subtype.id));
-        if (Array.isArray(d.subtypes))
-          d.subtypes.forEach((s) => s?.id && sIds.add(Number(s.id)));
-
-        for (const sid of sIds) {
-          if (subtypeTypeIdById.get(sid) === selectedTypeId)
-            idsFromDevices.add(sid);
-        }
-      }
-
-      return baseFromType.filter(
-        (s) => idsFromDevices.has(Number(s.id)) && mmAll.has(Number(s.id))
-      );
+      return baseFromType.filter((s) => mmAll.has(Number(s.id)));
     }
 
     if (variant === "universal") {
@@ -102,32 +82,35 @@ const SubTypeBar = observer(({ variant = "default" }) => {
   }, [
     variant,
     device.loading?.subtypes,
-    device.loading?.devices,
-    device.devices?.length,
     device.facets?.subtypes,
     device.facets?.mmSubtypeIdsAll,
+    device.facets?.universalSubtypeIds,
     device.subtypes,
     device.selectedType?.id,
     device.selectedType?.name,
-    device.selectedMake?.id,
     device.selectedModel?.id,
-    device.selectedSubType?.id,
   ]);
 
   if (device.loading?.subtypes) return null;
   if (!list || !list.length) return null;
 
-  const activeId = device.selectedSubType?.id;
-  const handleSelect = (subtype) => device.setSelectedSubType(subtype);
+  const active = activeId ?? device.selectedSubType?.id;
+
+  const handleSelect = (subtype) => {
+    if (onPick) {
+      onPick(subtype.id, subtype);
+      return;
+    }
+    device.setSelectedSubType(subtype);
+  };
 
   return (
     <div className={styles.subTypeBar}>
       {list.map((subtype) => (
         <div
-          id={`subtype-${subtype.id}`}
           key={subtype.id}
           className={`${styles.subTypeItem} ${
-            activeId === subtype.id ? styles.active : ""
+            active === subtype.id ? styles.active : ""
           }`}
           role="button"
           tabIndex={0}
