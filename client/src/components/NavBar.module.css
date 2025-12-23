@@ -21,12 +21,12 @@
 }
 
 @media (max-width: 630px) {
-.navbarContainer {
+  .navbarContainer {
     border-radius: 0px;
-     border: 0px;
-     box-shadow: 0 0px 0px;
+    border: 0px;
+    box-shadow: 0 0px 0px;
+  }
 }
-   }
 
 .navbarLogo {
   color: #0072ce;
@@ -251,13 +251,7 @@
   }
 }
 
-@media (max-width: 630px) {
-  .searchBarContainer {
-    width: 600px;
-  }
-}
-
-@media (max-width: 576px) {
+@media (max-width: 768px) {
   .searchBarContainer {
     width: 100%;
     padding: 0 10px;
