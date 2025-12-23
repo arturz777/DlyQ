@@ -8,30 +8,11 @@ import { useNavigate } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import { io } from "socket.io-client";
 import { useTranslation } from "react-i18next";
-import ruFlag from "../assets/flags/ru.png";
-import enFlag from "../assets/flags/en.png";
-import estFlag from "../assets/flags/est.png";
 import styles from "./NavBar.module.css";
-
-const flags = {
-  ru: ruFlag,
-  en: enFlag,
-  est: estFlag,
-};
-
-const helpLinks = [
-  { to: "/terms-of-service", tKey: "userAgreement" },
-  { to: "/privacy-policy", tKey: "privacyPolicy" },
-  { to: "/return-policy", tKey: "warrantyReturns" },
-  { to: "/courier-policy", tKey: "aboutCouriers" },
-  { to: "/shipping-policy", tKey: "delivery" },
-  { to: "/cookie-policy", tKey: "cookie" },
-];
 
 const NavBar = observer(() => {
   const [scrollDirection, setScrollDirection] = useState("up");
   const [lastScroll, setLastScroll] = useState(0);
-  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileRef = useRef(null);
   const { user, basket } = useContext(Context);
@@ -39,23 +20,12 @@ const NavBar = observer(() => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, i18n } = useTranslation();
-  const langRef = useRef(null);
 
   const languages = [
     { code: "EE", language: "est" },
-    { code: "GB", language: "en" },
+    { code: "EN", language: "en" },
     { code: "RU", language: "ru" },
   ];
-
-  const changeLanguage = (lng) => {
-    i18n.changeLanguage(lng);
-    setIsLanguageMenuOpen(false);
-  };
-
-  const currentLanguage = i18n.language;
-  const currentFlag = languages.find(
-    (lang) => lang.language === currentLanguage
-  );
 
   const handleLogOut = () => {
     logOut();
@@ -81,7 +51,6 @@ const NavBar = observer(() => {
   useEffect(() => {
     const closeMenusOnScroll = () => {
       setIsProfileMenuOpen(false);
-      setIsLanguageMenuOpen(false);
     };
 
     window.addEventListener("scroll", closeMenusOnScroll, { passive: true });
@@ -140,14 +109,6 @@ const NavBar = observer(() => {
   useEffect(() => {
     const onDocClick = (e) => {
       if (
-        isLanguageMenuOpen &&
-        langRef.current &&
-        !langRef.current.contains(e.target)
-      ) {
-        setIsLanguageMenuOpen(false);
-      }
-
-      if (
         isProfileMenuOpen &&
         profileRef.current &&
         !profileRef.current.contains(e.target)
@@ -158,10 +119,9 @@ const NavBar = observer(() => {
 
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
-  }, [isLanguageMenuOpen, isProfileMenuOpen]);
+  }, [isProfileMenuOpen]);
 
   useEffect(() => {
-    setIsLanguageMenuOpen(false);
     setIsProfileMenuOpen(false);
   }, [location.pathname]);
 
@@ -182,177 +142,125 @@ const NavBar = observer(() => {
   return (
     <div className={`${styles.navbar} NavBar`} style={navbarStyle}>
       <div className={styles.navbarContainer}>
-        <NavLink to="/" className={styles.navbarLogo}>
-          DlyQ
-        </NavLink>
-
-        <NavLink to="/catalog" className={styles.navbarLink}>
-          <List size={22} />
-          <span className={styles.navbarLinkTitle}>{t("catalog")}</span>
-        </NavLink>
-
-        <SearchBar />
-
-        <div
-          ref={langRef}
-          className={styles.languageSelectorWrapper}
-          onMouseLeave={() => setIsLanguageMenuOpen(false)}
-        >
-          <button
-            onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
-            className={styles.currentLanguageButton}
-          >
-            <img
-              src={flags[currentFlag?.language] || flags["en"]}
-              alt={currentFlag?.language}
-              className={styles.flag}
-            />
-          </button>
-          {isLanguageMenuOpen && (
-            <div className={styles.dropdownMenu}>
-              {languages.map((lang) => (
-                <button
-                  key={lang.language}
-                  onClick={() => changeLanguage(lang.language)}
-                  className={styles.dropdownItem}
-                >
-                  <img
-                    src={require(`../assets/flags/${lang.language}.png`)}
-                    alt={lang.language}
-                    className={styles.flag}
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        {user.isAuth && user?.user?.role?.toUpperCase() === "ADMIN" && (
-          <NavLink
-            to={ADMIN_ROUTE}
-            className={styles.navbarLink}
-            style={{ position: "relative" }}
-          >
-            <Settings size={22} />
-            {unreadChats.size > 0 && (
-              <span
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  right: 0,
-                  color: "red",
-                  fontSize: "1.4rem",
-                  lineHeight: 1,
-                }}
-              >
-                ●
-              </span>
-            )}
-            <span className={styles.navbarLinkTitle}>
-              {t("adminPanel", { ns: "navbar" })}
-            </span>
+        <div className={styles.left}>
+          <NavLink to="/" className={styles.navbarLogo}>
+            DlyQ
           </NavLink>
-        )}
-        <NavLink to="/basket" className={styles.navbarLink}>
-          <ShoppingCart />
-          <span className={styles.navbarLinkTitle}>
-            {t("cart")} ({basket.totalItems})
-          </span>
-        </NavLink>
-        {user.isAuth ? (
+
+          <NavLink to="/catalog" className={styles.navItem}>
+            <List size={22} />
+            <span className={styles.navbarLinkTitle}>{t("catalog")}</span>
+          </NavLink>
+        </div>
+
+        <div className={styles.center}>
+          <SearchBar />
+        </div>
+
+        <div className={styles.right}>
+          {user.isAuth && user?.user?.role?.toUpperCase() === "ADMIN" && (
+            <NavLink
+              to={ADMIN_ROUTE}
+              className={styles.iconBtn}
+              title={t("adminPanel", { ns: "navbar" })}
+            >
+              <Settings size={18} />
+              {unreadChats.size > 0 && <span className={styles.dot} />}
+            </NavLink>
+          )}
+
+          <NavLink to="/basket" className={styles.iconBtn} title={t("cart")}>
+            <ShoppingCart size={18} />
+            {basket.totalItems > 0 && (
+              <span className={styles.badge}>{basket.totalItems}</span>
+            )}
+          </NavLink>
+
           <div ref={profileRef} className={styles.profileMenuWrapper}>
             <button
               type="button"
-              className={`${styles.navbarLink} ${styles.profileMenuButton}`}
-              onClick={() => {
-                setIsProfileMenuOpen((prev) => !prev);
-                setIsLanguageMenuOpen(false);
-              }}
+              className={`${styles.iconBtn} ${styles.profileMenuButton}`}
+              onClick={() => setIsProfileMenuOpen((prev) => !prev)}
               aria-haspopup="menu"
               aria-expanded={isProfileMenuOpen}
+              title={t("profile", { ns: "navbar" })}
             >
-              <UserCircle size={22} />
-              <span className={styles.navbarLinkTitle}>
-                {t("profile", { ns: "navbar" })}
-              </span>
+              <UserCircle size={18} />
             </button>
 
             {isProfileMenuOpen && (
               <div className={styles.profileDropdownMenu} role="menu">
-                <NavLink
-                  to="/profile"
-                  className={styles.profileDropdownItem}
-                  role="menuitem"
-                  onClick={() => setIsProfileMenuOpen(false)}
-                >
-                  <List size={18} />
-                  <span>{t("myOrders", { ns: "navbar" })}</span>
-                </NavLink>
-
-                <NavLink
-                  to="/settings"
-                  className={styles.profileDropdownItem}
-                  role="menuitem"
-                  onClick={() => setIsProfileMenuOpen(false)}
-                >
-                  <Settings size={18} />
-                  <span>{t("settings", { ns: "navbar" })}</span>
-                </NavLink>
+                <div className={styles.langRow}>
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      className={`${styles.langPill} ${
+                        i18n.language === lang.language
+                          ? styles.langPillActive
+                          : ""
+                      }`}
+                      onClick={() => {
+                        i18n.changeLanguage(lang.language);
+                        setIsProfileMenuOpen(false);
+                      }}
+                    >
+                      {lang.code}
+                    </button>
+                  ))}
+                </div>
 
                 <div className={styles.profileDropdownDivider} />
 
-                <div className={styles.profileDropdownSectionTitle}>
-                  {t("documents", { ns: "navbar" })}
-                </div>
+                {user.isAuth ? (
+                  <>
+                    <NavLink
+                      to="/profile"
+                      className={styles.profileDropdownItem}
+                      role="menuitem"
+                      onClick={() => setIsProfileMenuOpen(false)}
+                    >
+                      <List size={18} />
+                      <span>{t("myOrders", { ns: "navbar" })}</span>
+                    </NavLink>
 
-                {helpLinks.map((l) => (
+                    <NavLink
+                      to="/settings"
+                      className={styles.profileDropdownItem}
+                      role="menuitem"
+                      onClick={() => setIsProfileMenuOpen(false)}
+                    >
+                      <Settings size={18} />
+                      <span>{t("settings", { ns: "navbar" })}</span>
+                    </NavLink>
+
+                    <div className={styles.profileDropdownDivider} />
+
+                    <button
+                      type="button"
+                      className={styles.profileDropdownItem}
+                      onClick={handleLogOut}
+                      role="menuitem"
+                    >
+                      <LogOut size={18} />
+                      <span>{t("logOut", { ns: "navbar" })}</span>
+                    </button>
+                  </>
+                ) : (
                   <NavLink
-                    key={l.to}
-                    to={l.to}
+                    to="/login"
                     className={styles.profileDropdownItem}
                     role="menuitem"
                     onClick={() => setIsProfileMenuOpen(false)}
                   >
-                    <span className={styles.profileDocDot}>•</span>
-                    <span>{t(l.tKey, { ns: "navbar" })}</span>
+                    <UserCircle size={18} />
+                    <span>{t("profile", { ns: "navbar" })}</span>
                   </NavLink>
-                ))}
-
-                <div className={styles.profileDropdownDivider} />
-
-                <div className={styles.profileDropdownSectionTitle}>
-                  {t("contacts", { ns: "navbar" })}
-                </div>
-
-                <div className={styles.profileContactsBlock}>
-                  <div>
-                    {t("workingHours", { ns: "navbar" })}:{" "}
-                    {t("workingHoursValue", { ns: "navbar" })}
-                  </div>
-                  <div>{t("companyLine", { ns: "navbar" })}</div>
-                </div>
-
-                <div className={styles.profileDropdownDivider} />
-
-                <button
-                  type="button"
-                  className={styles.profileDropdownItem}
-                  onClick={handleLogOut}
-                  role="menuitem"
-                >
-                  <LogOut size={18} />
-                  <span>{t("logOut", { ns: "navbar" })}</span>
-                </button>
+                )}
               </div>
             )}
           </div>
-        ) : (
-          <NavLink to="/login" className={styles.navbarLink}>
-            <UserCircle size={22} />
-            <span className={styles.navbarLinkTitle}>
-              {t("profile", { ns: "navbar" })}
-            </span>
-          </NavLink>
-        )}
+        </div>
       </div>
     </div>
   );
