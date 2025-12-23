@@ -1947,7 +1947,7 @@ class DeviceController {
     }
   }
 
-  async cursor(req, res) {
+ async cursor(req, res) {
     try {
       const toInt = (v) => {
         const n = Number(v);
@@ -2163,6 +2163,46 @@ class DeviceController {
         });
       }
 
+      let compatRows = [];
+if (ids.length) {
+  compatRows = await sequelize.query(
+    `
+    SELECT
+      dc."deviceId"            AS "deviceId",
+      dc."isUniversal"         AS "isUniversal",
+      dc."makeId"              AS "makeId",
+      dc."modelId"             AS "modelId",
+      vm.id                    AS "make.id",
+      vm.name                  AS "make.name",
+      mdl.id                   AS "model.id",
+      mdl.name                 AS "model.name",
+      mdl."makeId"             AS "model.makeId"
+    FROM "device_compatibilities" dc
+    LEFT JOIN "vehicle_makes"  vm  ON vm.id  = dc."makeId"
+    LEFT JOIN "vehicle_models" mdl ON mdl.id = dc."modelId"
+    WHERE dc."deviceId" IN (:ids)
+    ORDER BY dc."deviceId" ASC
+    `,
+    { replacements: { ids }, type: QueryTypes.SELECT }
+  );
+}
+
+const compatByDevice = {};
+for (const r of compatRows) {
+  const dId = Number(r.deviceId);
+  if (!compatByDevice[dId]) compatByDevice[dId] = [];
+  compatByDevice[dId].push({
+    isUniversal: !!r["isUniversal"],
+    makeId: r.makeId ? Number(r.makeId) : null,
+    modelId: r.modelId ? Number(r.modelId) : null,
+    make: r["make.id"] ? { id: Number(r["make.id"]), name: r["make.name"] } : null,
+    model: r["model.id"]
+      ? { id: Number(r["model.id"]), name: r["model.name"], makeId: Number(r["model.makeId"] || 0) || null }
+      : null,
+  });
+}
+
+
       let rowsTr = [];
       if (ids.length) {
         rowsTr = await Translation.findAll({
@@ -2210,6 +2250,7 @@ class DeviceController {
         ...lite,
         subtypes: subByDevice[lite.id] || [],
         types: typesByDevice[lite.id] || [],
+        compat: compatByDevice[lite.id] || [],
         translations: byDev[String(lite.id)] || {},
       }));
 
