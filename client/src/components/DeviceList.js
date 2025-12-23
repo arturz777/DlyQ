@@ -475,38 +475,26 @@ const DeviceList = observer(({ onDeviceClick }) => {
                     }
                   );
 
-                  const canUseSubtypeAnchors = Boolean(
-                    device.selectedModel?.id
-                  );
-
                   return (
                     <div key={`mmgrp-${bucket.make}-${bucket.model}`}>
-                      <p
-                        className={styles.subtypeTitle}
-                        style={{
-                          fontSize: 16,
-                          marginTop: 40,
-                          marginBottom: 20,
-                        }}
-                      >
-                        {bucket.make} • {bucket.model}
-                      </p>
-
                       {subtypesArr.map((st) => (
                         <div
                           key={`mm-${bucket.make}-${bucket.model}-${st.subtypeId}`}
-                          id={
-                            canUseSubtypeAnchors
-                              ? `subtype-${st.subtypeId}`
-                              : `mm-${safeId(bucket.make)}-${safeId(
-                                  bucket.model
-                                )}-${st.subtypeId}`
-                          }
+                          id={`mm-${safeId(bucket.make)}-${safeId(
+                            bucket.model
+                          )}-${st.subtypeId}`}
                           className={styles.subtypeSection}
                         >
-                          <p className={styles.subtypeTitle}>
-                            {st.subtypeName}
+                          <p className={styles.mmTitle}>
+                            <span className={styles.mmTitleMakeModel}>
+                              {bucket.make} {bucket.model}
+                            </span>
+                            <span className={styles.mmTitleSep}> — </span>
+                            <span className={styles.mmTitleSubtype}>
+                              {st.subtypeName}
+                            </span>
                           </p>
+
                           <div className={styles.deviceGrid}>
                             {st.items.map((d) => (
                               <DeviceItem
