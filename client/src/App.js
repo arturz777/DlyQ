@@ -26,13 +26,39 @@ const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
 const AppLayout = observer(() => {
   const location = useLocation();
 
+  function useMediaQuery(query) {
+    const getMatch = () =>
+      typeof window !== "undefined" ? window.matchMedia(query).matches : false;
+
+    const [matches, setMatches] = React.useState(getMatch);
+
+    React.useEffect(() => {
+      const mql = window.matchMedia(query);
+      const onChange = () => setMatches(mql.matches);
+
+      if (mql.addEventListener) mql.addEventListener("change", onChange);
+      else mql.addListener(onChange);
+
+      setMatches(mql.matches);
+
+      return () => {
+        if (mql.removeEventListener)
+          mql.removeEventListener("change", onChange);
+        else mql.removeListener(onChange);
+      };
+    }, [query]);
+
+    return matches;
+  }
+
   const hideLayout =
     location.pathname.startsWith("/seller-admin/") ||
     location.pathname === "/courier" ||
     location.pathname === "/warehouse";
 
-    const hideDesktopNavBar =
-  hideLayout || location.pathname.startsWith("/catalog");
+  const isCatalog = location.pathname.startsWith("/catalog");
+  const isDesktop = useMediaQuery("(min-width: 769px)");
+  const hideDesktopNavBar = hideLayout || (isCatalog && !isDesktop);
 
   return (
     <>
