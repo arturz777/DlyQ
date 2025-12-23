@@ -272,20 +272,15 @@ const CatalogPage = observer(() => {
     const id = Number(typeIdFromUrl);
     if (!id) return;
 
-    const found = device.types?.find((t) => Number(t.id) === id);
-    if (found && device.selectedType?.id !== id) {
+    const found = (device.types || []).find((t) => Number(t.id) === id);
+    const cur = Number(device.selectedType?.id || 0);
+
+    if (found && cur !== id) {
       device.setSelectedType(found);
       resetDevicesFeed();
       requestAnimationFrame(() => ensureTypeVisible(id, "auto"));
     }
-  }, [
-    typeIdFromUrl,
-    device.types,
-    device.selectedType?.id,
-    device,
-    resetDevicesFeed,
-    ensureTypeVisible,
-  ]);
+  }, [typeIdFromUrl, device.types, resetDevicesFeed, ensureTypeVisible]);
 
   useEffect(() => {
     if (isMobile) return;
