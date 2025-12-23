@@ -34,7 +34,9 @@ const TypeBar = observer(() => {
           key={type.id}
           id={`type-${type.id}`}
           className={`${styles.typeItem} ${
-            type.id === device.selectedType.id ? styles.active : ""
+            Number(type.id) === Number(device.selectedType?.id)
+              ? styles.active
+              : ""
           }`}
           role="button"
           tabIndex={0}
@@ -42,7 +44,7 @@ const TypeBar = observer(() => {
             (e.key === "Enter" || e.key === " ") && e.currentTarget.click()
           }
           onClick={() => {
-            const isSame = device.selectedType.id === type.id;
+            const isSame = Number(device.selectedType?.id) === Number(type.id);
             device.clearSelectedSubType?.();
 
             if (isSame) {
@@ -55,7 +57,7 @@ const TypeBar = observer(() => {
             setTimeout(() => {
               const label =
                 type.translations?.name?.[currentLang] || type.name || "";
-              const isAuto = /авто/i.test(label);
+              const isAuto = /авто/i.test(label) || /auto/i.test(label);
               const targetId = isAuto ? "make-filter" : "subtype-filter";
 
               scrollToTarget(targetId);
