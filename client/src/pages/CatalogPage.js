@@ -107,18 +107,46 @@ const CatalogPage = observer(() => {
     row.scrollTo({ left: clamped, behavior });
   }, []);
 
-  const scrollToSubtypeSection = useCallback((subtypeId) => {
-    if (!subtypeId) return;
+  const scrollToSubtypeSection = useCallback(
+    (subtypeId) => {
+      if (!subtypeId) return;
 
-    const el = document.getElementById(`subtype-${subtypeId}`);
-    if (!el) return;
+      const fixed = mobileFixedNavRef.current;
+      const offset = fixed ? fixed.offsetHeight + 10 : 10;
 
-    const fixed = mobileFixedNavRef.current;
-    const offset = fixed ? fixed.offsetHeight + 10 : 10;
+      if (device.selectedModel?.id) {
+        const make =
+          device.selectedMake?.name ||
+          device.selectedMake?.translations?.name?.[currentLang] ||
+          "";
+        const model =
+          device.selectedModel?.name ||
+          device.selectedModel?.translations?.name?.[currentLang] ||
+          "";
 
-    const y = el.getBoundingClientRect().top + window.scrollY - offset;
-    window.scrollTo({ top: y, behavior: "smooth" });
-  }, []);
+        const safeId = (s) => String(s).replace(/[^a-zA-Z0-9_-]/g, "_");
+        const mmId = `mm-${safeId(make)}-${safeId(model)}-${subtypeId}`;
+
+        const mmEl = document.getElementById(mmId);
+        if (mmEl) {
+          const y = mmEl.getBoundingClientRect().top + window.scrollY - offset;
+          window.scrollTo({ top: y, behavior: "smooth" });
+          return;
+        }
+      }
+
+      const el = document.getElementById(`subtype-${subtypeId}`);
+      if (!el) return;
+      const y = el.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    },
+    [
+      device.selectedModel?.id,
+      device.selectedMake,
+      device.selectedModel,
+      currentLang,
+    ]
+  );
 
   const resetDevicesFeed = useCallback(() => {
     device.setDevices?.([]);
@@ -147,23 +175,6 @@ const CatalogPage = observer(() => {
     },
     [searchParams, setSearchParams, device, ensureTypeVisible, resetDevicesFeed]
   );
-
-  const backToTypes = useCallback(() => {
-    const next = new URLSearchParams(searchParams);
-    next.delete("typeId");
-    next.delete("scroll");
-    setSearchParams(next);
-
-    device.setSelectedType?.({});
-    device.setSelectedSubType?.({});
-    device.setSelectedMake?.({});
-    device.setSelectedModel?.({});
-    device.setSelectedBrand?.({});
-    device.resetFeed?.();
-    resetDevicesFeed();
-
-    window.scrollTo({ top: 0, behavior: "auto" });
-  }, [searchParams, setSearchParams, device, resetDevicesFeed]);
 
   const onTouchStart = useCallback((e) => {
     const t = e.touches?.[0];
@@ -317,12 +328,19 @@ const CatalogPage = observer(() => {
       if (!device.selectedType?.id) return;
 
       try {
+        const modelId = device.selectedModel?.id ?? undefined;
+        const makeId = !modelId
+          ? device.selectedMake?.id ?? undefined
+          : undefined;
+
         const data = await fetchFilter(
           device.selectedType.id,
           undefined,
-          undefined,
+          device.selectedBrand?.id ?? undefined,
           1,
-          1
+          1,
+          makeId,
+          modelId
         );
 
         if (cancelled) return;
@@ -342,7 +360,13 @@ const CatalogPage = observer(() => {
     return () => {
       cancelled = true;
     };
-  }, [device.selectedType?.id, device]);
+  }, [
+    device.selectedType?.id,
+    device.selectedBrand?.id,
+    device.selectedMake?.id,
+    device.selectedModel?.id,
+    device,
+  ]);
 
   useEffect(() => {
     const reqId = ++subtypesReqId.current;
