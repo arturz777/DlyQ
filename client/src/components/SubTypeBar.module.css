@@ -18,12 +18,12 @@
 }
 
 .subTypeItem:hover {
-  background: #0072CE;
+  background: #0072ce;
   color: white;
 }
 
 .subTypeItem.active {
-  background: #0072CE;
+  background: #0072ce;
   color: white;
 }
 
@@ -40,13 +40,13 @@
   .subTypeBar::-webkit-scrollbar {
     display: none;
   }
-  .subTypeItem { flex: 0 0 auto; white-space: nowrap; }
+  .subTypeItem {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
 
   .subTypeItem {
     flex: 0 0 auto;
     white-space: nowrap;
   }
 }
-
-  
-  
