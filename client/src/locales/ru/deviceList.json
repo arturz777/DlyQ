@@ -1,6 +1,12 @@
 {
 	"No products for this subtype": "Нет товаров для данного подтипа",
 	"No available products": "Нет доступных товаров",
-	"Unknown subtype": "Unknown subtype",
-	"product Catalog": "Каталог товаров"
+	"Unknown subtype": "Неизвестный подтипe",
+	"product Catalog": "Каталог товаров",
+	"no_make": "Без марки",
+	"no_model": "Без модели",
+	"multiple_makes": "Несколько марок",
+	"banner_title": "Ищете что-то конкретное?",
+	"banner_text": "Напишите нам, какой товар вы хотели бы видеть — мы постараемся добавить его в ассортимент.",
+	"suggest_product": "Предложить товар"
 }
