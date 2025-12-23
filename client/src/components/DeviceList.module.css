@@ -40,6 +40,12 @@
   scroll-margin-bottom: 200px;
 }
 
+.sectionTitle {
+  font-size: 20px;
+  margin-bottom: 50px;
+  text-align: center;
+}
+
 .subtypeTitle {
   width: 100%;
   text-align: center;
