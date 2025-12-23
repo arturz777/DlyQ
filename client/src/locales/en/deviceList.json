@@ -2,6 +2,11 @@
 	"No products for this subtype": "No products for this subtype",
 	"No available products": "No available products",
 	"Unknown subtype": "Unknown subtype",
-	"product Catalog": "Product Catalog"
-
+	"product Catalog": "Product Catalog",
+	"no_make": "No make",
+	"no_model": "No model",
+	"multiple_makes": "Multiple makes",
+	"banner_title": "Looking for something specific?",
+	"banner_text": "Message us what product you’d like to see — we’ll try to add it to our catalog.",
+	"suggest_product": "Suggest a product"
 }
