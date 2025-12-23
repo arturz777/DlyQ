@@ -2,6 +2,11 @@
 	"No products for this subtype": "Selle alatüübi jaoks pole tooteid",
 	"No available products": "Pole saadaval tooteid",
 	"Unknown subtype": "Tundmatu alatüüp",
-	"Unknown subtype": "Неизвестный подтипe",
-	"product Catalog": "Tootekataloog"
+	"product Catalog": "Tootekataloog",
+	"no_make": "Mark puudub",
+	"no_model": "Mudel puudub",
+	"multiple_makes": "Mitu marki",
+	"banner_title": "Otsite midagi konkreetset?",
+	"banner_text": "Kirjutage meile, millist toodet soovite näha — püüame selle valikusse lisada.",
+	"suggest_product": "Soovita toodet"
 }
