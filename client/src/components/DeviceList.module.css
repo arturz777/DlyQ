@@ -53,6 +53,25 @@
   margin-right: 0;
 }
 
+.mmTitle{
+  width: 100%;
+  text-align: center;
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.mmTitleMakeModel{
+  opacity: 0.95;
+}
+
+.mmTitleSep{
+  opacity: 0.65;
+}
+
+.mmTitleSubtype{
+  opacity: 1;
+}
+
 .noDevices {
   font-size: 16px;
   color: #888;
