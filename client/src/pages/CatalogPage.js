@@ -710,13 +710,12 @@ const CatalogPage = observer(() => {
     return (
       <div className={catalogStyles.catalogWrapper}>
         <div className={catalogStyles.catalogContent}>
-          <p className={catalogStyles.catalogTitle}>
-            {t("product Catalog", { ns: "deviceList" })}
-          </p>
-
           <div className={catalogStyles.catalogSearch}>
             <SearchBar />
           </div>
+          <p className={catalogStyles.catalogTitle}>
+            {t("product Catalog", { ns: "deviceList" })}
+          </p>
 
           <div className={catalogStyles.mobileTypesGrid}>
             {(device.types || []).map((type) => {
