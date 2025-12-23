@@ -3,7 +3,7 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  margin-top: 110px;
+  margin-top: 10px;
 }
 
 .catalogContent {
@@ -15,8 +15,12 @@
 .catalogTitle {
   text-align: center;
   font-size: 26px;
-  margin-bottom: 50px;
+  margin-bottom: 30px;
   color: #333;
+}
+
+.catalogSearch {
+  margin: 12px 0 16px;
 }
 
 .filters {
@@ -30,7 +34,6 @@
   font-size: 13px;
   width: 100%;
   max-width: 800px;
-  margin-bottom: 0px;
 }
 
 .typeFilter {
@@ -38,14 +41,33 @@
   max-width: 800px;
 }
 
+.subtypeFilter,
+.makeFilter,
+.modelFilter {
+  scroll-margin-top: 13px;
+}
+
 .deviceContainer {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
   min-height: 600px;
+  display: block;
+}
+
+.deviceContainer > * {
+  width: 100%;
+}
+
+.ioSentinel {
+  display: block;
+  height: 1px;
+  width: 100%;
+  pointer-events: none;
+}
+
+.withFixedNav {
+  margin-top: 150px;
 }
 
 .scrollToTopButton {
@@ -87,151 +109,126 @@
   font-size: 1.5rem;
 }
 
-.subtypeFilter {
-  scroll-margin-top: 13px;
+.mobileTypesGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-.makeFilter {
-  scroll-margin-top: 13px;
-}
-.modelFilter {
-  scroll-margin-top: 13px;
+.mobileTypeCard {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fff;
+  border-radius: 14px;
+  padding: 10px 8px;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
 
-.ioSentinel {
-  display: block;
-  height: 1px;
+.mobileTypeCard:active {
+  transform: scale(0.99);
+}
+
+.typeCardImgWrap {
   width: 100%;
-  pointer-events: none;
+  aspect-ratio: 3 / 2;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f3f4f6;
+  margin-bottom: 8px;
 }
 
-.mobileStickyFilter {
+.typeCardImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.typeCardLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+@media (max-width: 390px) {
+  .mobileTypesGrid {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .mobileTypeCard {
+    padding: 8px 6px;
+  }
+
+  .typeCardLabel {
+    font-size: 11px;
+  }
+}
+
+.mobileFixedNav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: #fff;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.mobileTypesRow {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 10px 8px;
+}
+
+.mobileTypesRow::-webkit-scrollbar {
   display: none;
 }
 
-@media (max-width: 768px) {
-  .mobileTypesRow {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    margin-bottom: 8px;
-    padding-bottom: 2px;
-  }
-
-  .mobileFilterRow {
-    margin-bottom: 6px;
-    display: block;
-    max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .mobileFilterRow::-webkit-scrollbar {
-    display: none;
-  }
-
-  .mobileTypesRow::-webkit-scrollbar {
-    display: none;
-  }
-
-  .mobileTypePill,
-  .mobileTypePillInactive {
-    flex: 0 0 auto;
-    border-radius: 9999px;
-    font-size: 13px;
-    line-height: 1.1;
-    padding: 7px 14px 8px;
-    white-space: nowrap;
-    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  .mobileTypePillInactive {
-    background: #f3f4f6;
-    color: #0f172a;
-    border: 1px solid rgba(15, 23, 42, 0.06);
-  }
-
-  .mobileTypePillInactive:active {
-    background: #e2e8f0;
-  }
-
-  .mobileStickyFilter {
-    display: block;
-    position: fixed;
-    left: 0;
-    right: 0;
-    z-index: 999;
-    background: #ffffff;
-    padding: 8px 10px 10px;
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
-    transform: translateY(-120%);
-    transition: transform 0.28s ease;
-    pointer-events: none;
-    border-bottom-left-radius: 18px;
-    border-bottom-right-radius: 18px;
-  }
-
-  .stickyVisible {
-    transform: translateY(0);
-    pointer-events: auto;
-  }
-
-  .mobileTypePill {
-    display: inline-block;
-    background: #0f6fec;
-    color: #fff;
-    border: 1px solid #0f6fec;
-    box-shadow: 0 4px 10px rgba(15, 111, 236, 0.25);
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 500;
-    margin-bottom: 6px;
-    max-width: 100%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .subtypeFilter {
-    display: block;
-    height: 0;
-    padding: 0;
-    margin: 0;
-    overflow: hidden;
-    visibility: hidden;
-    scroll-margin-top: 140px;
-  }
-
-  .withSticky {
-    margin-top: 130px;
-  }
-
-  .withStickyAuto {
-    margin-top: 200px;
-  }
-
-  .subtypeAnchor {
-    display: block;
-    height: 0;
-    margin: 0;
-    padding: 0;
-    visibility: hidden;
-    scroll-margin-top: 0;
-  }
-
-  .hideOnSticky {
-    display: none;
-  }
+.typePill,
+.typePillActive {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 8px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  white-space: nowrap;
+  max-width: 75vw;
 }
 
-@keyframes loadingAnimation {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
+.typePillActive {
+  border-color: #0f6fec;
+  box-shadow: 0 6px 16px rgba(15, 111, 236, 0.18);
+}
+
+.typePillText {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobileFixedSubRow {
+  padding: 0 10px 10px;
+}
+
+@media (max-width: 768px) {
+  .deviceContainer {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 0 10px;
+    touch-action: pan-y;
   }
 }
