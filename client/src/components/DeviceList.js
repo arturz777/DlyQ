@@ -13,6 +13,19 @@ const DeviceList = observer(({ onDeviceClick }) => {
   const selectedSubtypeId = Number(device.selectedSubType?.id) || null;
   const forcedTypeId = Number(device.selectedType?.id) || null;
 
+  const ui = useMemo(
+    () => ({
+      noMake: t("no_make", { ns: "deviceList" }),
+      noModel: t("no_model", { ns: "deviceList" }),
+      multipleMakes: t("multiple_makes", { ns: "deviceList" }),
+
+      bannerTitle: t("banner_title", { ns: "deviceList" }),
+      bannerText: t("banner_text", { ns: "deviceList" }),
+      suggestBtn: t("suggest_product", { ns: "deviceList" }),
+    }),
+    [t, i18n.language]
+  );
+
   const mmAllSet = useMemo(() => {
     return new Set(
       (device.facets?.mmSubtypeIdsAll || []).map((x) => Number(x))
@@ -204,7 +217,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
       const m = (make || "").toString().trim();
       const mo = (model || "").toString().trim();
       if (!m && !mo) return;
-      pairs.push({ make: m || "Без марки", model: mo || "Без модели" });
+      pairs.push({ make: m || ui.noMake, model: mo || ui.noModel });
     };
 
     const compat0 = Array.isArray(d?.compat)
@@ -253,13 +266,14 @@ const DeviceList = observer(({ onDeviceClick }) => {
     pairs.forEach((p) => uniq.set(`${p.make}|||${p.model}`, p));
     const arr = Array.from(uniq.values());
 
-    const hasRealModel = arr.some((p) => p.model !== "Без модели");
+    const hasRealModel = arr.some((p) => p.model !== ui.noModel);
     if (hasRealModel) {
       const makesWithRealModel = new Set(
-        arr.filter((p) => p.model !== "Без модели").map((p) => p.make)
+        arr.filter((p) => p.model !== ui.noModel).map((p) => p.make)
       );
+
       return arr.filter(
-        (p) => !(p.model === "Без модели" && makesWithRealModel.has(p.make))
+        (p) => !(p.model === ui.noModel && makesWithRealModel.has(p.make))
       );
     }
 
@@ -268,9 +282,9 @@ const DeviceList = observer(({ onDeviceClick }) => {
 
   const getMakeForUniversal = (d) => {
     const pairs = extractAutoPairs(d);
-    if (!pairs.length) return "Без марки";
+    if (!pairs.length) return ui.noMake;
     const uniqMakes = Array.from(new Set(pairs.map((p) => p.make)));
-    return uniqMakes.length === 1 ? uniqMakes[0] : "Несколько марок";
+    return uniqMakes.length === 1 ? uniqMakes[0] : ui.multipleMakes;
   };
 
   const splitByMake = (arr) => {
@@ -282,8 +296,8 @@ const DeviceList = observer(({ onDeviceClick }) => {
     });
 
     return Array.from(map.entries()).sort(([a], [b]) => {
-      if (a === "Без марки") return 1;
-      if (b === "Без марки") return -1;
+      if (a === ui.noMake) return 1;
+      if (b === ui.noMake) return -1;
       return a.localeCompare(b, "ru");
     });
   };
@@ -420,7 +434,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
                     const pairs = extractAutoPairs(d);
 
                     if (!pairs.length) {
-                      put("Без марки", "Без модели", sub, d);
+                      put(ui.noMake, ui.noModel, sub, d);
                       return;
                     }
 
@@ -430,10 +444,8 @@ const DeviceList = observer(({ onDeviceClick }) => {
 
                 const orderedBuckets = Array.from(buckets.values()).sort(
                   (a, b) => {
-                    if (a.make === "Без марки" && b.make !== "Без марки")
-                      return 1;
-                    if (b.make === "Без марки" && a.make !== "Без марки")
-                      return -1;
+                    if (a.make === ui.noMake && b.make !== ui.noMake) return 1;
+                    if (b.make === ui.noMake && a.make !== ui.noMake) return -1;
                     const mk = a.make.localeCompare(b.make, "ru");
                     if (mk !== 0) return mk;
                     return a.model.localeCompare(b.model, "ru");
@@ -518,21 +530,18 @@ const DeviceList = observer(({ onDeviceClick }) => {
 
         <div className={styles.bannerOverlay}>
           <div className={styles.bannerTop}>
-            <div className={styles.bannerTitle}>Ищете что-то конкретное?</div>
+            <div className={styles.bannerTitle}>{ui.bannerTitle}</div>
 
-            <div className={styles.bannerText}>
-              Напишите нам, какой товар вы хотели бы видеть — мы постараемся
-              добавить его в ассортимент.
-            </div>
+            <div className={styles.bannerText}>{ui.bannerText}</div>
           </div>
 
           <button
             type="button"
             className={styles.bannerBtn}
             onClick={() => {}}
-            title="Предложить товар"
+            title={ui.suggestBtn}
           >
-            Предложить товар
+            {ui.suggestBtn}
           </button>
         </div>
       </div>
