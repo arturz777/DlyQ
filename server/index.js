@@ -18,6 +18,7 @@ const chatRouter = require("./routes/chatRouter");
 const cookieParser = require('cookie-parser');
 const Stripe = require("stripe");  
 const paymentsRouter = require("./routes/paymentsRouter.js");
+const foodCatalogController = require("./routes/foodRouter.js");
 
 const PORT = process.env.PORT || 5000;
 const app = express();
@@ -72,6 +73,7 @@ app.set("io", io);
 app.use("/api/order", orderRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/payments", paymentsRouter);
+app.use("/api/food-catalog", foodCatalogController);
 
 server.listen(PORT, () => console.log(`🚀 Сервер запущен на порту ${PORT}`));
 
