@@ -193,6 +193,7 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   padding: 10px 10px 8px;
+  scroll-snap-type: x mandatory;
 }
 
 .mobileTypesRow::-webkit-scrollbar {
@@ -211,11 +212,13 @@
   background: #fff;
   white-space: nowrap;
   max-width: 75vw;
+  scroll-snap-align: start;
 }
 
 .typePillActive {
-  border-color: #0f6fec;
-  box-shadow: 0 6px 16px rgba(15, 111, 236, 0.18);
+   border-color: rgba(10, 89, 181, 0.35);
+  background: rgba(24, 129, 255, 0.10);
+  box-shadow: none;
 }
 
 .typePillText {
