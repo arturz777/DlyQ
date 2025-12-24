@@ -5,19 +5,8 @@ import { LOGIN_ROUTE, REGISTRATION_ROUTE, SHOP_ROUTE } from "../utils/consts";
 import { login, registration, googleLogin } from "../http/userAPI";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
-import { jwtDecode } from "jwt-decode";
-import axios from "axios";
 import { useTranslation } from "react-i18next";
-import ruFlag from "../assets/flags/ru.png";
-import enFlag from "../assets/flags/en.png";
-import estFlag from "../assets/flags/est.png";
 import styles from "./Auth.module.css";
-
-const flags = {
-  ru: ruFlag,
-  en: enFlag,
-  est: estFlag,
-};
 
 const Auth = observer(() => {
   const { user } = useContext(Context);
@@ -31,24 +20,12 @@ const Auth = observer(() => {
   const [phone, setPhone] = useState("");
   const [agreed, setAgreed] = useState(false);
   const { t, i18n } = useTranslation();
-   const currentLang = i18n.language;
-    const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
 
-   const languages = [
-    { code: "GB", language: "en" },
+  const languages = [
+    { code: "ET", language: "est" },
+    { code: "EN", language: "en" },
     { code: "RU", language: "ru" },
-    { code: "EE", language: "est" },
   ];
-
-  const changeLanguage = (lng) => {
-    i18n.changeLanguage(lng);
-    setIsLanguageMenuOpen(false);
-  };
-
-   const currentLanguage = i18n.language;
-  const currentFlag = languages.find(
-    (lang) => lang.language === currentLanguage
-  );
 
   const click = async () => {
     try {
@@ -69,44 +46,32 @@ const Auth = observer(() => {
   return (
     <div className={styles.authWrapper}>
       <div className={styles.authContainer}>
-                      <div
-              className={styles.languageSelectorWrapper}
-              onMouseLeave={() => setIsLanguageMenuOpen(false)}
-            >
+        <div className={styles.authHeader}>
+          <div
+            className={styles.langRow}
+            aria-label={t("language", { ns: "navbar" })}
+          >
+            {languages.map((lang) => (
               <button
-                onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
-                className={styles.currentLanguageButton}
+                key={lang.language}
+                type="button"
+                className={`${styles.langPill} ${
+                  i18n.language === lang.language ? styles.langPillActive : ""
+                }`}
+                onClick={() => i18n.changeLanguage(lang.language)}
               >
-               <img
-                 src={flags[currentFlag?.language] || flags["en"]}
-                 alt={currentFlag?.language}
-                 className={styles.flag}
-               />
+                {lang.code}
               </button>
-              {isLanguageMenuOpen && (
-                <div className={styles.dropdownMenu}>
-                  {languages.map((lang) => (
-                    <button
-                      key={lang.language}
-                      onClick={() => changeLanguage(lang.language)}
-                      className={styles.dropdownItem}
-                    >
-                      <img
-                        src={require(`../assets/flags/${lang.language}.png`)}
-                        alt={lang.language}
-                        className={styles.flag}
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-                      
+            ))}
+          </div>
+        </div>
+
         <h2 className={styles.authTitle}>
           {isLogin
             ? t("authorization", { ns: "auth" })
             : t("registration", { ns: "auth" })}
         </h2>
+
         <form className={styles.authForm}>
           <input
             className={styles.inputField}
@@ -194,7 +159,7 @@ const Auth = observer(() => {
               : t("register", { ns: "auth" })}
           </button>
         </form>
-                       {isLogin && (
+        {isLogin && (
           <div className={styles.googleLoginWrapper}>
             <GoogleLogin
               onSuccess={async (credentialResponse) => {
@@ -204,9 +169,13 @@ const Auth = observer(() => {
                   user.setUser(userData);
                   user.setIsAuth(true);
                   navigate(SHOP_ROUTE);
-               } catch (e) {
+                } catch (e) {
                   console.error(e);
-                  alert(t("an error occurred while signing in with Google", { ns: "auth" }));
+                  alert(
+                    t("an error occurred while signing in with Google", {
+                      ns: "auth",
+                    })
+                  );
                 }
               }}
               onError={() => {
