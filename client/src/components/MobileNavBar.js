@@ -54,6 +54,18 @@ const MobileNavBar = () => {
     return () => window.removeEventListener("scroll", closeOnScroll);
   }, []);
 
+   const isParcel = useMemo(() => {
+  const p = location.pathname;
+  return p.startsWith("/parcel") || p.startsWith("/main");
+}, [location.pathname]);
+
+const isFoodContext = useMemo(() => {
+  const p = location.pathname;
+  return p === "/main" || p.startsWith("/seller") || p.startsWith("/food-catalog");
+}, [location.pathname]);
+
+const searchTo = isFoodContext ? "/food-catalog" : "/catalog";
+
   const tabs = useMemo(
     () => [
       {
@@ -64,9 +76,10 @@ const MobileNavBar = () => {
       },
       {
         key: "catalog",
-        to: "/catalog",
+        to: searchTo,
         label: t("search", { ns: "mobileNavBar" }),
         icon: Search,
+        disabled: isParcel,
       },
       {
         key: "basket",
@@ -82,7 +95,7 @@ const MobileNavBar = () => {
         icon: User,
       },
     ],
-    [t, basket.totalItems, user.isAuth]
+    [t, searchTo, isParcel, basket.totalItems, user.isAuth]
   );
 
   const isActive = (to) =>
@@ -235,31 +248,37 @@ const MobileNavBar = () => {
       <nav className={styles.mobileNavBar} aria-label="Bottom navigation">
         <div className={styles.dock}>
           <div className={styles.navItems}>
-            {tabs.map(({ key, to, label, icon: Icon, badge }) => {
-              const active =
-                key === "profile"
-                  ? isProfileOpen || isActive("/profile")
-                  : isActive(to);
+            {tabs.map(({ key, to, label, icon: Icon, badge, disabled }) => {
+  const active =
+    key === "profile"
+      ? isProfileOpen || isActive("/profile")
+      : isActive(to);
 
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  className={`${styles.navBtn} ${
-                    active ? styles.navBtnActive : ""
-                  }`}
-                  onClick={() => handleNavClick(key, to)}
-                  aria-label={label}
-                  aria-current={active ? "page" : undefined}
-                >
-                  <Icon className={styles.icon} />
-                  {badge > 0 && key === "basket" && (
-                    <span className={styles.cartBadge}>{badge}</span>
-                  )}
-                  <span className={styles.navText}>{label}</span>
-                </button>
-              );
-            })}
+  return (
+    <button
+      key={key}
+      type="button"
+      disabled={!!disabled}
+      className={`${styles.navBtn} ${active ? styles.navBtnActive : ""} ${
+        disabled ? styles.navBtnDisabled : ""
+      }`}
+      onClick={() => {
+        if (disabled) return;
+        handleNavClick(key, to);
+      }}
+      aria-label={label}
+      aria-current={active ? "page" : undefined}
+      aria-disabled={disabled ? "true" : undefined}
+    >
+      <Icon className={styles.icon} />
+      {badge > 0 && key === "basket" && (
+        <span className={styles.cartBadge}>{badge}</span>
+      )}
+      <span className={styles.navText}>{label}</span>
+    </button>
+  );
+})}
+
           </div>
         </div>
       </nav>
