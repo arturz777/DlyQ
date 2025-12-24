@@ -13,9 +13,6 @@ import {
   Settings,
   LogOut,
 } from "lucide-react";
-import ruFlag from "../assets/flags/ru.png";
-import enFlag from "../assets/flags/en.png";
-import estFlag from "../assets/flags/est.png";
 import styles from "./MobileNavBar.module.css";
 
 const helpLinks = [
@@ -27,29 +24,19 @@ const helpLinks = [
   { to: "/cookie-policy", tKey: "cookie" },
 ];
 
-const flags = {
-  ru: ruFlag,
-  en: enFlag,
-  est: estFlag,
-};
-
-const languages = [{ language: "est" }, { language: "en" }, { language: "ru" }];
-
 const MobileNavBar = () => {
   const navigate = useNavigate();
   const { user, basket } = useContext(Context);
   const location = useLocation();
   const { t, i18n } = useTranslation();
-  const [isLangOpen, setIsLangOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileSheetRef = useRef(null);
 
-  const changeLanguage = (lng) => {
-    i18n.changeLanguage(lng);
-    setIsLangOpen(false);
-  };
-
-  const currentLanguage = i18n.language;
+  const languages = [
+    { code: "ET", language: "est" },
+    { code: "EN", language: "en" },
+    { code: "RU", language: "ru" },
+  ];
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -57,13 +44,11 @@ const MobileNavBar = () => {
 
   useEffect(() => {
     setIsProfileOpen(false);
-    setIsLangOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
     const closeOnScroll = () => {
       setIsProfileOpen(false);
-      setIsLangOpen(false);
     };
     window.addEventListener("scroll", closeOnScroll, { passive: true });
     return () => window.removeEventListener("scroll", closeOnScroll);
@@ -141,61 +126,24 @@ const MobileNavBar = () => {
             onClick={() => setIsProfileOpen(false)}
           >
             <div
-              ref={profileSheetRef}
               className={styles.profileSheet}
               role="menu"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className={styles.profileTopRow}>
-                <button
-                  type="button"
-                  className={`${styles.profileItem} ${styles.profileItemCompact}`}
-                  onClick={() => {
-                    setIsProfileOpen(false);
-                    setIsLangOpen(false);
-                    navigate("/profile");
-                  }}
-                  role="menuitem"
-                >
-                  <List size={18} />
-                  <span>{t("myOrders", { ns: "navbar" })}</span>
-                </button>
+              <div className={styles.sheetHandle} />
 
-                <div className={styles.profileLangWrapper}>
-                  <button
-                    type="button"
-                    className={styles.profileLangButton}
-                    onClick={() => setIsLangOpen((prev) => !prev)}
-                    aria-haspopup="menu"
-                    aria-expanded={isLangOpen}
-                  >
-                    <img
-                      src={flags[currentLanguage] || flags.en}
-                      alt={currentLanguage}
-                      className={styles.profileLangFlag}
-                    />
-                  </button>
-
-                  {isLangOpen && (
-                    <div className={styles.profileLangDropdown}>
-                      {languages.map((lang) => (
-                        <button
-                          key={lang.language}
-                          type="button"
-                          className={styles.profileLangItem}
-                          onClick={() => changeLanguage(lang.language)}
-                        >
-                          <img
-                            src={flags[lang.language]}
-                            alt={lang.language}
-                            className={styles.profileLangFlag}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <button
+                type="button"
+                className={`${styles.profileItem} ${styles.profileItemCompact}`}
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  navigate("/profile");
+                }}
+                role="menuitem"
+              >
+                <List size={18} />
+                <span>{t("myOrders", { ns: "navbar" })}</span>
+              </button>
 
               <button
                 type="button"
@@ -211,6 +159,26 @@ const MobileNavBar = () => {
               </button>
 
               <div className={styles.profileDivider} />
+
+              <div className={styles.langRow}>
+                {languages.map((lang) => (
+                  <button
+                    key={lang.language}
+                    type="button"
+                    className={`${styles.langPill} ${
+                      i18n.language === lang.language
+                        ? styles.langPillActive
+                        : ""
+                    }`}
+                    onClick={() => {
+                      i18n.changeLanguage(lang.language);
+                      setIsProfileOpen(false);
+                    }}
+                  >
+                    {lang.code}
+                  </button>
+                ))}
+              </div>
 
               <div className={styles.profileSectionTitle}>
                 {t("documents", { ns: "navbar" })}
@@ -242,7 +210,6 @@ const MobileNavBar = () => {
                   {t("workingHoursValue", { ns: "navbar" })}
                 </div>
                 <div>{t("companyLine", { ns: "navbar" })}</div>
-                
               </div>
 
               <div className={styles.profileDivider} />
