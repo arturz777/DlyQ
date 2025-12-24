@@ -105,25 +105,22 @@ const SubTypeBar = observer(({ variant = "default", onPick, activeId }) => {
   };
 
   return (
-    <div className={styles.subTypeBar}>
-      {list.map((subtype) => (
-        <div
-          key={subtype.id}
-          className={`${styles.subTypeItem} ${
-            active === subtype.id ? styles.active : ""
-          }`}
-          role="button"
-          tabIndex={0}
-          onClick={() => handleSelect(subtype)}
-          onKeyDown={(e) => e.key === "Enter" && handleSelect(subtype)}
-        >
-          <span className={styles.typeName}>
-            {subtype.translations?.name?.[currentLang] || subtype.name}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
+  <div className={styles.row}>
+    {list.map((subtype) => (
+      <button
+        key={subtype.id}
+        type="button"
+        className={`${styles.chip} ${
+          active === subtype.id ? styles.chipActive : ""
+        }`}
+        onClick={() => handleSelect(subtype)}
+      >
+        {subtype.translations?.name?.[currentLang] || subtype.name}
+      </button>
+    ))}
+  </div>
+);
+
 });
 
 export default SubTypeBar;
