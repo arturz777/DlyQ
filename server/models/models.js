@@ -12,6 +12,8 @@ const Seller = sequelize.define("seller", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   name: { type: DataTypes.STRING, allowNull: false },
   slug: { type: DataTypes.STRING, allowNull: true, unique: true },
+  kind: { type: DataTypes.STRING, allowNull: true },
+  img: { type: DataTypes.STRING, allowNull: true },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
    address: { type: DataTypes.STRING, allowNull: true },
   pickupLat: { type: DataTypes.DOUBLE, allowNull: true },
