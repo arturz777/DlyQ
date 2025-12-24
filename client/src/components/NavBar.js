@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useMemo, useEffect, useRef } from "react";
 import { Context } from "../index";
 import { NavLink, useLocation } from "react-router-dom";
 import { ShoppingCart, Settings, List, UserCircle, LogOut } from "lucide-react";
@@ -139,6 +139,22 @@ const NavBar = observer(() => {
     user.setIsAuth(false);
   };
 
+  const navMode = useMemo(() => {
+  const p = location.pathname;
+
+  // neutral (parcel)
+  if (p.startsWith("/parcel")) return "neutral";
+  if (p.startsWith("/main")) return "neutral";
+
+  // food
+  if (p === "/MainPage" || p.startsWith("/seller") || p.startsWith("/food")) {
+    return "food-catalog";
+  }
+
+  // market default
+  return "market";
+}, [location.pathname]);
+
   return (
     <div className={`${styles.navbar} NavBar`} style={navbarStyle}>
       <div className={styles.navbarContainer}>
@@ -147,10 +163,15 @@ const NavBar = observer(() => {
             DlyQ
           </NavLink>
 
-          <NavLink to="/catalog" className={styles.navItem}>
-            <List size={22} />
-            <span className={styles.navbarLinkTitle}>{t("catalog")}</span>
-          </NavLink>
+         {navMode !== "neutral" && (
+  <NavLink to={navMode === "food-catalog" ? "/food-catalog" : "/catalog"} className={styles.navItem}>
+    <List size={22} />
+    <span className={styles.navbarLinkTitle}>
+      {navMode === "food-catalog" ? t("search", { ns: "navbar" }) : t("catalog")}
+    </span>
+  </NavLink>
+)}
+
         </div>
 
         <div className={styles.center}>
