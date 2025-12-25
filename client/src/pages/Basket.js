@@ -46,10 +46,40 @@ const normalizeVariants = (item) => {
 
 const isRestaurantItem = (item) => item?.isRestaurantItem === true;
 
+const normUiLang = (l) => {
+  const short = String(l || "ru")
+    .toLowerCase()
+    .split("-")[0];
+  if (short === "et") return "est";
+  return short;
+};
+
+const pickTr = (base, map, lang) => {
+  if (!map || typeof map !== "object") return base;
+  const v = map[lang];
+  return typeof v === "string" && v.trim() ? v : base;
+};
+
+const pickItemName = (item, lang) => {
+  if (!item) return "";
+  const tr = item.translations;
+
+  if (tr?.name && typeof tr.name === "object") {
+    return pickTr(item.name, tr.name, lang);
+  }
+
+  if (tr && typeof tr === "object" && typeof tr[lang] === "string") {
+    return tr[lang].trim() ? tr[lang] : item.name;
+  }
+
+  return item.name;
+};
+
 const Basket = observer(() => {
   const { basket } = useContext(Context);
   const navigate = useNavigate();
   const confirm = useConfirm();
+
   const [deliveryCost, setDeliveryCost] = useState(0);
   const [availableQuantities, setAvailableQuantities] = useState({});
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -57,7 +87,9 @@ const Basket = observer(() => {
   const [storeClosed, setStoreClosed] = useState(false);
   const [preferredTime, setPreferredTime] = useState("");
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+
   const { t, i18n } = useTranslation();
+  const uiLang = normUiLang(i18n.language);
 
   const selectedItems = basket.selectedItems || [];
   const selectedTotal = basket.getSelectedTotalPrice
@@ -91,8 +123,6 @@ const Basket = observer(() => {
 
   const hasOnlyPreorders =
     basket.items.length > 0 && basket.items.every((item) => item.isPreorder);
-  const hasOnlyStockItems =
-    basket.items.length > 0 && basket.items.every((item) => !item.isPreorder);
   const hasMixedItems =
     basket.items.some((item) => item.isPreorder) &&
     basket.items.some((item) => !item.isPreorder);
@@ -146,7 +176,7 @@ const Basket = observer(() => {
         }
       })
       .catch((err) =>
-       console.error("Error fetching store status (Basket):", err)
+        console.error("Error fetching store status (Basket):", err)
       );
 
     return () => {
@@ -280,12 +310,16 @@ const Basket = observer(() => {
     const paymentIntentId =
       payment?.paymentIntentId || payment?.id || payment?.paymentIntent?.id;
     if (!paymentIntentId) {
-     toast.error(t("failed to get paymentIntentId", { ns: "basket" }));
+      toast.error(t("failed to get paymentIntentId", { ns: "basket" }));
       return;
     }
 
     if (basket.hasSelectedDifferentSellers) {
-     t("you cannot place an order with items from different sellers", { ns: "basket" })
+      toast.error(
+        t("you cannot place an order with items from different sellers", {
+          ns: "basket",
+        })
+      );
       return;
     }
 
@@ -308,8 +342,8 @@ const Basket = observer(() => {
       formData,
       paymentIntentId,
       totalPrice: basket.getSelectedTotalPrice(),
-      language: i18n.language,
-       orderDetails: (basket.selectedItems || []).map((item, index) => {
+      language: uiLang,
+      orderDetails: (basket.selectedItems || []).map((item, index) => {
         const isRest = item.isRestaurantItem === true;
         return {
           translations: item.translations,
@@ -398,12 +432,7 @@ const Basket = observer(() => {
     const qtyText = `${info.quantity} ${t("unit_pcs_short", { ns: "basket" })}`;
 
     if (info.quantity > 0 && item.count > info.quantity) {
-      toast.error(
-        t("only_x_in_stock_reduce_qty", {
-          ns: "basket",
-          qtyText,
-        })
-      );
+      toast.error(t("only_x_in_stock_reduce_qty", { ns: "basket", qtyText }));
     }
 
     const isThisPreorder = !info.isEnough;
@@ -423,7 +452,7 @@ const Basket = observer(() => {
   };
 
   const OptionPicker = ({ item, option, index }) => {
-    const lang = i18n.language || "en";
+    const lang = uiLang;
     const variants = normalizeVariants(item);
     const selected = item.selectedOptions?.[option.name];
     const isFirst = index === 0;
@@ -471,18 +500,6 @@ const Basket = observer(() => {
       return !anyInStock;
     };
 
-    const baseImages = [item.img, ...(item.thumbnails || [])].filter(Boolean);
-    let firstOptionPreviewMap = {};
-    if (isFirst) {
-      for (const v of variants) {
-        const val = v?.selected?.[option.name];
-        if (!val || firstOptionPreviewMap[val]) continue;
-        if (v.image && baseImages.includes(v.image)) {
-          firstOptionPreviewMap[val] = v.image;
-        }
-      }
-    }
-
     const labelOfOption = option.translations?.name?.[lang] || option.name;
     const valueLabel = (idx, valObj) =>
       option.translations?.values?.[idx]?.[lang] || valObj.value;
@@ -490,7 +507,7 @@ const Basket = observer(() => {
     const pick = (valObj) =>
       handleOptionChange(item.uniqueKey, option.name, valObj.value);
 
-    if (isFirst && Object.keys(firstOptionPreviewMap).length > 0) {
+    if (isFirst) {
       return (
         <div
           className={styles.OptionGroup}
@@ -498,38 +515,30 @@ const Basket = observer(() => {
           aria-label={labelOfOption}
         >
           <div className={styles.OptionLabel}>{labelOfOption}</div>
-          <div className={styles.OptionThumbGrid}>
+          <div className={styles.OptionGrid}>
             {option.values.map((valObj, idx) => {
-              const val = valObj.value;
-              const isSelected = selected?.value === val;
+              const isSelected = selected?.value === valObj.value;
               const exists = existsCombination(option.name, valObj);
               const oos = isOutOfStock(option.name, valObj);
-              const imgUrl = firstOptionPreviewMap[val] || null;
 
               return (
                 <button
                   key={idx}
                   type="button"
                   className={[
-                    styles.OptionThumb,
-                    isSelected ? styles.OptionThumbSelected : "",
+                    styles.OptionBtn,
+                    isSelected ? styles.OptionBtnSelected : "",
                     !exists
-                      ? styles.OptionThumbDisabled
+                      ? styles.OptionBtnDisabled
                       : oos
-                      ? styles.OptionThumbOut
+                      ? styles.OptionBtnOut
                       : "",
                   ].join(" ")}
-                  onClick={() => {
-                    if (!exists) return;
-                    pick(valObj);
-                  }}
+                  onClick={() => exists && pick(valObj)}
                   disabled={!exists}
                   aria-pressed={isSelected}
-                  title={valueLabel(idx, valObj)}
                 >
-                  <span className={styles.OptionThumbLabel}>
-                    {valueLabel(idx, valObj)}
-                  </span>
+                  {valueLabel(idx, valObj)}
                 </button>
               );
             })}
@@ -579,7 +588,6 @@ const Basket = observer(() => {
 
   const renderItem = (item, index, isFirstCard) => {
     const variants = normalizeVariants(item);
-    const baseImages = [item.img, ...(item.thumbnails || [])].filter(Boolean);
 
     const selectedKey = makeVariantKey(
       Object.fromEntries(
@@ -595,11 +603,7 @@ const Basket = observer(() => {
         (v) => (v.key || makeVariantKey(v.selected || {})) === selectedKey
       ) || null;
 
-    const displayImg =
-      selectedVariant?.image && baseImages.includes(selectedVariant.image)
-        ? selectedVariant.image
-        : item.img;
-
+    const displayImg = selectedVariant?.image || item.img;
     const optionsArr = parseMaybeJSON(item.options) || [];
 
     const itemIsOOS = isOOS(item);
@@ -618,6 +622,8 @@ const Basket = observer(() => {
       (itemIsOOS && hasSelectedStock) ||
       (!itemIsOOS && hasSelectedOOS);
 
+    const title = pickItemName(item, uiLang);
+
     return (
       <Card
         key={item.uniqueKey}
@@ -635,24 +641,29 @@ const Basket = observer(() => {
               disabled={disableCheckbox}
             />
 
-            <Image
-              className={styles.image}
-              src={displayImg}
-              alt={item.translations?.name?.[i18n.language] || item.name}
-              onClick={() => setSelectedDeviceId(item.id)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ")
-                  setSelectedDeviceId(item.id);
-              }}
-              style={{ cursor: "pointer" }}
-            />
+            {!!displayImg && (
+              <Image
+                className={styles.image}
+                src={displayImg}
+                alt={title}
+                onClick={() => {
+                  if (!isRestaurantItem(item)) setSelectedDeviceId(item.id);
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    if (!isRestaurantItem(item)) setSelectedDeviceId(item.id);
+                  }
+                }}
+                style={{
+                  cursor: isRestaurantItem(item) ? "default" : "pointer",
+                }}
+              />
+            )}
 
             <div className={styles.topInfo}>
-              <div className={styles.title}>
-                {item.translations?.name?.[i18n.language] || item.name}
-              </div>
+              <div className={styles.title}>{title}</div>
 
               {optionsArr.map((opt, optIndex) => (
                 <OptionPicker
@@ -799,7 +810,10 @@ const Basket = observer(() => {
 
       {basket.hasSelectedDifferentSellers && (
         <div className={styles.sectionSubCenter}>
-           {t("you cannot select items from different sellers. please place separate orders", { ns: "basket" })}
+          {t(
+            "you cannot select items from different sellers. please place separate orders",
+            { ns: "basket" }
+          )}
         </div>
       )}
 
