@@ -2316,168 +2316,359 @@ const Admin = () => {
         </TabPanel>
 
         <TabPanel>
-          <div className={styles.actionButtons}>
-            <select
-              value={activeSellerId || ""}
-              onChange={(e) => setActiveSellerId(Number(e.target.value))}
-              className={styles.select}
-            >
-              <option value="" disabled>
-                Выберите ресторан
-              </option>
-              {sellers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} {s.isActive ? "" : "(неактивен)"}
-                </option>
-              ))}
-            </select>
+          <div className={styles.menuPanel}>
+            <div className={styles.menuTopRow}>
+              <div className={styles.menuLeft}>
+                <select
+                  value={activeSellerId || ""}
+                  onChange={(e) => {
+                    const id = Number(e.target.value);
+                    setActiveSellerId(id);
+                    setMenuSearch("");
+                  }}
+                  className={styles.select}
+                >
+                  <option value="" disabled>
+                    Выберите ресторан
+                  </option>
+                  {sellers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} {s.isActive ? "" : "(неактивен)"}
+                    </option>
+                  ))}
+                </select>
 
-            <button
-              onClick={() => {
-                setEditableMenuCategory(null);
-                setMenuCategoryVisible(true);
-              }}
-              className={styles.actionButton}
-              disabled={!activeSellerId}
-            >
-              + Категория
-            </button>
-
-            <button
-              onClick={() => {
-                setEditableMenuItem(null);
-                setMenuItemVisible(true);
-              }}
-              className={styles.actionButton}
-              disabled={!activeSellerId}
-            >
-              + Блюдо
-            </button>
-          </div>
-
-          {!activeSellerId ? (
-            <p>Выберите ресторан</p>
-          ) : (
-            <div>
-              <h4>Категории</h4>
-              <div className={styles.itemList}>
-                {menuCategories.map((cat) => (
-                  <div key={cat.id} className={styles.item}>
+                {activeSellerId ? (
+                  <div className={styles.menuStats}>
                     <span>
-                      <strong>{cat.name}</strong>
+                      Категорий: <b>{menuCategories?.length || 0}</b>
                     </span>
-                    <div className={styles.buttons}>
-                      <button
-                        className={styles.editButton}
-                        onClick={() => {
-                          setEditableMenuCategory(cat);
-                          setMenuCategoryVisible(true);
-                        }}
-                      >
-                        Редактировать
-                      </button>
-                      <button
-                        className={styles.deleteButton}
-                        onClick={async () => {
-                          if (!window.confirm("Деактивировать категорию?"))
-                            return;
-                          await deactivateMenuCategory(cat.id, activeSellerId);
-                          const next = await fetchMenuCategories(
-                            activeSellerId
-                          );
-                          setMenuCategories(next);
-                        }}
-                      >
-                        Деактивировать
-                      </button>
-                    </div>
+                    <span className={styles.menuDot}>•</span>
+                    <span>
+                      Блюд: <b>{menuItems?.length || 0}</b>
+                    </span>
                   </div>
-                ))}
+                ) : null}
               </div>
 
-              <h4 style={{ marginTop: 20 }}>Блюда</h4>
-              <div className={styles.itemList}>
-                {menuItems.map((item) => {
-                  const src = getMenuImgSrc(item.img);
+              <div className={styles.actionButtons}>
+                <button
+                  className={styles.actionButton}
+                  disabled={!activeSellerId}
+                  onClick={() => {
+                    setEditableMenuCategory(null);
+                    setMenuCategoryVisible(true);
+                  }}
+                >
+                  + Категория
+                </button>
 
-                  return (
-                    <div key={item.id} className={styles.item}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                        }}
-                      >
-                        {src && (
-                          <Image
-                            src={src}
-                            alt={item.name}
-                            style={{
-                              width: 44,
-                              height: 44,
-                              objectFit: "cover",
-                              borderRadius: 6,
-                            }}
-                          />
-                        )}
-
-                        <span>
-                          <strong>{item.name}</strong> — {item.price} €
-                        </span>
-                      </div>
-
-                      <div className={styles.buttons}>
-                        <span
-                          style={{ color: item.isAvailable ? "green" : "red" }}
-                        >
-                          {item.isAvailable ? "Доступно" : "Недоступно"}
-                        </span>
-
-                        <button
-                          className={styles.editButton}
-                          onClick={() => {
-                            setEditableMenuItem(item);
-                            setMenuItemVisible(true);
-                          }}
-                        >
-                          Редактировать
-                        </button>
-
-                        <button
-                          className={styles.editButton}
-                          onClick={async () => {
-                            await toggleMenuItemAvailability(
-                              item.id,
-                              activeSellerId,
-                              !item.isAvailable
-                            );
-                            const next = await fetchMenuItems(activeSellerId);
-                            setMenuItems(next);
-                          }}
-                        >
-                          {item.isAvailable ? "Скрыть" : "Показать"}
-                        </button>
-
-                        <button
-                          className={styles.deleteButton}
-                          onClick={async () => {
-                            if (!window.confirm("Деактивировать блюдо?"))
-                              return;
-                            await deactivateMenuItem(item.id, activeSellerId);
-                            const next = await fetchMenuItems(activeSellerId);
-                            setMenuItems(next);
-                          }}
-                        >
-                          Деактивировать
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                <button
+                  className={styles.actionButton}
+                  disabled={!activeSellerId}
+                  onClick={() => openCreateMenuItem(null)}
+                >
+                  + Блюдо
+                </button>
               </div>
             </div>
-          )}
+
+            {!activeSellerId ? (
+              <div className={styles.menuHint}>Выберите ресторан</div>
+            ) : (
+              <>
+                <div className={styles.menuSearchRow}>
+                  <InputGroup>
+                    <Form.Control
+                      value={menuSearch}
+                      onChange={(e) => setMenuSearch(e.target.value)}
+                      placeholder="Поиск блюда по названию/описанию..."
+                    />
+                    {menuSearch.trim() ? (
+                      <Button
+                        variant="outline-secondary"
+                        onClick={() => setMenuSearch("")}
+                      >
+                        ✕
+                      </Button>
+                    ) : null}
+                  </InputGroup>
+                </div>
+
+                <Accordion
+                  alwaysOpen
+                  defaultActiveKey={
+                    visibleMenuCategories?.[0]?.id
+                      ? String(visibleMenuCategories[0].id)
+                      : "no"
+                  }
+                >
+                  {visibleMenuCategories.map((cat) => {
+                    const list = menuItemsByCategory.get(cat.id) || [];
+                    return (
+                      <Accordion.Item key={cat.id} eventKey={String(cat.id)}>
+                        <div className={styles.menuAccHeaderRow}>
+                          <Accordion.Header>
+                            <div className={styles.menuCatTitleWrap}>
+                              <span className={styles.menuCatTitle}>
+                                {cat.name}
+                              </span>
+
+                              <Badge
+                                bg={cat.isActive ? "success" : "secondary"}
+                                className={styles.menuBadge}
+                              >
+                                {cat.isActive ? "active" : "off"}
+                              </Badge>
+
+                              <Badge
+                                bg="light"
+                                text="dark"
+                                className={styles.menuBadge}
+                              >
+                                {list.length}
+                              </Badge>
+                            </div>
+                          </Accordion.Header>
+
+                          {/* ВАЖНО: кнопки теперь СНАРУЖИ Accordion.Header */}
+                          <div className={styles.menuCatActions}>
+                            <button
+                              type="button"
+                              className={styles.menuSmallButton}
+                              onClick={() => openCreateMenuItem(cat.id)}
+                            >
+                              + Блюдо
+                            </button>
+
+                            <button
+                              type="button"
+                              className={styles.menuSmallButton}
+                              onClick={() => {
+                                setEditableMenuCategory(cat);
+                                setMenuCategoryVisible(true);
+                              }}
+                            >
+                              Редактировать
+                            </button>
+
+                            <button
+                              type="button"
+                              className={styles.menuSmallDanger}
+                              onClick={() => handleDeactivateMenuCategory(cat)}
+                            >
+                              Деактивировать
+                            </button>
+                          </div>
+                        </div>
+
+                        <Accordion.Body>
+                          {list.length === 0 ? (
+                            <div className={styles.menuEmpty}>
+                              <div className={styles.menuEmptyText}>
+                                Нет блюд
+                              </div>
+                              <button
+                                className={styles.actionButton}
+                                onClick={() => openCreateMenuItem(cat.id)}
+                              >
+                                + Блюдо
+                              </button>
+                            </div>
+                          ) : (
+                            <div className={styles.menuItemList}>
+                              {list.map((item) => {
+                                const src = getMenuImgSrc(item.img);
+
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className={styles.menuItemCard}
+                                  >
+                                    <div className={styles.menuItemLeft}>
+                                      {src && (
+                                        <Image
+                                          src={src}
+                                          alt={item.name}
+                                          className={styles.menuItemImg}
+                                          onError={(e) =>
+                                            (e.currentTarget.style.display =
+                                              "none")
+                                          }
+                                        />
+                                      )}
+
+                                      <div className={styles.menuItemText}>
+                                        <div className={styles.menuItemTitle}>
+                                          {item.name}{" "}
+                                          <span className={styles.menuDot}>
+                                            •
+                                          </span>{" "}
+                                          {item.price} €
+                                        </div>
+                                        {item.description ? (
+                                          <div className={styles.menuItemDesc}>
+                                            {item.description}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    </div>
+
+                                    <div className={styles.menuItemRight}>
+                                      <Form.Check
+                                        type="switch"
+                                        id={`menu-av-${item.id}`}
+                                        className={styles.menuSwitch}
+                                        label={
+                                          item.isAvailable
+                                            ? "Доступно"
+                                            : "Недоступно"
+                                        }
+                                        checked={!!item.isAvailable}
+                                        onChange={() =>
+                                          handleToggleMenuItemAvailability(item)
+                                        }
+                                      />
+
+                                      <div className={styles.buttons}>
+                                        <button
+                                          className={styles.editButton}
+                                          onClick={() => {
+                                            setEditableMenuItem(item);
+                                            setMenuItemVisible(true);
+                                          }}
+                                        >
+                                          Редактировать
+                                        </button>
+
+                                        <button
+                                          className={styles.deleteButton}
+                                          onClick={() =>
+                                            handleDeactivateMenuItem(item)
+                                          }
+                                        >
+                                          Деактивировать
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </Accordion.Body>
+                      </Accordion.Item>
+                    );
+                  })}
+
+                  {/* Без категории */}
+                  {(() => {
+                    const unc = menuItemsByCategory.get("no") || [];
+                    if (menuSearch.trim() && unc.length === 0) return null;
+
+                    return (
+                      <Accordion.Item eventKey="no">
+                        <Accordion.Header>
+                          <div className={styles.menuCatHeader}>
+                            <div className={styles.menuCatTitleWrap}>
+                              <span className={styles.menuCatTitle}>
+                                Без категории
+                              </span>
+                              <Badge
+                                bg="light"
+                                text="dark"
+                                className={styles.menuBadge}
+                              >
+                                {unc.length}
+                              </Badge>
+                            </div>
+                          </div>
+                        </Accordion.Header>
+                        <Accordion.Body>
+                          {unc.length === 0 ? (
+                            <div className={styles.menuEmptyText}>Пусто</div>
+                          ) : (
+                            <div className={styles.menuItemList}>
+                              {unc.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className={styles.menuItemCard}
+                                >
+                                  <div className={styles.menuItemLeft}>
+                                    {getMenuImgSrc(item.img) && (
+                                      <Image
+                                        src={getMenuImgSrc(item.img)}
+                                        alt={item.name}
+                                        className={styles.menuItemImg}
+                                        onError={(e) =>
+                                          (e.currentTarget.style.display =
+                                            "none")
+                                        }
+                                      />
+                                    )}
+                                    <div className={styles.menuItemText}>
+                                      <div className={styles.menuItemTitle}>
+                                        {item.name}{" "}
+                                        <span className={styles.menuDot}>
+                                          •
+                                        </span>{" "}
+                                        {item.price} €
+                                      </div>
+                                      {item.description ? (
+                                        <div className={styles.menuItemDesc}>
+                                          {item.description}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </div>
+
+                                  <div className={styles.menuItemRight}>
+                                    <Form.Check
+                                      type="switch"
+                                      id={`menu-av-no-${item.id}`}
+                                      className={styles.menuSwitch}
+                                      label={
+                                        item.isAvailable
+                                          ? "Доступно"
+                                          : "Недоступно"
+                                      }
+                                      checked={!!item.isAvailable}
+                                      onChange={() =>
+                                        handleToggleMenuItemAvailability(item)
+                                      }
+                                    />
+                                    <div className={styles.buttons}>
+                                      <button
+                                        className={styles.editButton}
+                                        onClick={() => {
+                                          setEditableMenuItem(item);
+                                          setMenuItemVisible(true);
+                                        }}
+                                      >
+                                        Редактировать
+                                      </button>
+                                      <button
+                                        className={styles.deleteButton}
+                                        onClick={() =>
+                                          handleDeactivateMenuItem(item)
+                                        }
+                                      >
+                                        Деактивировать
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </Accordion.Body>
+                      </Accordion.Item>
+                    );
+                  })()}
+                </Accordion>
+              </>
+            )}
+          </div>
         </TabPanel>
       </Tabs>
 
@@ -2583,8 +2774,7 @@ const Admin = () => {
           setEditableMenuCategory(null);
         }}
         onSaved={async () => {
-          const cats = await fetchMenuCategories(activeSellerId);
-          setMenuCategories(cats);
+          await reloadMenu();
         }}
       />
 
@@ -2593,13 +2783,14 @@ const Admin = () => {
         sellerId={activeSellerId}
         editableItem={editableMenuItem}
         categories={menuCategories}
+        initialCategoryId={prefillMenuCategoryId}
         onHide={() => {
           setMenuItemVisible(false);
           setEditableMenuItem(null);
+          setPrefillMenuCategoryId(null);
         }}
         onSaved={async () => {
-          const items = await fetchMenuItems(activeSellerId);
-          setMenuItems(items);
+          await reloadMenu();
         }}
       />
 
@@ -2625,6 +2816,7 @@ const Admin = () => {
 };
 
 export default Admin;
+
 
 
 
