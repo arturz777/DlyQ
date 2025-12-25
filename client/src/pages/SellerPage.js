@@ -20,10 +20,25 @@ const getMenuImgSrc = (img) => {
   return `${base}/${img}`;
 };
 
+const normUiLang = (l) => {
+  const short = String(l || "ru")
+    .toLowerCase()
+    .split("-")[0];
+  if (short === "et") return "est";
+  return short;
+};
+
+const pickTr = (base, map, lang) => {
+  if (!map || typeof map !== "object") return base;
+  const v = map[lang];
+  return typeof v === "string" && v.trim() ? v : base;
+};
+
 const SellerPage = () => {
   const { idOrSlug } = useParams();
   const location = useLocation();
   const { basket } = useContext(Context);
+
   const [seller, setSeller] = useState(location.state?.seller || null);
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
@@ -31,12 +46,19 @@ const SellerPage = () => {
   const [menuLoading, setMenuLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedItemId, setSelectedItemId] = useState(null);
-  const { t } = useTranslation();
+
+  const { t, i18n } = useTranslation();
+  const uiLang = normUiLang(i18n.language);
 
   const selectedItem = useMemo(
     () => items.find((x) => String(x.id) === String(selectedItemId)) || null,
     [items, selectedItemId]
   );
+
+  const selectedTitle = useMemo(() => {
+    if (!selectedItem) return "";
+    return pickTr(selectedItem.name, selectedItem.translations?.name, uiLang);
+  }, [selectedItem, uiLang]);
 
   const itemsByCategory = useMemo(() => {
     const map = {};
@@ -124,15 +146,11 @@ const SellerPage = () => {
     const ok = window.confirm(
       t(
         "cart contains items from another seller. clear cart and add this item?",
-        {
-          ns: "sellerPage",
-        }
+        { ns: "sellerPage" }
       )
     );
 
-    if (!ok) {
-      return false;
-    }
+    if (!ok) return false;
 
     if (typeof basket.clearAll === "function") {
       basket.clearAll();
@@ -153,15 +171,16 @@ const SellerPage = () => {
       return;
     }
 
+    const itemName = pickTr(item.name, item.translations?.name, uiLang);
+
     const newSellerId = seller?.id ? Number(seller.id) : null;
-    if (typeof ensureSingleSeller === "function") {
-      if (!ensureSingleSeller(newSellerId)) return;
-    }
+    if (!ensureSingleSeller(newSellerId)) return;
 
     for (let i = 0; i < qty; i++) {
       const basketItem = {
         id: item.id,
         name: item.name,
+        translations: item.translations,
         price: Number(item.price) || 0,
         img: item.img || null,
         sellerId: newSellerId,
@@ -183,7 +202,7 @@ const SellerPage = () => {
 
     toast.success(
       <>
-        <strong>{item.name}</strong>
+        <strong>{itemName}</strong>
         <div>{t("added to cart", { ns: "sellerPage" })}</div>
       </>
     );
@@ -245,27 +264,36 @@ const SellerPage = () => {
         <div className={styles.menuWrapper}>
           {categories.length > 0 && (
             <nav className={styles.categoriesNav}>
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  className={styles.categoryChip}
-                  onClick={() => {
-                    const el = document.getElementById(`cat-${cat.id}`);
-                    if (el)
-                      el.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start",
-                      });
-                  }}
-                >
-                  {cat.name}
-                </button>
-              ))}
+              {categories.map((cat) => {
+                const catName = pickTr(
+                  cat.name,
+                  cat.translations?.name,
+                  uiLang
+                );
+
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    className={styles.categoryChip}
+                    onClick={() => {
+                      const el = document.getElementById(`cat-${cat.id}`);
+                      if (el)
+                        el.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                    }}
+                  >
+                    {catName}
+                  </button>
+                );
+              })}
             </nav>
           )}
 
           {categories.map((cat) => {
+            const catTitle = pickTr(cat.name, cat.translations?.name, uiLang);
             const catItems = itemsByCategory[cat.id] || [];
 
             return (
@@ -278,14 +306,14 @@ const SellerPage = () => {
                   {cat.img && (
                     <img
                       src={getMenuImgSrc(cat.img)}
-                      alt={cat.name}
+                      alt={catTitle}
                       className={styles.categoryImg}
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
                       }}
                     />
                   )}
-                  <h2 className={styles.categoryTitle}>{cat.name}</h2>
+                  <h2 className={styles.categoryTitle}>{catTitle}</h2>
                 </div>
 
                 {catItems.length === 0 ? (
@@ -296,6 +324,16 @@ const SellerPage = () => {
                   <div className={styles.itemsList}>
                     {catItems.map((item) => {
                       const imgSrc = getMenuImgSrc(item.img);
+                      const itemName = pickTr(
+                        item.name,
+                        item.translations?.name,
+                        uiLang
+                      );
+                      const itemDesc = pickTr(
+                        item.description,
+                        item.translations?.description,
+                        uiLang
+                      );
 
                       return (
                         <div
@@ -312,7 +350,7 @@ const SellerPage = () => {
                           {imgSrc && (
                             <img
                               src={imgSrc}
-                              alt={item.name}
+                              alt={itemName}
                               className={styles.itemImg}
                               onError={(e) => {
                                 e.currentTarget.style.display = "none";
@@ -324,11 +362,11 @@ const SellerPage = () => {
                             <div className={styles.itemTopRow}>
                               <div>
                                 <div className={styles.itemName}>
-                                  {item.name}
+                                  {itemName}
                                 </div>
-                                {item.description && (
+                                {itemDesc && (
                                   <div className={styles.itemDesc}>
-                                    {item.description}
+                                    {itemDesc}
                                   </div>
                                 )}
                               </div>
@@ -370,18 +408,29 @@ const SellerPage = () => {
           )}
         </div>
       )}
+
       {selectedItem && (
         <SlideModal
-          title={selectedItem.name}
+          title={selectedTitle}
           onClose={() => setSelectedItemId(null)}
         >
           <DishModal
-            item={selectedItem}
+            item={{
+              ...selectedItem,
+              name: pickTr(
+                selectedItem.name,
+                selectedItem.translations?.name,
+                uiLang
+              ),
+              description: pickTr(
+                selectedItem.description,
+                selectedItem.translations?.description,
+                uiLang
+              ),
+            }}
             seller={seller}
             getImgSrc={getMenuImgSrc}
-            onAdd={(qty) => {
-              addToBasket(selectedItem, qty);
-            }}
+            onAdd={(qty) => addToBasket(selectedItem, qty)}
           />
         </SlideModal>
       )}
