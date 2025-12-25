@@ -11,10 +11,17 @@ import {
 } from "../http/menuAPI";
 import { checkSellerCanManage } from "../http/sellerAPI";
 import { login } from "../http/userAPI";
+import { useTranslation } from "react-i18next";
+
 import Image from "react-bootstrap/Image";
+import Accordion from "react-bootstrap/Accordion";
+import Badge from "react-bootstrap/Badge";
+import InputGroup from "react-bootstrap/InputGroup";
+import Form from "react-bootstrap/Form";
+import Button from "react-bootstrap/Button";
+
 import CreateMenuCategory from "../components/modals/CreateMenuCategory";
 import CreateMenuItem from "../components/modals/CreateMenuItem";
-import { useTranslation } from "react-i18next";
 import styles from "./SellerAdminPage.module.css";
 
 const API_BASE = process.env.REACT_APP_API_URL;
@@ -33,29 +40,30 @@ const SellerAdminPage = () => {
   const sid = Number(sellerId);
 
   const { user } = useContext(Context);
+  const { t } = useTranslation();
 
   const [menuCategories, setMenuCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(false);
+
   const [menuCategoryVisible, setMenuCategoryVisible] = useState(false);
   const [menuItemVisible, setMenuItemVisible] = useState(false);
   const [editableMenuCategory, setEditableMenuCategory] = useState(null);
   const [editableMenuItem, setEditableMenuItem] = useState(null);
+
+  const [prefillCategoryId, setPrefillCategoryId] = useState(null);
+  const [search, setSearch] = useState("");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
+
   const [accessChecked, setAccessChecked] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [accessError, setAccessError] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { t } = useTranslation();
 
-  const handleRetryAsAnotherUser = () => {
-    localStorage.removeItem("token");
-    user.setUser({});
-    user.setIsAuth(false);
-  };
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const reload = async () => {
     if (!sid) return;
@@ -100,35 +108,65 @@ const SellerAdminPage = () => {
             t("no access to this store", { ns: "sellerAdminPage" })
         );
       } finally {
-        if (!cancelled) {
-          setAccessChecked(true);
-        }
+        if (!cancelled) setAccessChecked(true);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [sid, user.isAuth]);
+  }, [sid, user.isAuth, t]);
 
   useEffect(() => {
     if (!sid || !user.isAuth || !hasAccess) return;
     reload().catch(console.error);
   }, [sid, user.isAuth, hasAccess]);
 
-  const itemsByCategory = useMemo(() => {
+  const sortedCategories = useMemo(() => {
+    return [...(menuCategories || [])].sort(
+      (a, b) =>
+        (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
+        (a.id ?? 0) - (b.id ?? 0)
+    );
+  }, [menuCategories]);
+
+  const filteredItemsByCategory = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
     const map = new Map();
-    (menuCategories || []).forEach((c) => map.set(c.id, []));
+    sortedCategories.forEach((c) => map.set(c.id, []));
     map.set("no", []);
 
     (menuItems || []).forEach((it) => {
+      if (!it) return;
+
+      if (q) {
+        const hay = `${it.name || ""} ${it.description || ""}`.toLowerCase();
+        if (!hay.includes(q)) return;
+      }
+
       const key = it.categoryId || "no";
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(it);
     });
 
+    for (const [k, arr] of map.entries()) {
+      map.set(
+        k,
+        [...arr].sort(
+          (a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0) || a.id - b.id
+        )
+      );
+    }
+
     return map;
-  }, [menuCategories, menuItems]);
+  }, [menuItems, sortedCategories, search]);
+
+  const openCreateDish = (catId) => {
+    setEditableMenuItem(null);
+    setPrefillCategoryId(catId || null);
+    setMenuItemVisible(true);
+  };
 
   const handleToggleAvail = async (it) => {
     try {
@@ -175,10 +213,7 @@ const SellerAdminPage = () => {
       return;
     try {
       await deactivateMenuCategory(cat.id, sid);
-      const cats = await fetchMenuCategories(sid);
-      setMenuCategories(cats || []);
-      const items = await fetchMenuItems(sid);
-      setMenuItems(items || []);
+      await reload();
     } catch (e) {
       console.error(e);
       alert(t("failed to deactivate category", { ns: "sellerAdminPage" }));
@@ -188,6 +223,7 @@ const SellerAdminPage = () => {
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setAuthError("");
+
     if (!email.trim() || !password.trim()) {
       setAuthError(t("enter email and password", { ns: "sellerAdminPage" }));
       return;
@@ -224,14 +260,13 @@ const SellerAdminPage = () => {
     user.setIsAuth(false);
   };
 
-  if (!sid)
+  if (!sid) {
     return (
       <div style={{ padding: 20 }}>
         {t("sellerId was not found in the URL", { ns: "sellerAdminPage" })}
       </div>
     );
-
-  const role = String(user.user?.role || "").toUpperCase();
+  }
 
   if (!user.isAuth) {
     return (
@@ -325,6 +360,78 @@ const SellerAdminPage = () => {
     user.user?.phone ||
     t("user", { ns: "sellerAdminPage" });
 
+  const renderItemRow = (it) => {
+    const src = getMenuImgSrc(it.img);
+
+    return (
+      <div key={it.id} className={styles.item}>
+        <div className={styles.itemLeft}>
+          {src && (
+            <Image
+              src={src}
+              alt={it.name}
+              className={styles.itemImg}
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          )}
+
+          <div className={styles.itemText}>
+            <div className={styles.itemTitle}>
+              {it.name} <span className={styles.dot}>•</span> {it.price} €
+            </div>
+            {it.description && (
+              <div className={styles.itemDesc}>{it.description}</div>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.itemRight}>
+          <Form.Check
+            type="switch"
+            id={`avail-${it.id}`}
+            className={styles.availSwitch}
+            label={
+              it.isAvailable
+                ? t("available", { ns: "sellerAdminPage" })
+                : t("unavailable", { ns: "sellerAdminPage" })
+            }
+            checked={!!it.isAvailable}
+            onChange={() => handleToggleAvail(it)}
+          />
+
+          <div className={styles.buttons}>
+            <button
+              className={styles.editButton}
+              type="button"
+              onClick={() => {
+                setEditableMenuItem(it);
+                setMenuItemVisible(true);
+              }}
+            >
+              {t("edit", { ns: "sellerAdminPage" })}
+            </button>
+
+            <button
+              className={styles.deleteButton}
+              type="button"
+              onClick={() => handleDeactivateItem(it)}
+            >
+              {t("deactivate", { ns: "sellerAdminPage" })}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const totalItems = (menuItems || []).length;
+  const totalCategories = (menuCategories || []).length;
+
+  const defaultOpenKey =
+    sortedCategories?.[0]?.id != null ? String(sortedCategories[0].id) : "no";
+
   return (
     <div className={styles.adminPageRoot}>
       <header className={styles.topBar}>
@@ -353,9 +460,7 @@ const SellerAdminPage = () => {
               <button
                 type="button"
                 className={styles.menuItemButton}
-                onClick={() => {
-                  setMenuOpen(false);
-                }}
+                onClick={() => setMenuOpen(false)}
               >
                 {t("restaurant settings", { ns: "sellerAdminPage" })}
                 <span className={styles.menuItemSoon}>
@@ -366,9 +471,7 @@ const SellerAdminPage = () => {
               <button
                 type="button"
                 className={styles.menuItemButton}
-                onClick={() => {
-                  setMenuOpen(false);
-                }}
+                onClick={() => setMenuOpen(false)}
               >
                 {t("working hours", { ns: "sellerAdminPage" })}
                 <span className={styles.menuItemSoon}>
@@ -379,9 +482,7 @@ const SellerAdminPage = () => {
               <button
                 type="button"
                 className={styles.menuItemButton}
-                onClick={() => {
-                  setMenuOpen(false);
-                }}
+                onClick={() => setMenuOpen(false)}
               >
                 {t("delivery and pickup", { ns: "sellerAdminPage" })}
                 <span className={styles.menuItemSoon}>
@@ -392,9 +493,7 @@ const SellerAdminPage = () => {
               <button
                 type="button"
                 className={styles.menuItemButton}
-                onClick={() => {
-                  setMenuOpen(false);
-                }}
+                onClick={() => setMenuOpen(false)}
               >
                 {t("payments and integrations", { ns: "sellerAdminPage" })}
                 <span className={styles.menuItemSoon}>
@@ -417,259 +516,178 @@ const SellerAdminPage = () => {
       </header>
 
       <div className={styles.adminPanelContainer}>
-        <h2 style={{ marginBottom: 16 }}>
-          {t("menu", { ns: "sellerAdminPage" })}
-        </h2>
+        <div className={styles.pageHeader}>
+          <div>
+            <h2 className={styles.pageTitle}>
+              {t("menu", { ns: "sellerAdminPage" })}
+            </h2>
+            <div className={styles.pageMeta}>
+              <span>
+                {t("categories", { ns: "sellerAdminPage" })}:{" "}
+                <b>{totalCategories}</b>
+              </span>
+              <span className={styles.metaDot}>•</span>
+              <span>
+                {t("dishes", { ns: "sellerAdminPage" })}: <b>{totalItems}</b>
+              </span>
+            </div>
+          </div>
 
-        <div className={styles.actionButtons}>
-          <button
-            className={styles.actionButton}
-            type="button"
-            onClick={() => {
-              setEditableMenuCategory(null);
-              setMenuCategoryVisible(true);
-            }}
-          >
-            {t("+ category", { ns: "sellerAdminPage" })}
-          </button>
+          <div className={styles.actionButtons}>
+            <button
+              className={styles.actionButton}
+              type="button"
+              onClick={() => {
+                setEditableMenuCategory(null);
+                setMenuCategoryVisible(true);
+              }}
+            >
+              {t("+ category", { ns: "sellerAdminPage" })}
+            </button>
 
-          <button
-            className={styles.actionButton}
-            type="button"
-            onClick={() => {
-              setEditableMenuItem(null);
-              setMenuItemVisible(true);
-            }}
-          >
-            {t("+ dish", { ns: "sellerAdminPage" })}
-          </button>
+            <button
+              className={styles.actionButton}
+              type="button"
+              onClick={() => openCreateDish(null)}
+            >
+              {t("+ dish", { ns: "sellerAdminPage" })}
+            </button>
+          </div>
         </div>
 
-        {loading && <p>{t("loading menu...", { ns: "sellerAdminPage" })}</p>}
+        <div className={styles.searchRow}>
+          <InputGroup>
+            <Form.Control
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("search dishes...", { ns: "sellerAdminPage" })}
+            />
+            {search.trim() ? (
+              <Button variant="outline-secondary" onClick={() => setSearch("")}>
+                ✕
+              </Button>
+            ) : null}
+          </InputGroup>
+        </div>
 
-        {(menuCategories || []).map((cat) => {
-          const list = itemsByCategory.get(cat.id) || [];
-          return (
-            <div key={cat.id} style={{ marginBottom: 24 }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 8,
-                }}
-              >
-                <h3 style={{ margin: 0 }}>{cat.name}</h3>
-                <div className={styles.buttons}>
-                  <button
-                    type="button"
-                    className={styles.editButton}
-                    onClick={() => {
-                      setEditableMenuCategory(cat);
-                      setMenuCategoryVisible(true);
-                    }}
-                  >
-                    {t("edit", { ns: "sellerAdminPage" })}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.deleteButton}
-                    onClick={() => handleDeactivateCategory(cat)}
-                  >
-                    {t("deactivate", { ns: "sellerAdminPage" })}
-                  </button>
-                </div>
-              </div>
+        {loading && (
+          <div className={styles.loadingRow}>
+            {t("loading menu...", { ns: "sellerAdminPage" })}
+          </div>
+        )}
 
-              {list.length === 0 ? (
-                <div style={{ color: "#666" }}>
-                  {t("no dishes yet", { ns: "sellerAdminPage" })}
-                </div>
-              ) : (
-                <div className={styles.itemList}>
-                  {list.map((it) => {
-                    const src = getMenuImgSrc(it.img);
-                    return (
-                      <div key={it.id} className={styles.item}>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 12,
-                          }}
-                        >
-                          {src && (
-                            <Image
-                              src={src}
-                              alt={it.name}
-                              style={{
-                                width: 64,
-                                height: 64,
-                                objectFit: "cover",
-                                borderRadius: 6,
-                              }}
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                            />
-                          )}
-                          <div>
-                            <div style={{ fontWeight: 600 }}>
-                              {it.name} • {it.price} €
-                            </div>
-                            {it.description && (
-                              <div style={{ color: "#666", marginTop: 2 }}>
-                                {it.description}
-                              </div>
-                            )}
-                          </div>
-                        </div>
+        <Accordion alwaysOpen defaultActiveKey={defaultOpenKey}>
+          {sortedCategories.map((cat) => {
+            const list = filteredItemsByCategory.get(cat.id) || [];
+            const count = list.length;
 
-                        <div className={styles.buttons}>
-                          <span
-                            style={{
-                              marginRight: 12,
-                              color: it.isAvailable ? "green" : "red",
-                            }}
-                          >
-                            {it.isAvailable
-                              ? t("available", { ns: "sellerAdminPage" })
-                              : t("unavailable", { ns: "sellerAdminPage" })}
-                          </span>
+            return (
+              <Accordion.Item key={cat.id} eventKey={String(cat.id)}>
+                <Accordion.Header>
+                  <div className={styles.catHeader}>
+                    <div className={styles.catTitleWrap}>
+                      <span className={styles.catTitle}>{cat.name}</span>
 
-                          <button
-                            className={styles.editButton}
-                            type="button"
-                            onClick={() => {
-                              setEditableMenuItem(it);
-                              setMenuItemVisible(true);
-                            }}
-                          >
-                            {t("edit", { ns: "sellerAdminPage" })}
-                          </button>
+                      <Badge
+                        bg={cat.isActive ? "success" : "secondary"}
+                        className={styles.badge}
+                      >
+                        {cat.isActive ? "active" : "off"}
+                      </Badge>
 
-                          <button
-                            className={styles.editButton}
-                            type="button"
-                            onClick={() => handleToggleAvail(it)}
-                          >
-                            {it.isAvailable
-                              ? t("hide", { ns: "sellerAdminPage" })
-                              : t("show", { ns: "sellerAdminPage" })}
-                          </button>
-
-                          <button
-                            className={styles.deleteButton}
-                            type="button"
-                            onClick={() => handleDeactivateItem(it)}
-                          >
-                            {t("deactivate", { ns: "sellerAdminPage" })}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        <div style={{ marginBottom: 22 }}>
-          <h3 style={{ marginBottom: 10 }}>
-            {t("uncategorized", { ns: "sellerAdminPage" })}
-          </h3>
-          {(itemsByCategory.get("no") || []).length === 0 ? (
-            <div style={{ color: "#666" }}>
-              {t("empty", { ns: "sellerAdminPage" })}
-            </div>
-          ) : (
-            <div className={styles.itemList}>
-              {(itemsByCategory.get("no") || []).map((it) => {
-                const src = getMenuImgSrc(it.img);
-                return (
-                  <div key={it.id} className={styles.item}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                      }}
-                    >
-                      {src && (
-                        <Image
-                          src={src}
-                          alt={it.name}
-                          style={{
-                            width: 64,
-                            height: 64,
-                            objectFit: "cover",
-                            borderRadius: 6,
-                          }}
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                          }}
-                        />
-                      )}
-                      <div>
-                        <div style={{ fontWeight: 600 }}>
-                          {it.name} • {it.price} €
-                        </div>
-                        {it.description && (
-                          <div style={{ color: "#666", marginTop: 2 }}>
-                            {it.description}
-                          </div>
-                        )}
-                      </div>
+                      <Badge bg="light" text="dark" className={styles.badge}>
+                        {count}
+                      </Badge>
                     </div>
 
-                    <div className={styles.buttons}>
-                      <span
-                        style={{
-                          marginRight: 12,
-                          color: it.isAvailable ? "green" : "red",
-                        }}
+                    <div
+                      className={styles.catActions}
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        className={styles.smallButton}
+                        onClick={() => openCreateDish(cat.id)}
                       >
-                        {it.isAvailable
-                          ? t("available", { ns: "sellerAdminPage" })
-                          : t("unavailable", { ns: "sellerAdminPage" })}
-                      </span>
+                        + {t("dish", { ns: "sellerAdminPage" })}
+                      </button>
 
                       <button
-                        className={styles.editButton}
                         type="button"
+                        className={styles.smallButton}
                         onClick={() => {
-                          setEditableMenuItem(it);
-                          setMenuItemVisible(true);
+                          setEditableMenuCategory(cat);
+                          setMenuCategoryVisible(true);
                         }}
                       >
                         {t("edit", { ns: "sellerAdminPage" })}
                       </button>
 
                       <button
-                        className={styles.editButton}
                         type="button"
-                        onClick={() => handleToggleAvail(it)}
-                      >
-                        {it.isAvailable
-                          ? t("hide", { ns: "sellerAdminPage" })
-                          : t("show", { ns: "sellerAdminPage" })}
-                      </button>
-
-                      <button
-                        className={styles.deleteButton}
-                        type="button"
-                        onClick={() => handleDeactivateItem(it)}
+                        className={styles.smallDanger}
+                        onClick={() => handleDeactivateCategory(cat)}
                       >
                         {t("deactivate", { ns: "sellerAdminPage" })}
                       </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                </Accordion.Header>
+
+                <Accordion.Body>
+                  {count === 0 ? (
+                    <div className={styles.emptyBlock}>
+                      <div className={styles.emptyText}>
+                        {t("no dishes yet", { ns: "sellerAdminPage" })}
+                      </div>
+                      <button
+                        className={styles.actionButton}
+                        type="button"
+                        onClick={() => openCreateDish(cat.id)}
+                      >
+                        + {t("dish", { ns: "sellerAdminPage" })}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className={styles.itemList}>
+                      {list.map((it) => renderItemRow(it))}
+                    </div>
+                  )}
+                </Accordion.Body>
+              </Accordion.Item>
+            );
+          })}
+
+          <Accordion.Item eventKey="no">
+            <Accordion.Header>
+              <div className={styles.catHeader}>
+                <div className={styles.catTitleWrap}>
+                  <span className={styles.catTitle}>
+                    {t("uncategorized", { ns: "sellerAdminPage" })}
+                  </span>
+                  <Badge bg="light" text="dark" className={styles.badge}>
+                    {(filteredItemsByCategory.get("no") || []).length}
+                  </Badge>
+                </div>
+              </div>
+            </Accordion.Header>
+
+            <Accordion.Body>
+              {(filteredItemsByCategory.get("no") || []).length === 0 ? (
+                <div className={styles.emptyText}>
+                  {t("empty", { ns: "sellerAdminPage" })}
+                </div>
+              ) : (
+                <div className={styles.itemList}>
+                  {(filteredItemsByCategory.get("no") || []).map((it) =>
+                    renderItemRow(it)
+                  )}
+                </div>
+              )}
+            </Accordion.Body>
+          </Accordion.Item>
+        </Accordion>
       </div>
 
       <CreateMenuCategory
@@ -691,9 +709,11 @@ const SellerAdminPage = () => {
         sellerId={sid}
         editableItem={editableMenuItem}
         categories={menuCategories}
+        initialCategoryId={prefillCategoryId}
         onHide={() => {
           setMenuItemVisible(false);
           setEditableMenuItem(null);
+          setPrefillCategoryId(null);
         }}
         onSaved={async () => {
           const items = await fetchMenuItems(sid);
