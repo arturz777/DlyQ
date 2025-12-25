@@ -18,12 +18,25 @@ const getImgSrc = (img) => {
   return `${API_BASE}/${img}`;
 };
 
+const normUiLang = (l) => {
+  const short = String(l || "ru")
+    .toLowerCase()
+    .split("-")[0];
+  if (short === "et") return "est";
+  return short;
+};
+
+const pickTr = (base, map, lang) => {
+  if (!map || typeof map !== "object") return base;
+  const v = map[lang];
+  return typeof v === "string" && v.trim() ? v : base;
+};
+
 const POPULAR_QUERIES = ["Пицца", "Суши", "Бургер", "Шаурма", "Паста", "Салат"];
 
 const FoodCatalogPage = () => {
   const navigate = useNavigate();
   const { basket } = useContext(Context);
-  const { t } = useTranslation();
 
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,6 +49,8 @@ const FoodCatalogPage = () => {
 
   const debounceRef = useRef(null);
   const inputRef = useRef(null);
+  const { t, i18n } = useTranslation();
+  const uiLang = normUiLang(i18n.language);
 
   const selectedItem = useMemo(() => {
     return items.find((x) => String(x.id) === String(selectedItemId)) || null;
@@ -112,10 +127,13 @@ const FoodCatalogPage = () => {
     const sellerId = item?.seller?.id ?? item?.sellerId ?? null;
     if (!ensureSingleSeller(sellerId)) return;
 
+    const itemName = pickTr(item.name, item.translations?.name, uiLang);
+
     for (let i = 0; i < qty; i++) {
       basket.addItem({
         id: item.id,
         name: item.name,
+        translations: item.translations,
         price: Number(item.price) || 0,
         img: item.img || null,
         sellerId: Number(sellerId) || null,
@@ -135,7 +153,7 @@ const FoodCatalogPage = () => {
 
     toast.success(
       <>
-        <strong>{item.name}</strong>
+        <strong>{itemName}</strong>
         <div>Добавлено в корзину</div>
       </>
     );
@@ -342,6 +360,7 @@ const FoodCatalogPage = () => {
                   const img = getImgSrc(it.img);
                   const sellerTitle = it?.seller?.name || "Ресторан";
                   const sellerSlugOrId = it?.seller?.slug || it?.sellerId;
+                  const itName = pickTr(it.name, it.translations?.name, uiLang);
 
                   return (
                     <div
@@ -358,7 +377,7 @@ const FoodCatalogPage = () => {
                       {img ? (
                         <img
                           src={img}
-                          alt={it.name}
+                          alt={itName}
                           className={styles.itemImg}
                           onError={(e) =>
                             (e.currentTarget.style.display = "none")
@@ -370,7 +389,7 @@ const FoodCatalogPage = () => {
 
                       <div className={styles.itemContent}>
                         <div className={styles.itemTop}>
-                          <div className={styles.itemName}>{it.name}</div>
+                          <div className={styles.itemName}>{itName}</div>
                           <div className={styles.itemPrice}>
                             {Number(it.price || 0).toFixed(2)} €
                           </div>
@@ -420,19 +439,31 @@ const FoodCatalogPage = () => {
         </div>
       ) : null}
 
-      {selectedItem ? (
-        <SlideModal
-          title={selectedItem.name}
-          onClose={() => setSelectedItemId(null)}
-        >
-          <DishModal
-            item={selectedItem}
-            seller={selectedItem?.seller || null}
-            getImgSrc={getImgSrc}
-            onAdd={(qty) => addToBasket(selectedItem, qty)}
-          />
-        </SlideModal>
-      ) : null}
+      {selectedItem
+        ? (() => {
+            const title = pickTr(
+              selectedItem.name,
+              selectedItem.translations?.name,
+              uiLang
+            );
+            const desc = pickTr(
+              selectedItem.description,
+              selectedItem.translations?.description,
+              uiLang
+            );
+
+            return (
+              <SlideModal title={title} onClose={() => setSelectedItemId(null)}>
+                <DishModal
+                  item={{ ...selectedItem, name: title, description: desc }}
+                  seller={selectedItem?.seller || null}
+                  getImgSrc={getImgSrc}
+                  onAdd={(qty) => addToBasket(selectedItem, qty)}
+                />
+              </SlideModal>
+            );
+          })()
+        : null}
     </div>
   );
 };
