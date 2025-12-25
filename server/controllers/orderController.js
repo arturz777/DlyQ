@@ -391,8 +391,59 @@ const createOrder = async (req, res) => {
 
     const downloadToken = uuid.v4();
 
+     const normLang = (l) => {
+      const short = String(l || "ru")
+        .toLowerCase()
+        .split("-")[0];
+      if (short === "et") return "est";
+      return short;
+    };
+
+    const langNorm = normLang(language) || "est";
+
+    const menuIds = Array.from(
+      new Set(
+        orderDetails
+          .filter((it) => it?.isRestaurantItem)
+          .map((it) => Number(it.menuItemId ?? it.itemId ?? it.id))
+          .filter((x) => Number.isFinite(x) && x > 0)
+      )
+    );
+
+    if (menuIds.length) {
+      const keys = menuIds.map((id) => `menu_item_${id}.name`);
+      const rows = await Translation.findAll({
+        where: { key: { [Op.in]: keys } },
+      });
+
+      const menuNameMap = {};
+      rows.forEach((r) => {
+        const m = r.key.match(/^menu_item_(\d+)\.name$/);
+        if (!m) return;
+        const id = m[1];
+        if (!menuNameMap[id]) menuNameMap[id] = {};
+        menuNameMap[id][r.lang] = r.text;
+      });
+
+      orderDetails.forEach((it) => {
+        if (!it?.isRestaurantItem) return;
+        const mid = Number(it.menuItemId ?? it.itemId ?? it.id);
+        if (!Number.isFinite(mid) || mid <= 0) return;
+
+        if (!it.translations || typeof it.translations !== "object")
+          it.translations = {};
+        if (!it.translations.name || typeof it.translations.name !== "object")
+          it.translations.name = {};
+
+        it.translations.name = {
+          ...it.translations.name,
+          ...(menuNameMap[String(mid)] || {}),
+        };
+      });
+    }
+
     const localizedOrderDetails = orderDetails.map((item) => {
-      const lang = language || "est";
+      const lang = langNorm;
       const translatedName = item.translations?.name?.[lang] || item.name;
 
       const localizedOptions = {};
@@ -731,6 +782,24 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
+const safeParse = (v, fallback) => {
+  try {
+    if (!v) return fallback;
+    if (Array.isArray(v) || typeof v === "object") return v;
+    return JSON.parse(v);
+  } catch {
+    return fallback;
+  }
+};
+
+const normLang = (l) => {
+  const short = String(l || "ru")
+    .toLowerCase()
+    .split("-")[0];
+  if (short === "et") return "est";
+  return short;
+};
+
 const getUserOrders = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -740,42 +809,82 @@ const getUserOrders = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    const deviceIds = orders.flatMap((order) =>
-      JSON.parse(order.orderDetails || "[]").map((d) => d.deviceId)
+    const allDetails = orders.flatMap((order) =>
+      safeParse(order.orderDetails, [])
     );
 
-    if (deviceIds.length > 0) {
-      const translations = await Translation.findAll({
-        where: {
-          key: {
-            [Op.or]: deviceIds.map((id) => `device_${id}.name`),
-          },
-        },
+    const deviceIds = Array.from(
+      new Set(
+        allDetails
+          .map((d) => Number(d.deviceId ?? d.device_id))
+          .filter((x) => Number.isFinite(x) && x > 0)
+      )
+    );
+
+    const menuItemIds = Array.from(
+      new Set(
+        allDetails
+          .map((d) => Number(d.menuItemId ?? d.menu_item_id))
+          .filter((x) => Number.isFinite(x) && x > 0)
+      )
+    );
+
+    const keys = [
+      ...deviceIds.map((id) => `device_${id}.name`),
+      ...menuItemIds.map((id) => `menu_item_${id}.name`),
+    ];
+
+    const translationMap = {
+      device: {},
+      menu: {},
+    };
+
+    if (keys.length) {
+      const rows = await Translation.findAll({
+        where: { key: { [Op.in]: keys } },
       });
 
-      const translationMap = {};
-      translations.forEach((t) => {
-        const deviceId = t.key.replace("device_", "").replace(".name", "");
-        if (!translationMap[deviceId]) translationMap[deviceId] = {};
-        translationMap[deviceId][t.lang] = t.text;
-      });
+      rows.forEach((row) => {
+        const k = row.key;
 
-      orders.forEach((order) => {
-        const orderDetails = JSON.parse(order.orderDetails || "[]");
+        let m = k.match(/^device_(\d+)\.name$/);
+        if (m) {
+          const id = m[1];
+          if (!translationMap.device[id]) translationMap.device[id] = {};
+          translationMap.device[id][row.lang] = row.text;
+          return;
+        }
 
-        orderDetails.forEach((detail) => {
-          const translations = translationMap[detail.deviceId] || {};
-          detail.translations = { name: translations };
-
-          const lang = "ru";
-          if (translations[lang]) {
-            detail.name = translations[lang];
-          }
-        });
-
-        order.orderDetails = orderDetails;
+        m = k.match(/^menu_item_(\d+)\.name$/);
+        if (m) {
+          const id = m[1];
+          if (!translationMap.menu[id]) translationMap.menu[id] = {};
+          translationMap.menu[id][row.lang] = row.text;
+        }
       });
     }
+
+    orders.forEach((order) => {
+      const details = safeParse(order.orderDetails, []);
+
+      details.forEach((d) => {
+        const deviceId = Number(d.deviceId ?? d.device_id);
+        const menuItemId = Number(d.menuItemId ?? d.menu_item_id);
+
+        if (!d.translations || typeof d.translations !== "object")
+          d.translations = {};
+
+        if (Number.isFinite(deviceId) && deviceId > 0) {
+          d.translations.name = translationMap.device[String(deviceId)] || {};
+        }
+
+        if (Number.isFinite(menuItemId) && menuItemId > 0) {
+          d.translations.name = translationMap.menu[String(menuItemId)] || {};
+        }
+      });
+
+      order.orderDetails = details;
+    });
 
     res.json(orders);
   } catch (error) {
@@ -796,6 +905,9 @@ const getActiveOrder = async (req, res) => {
             "Pending",
             "Waiting for courier",
             "Ready for pickup",
+
+
+            
             "Picked up",
             "Arrived at destination",
             "Delivered",
