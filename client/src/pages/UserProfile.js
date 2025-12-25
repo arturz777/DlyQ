@@ -4,12 +4,36 @@ import { fetchUserOrders } from "../http/orderAPI";
 import { updateProfile, fetchProfile } from "../http/userAPI";
 import OrderSidebar from "../components/OrderSidebar";
 import SlideModal from "../components/modals/SlideModal";
+import DishModal from "../components/DishModal";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import styles from "./UserProfile.module.css";
 
 const DevicePageLazy = lazy(() => import("../pages/DevicePage"));
+
+const API_BASE = process.env.REACT_APP_API_URL;
+
+const getMenuImgSrc = (img) => {
+  if (!img) return null;
+  if (/^https?:\/\//i.test(img)) return img;
+  if (img.startsWith("/")) return `${API_BASE}${img}`;
+  return `${API_BASE}/${img}`;
+};
+
+const normUiLang = (l) => {
+  const short = String(l || "ru")
+    .toLowerCase()
+    .split("-")[0];
+  if (short === "et") return "est";
+  return short;
+};
+
+const pickTr = (base, map, lang) => {
+  if (!map || typeof map !== "object") return base;
+  const v = map[lang];
+  return typeof v === "string" && v.trim() ? v : base;
+};
 
 const UserProfile = () => {
   const [orders, setOrders] = useState([]);
@@ -22,9 +46,10 @@ const UserProfile = () => {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [showSettings, setShowSettings] = useState(false);
-  const currentLang = i18n.language;
+  const currentLang = normUiLang(i18n.language);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+  const [selectedDish, setSelectedDish] = useState(null);
 
   const uiLocale = i18n.language?.toLowerCase().startsWith("ru")
     ? "ru-RU"
@@ -71,13 +96,17 @@ const UserProfile = () => {
   const handleProductClick = (product) => {
     if (!product) return;
 
+    // ✅ блюдо
+    if (product.isRestaurantItem || product.menuItemId) {
+      setSelectedDish(product);
+      return;
+    }
+
+    // ✅ девайс
     const deviceId =
       product.deviceId || product.device_id || product.id || product.device?.id;
 
-    if (!deviceId) {
-      console.warn("Failed to determine deviceId for product", product);
-      return;
-    }
+    if (!deviceId) return;
 
     setSelectedDeviceId(deviceId);
   };
@@ -86,10 +115,10 @@ const UserProfile = () => {
     <div className={styles.shopWrapper}>
       <div className={styles.mainContent}>
         <div className={styles.buttonsContainer}>
-            <OrderSidebar
-              isSidebarOpen={isSidebarOpen}
-              setSidebarOpen={setSidebarOpen}
-            />
+          <OrderSidebar
+            isSidebarOpen={isSidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+          />
         </div>
 
         <button
@@ -116,7 +145,7 @@ const UserProfile = () => {
                   </span>
                   <span>{translateStatus(order.status)}</span>
                   <span>
-                   {new Date(order.createdAt).toLocaleString(uiLocale, {
+                    {new Date(order.createdAt).toLocaleString(uiLocale, {
                       day: "2-digit",
                       month: "2-digit",
                       year: "numeric",
@@ -137,14 +166,21 @@ const UserProfile = () => {
                       <img
                         src={product.image || order.deviceImage}
                         alt={
-                          product.name || t("product", { ns: "userProfile" })
+                          pickTr(
+                            product.name,
+                            product.translations?.name,
+                            currentLang
+                          ) || t("product", { ns: "userProfile" })
                         }
                         className={styles.deviceImage}
                       />
                       <div className={styles.orderDetails}>
                         <span>
-                          {product.translations?.name?.[currentLang] ||
-                            product.name}
+                          {pickTr(
+                            product.name,
+                            product.translations?.name,
+                            currentLang
+                          )}
                         </span>
                         <span>
                           {t("quantity", { ns: "userProfile" })}{" "}
@@ -200,6 +236,35 @@ const UserProfile = () => {
           >
             <DevicePageLazy id={selectedDeviceId} />
           </Suspense>
+        </SlideModal>
+      )}
+      {selectedDish && (
+        <SlideModal
+          title={pickTr(
+            selectedDish.name,
+            selectedDish.translations?.name,
+            currentLang
+          )}
+          onClose={() => setSelectedDish(null)}
+        >
+          <DishModal
+            item={{
+              ...selectedDish,
+              img: selectedDish.image || selectedDish.img || null,
+
+              name: pickTr(
+                selectedDish.name,
+                selectedDish.translations?.name,
+                currentLang
+              ),
+              description: pickTr(
+                selectedDish.description || "",
+                selectedDish.translations?.description,
+                currentLang
+              ),
+            }}
+            getImgSrc={getMenuImgSrc}
+          />
         </SlideModal>
       )}
     </div>
