@@ -1,47 +1,97 @@
+const { MenuItem, Translation } = require("../models/models");
+const { Op } = require("sequelize");
 const ApiError = require("../error/ApiError");
-const { MenuItem, MenuCategory } = require("../models/models");
-
-const uuid = require("uuid");
-const path = require("path");
 const { supabase } = require("../config/supabaseClient");
+const uuid = require("uuid");
 
-const mustEnv = (n) => {
-  const v = (process.env[n] ?? "").trim();
-  if (!v) throw new Error(`${n} is not set`);
-  return v;
-};
+function parseTranslations(v) {
+  if (!v) return null;
 
-const SUPABASE_URL = mustEnv("SUPABASE_URL");
-
-const SUPABASE_IMAGE_BUCKET =
-  process.env.SUPABASE_IMAGE_BUCKET || process.env.SUPABASE_BUCKET || "images";
-
-const PUBLIC_BUCKET_BASE = `${SUPABASE_URL.replace(
-  /\/+$/,
-  ""
-)}/storage/v1/object/public/${SUPABASE_IMAGE_BUCKET}`;
-
-class MenuItemController {
-  async getAll(req, res, next) {
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (!s || s === "null" || s === "undefined") return null;
     try {
-      const sellerId = Number(req.query.sellerId);
-      if (!sellerId) return next(ApiError.badRequest("sellerId обязателен"));
-
-      const rows = await MenuItem.findAll({
-        where: { sellerId, isActive: true },
-        include: [{ model: MenuCategory, as: "category" }],
-        order: [
-          ["displayOrder", "ASC"],
-          ["id", "ASC"],
-        ],
-      });
-
-      return res.json(rows);
-    } catch (e) {
-      next(e);
+      return JSON.parse(s);
+    } catch {
+      return null;
     }
   }
 
+  if (typeof v === "object") return v;
+  return null;
+}
+
+const normLang = (lang) =>
+  String(lang || "")
+    .trim()
+    .toLowerCase();
+
+async function syncTranslationsForKey(key, map, transaction = undefined) {
+  if (!map || typeof map !== "object") return;
+
+  const ops = [];
+
+  for (const [langRaw, textRaw] of Object.entries(map)) {
+    const lang = normLang(langRaw);
+    if (!lang) continue;
+
+    if (textRaw === null || textRaw === undefined) continue;
+
+    const text =
+      typeof textRaw === "string" ? textRaw.trim() : String(textRaw).trim();
+
+    if (!text) {
+      ops.push(
+        Translation.destroy({
+          where: { key, lang },
+          transaction,
+        })
+      );
+    } else {
+      ops.push(Translation.upsert({ key, lang, text }, { transaction }));
+    }
+  }
+
+  await Promise.all(ops);
+}
+
+async function readTranslationsMap(keys) {
+  const rows = await Translation.findAll({
+    where: { key: { [Op.in]: keys } },
+  });
+
+  const out = {};
+  rows.forEach((r) => {
+    if (!out[r.key]) out[r.key] = {};
+    out[r.key][r.lang] = r.text;
+  });
+
+  return out;
+}
+
+async function uploadImageIfAny(req, prevUrl = null) {
+  if (!req.files || !req.files.img) return prevUrl;
+
+  if (prevUrl) {
+    const oldFileName = prevUrl.split("/").pop();
+    await supabase.storage.from("images").remove([oldFileName]);
+  }
+
+  const { img } = req.files;
+  const fileName = `${uuid.v4()}${img.name.substring(
+    img.name.lastIndexOf(".")
+  )}`;
+
+  const { error } = await supabase.storage
+    .from("images")
+    .upload(fileName, img.data, { contentType: img.mimetype });
+
+  if (error) throw new Error("Ошибка загрузки изображения в Supabase");
+
+  return `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
+}
+
+class MenuItemController {
   async create(req, res, next) {
     try {
       const {
@@ -50,162 +100,238 @@ class MenuItemController {
         name,
         description,
         price,
-        displayOrder,
         isAvailable,
+        isActive,
+        displayOrder,
+        translations,
       } = req.body;
 
-      const sid = Number(sellerId);
-      if (!sid) return next(ApiError.badRequest("sellerId обязателен"));
-      if (!name) return next(ApiError.badRequest("name обязателен"));
-      if (price == null) return next(ApiError.badRequest("price обязателен"));
+      if (!sellerId) return next(ApiError.badRequest("sellerId обязателен"));
+      if (!name || !name.trim())
+        return next(ApiError.badRequest("Введите название блюда"));
 
-      let cid = categoryId ? Number(categoryId) : null;
+      const p = Number(price);
+      if (!Number.isFinite(p) || p <= 0)
+        return next(ApiError.badRequest("Цена некорректна"));
 
-      if (cid) {
-        const cat = await MenuCategory.findOne({
-          where: { id: cid, sellerId: sid, isActive: true },
-        });
-        if (!cat) {
-          return next(
-            ApiError.badRequest("categoryId не принадлежит магазину")
-          );
-        }
-      }
+      const imgUrl = await uploadImageIfAny(req, null);
 
-      let imgUrl = null;
-
-      if (req.files && req.files.img) {
-        const img = req.files.img;
-
-        const fileName = `menu/${uuid.v4()}${path.extname(img.name)}`;
-
-        const { error } = await supabase.storage
-          .from(SUPABASE_IMAGE_BUCKET)
-          .upload(fileName, img.data, { contentType: img.mimetype });
-
-        if (error) {
-          throw new Error("Ошибка загрузки изображения блюда в Supabase");
-        }
-
-        imgUrl = `${PUBLIC_BUCKET_BASE}/${fileName}`;
-      } else if (req.body.img) {
-        imgUrl = req.body.img;
-      }
-
-      const row = await MenuItem.create({
-        sellerId: sid,
-        categoryId: cid,
-        name: String(name).trim(),
-        description: description || null,
-        price,
+      const item = await MenuItem.create({
+        sellerId: Number(sellerId),
+        categoryId: categoryId ? Number(categoryId) : null,
+        name: name.trim(),
+        description: description ? description.trim() : null,
+        price: p,
         img: imgUrl,
-        displayOrder: Number(displayOrder) || 0,
-        isAvailable: typeof isAvailable === "boolean" ? isAvailable : true,
-        isActive: true,
+        isAvailable:
+          isAvailable !== undefined ? String(isAvailable) === "true" : true,
+        isActive: isActive !== undefined ? String(isActive) === "true" : true,
+        displayOrder: displayOrder ? Number(displayOrder) : 0,
       });
 
-      return res.json(row);
+      const parsed = parseTranslations(translations) || {};
+
+      await syncTranslationsForKey(`menu_item_${item.id}.name`, {
+        ...(parsed.name || {}),
+        ru: name.trim(),
+      });
+
+      await syncTranslationsForKey(`menu_item_${item.id}.description`, {
+        ...(parsed.description || {}),
+        ...(description && description.trim()
+          ? { ru: description.trim() }
+          : {}),
+      });
+
+      const tmap = await readTranslationsMap([
+        `menu_item_${item.id}.name`,
+        `menu_item_${item.id}.description`,
+      ]);
+
+      return res.status(201).json({
+        ...item.toJSON(),
+        translations: {
+          name: tmap[`menu_item_${item.id}.name`] || {},
+          description: tmap[`menu_item_${item.id}.description`] || {},
+        },
+      });
     } catch (e) {
-      next(ApiError.badRequest(e.message));
+      console.error("❌ MenuItem.create:", e.message);
+      return next(ApiError.badRequest(e.message));
     }
   }
 
-  async update(req, res, next) {
+  async update(req, res) {
     try {
-      const id = Number(req.params.id);
-      const row = await MenuItem.findByPk(id);
-      if (!row) return next(ApiError.notFound("Блюдо не найдено"));
-
-      const {
-        categoryId,
+      const { id } = req.params;
+      let {
         name,
         description,
         price,
-        img,
-        displayOrder,
+        categoryId,
         isAvailable,
         isActive,
+        displayOrder,
+        translations,
       } = req.body;
 
-      if (categoryId !== undefined) {
-        const cid = categoryId ? Number(categoryId) : null;
+      const item = await MenuItem.findByPk(id);
+      if (!item) return res.status(404).json({ message: "Блюдо не найдено" });
 
-        if (cid) {
-          const cat = await MenuCategory.findOne({
-            where: { id: cid, sellerId: row.sellerId, isActive: true },
-          });
-          if (!cat) {
-            return next(
-              ApiError.badRequest("categoryId не принадлежит магазину")
-            );
-          }
+      if (!name || !name.trim()) name = item.name;
+
+      let p = item.price;
+      if (price !== undefined) {
+        const np = Number(price);
+        if (!Number.isFinite(np) || np <= 0) {
+          return res.status(400).json({ message: "Цена некорректна" });
         }
-
-        row.categoryId = cid;
+        p = np;
       }
 
-      if (name !== undefined) row.name = String(name).trim();
-      if (description !== undefined) row.description = description || null;
-      if (price !== undefined) row.price = price;
-      if (displayOrder !== undefined)
-        row.displayOrder = Number(displayOrder) || 0;
-      if (typeof isAvailable === "boolean") row.isAvailable = isAvailable;
-      if (typeof isActive === "boolean") row.isActive = isActive;
-      if (req.files && req.files.img) {
-        const file = req.files.img;
+      const imgUrl = await uploadImageIfAny(req, item.img);
 
-        const fileName = `menu/${uuid.v4()}${path.extname(file.name)}`;
+      await item.update({
+        name: name.trim(),
+        description:
+          description !== undefined
+            ? description
+              ? description.trim()
+              : null
+            : item.description,
+        price: p,
+        categoryId:
+          categoryId !== undefined
+            ? categoryId
+              ? Number(categoryId)
+              : null
+            : item.categoryId,
+        img: imgUrl,
+        isAvailable:
+          isAvailable !== undefined
+            ? String(isAvailable) === "true"
+            : item.isAvailable,
+        isActive:
+          isActive !== undefined ? String(isActive) === "true" : item.isActive,
+        displayOrder:
+          displayOrder !== undefined ? Number(displayOrder) : item.displayOrder,
+      });
 
-        const { error } = await supabase.storage
-          .from(SUPABASE_IMAGE_BUCKET)
-          .upload(fileName, file.data, { contentType: file.mimetype });
+      const parsed = parseTranslations(translations) || {};
 
-        if (error) {
-          throw new Error("Ошибка загрузки изображения блюда в Supabase");
-        }
+      await syncTranslationsForKey(`menu_item_${id}.name`, {
+        ...(parsed.name || {}),
+        ru: item.name.trim(),
+      });
 
-        row.img = `${PUBLIC_BUCKET_BASE}/${fileName}`;
-      } else if (img !== undefined) {
-        row.img = img || null;
-      }
+      await syncTranslationsForKey(`menu_item_${id}.description`, {
+        ...(parsed.description || {}),
+        ...(item.description && item.description.trim()
+          ? { ru: item.description.trim() }
+          : {}),
+      });
 
-      await row.save();
-      return res.json(row);
+      const tmap = await readTranslationsMap([
+        `menu_item_${id}.name`,
+        `menu_item_${id}.description`,
+      ]);
+
+      return res.json({
+        ...item.toJSON(),
+        translations: {
+          name: tmap[`menu_item_${id}.name`] || {},
+          description: tmap[`menu_item_${id}.description`] || {},
+        },
+      });
     } catch (e) {
-      next(ApiError.badRequest(e.message));
+      console.error("❌ MenuItem.update:", e.message);
+      return res
+        .status(500)
+        .json({ message: "Ошибка сервера при редактировании блюда." });
     }
   }
 
-  async toggleAvailability(req, res, next) {
+  async getAll(req, res) {
     try {
-      const id = Number(req.params.id);
+      const { sellerId } = req.query;
+      if (!sellerId)
+        return res.status(400).json({ message: "sellerId обязателен" });
+
+      const items = await MenuItem.findAll({
+        where: { sellerId: Number(sellerId) },
+        order: [
+          ["displayOrder", "ASC"],
+          ["id", "ASC"],
+        ],
+      });
+
+      const ids = items.map((i) => i.id);
+      const keys = ids.flatMap((id) => [
+        `menu_item_${id}.name`,
+        `menu_item_${id}.description`,
+      ]);
+
+      const translations = await Translation.findAll({
+        where: { key: { [Op.in]: keys } },
+      });
+
+      const map = {};
+      translations.forEach((t) => {
+        const m = t.key.match(/^menu_item_(\d+)\.(name|description)$/);
+        if (!m) return;
+
+        const itemId = m[1];
+        const field = m[2];
+
+        if (!map[itemId]) map[itemId] = { name: {}, description: {} };
+        map[itemId][field][t.lang] = t.text;
+      });
+
+      const out = items.map((i) => ({
+        ...i.toJSON(),
+        translations: map[i.id] || { name: {}, description: {} },
+      }));
+
+      return res.json(out);
+    } catch (e) {
+      console.error("❌ MenuItem.getAll:", e.message);
+      return res.status(500).json({ message: "Ошибка при получении блюд." });
+    }
+  }
+
+  async toggleAvailability(req, res) {
+    try {
+      const { id } = req.params;
       const { isAvailable } = req.body;
 
-      const row = await MenuItem.findByPk(id);
-      if (!row) return next(ApiError.notFound("Блюдо не найдено"));
+      const item = await MenuItem.findByPk(id);
+      if (!item) return res.status(404).json({ message: "Блюдо не найдено" });
 
-      row.isAvailable = !!isAvailable;
-      await row.save();
-
-      return res.json(row);
+      await item.update({ isAvailable: String(isAvailable) === "true" });
+      return res.json({
+        message: "Доступность обновлена",
+        id: item.id,
+        isAvailable: item.isAvailable,
+      });
     } catch (e) {
-      next(e);
+      console.error("❌ MenuItem.toggleAvailability:", e.message);
+      return res
+        .status(500)
+        .json({ message: "Ошибка при обновлении доступности" });
     }
   }
 
-  async deactivate(req, res, next) {
+  async deactivate(req, res) {
     try {
-      const id = Number(req.params.id);
+      const { id } = req.params;
+      const item = await MenuItem.findByPk(id);
+      if (!item) return res.status(404).json({ message: "Блюдо не найдено" });
 
-      const row = await MenuItem.findByPk(id);
-      if (!row) return next(ApiError.notFound("Блюдо не найдено"));
-
-      row.isActive = false;
-      await row.save();
-
-      return res.json({ message: "Блюдо скрыто", item: row });
+      await item.update({ isActive: false });
+      return res.json({ message: "Блюдо деактивировано", id: item.id });
     } catch (e) {
-      next(e);
+      console.error("❌ MenuItem.deactivate:", e.message);
+      return res.status(500).json({ message: "Ошибка при деактивации блюда" });
     }
   }
 }
