@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useContext, lazy, Suspense } from "react";
 import { Context } from "../index";
+import Accordion from "react-bootstrap/Accordion";
+import Badge from "react-bootstrap/Badge";
+import InputGroup from "react-bootstrap/InputGroup";
+import Form from "react-bootstrap/Form";
+import Button from "react-bootstrap/Button";
 import { updateDeviceVisibility } from "../http/deviceAPI";
 import { fetchAllCouriers } from "../http/courierAPI";
 import { assignCourierToOrder } from "../http/orderAPI";
@@ -133,9 +138,74 @@ const Admin = () => {
   const [maintMessage, setMaintMessage] = useState(
     appStore.maintenance.message
   );
+  const [menuSearch, setMenuSearch] = useState("");
+  const [prefillMenuCategoryId, setPrefillMenuCategoryId] = useState(null);
+
+  const reloadMenu = async (sellerId = activeSellerId) => {
+    if (!sellerId) return;
+    const [cats, items] = await Promise.all([
+      fetchMenuCategories(sellerId),
+      fetchMenuItems(sellerId),
+    ]);
+    setMenuCategories(cats || []);
+    setMenuItems(items || []);
+  };
+
+  const openCreateMenuItem = (categoryId = null) => {
+    setEditableMenuItem(null);
+    setPrefillMenuCategoryId(categoryId ? Number(categoryId) : null);
+    setMenuItemVisible(true);
+  };
+
+  const sortedMenuCategories = React.useMemo(() => {
+    return [...(menuCategories || [])].sort(
+      (a, b) =>
+        (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
+        (a.id ?? 0) - (b.id ?? 0)
+    );
+  }, [menuCategories]);
+
+  const menuItemsByCategory = React.useMemo(() => {
+    const q = menuSearch.trim().toLowerCase();
+    const map = new Map();
+    sortedMenuCategories.forEach((c) => map.set(c.id, []));
+    map.set("no", []);
+
+    (menuItems || []).forEach((it) => {
+      if (!it) return;
+
+      if (q) {
+        const hay = `${it.name || ""} ${it.description || ""}`.toLowerCase();
+        if (!hay.includes(q)) return;
+      }
+
+      const key = it.categoryId || "no";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(it);
+    });
+
+    for (const [k, arr] of map.entries()) {
+      map.set(
+        k,
+        [...arr].sort(
+          (a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0) || a.id - b.id
+        )
+      );
+    }
+
+    return map;
+  }, [menuItems, sortedMenuCategories, menuSearch]);
+
+  const visibleMenuCategories = React.useMemo(() => {
+    const q = menuSearch.trim();
+    if (!q) return sortedMenuCategories;
+    return sortedMenuCategories.filter(
+      (c) => (menuItemsByCategory.get(c.id) || []).length > 0
+    );
+  }, [sortedMenuCategories, menuItemsByCategory, menuSearch]);
 
   useEffect(() => {
-    const socket = io(`https://dlyq-backend-staging.onrender.com`);
+     const socket = io(`https://dlyq-backend-staging.onrender.com`);
 
     socket.on("courierLocationUpdate", ({ courierId, lat, lng }) => {
       setCouriers((prev) =>
@@ -207,7 +277,7 @@ const Admin = () => {
     fetchMenuItems(activeSellerId).then(setMenuItems).catch(console.error);
   }, [activeSellerId]);
 
-   const openCreateSellerModal = () => {
+  const openCreateSellerModal = () => {
     setEditableSeller(null);
     setSellerVisible(true);
   };
@@ -327,28 +397,43 @@ const Admin = () => {
     setMenuItemVisible(true);
   };
 
-   const handleToggleMenuItemAvailability = async (id, next) => {
+  const handleToggleMenuItemAvailability = async (item) => {
     try {
-      await toggleMenuItemAvailability(id, next);
-      const items = await fetchMenuItems(activeSellerId);
-      setMenuItems(items);
+      await toggleMenuItemAvailability(
+        item.id,
+        activeSellerId,
+        !item.isAvailable
+      );
+      setMenuItems((prev) =>
+        prev.map((x) =>
+          x.id === item.id ? { ...x, isAvailable: !item.isAvailable } : x
+        )
+      );
     } catch (e) {
       console.error(e);
       alert("Не удалось изменить доступность блюда");
     }
   };
 
-  const handleDeactivateMenuItem = async (id) => {
-    const ok = window.confirm("Деактивировать блюдо?");
-    if (!ok) return;
-
+  const handleDeactivateMenuItem = async (item) => {
+    if (!window.confirm("Деактивировать блюдо?")) return;
     try {
-      await deactivateMenuItem(id);
-      const items = await fetchMenuItems(activeSellerId);
-      setMenuItems(items);
+      await deactivateMenuItem(item.id, activeSellerId);
+      await reloadMenu();
     } catch (e) {
       console.error(e);
       alert("Не удалось деактивировать блюдо");
+    }
+  };
+
+  const handleDeactivateMenuCategory = async (cat) => {
+    if (!window.confirm("Деактивировать категорию?")) return;
+    try {
+      await deactivateMenuCategory(cat.id, activeSellerId);
+      await reloadMenu();
+    } catch (e) {
+      console.error(e);
+      alert("Не удалось деактивировать категорию");
     }
   };
 
