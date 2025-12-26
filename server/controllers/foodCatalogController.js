@@ -106,13 +106,37 @@ class foodCatalogController {
         };
       });
 
+      const sellerTrRows = await Translation.findAll({
+        attributes: ["key"],
+        where: {
+          text: { [Op.iLike]: like },
+          key: { [Op.like]: "seller_%.kind" },
+        },
+        limit: 500,
+      });
+
+      const sellerIdsFromTr = Array.from(
+        new Set(
+          sellerTrRows
+            .map((r) => String(r.key).match(/^seller_(\d+)\.kind$/)?.[1])
+            .filter(Boolean)
+            .map(Number)
+        )
+      );
+
+      const sellersOr = [
+        { name: { [Op.iLike]: like } },
+        { kind: { [Op.iLike]: like } },
+      ];
+
+      if (sellerIdsFromTr.length) {
+        sellersOr.push({ id: { [Op.in]: sellerIdsFromTr } });
+      }
+
       const sellers = await Seller.findAll({
         where: {
           isActive: { [Op.ne]: false },
-          [Op.or]: [
-            { name: { [Op.iLike]: like } },
-            { kind: { [Op.iLike]: like } },
-          ],
+          [Op.or]: sellersOr,
         },
         attributes: ["id", "name", "img", "kind", "slug"],
         order: [["id", "ASC"]],
