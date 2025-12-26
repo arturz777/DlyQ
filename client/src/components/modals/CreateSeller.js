@@ -9,10 +9,14 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
   const [slug, setSlug] = useState("");
   const [kind, setKind] = useState("");
   const [img, setImg] = useState("");
+  const [imgFile, setImgFile] = useState(null);
   const [isActive, setIsActive] = useState(true);
   const [address, setAddress] = useState("");
   const [pickupLat, setPickupLat] = useState("");
   const [pickupLng, setPickupLng] = useState("");
+  const [kindRu, setKindRu] = useState("");
+  const [kindEn, setKindEn] = useState("");
+  const [kindEst, setKindEst] = useState("");
 
   const [ownerUserId, setOwnerUserId] = useState("");
 
@@ -29,6 +33,11 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
       setAddress(editableSeller?.address || "");
       setPickupLat(editableSeller?.pickupLat ?? "");
       setPickupLng(editableSeller?.pickupLng ?? "");
+      setKindRu(
+        editableSeller?.translations?.kind?.ru || editableSeller?.kind || ""
+      );
+      setKindEn(editableSeller?.translations?.kind?.en || "");
+      setKindEst(editableSeller?.translations?.kind?.est || "");
 
       setIsActive(
         editableSeller?.isActive === undefined
@@ -36,7 +45,9 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
           : !!editableSeller.isActive
       );
 
-      setOwnerUserId("");
+      setOwnerUserId(
+        editableSeller?.ownerUserId ? String(editableSeller.ownerUserId) : ""
+      );
     } else {
       setName("");
       setSlug("");
@@ -47,6 +58,9 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
       setAddress("");
       setPickupLat("");
       setPickupLng("");
+      setKindRu("");
+      setKindEn("");
+      setKindEst("");
     }
   }, [show, isEdit, editableSeller]);
 
@@ -56,61 +70,77 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
   };
 
   const handleSubmit = async () => {
-  if (!name.trim()) {
-    alert("Введите название магазина");
-    return;
-  }
+    if (!name.trim()) {
+      alert("Введите название магазина");
+      return;
+    }
 
-  const latNum = pickupLat === "" ? null : Number(pickupLat);
-  const lngNum = pickupLng === "" ? null : Number(pickupLng);
+    const latNum = pickupLat === "" ? null : Number(pickupLat);
+    const lngNum = pickupLng === "" ? null : Number(pickupLng);
 
-  if (
-    (pickupLat !== "" || pickupLng !== "") &&
-    (!Number.isFinite(latNum) || !Number.isFinite(lngNum))
-  ) {
-    alert("pickupLat/pickupLng должны быть числами");
-    return;
-  }
+    if (
+      (pickupLat !== "" || pickupLng !== "") &&
+      (!Number.isFinite(latNum) || !Number.isFinite(lngNum))
+    ) {
+      alert("pickupLat/pickupLng должны быть числами");
+      return;
+    }
 
-  if ((latNum == null) !== (lngNum == null)) {
-    alert("Нужно указать и pickupLat, и pickupLng (или оставить оба пустыми)");
-    return;
-  }
+    if ((latNum == null) !== (lngNum == null)) {
+      alert(
+        "Нужно указать и pickupLat, и pickupLng (или оставить оба пустыми)"
+      );
+      return;
+    }
 
-  setLoading(true);
-  try {
-    const payload = {
-      name: name.trim(),
-      slug: slug.trim() || undefined,
-      kind: kind.trim() || undefined,
-      img: img.trim() || undefined,
-      isActive,
-
-      address: address.trim() || undefined,
-      pickupLat: latNum ?? undefined,
-      pickupLng: lngNum ?? undefined,
-    };
+    const kindRuVal = kindRu.trim();
+    const kindEnVal = kindEn.trim();
+    const kindEstVal = kindEst.trim();
 
     const ownerIdNum = Number(ownerUserId);
     if (ownerUserId && !ownerIdNum) {
       alert("ownerUserId должен быть числом");
       return;
     }
-    if (ownerIdNum) payload.ownerUserId = ownerIdNum;
 
-    const saved = isEdit
-      ? await updateSeller(editableSeller.id, payload)
-      : await createSeller(payload);
+    const fd = new FormData();
+    fd.append("name", name.trim());
+    if (slug.trim()) fd.append("slug", slug.trim());
 
-    onSaved?.(saved);
-    onHide?.();
-  } catch (e) {
-    console.error(e);
-    alert(e?.response?.data?.message || "Ошибка сохранения магазина");
-  } finally {
-    setLoading(false);
-  }
-};
+    fd.append("kind", kindRuVal || "");
+
+    fd.append(
+      "translations",
+      JSON.stringify({
+        kind: { ru: kindRuVal, en: kindEnVal, est: kindEstVal },
+      })
+    );
+
+    fd.append("isActive", String(isActive));
+
+    if (address.trim()) fd.append("address", address.trim());
+    if (latNum != null) fd.append("pickupLat", String(latNum));
+    if (lngNum != null) fd.append("pickupLng", String(lngNum));
+    if (ownerIdNum) fd.append("ownerUserId", String(ownerIdNum));
+    if (imgFile) fd.append("img", imgFile);
+    else if (img.trim()) fd.append("img", img.trim());
+    else fd.append("img", "");
+
+    setLoading(true);
+    try {
+      const saved = isEdit
+        ? await updateSeller(editableSeller.id, fd)
+        : await createSeller(fd);
+
+      onSaved?.(saved);
+      onHide?.();
+    } catch (e) {
+      console.error(e);
+      alert(e?.response?.data?.message || "Ошибка сохранения магазина");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Modal show={show} onHide={handleClose} centered>
@@ -141,24 +171,38 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Тип / описание (kind, опционально)</Form.Label>
+            <Form.Label>Тип / описание (kind)</Form.Label>
+
             <Form.Control
-              value={kind}
-              onChange={(e) => setKind(e.target.value)}
-              placeholder="Например: Пиццерия, Суши, Веган и т.п."
+              value={kindRu}
+              onChange={(e) => setKindRu(e.target.value)}
+              placeholder="RU (например: Пиццерия)"
+              className="mb-2"
+            />
+
+            <Form.Control
+              value={kindEn}
+              onChange={(e) => setKindEn(e.target.value)}
+              placeholder="EN (например: Pizzeria)"
+              className="mb-2"
+            />
+
+            <Form.Control
+              value={kindEst}
+              onChange={(e) => setKindEst(e.target.value)}
+              placeholder="EST (например: Pitsarestoran)"
             />
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Картинка (URL, опционально)</Form.Label>
+            <Form.Label>Картинка ресторана</Form.Label>
+
             <Form.Control
-              value={img}
-              onChange={(e) => setImg(e.target.value)}
-              placeholder="https://... или пусто"
+              type="file"
+              accept="image/*"
+              onChange={(e) => setImgFile(e.target.files?.[0] || null)}
+              className="mb-2"
             />
-            <Form.Text>
-              Позже можно будет сделать загрузку файла, пока достаточно URL.
-            </Form.Text>
           </Form.Group>
 
           <Form.Group className="mb-3">
