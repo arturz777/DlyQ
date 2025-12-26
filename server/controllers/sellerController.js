@@ -1,5 +1,12 @@
 const ApiError = require("../error/ApiError");
-const { Seller, SellerUser, User, Warehouse } = require("../models/models");
+const {
+  Seller,
+  SellerUser,
+  User,
+  Warehouse,
+  Translation,
+} = require("../models/models");
+const { Op } = require("sequelize");
 const sequelize = require("../db");
 
 const makeSlug = (name = "") =>
@@ -19,6 +26,84 @@ const parseBool = (v, def = null) => {
   return def;
 };
 
+const SUPPORTED_LANGS = ["ru", "en", "est"];
+
+const parseTranslations = (raw) => {
+  if (!raw) return null;
+
+  let obj = raw;
+  if (typeof raw === "string") {
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  if (!obj || typeof obj !== "object") return null;
+
+  const normLangMap = (m) => {
+    if (!m || typeof m !== "object") return null;
+    const out = {};
+    for (const l of SUPPORTED_LANGS) {
+      if (m[l] !== undefined) {
+        const v = typeof m[l] === "string" ? m[l].trim() : "";
+        if (v) out[l] = v;
+      }
+    }
+    return out;
+  };
+
+  const out = {};
+  if (obj.kind) out.kind = normLangMap(obj.kind);
+  return out;
+};
+
+const readTranslationsMap = async (keys = [], transaction = undefined) => {
+  const uniq = Array.from(new Set((keys || []).filter(Boolean)));
+  if (!uniq.length) return {};
+
+  const rows = await Translation.findAll({
+    attributes: ["key", "lang", "text"],
+    where: { key: { [Op.in]: uniq } },
+    transaction,
+  });
+
+  const map = {};
+  for (const r of rows) {
+    if (!map[r.key]) map[r.key] = {};
+    map[r.key][r.lang] = r.text;
+  }
+  return map;
+};
+
+const syncTranslationsForKey = async (key, langMap, transaction) => {
+  if (!key || !langMap || typeof langMap !== "object") return;
+
+  for (const lang of SUPPORTED_LANGS) {
+    if (langMap[lang] === undefined) continue;
+
+    const text = typeof langMap[lang] === "string" ? langMap[lang].trim() : "";
+
+    const where = { key, lang };
+
+    if (!text) {
+      await Translation.destroy({ where, transaction });
+      continue;
+    }
+
+    const [row, created] = await Translation.findOrCreate({
+      where,
+      defaults: { text },
+      transaction,
+    });
+
+    if (!created && row.text !== text) {
+      row.text = text;
+      await row.save({ transaction });
+    }
+  }
+};
+
 class SellerController {
   async getAll(req, res, next) {
     try {
@@ -34,7 +119,32 @@ class SellerController {
         order: [["id", "ASC"]],
       });
 
-      return res.json(sellers);
+      const keys = sellers.map((s) => `seller_${s.id}.kind`);
+      const tmap = await readTranslationsMap(keys);
+
+      const sellerIds = sellers.map((s) => s.id);
+
+      const owners = await SellerUser.findAll({
+        where: {
+          sellerId: { [Op.in]: sellerIds },
+          roleInSeller: "owner",
+        },
+        attributes: ["sellerId", "userId"],
+      });
+
+      const ownerBySellerId = new Map(
+        owners.map((o) => [Number(o.sellerId), Number(o.userId)])
+      );
+
+      return res.json(
+        sellers.map((s) => ({
+          ...s.toJSON(),
+          ownerUserId: ownerBySellerId.get(Number(s.id)) || null,
+          translations: {
+            kind: tmap[`seller_${s.id}.kind`] || {},
+          },
+        }))
+      );
     } catch (e) {
       next(e);
     }
@@ -44,19 +154,25 @@ class SellerController {
     try {
       const { idOrSlug } = req.params;
 
-      let seller = null;
+      let seller = /^\d+$/.test(idOrSlug)
+        ? await Seller.findByPk(Number(idOrSlug))
+        : await Seller.findOne({ where: { slug: idOrSlug } });
 
-      if (/^\d+$/.test(idOrSlug)) {
-        seller = await Seller.findByPk(Number(idOrSlug));
-      } else {
-        seller = await Seller.findOne({ where: { slug: idOrSlug } });
-      }
+      if (!seller) return next(ApiError.notFound("Магазин не найден"));
 
-      if (!seller) {
-        return next(ApiError.notFound("Магазин не найден"));
-      }
+      const key = `seller_${seller.id}.kind`;
+      const tmap = await readTranslationsMap([key]);
 
-      return res.json(seller);
+      const owner = await SellerUser.findOne({
+        where: { sellerId: seller.id, roleInSeller: "owner" },
+        attributes: ["userId"],
+      });
+
+      return res.json({
+        ...seller.toJSON(),
+        ownerUserId: owner?.userId || null,
+        translations: { kind: tmap[key] || {} },
+      });
     } catch (e) {
       next(e);
     }
@@ -117,7 +233,7 @@ class SellerController {
         {
           name: finalName,
           slug: finalSlug || null,
-          kind: kind ?? null,
+          kind: kind ? String(kind).trim() : null,
           img: img ?? null,
           isActive: isActiveNorm,
           address: address ? String(address).trim() : null,
@@ -126,6 +242,16 @@ class SellerController {
         },
         { transaction: t }
       );
+
+      const parsed = parseTranslations(req.body.translations);
+
+      if (parsed?.kind) {
+        await syncTranslationsForKey(
+          `seller_${seller.id}.kind`,
+          parsed.kind,
+          t
+        );
+      }
 
       await Warehouse.findOrCreate({
         where: { sellerId: seller.id },
@@ -188,7 +314,6 @@ class SellerController {
       const seller = await Seller.findByPk(Number(id), { transaction: t });
       if (!seller) throw ApiError.notFound("Магазин не найден");
 
-      // --- Координаты (можно менять одной парой или очищать обе)
       if (pickupLat !== undefined || pickupLng !== undefined) {
         let nextLat =
           pickupLat === undefined
@@ -239,16 +364,24 @@ class SellerController {
       const activeNorm = parseBool(isActive, null);
       if (activeNorm !== null) seller.isActive = activeNorm;
 
-      if (kind !== undefined) seller.kind = kind || null;
+      if (kind !== undefined) seller.kind = kind ? String(kind).trim() : null;
       if (img !== undefined) seller.img = img || null;
 
       if (address !== undefined)
         seller.address = address ? String(address).trim() : null;
 
-      // ✅ ВОТ ЭТОГО У ТЕБЯ НЕ ХВАТАЛО:
       await seller.save({ transaction: t });
 
-      // --- Склад
+      const parsed = parseTranslations(req.body.translations);
+
+      if (parsed?.kind) {
+        await syncTranslationsForKey(
+          `seller_${seller.id}.kind`,
+          parsed.kind,
+          t
+        );
+      }
+
       const [wh] = await Warehouse.findOrCreate({
         where: { sellerId: seller.id },
         defaults: {
@@ -265,21 +398,33 @@ class SellerController {
         await wh.save({ transaction: t });
       }
 
-      // --- Владелец
       if (ownerUserId) {
         const uid = Number(ownerUserId);
         if (!uid) throw ApiError.badRequest("ownerUserId должен быть числом");
 
         const user = await User.findByPk(uid, { transaction: t });
-        if (!user) {
+        if (!user)
           throw ApiError.badRequest("ownerUserId: пользователь не найден");
-        }
 
-        await SellerUser.findOrCreate({
+        await SellerUser.destroy({
+          where: {
+            sellerId: seller.id,
+            roleInSeller: "owner",
+            userId: { [Op.ne]: uid },
+          },
+          transaction: t,
+        });
+
+        const [link] = await SellerUser.findOrCreate({
           where: { sellerId: seller.id, userId: uid },
           defaults: { roleInSeller: "owner" },
           transaction: t,
         });
+
+        if (link.roleInSeller !== "owner") {
+          link.roleInSeller = "owner";
+          await link.save({ transaction: t });
+        }
 
         const roleUpper = String(user.role || "").toUpperCase();
         if (roleUpper !== "ADMIN" && roleUpper !== "SELLER") {
