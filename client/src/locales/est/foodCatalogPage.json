@@ -1,0 +1,23 @@
+{
+  "page title": "Otsing",
+  "page subtitle": "Restoranid ja road (näiteks: “pitsa”, “sushi”, “burger”)",
+  "search placeholder": "Hakka kirjutama…",
+  "clear": "Tühjenda",
+  "popular queries title": "Populaarsed otsingud",
+  "popular queries": ["Pitsa", "Sushi", "Burger", "Shawarma", "Pasta", "Salat"],
+  "hint": "Sisesta päring, et leida restoran või roog.",
+  "popular restaurants": "Populaarsed restoranid",
+  "empty yet": "Praegu tühi",
+  "searching": "Otsing…",
+  "restaurants": "Restoranid",
+  "dishes": "Road",
+  "nothing found": "Midagi ei leitud",
+  "restaurant": "Restoran",
+  "category": "Kategooria",
+  "add": "Lisa",
+  "out of stock": "Pole laos",
+  "dish unavailable": "Roog ei ole praegu saadaval",
+  "added to cart": "Lisatud ostukorvi",
+  "confirm clear cart": "Ostukorvis on teise restorani tooted. Kas tühjendada ostukorv ja lisada see toode?",
+  "search error": "Otsingu viga"
+}
