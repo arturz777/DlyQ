@@ -32,6 +32,7 @@ import parcelPageEst from './est/parcelPage.json';
 import sellerAdminPageEst from './est/sellerAdminPage.json';
 import sellerPageEst from './est/sellerPage.json';
 import dishModalEst from './est/dishModal.json';
+import foodCatalogPageEst from './est/foodCatalogPage.json';
 
 import navbarEn from './en/navbar.json';
 import searchbarEn from './en/searchbar.json';
@@ -62,6 +63,7 @@ import parcelPageEn from './en/parcelPage.json';
 import sellerAdminPageEn from './en/sellerAdminPage.json';
 import sellerPageEn from './en/sellerPage.json';
 import dishModalEn from './en/dishModal.json';
+import foodCatalogPageEn from './en/foodCatalogPage.json';
 
 import navbarRu from './ru/navbar.json';
 import searchbarRu from './ru/searchbar.json';
@@ -92,6 +94,7 @@ import parcelPageRu from './ru/parcelPage.json';
 import sellerAdminPageRu from './ru/sellerAdminPage.json';
 import sellerPageRu from './ru/sellerPage.json';
 import dishModalRu from './ru/dishModal.json';
+import foodCatalogPageRu from './ru/foodCatalogPage.json';
 
 
 i18n
@@ -134,6 +137,7 @@ i18n
         sellerAdminPage: sellerAdminPageEn,
         sellerPage: sellerPageEn,
         dishModal: dishModalEn,
+        foodCatalogPage: foodCatalogPageEn,
       },
       ru: {
         navbar: navbarRu,
@@ -165,6 +169,7 @@ i18n
         sellerAdminPage: sellerAdminPageRu,
         sellerPage: sellerPageRu,
         dishModal: dishModalRu,
+        foodCatalogPage: foodCatalogPageRu,
       },
       est: {
         navbar: navbarEst,
@@ -196,6 +201,7 @@ i18n
         sellerAdminPage: sellerAdminPageEst,
         sellerPage: sellerPageEst,
         dishModal: dishModalEst,
+        foodCatalogPage: foodCatalogPageEst,
       },
     },
 
