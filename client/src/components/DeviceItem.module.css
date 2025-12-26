@@ -110,6 +110,12 @@
   }
   
  .addButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border: none;
+  padding: 0;
   position: absolute;
   bottom: -2px;
   right: -2px;
