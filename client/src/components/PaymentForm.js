@@ -138,6 +138,7 @@ const PaymentForm = ({
   const [selectedCardMeta, setSelectedCardMeta] = useState(null);
 const [deletingId, setDeletingId] = useState(null);
   const [addressLoading, setAddressLoading] = useState(false);
+    const [pmSaving, setPmSaving] = useState(false);
 
   const applyPlace = (place) => {
     const short = place.short_display_name || place.display_name;
@@ -752,6 +753,7 @@ return (
             <LoadingIconButton
               className="ms-2 btn btn-primary"
               loading={addressLoading}
+              spinnerVariant="light"
               onClick={searchAddress}
               aria-label="Search address"
             >
@@ -1118,9 +1120,13 @@ return (
           >
             {t("cancel", { ns: "paymentForm" })}
           </Button>
-          <Button
+        <LoadingButton
             type="button"
+            loading={pmSaving}
+            loadingText={t("processing", { ns: "paymentForm" })}
             onClick={async () => {
+              if (pmSaving) return;
+              setPmSaving(true);
               try {
                 if (tempPmId !== "new") {
                   const meta =
@@ -1226,13 +1232,15 @@ return (
               } catch (e) {
                 console.error(e);
                 toast.error(t("failed to add card", { ns: "paymentForm" }));
+              } finally {
+                setPmSaving(false);
               }
             }}
           >
             {tempPmId === "new"
               ? t("save card", { ns: "paymentForm" })
               : t("select", { ns: "paymentForm" })}
-          </Button>
+          </LoadingButton>
         </Modal.Footer>
       </Modal>
     </Form>
