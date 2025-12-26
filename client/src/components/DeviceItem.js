@@ -6,6 +6,7 @@ import { Context } from "../index";
 import { fetchOneDevice } from "../http/deviceAPI";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
+import LoadingIconButton from "../components/LoadingIconButton";
 import styles from "./DeviceItem.module.css";
 
 const DeviceItem = ({ device, onClick }) => {
@@ -14,10 +15,19 @@ const DeviceItem = ({ device, onClick }) => {
   const [availableQuantity, setAvailableQuantity] = useState(device.quantity);
   const [isPreorder, setIsPreorder] = useState(false);
   const [isStoreClosed, setIsStoreClosed] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+  const addedTimerRef = useRef(null);
   const { t, i18n } = useTranslation();
   const cardRef = useRef(null);
   const currentLang = i18n.language || "en";
   const deviceName = device.translations?.name?.[currentLang] || device.name;
+
+  useEffect(() => {
+    return () => {
+      if (addedTimerRef.current) clearTimeout(addedTimerRef.current);
+    };
+  }, []);
 
   const parseMaybeJSON = (v) => {
     if (typeof v === "string") {
@@ -148,70 +158,84 @@ const DeviceItem = ({ device, onClick }) => {
 
   const handleAddToBasket = async (e) => {
     e.stopPropagation();
+    e.preventDefault();
 
-    const newSellerId =
-      Number(device.sellerId || device.seller?.id || 0) || null;
+    if (adding) return;
+    setAdding(true);
 
-    if (typeof ensureSingleSeller === "function") {
-      if (!ensureSingleSeller(newSellerId)) {
+    try {
+      const newSellerId =
+        Number(device.sellerId || device.seller?.id || 0) || null;
+
+      if (typeof ensureSingleSeller === "function") {
+        if (!ensureSingleSeller(newSellerId)) {
+          return;
+        }
+      }
+
+      let full = device;
+      try {
+        const fetched = await fetchOneDevice(device.id);
+        if (fetched) full = fetched;
+      } catch {}
+
+      const fullOptions = parseMaybeJSON(full.options) || [];
+      const fullVariants = parseMaybeJSON(full.variants) || [];
+
+      const fullHasOptions =
+        Array.isArray(fullOptions) && fullOptions.length > 0;
+      const fullHasVariants =
+        Array.isArray(fullVariants) && fullVariants.length > 0;
+
+      if (fullHasOptions || fullHasVariants) {
+        goToDevicePage();
         return;
       }
+
+      const itemsInBasket = basket.items.filter(
+        (item) => item.id === device.id
+      );
+      const totalInBasket = itemsInBasket.reduce(
+        (s, it) => s + (it.count || 0),
+        0
+      );
+      const newCount = totalInBasket + 1;
+
+      const isAvailable = await checkStock(device.id, newCount);
+      const isThisPreorder = !isAvailable;
+
+      const itemForBasket = {
+        ...full,
+        selectedOptions: {},
+        variantKey: null,
+
+        sellerId: full.sellerId ?? device.sellerId ?? newSellerId,
+
+        isPreorder: isThisPreorder || isStoreClosed,
+        stockQuantity: Math.max(0, (full.quantity ?? 0) - totalInBasket),
+        isStoreClosed,
+        defaultSelected: !(isThisPreorder || isStoreClosed),
+      };
+
+      basket.addItem(itemForBasket);
+
+      toast.success(
+        <>
+          <strong className={styles.toastTitle}>{deviceName}</strong>
+          <span className={styles.toastSubtitle}>
+            {t("Added to cart!", { ns: "devicePage" })}
+          </span>
+        </>,
+        { style: { maxWidth: "400px" } }
+      );
+
+      setAvailableQuantity((prev) => Math.max(0, prev - 1));
+      setAdded(true);
+      if (addedTimerRef.current) clearTimeout(addedTimerRef.current);
+      addedTimerRef.current = setTimeout(() => setAdded(false), 450);
+    } finally {
+      setAdding(false);
     }
-
-    let full = device;
-    try {
-      const fetched = await fetchOneDevice(device.id);
-      if (fetched) full = fetched;
-    } catch {}
-
-    const fullOptions = parseMaybeJSON(full.options) || [];
-    const fullVariants = parseMaybeJSON(full.variants) || [];
-
-    const fullHasOptions = Array.isArray(fullOptions) && fullOptions.length > 0;
-    const fullHasVariants =
-      Array.isArray(fullVariants) && fullVariants.length > 0;
-
-    if (fullHasOptions || fullHasVariants) {
-      goToDevicePage();
-      return;
-    }
-
-    const itemsInBasket = basket.items.filter((item) => item.id === device.id);
-    const totalInBasket = itemsInBasket.reduce(
-      (s, it) => s + (it.count || 0),
-      0
-    );
-    const newCount = totalInBasket + 1;
-
-    const isAvailable = await checkStock(device.id, newCount);
-    const isThisPreorder = !isAvailable;
-
-    const itemForBasket = {
-      ...full,
-      selectedOptions: {},
-      variantKey: null,
-
-      sellerId: full.sellerId ?? device.sellerId ?? newSellerId,
-
-      isPreorder: isThisPreorder || isStoreClosed,
-      stockQuantity: Math.max(0, (full.quantity ?? 0) - totalInBasket),
-      isStoreClosed,
-      defaultSelected: !(isThisPreorder || isStoreClosed),
-    };
-
-    basket.addItem(itemForBasket);
-
-    toast.success(
-      <>
-        <strong className={styles.toastTitle}>{deviceName}</strong>
-        <span className={styles.toastSubtitle}>
-          {t("Added to cart!", { ns: "devicePage" })}
-        </span>
-      </>,
-      { style: { maxWidth: "400px" } }
-    );
-
-    setAvailableQuantity((prev) => Math.max(0, prev - 1));
   };
 
   return (
@@ -229,9 +253,15 @@ const DeviceItem = ({ device, onClick }) => {
             decoding="async"
             alt={deviceName}
           />
-          <div className={styles.addButton} onClick={handleAddToBasket}>
+          <LoadingIconButton
+            className={styles.addButton}
+            loading={adding}
+            success={added}
+            onClick={handleAddToBasket}
+            aria-label="Add to cart"
+          >
             +
-          </div>
+          </LoadingIconButton>
         </div>
 
         <div className={styles.info}>
