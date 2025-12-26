@@ -243,7 +243,7 @@ if (req.files && req.files.img) {
 
   if (error) throw new Error("Ошибка загрузки изображения в Supabase");
 
-  imgUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
+  imgUrl = `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${fileName}`;
 }
 
 
@@ -410,7 +410,7 @@ async update(req, res, next) {
 
       if (error) throw new Error("Ошибка загрузки нового изображения в Supabase");
 
-      imgUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${newFileName}`;
+      imgUrl = `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${newFileName}`;
     }
 
     if ((!req.files || !req.files.img) && img !== undefined) {
