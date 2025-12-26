@@ -1,0 +1,23 @@
+{
+  "page title": "Search",
+  "page subtitle": "Restaurants and dishes (for example: “pizza”, “sushi”, “burger”)",
+  "search placeholder": "Start typing…",
+  "clear": "Clear",
+  "popular queries title": "Popular searches",
+  "popular queries": ["Pizza", "Sushi", "Burger", "Shawarma", "Pasta", "Salad"],
+  "hint": "Enter a query to find a restaurant or a dish.",
+  "popular restaurants": "Popular restaurants",
+  "empty yet": "Nothing here yet",
+  "searching": "Searching…",
+  "restaurants": "Restaurants",
+  "dishes": "Dishes",
+  "nothing found": "Nothing found",
+  "restaurant": "Restaurant",
+  "category": "Category",
+  "add": "Add",
+  "out of stock": "Out of stock",
+  "dish unavailable": "This dish is currently unavailable",
+  "added to cart": "Added to cart",
+  "confirm clear cart": "Your cart contains items from another restaurant. Clear the cart and add this item?",
+  "search error": "Search error"
+}
