@@ -21,6 +21,7 @@ import {
   fetchModelsByMake,
 } from "../../http/deviceAPI";
 import { observer } from "mobx-react-lite";
+import LoadingButton from "../../components/LoadingButton";
 import styles from "./CreateDevice.module.css";
 
 const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
@@ -963,7 +964,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   };
 
   const handleSave = () => {
-    setLoading(true);
+    if (loading) return;
     setIsSubmitted(true);
     setErrors({});
     setOptionErrors({});
@@ -987,9 +988,10 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       setOptionErrors(validationErrors);
-      setLoading(false);
       return;
     }
+
+    setLoading(true);
 
     const formData = new FormData();
     formData.append("isNew", String(isNew));
@@ -2366,26 +2368,21 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         </Form>
       </Modal.Body>
 
-      <Modal.Footer>
-        <Button variant="outline-danger" onClick={onHide}>
+     <Modal.Footer>
+        <Button variant="outline-danger" onClick={onHide} disabled={loading}>
           Закрыть
         </Button>
-        <Button
-          variant="outline-success"
+
+        <LoadingButton
+          variant="success"
           onClick={handleSave}
-          disabled={loading}
+          loading={loading}
+          loadingText={isEditMode ? "Сохранение..." : "Добавление..."}
         >
-          {loading
-            ? isEditMode
-              ? "Сохраняется..."
-              : "Добавляется..."
-            : isEditMode
-            ? "Сохранить изменения"
-            : "Добавить устройство"}
-        </Button>
+          {isEditMode ? "Сохранить изменения" : "Добавить устройство"}
+        </LoadingButton>
       </Modal.Footer>
 
-      {/* ====== МОДАЛКА ВЫБОРА ФОТО ДЛЯ ВАРИАНТА (оставляем как было) ====== */}
       <Modal
         show={pickerOpenFor !== null}
         onHide={() => setPickerOpenFor(null)}
