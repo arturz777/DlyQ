@@ -13,12 +13,16 @@ export const fetchOneSeller = async (idOrSlug) => {
 };
 
 export const createSeller = async (body) => {
-  const { data } = await $authHost.post("/seller", body);
+  const { data } = await $authHost.post("/seller", body, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return data;
 };
 
 export const updateSeller = async (id, body) => {
-  const { data } = await $authHost.put(`/seller/${id}`, body);
+  const { data } = await $authHost.put(`/seller/${id}`, body, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return data;
 };
 
