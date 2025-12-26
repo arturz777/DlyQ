@@ -88,7 +88,7 @@ async function uploadImageIfAny(req, prevUrl = null) {
 
   if (error) throw new Error("Ошибка загрузки изображения в Supabase");
 
-  return `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
+  return `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${fileName}`;
 }
 
 class MenuItemController {
