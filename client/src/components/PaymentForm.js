@@ -21,6 +21,8 @@ import { toast } from "react-toastify";
 import { fetchProfile, updateProfile } from "../http/userAPI";
 import { Context } from "../index";
 import { fetchDeliveryCost } from "../utils/deliveryCost";
+import LoadingButton from "../components/LoadingButton";
+import LoadingIconButton from "../components/LoadingIconButton";
 import { useTranslation } from "react-i18next";
 import styles from "./PaymentForm.module.css";
 
@@ -122,7 +124,7 @@ const PaymentForm = ({
   } = preorder || {};
   const stripe = useStripe();
   const elements = useElements();
-  const confirm = useConfirm();
+   const confirm = useConfirm();
   const [deliveryCost, setDeliveryCost] = useState(0);
   const { t } = useTranslation("paymentForm");
   const [suggestions, setSuggestions] = useState([]);
@@ -134,7 +136,8 @@ const PaymentForm = ({
   const [showPmModal, setShowPmModal] = useState(false);
   const [tempPmId, setTempPmId] = useState("new");
   const [selectedCardMeta, setSelectedCardMeta] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
+const [deletingId, setDeletingId] = useState(null);
+  const [addressLoading, setAddressLoading] = useState(false);
 
   const applyPlace = (place) => {
     const short = place.short_display_name || place.display_name;
@@ -349,39 +352,42 @@ const PaymentForm = ({
     }
   };
 
-  const searchAddress = async () => {
-    const q = (formData.address || "").trim();
-    if (!q) return;
+ const searchAddress = async () => {
+  const q = (formData.address || "").trim();
+  if (!q || addressLoading) return;
 
-    try {
+  setAddressLoading(true);
+  try {
       const res = await fetch(
         `${process.env.REACT_APP_API_URL}/geo/search?q=${encodeURIComponent(
-          formData.address
+          q
         )}`
       );
-      if (!res.ok) throw new Error("search failed");
-      const data = await res.json();
+    if (!res.ok) throw new Error("search failed");
+    const data = await res.json();
 
-      if (Array.isArray(data) && data.length > 0) {
-        const place = data[0];
-        const short = place.short_display_name || place.display_name || q;
+    if (Array.isArray(data) && data.length > 0) {
+      const place = data[0];
+      const short = place.short_display_name || place.display_name || q;
 
-        setFormData((prev) => ({
-          ...prev,
-          address: short,
-          latitude: parseFloat(place.lat) || prev.latitude,
-          longitude: parseFloat(place.lon) || prev.longitude,
-        }));
+      setFormData((prev) => ({
+        ...prev,
+        address: short,
+        latitude: parseFloat(place.lat) || prev.latitude,
+        longitude: parseFloat(place.lon) || prev.longitude,
+      }));
 
-        toast.success(t("address found", { ns: "paymentForm" }));
-      } else {
-        toast.error(t("address not found", { ns: "paymentForm" }));
-      }
-    } catch (error) {
-      console.error("Address search error:", error);
-      toast.error(t("address search error", { ns: "paymentForm" }));
+      toast.success(t("address found", { ns: "paymentForm" }));
+    } else {
+      toast.error(t("address not found", { ns: "paymentForm" }));
     }
-  };
+  } catch (error) {
+    console.error("Address search error:", error);
+    toast.error(t("address search error", { ns: "paymentForm" }));
+  } finally {
+    setAddressLoading(false);
+  }
+};
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -514,7 +520,7 @@ const handleSubmit = async (event) => {
       return;
     }
 
-if (
+  if (
       preorder &&
       !preorder.hasMixedItems &&
       preorder.hasOnlyStockItems &&
@@ -564,7 +570,6 @@ if (
 
       if (!piRes.ok) {
         toast.error(t("payment initialization error", { ns: "paymentForm" }));
-        setLoading(false);
         return;
       }
 
@@ -580,7 +585,6 @@ if (
         const cardEl = elements.getElement(CardNumberElement);
         if (!cardEl) {
           toast.error(t("card element not found", { ns: "paymentForm" }));
-          setLoading(false);
           return;
         }
         confirmResult = await stripe.confirmCardPayment(clientSecret, {
@@ -601,18 +605,16 @@ if (
 
       if (error) {
         toast.error(error.message);
-        setLoading(false);
         return;
       }
 
-    if (paymentIntent?.status !== "succeeded") {
+      if (paymentIntent?.status !== "succeeded") {
         toast.error(
           t("payment status", {
             ns: "paymentForm",
             status: paymentIntent?.status || "unknown",
           })
         );
-        setLoading(false);
         return;
       }
 
@@ -630,7 +632,6 @@ if (
         } catch (err) {
           console.warn(t("failed to save phone", { ns: "paymentForm" }), err);
           toast.error(t("failed to save phone", { ns: "paymentForm" }));
-          setLoading(false);
           return;
         }
       }
@@ -747,17 +748,17 @@ return (
               }
               autoComplete="off"
             />
-
-            <Button
-              type="button"
+                
+            <LoadingIconButton
+              className="ms-2 btn btn-primary"
+              loading={addressLoading}
               onClick={searchAddress}
-              variant="primary"
-              className="ms-2"
+              aria-label="Search address"
             >
               🔍
-            </Button>
+            </LoadingIconButton>
 
-            {addressFocused && suggestions.length > 0 && (
+           {addressFocused && suggestions.length > 0 && (
               <div
                 style={{
                   position: "absolute",
@@ -825,7 +826,7 @@ return (
           </MapContainer>
         </div>
 
-      <div className={styles.flatRow}>
+       <div className={styles.flatRow}>
           <Form.Group controlId="apartment" className={styles.flatGroup}>
             <Form.Control
               size="sm"
@@ -883,7 +884,7 @@ return (
           <Form.Group className={styles.preorderSection}>
             {(isPreorder || hasOnlyPreorders) && (
               <div className={styles.preorderNote}>
-               {isStoreClosed
+                {isStoreClosed
                   ? t("preorder note store closed", { ns: "paymentForm" })
                   : hasOnlyPreorders
                   ? t("preorder note out of stock", { ns: "paymentForm" })
@@ -900,7 +901,7 @@ return (
               disabled={preorder.disablePreorderCheckbox}
             />
 
-            {preorder.isPreorder && preorder.hasOnlyStockItems && (
+           {preorder.isPreorder && preorder.hasOnlyStockItems && (
               <>
                 <Form.Label>
                   {t("desired delivery datetime", { ns: "basket" })}
@@ -970,17 +971,19 @@ return (
       )}
 
       <div className="text-center">
-        <button
-          className={styles.buttonTPrice}
+        <LoadingButton
           type="submit"
-          disabled={loading || !stripe}
+          loading={loading}
+          loadingText={t("processing", { ns: "paymentForm" })}
+          disabled={!stripe}
+          className={styles.buttonTPrice}
+          minWidth={0}
+          style={{ width: "100%" }}
         >
-          {loading
-            ? t("processing", { ns: "paymentForm" })
-            : `${t("pay", { ns: "paymentForm" })} ${(
-                totalPrice + deliveryCost
-              ).toFixed(2)} €`}
-        </button>
+          {`${t("pay", { ns: "paymentForm" })} ${(
+            totalPrice + deliveryCost
+          ).toFixed(2)} €`}
+        </LoadingButton>
       </div>
 
       <Modal
