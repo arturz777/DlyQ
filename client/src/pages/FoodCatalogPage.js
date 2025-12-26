@@ -32,8 +32,6 @@ const pickTr = (base, map, lang) => {
   return typeof v === "string" && v.trim() ? v : base;
 };
 
-const POPULAR_QUERIES = ["Пицца", "Суши", "Бургер", "Шаурма", "Паста", "Салат"];
-
 const FoodCatalogPage = () => {
   const navigate = useNavigate();
   const { basket } = useContext(Context);
@@ -42,7 +40,7 @@ const FoodCatalogPage = () => {
   const [loading, setLoading] = useState(false);
   const [sellers, setSellers] = useState([]);
   const [items, setItems] = useState([]);
-  const [error, setError] = useState("");
+  const [errorKey, setErrorKey] = useState("");
 
   const [topSellers, setTopSellers] = useState([]);
   const [selectedItemId, setSelectedItemId] = useState(null);
@@ -51,6 +49,14 @@ const FoodCatalogPage = () => {
   const inputRef = useRef(null);
   const { t, i18n } = useTranslation();
   const uiLang = normUiLang(i18n.language);
+
+  const popularQueries = useMemo(() => {
+    const v = t("popular queries", {
+      ns: "foodCatalogPage",
+      returnObjects: true,
+    });
+    return Array.isArray(v) ? v : [];
+  }, [i18n.language, t]);
 
   const selectedItem = useMemo(() => {
     return items.find((x) => String(x.id) === String(selectedItemId)) || null;
@@ -69,7 +75,7 @@ const FoodCatalogPage = () => {
         );
         setTopSellers(active.slice(0, 12));
       } catch (e) {
-        console.error("top sellers load error", e);
+        console.error("Top sellers load error", e);
       }
     })();
 
@@ -102,7 +108,7 @@ const FoodCatalogPage = () => {
     if (unique.length === 1 && unique[0] === newSellerId) return true;
 
     const ok = window.confirm(
-      "В корзине товары другого ресторана. Очистить корзину и добавить этот товар?"
+      t("confirm clear cart", { ns: "foodCatalogPage" })
     );
     if (!ok) return false;
 
@@ -120,7 +126,7 @@ const FoodCatalogPage = () => {
 
   const addToBasket = (item, qty = 1) => {
     if (!item?.isAvailable) {
-      toast.error("Блюдо сейчас недоступно");
+      toast.error(t("dish unavailable", { ns: "foodCatalogPage" }));
       return;
     }
 
@@ -154,13 +160,13 @@ const FoodCatalogPage = () => {
     toast.success(
       <>
         <strong>{itemName}</strong>
-        <div>Добавлено в корзину</div>
+        <div>{t("added to cart", { ns: "foodCatalogPage" })}</div>
       </>
     );
   };
 
   useEffect(() => {
-    setError("");
+    setErrorKey("");
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     const q = query.trim();
@@ -179,7 +185,7 @@ const FoodCatalogPage = () => {
         setItems(Array.isArray(data?.items) ? data.items : []);
       } catch (e) {
         console.error(e);
-        setError("Ошибка поиска");
+        setErrorKey("search error");
         setSellers([]);
         setItems([]);
       } finally {
@@ -197,9 +203,11 @@ const FoodCatalogPage = () => {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <h1 className={styles.title}>Поиск</h1>
+        <h1 className={styles.title}>
+          {t("page title", { ns: "foodCatalogPage" })}
+        </h1>
         <div className={styles.subtitle}>
-          Рестораны и блюда (например: “пицца”, “суши”, “бургер”)
+          {t("page subtitle", { ns: "foodCatalogPage" })}
         </div>
       </div>
 
@@ -209,7 +217,7 @@ const FoodCatalogPage = () => {
           className={styles.searchInput}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Начните вводить…"
+          placeholder={t("search placeholder", { ns: "foodCatalogPage" })}
           autoComplete="off"
         />
         {query && (
@@ -217,21 +225,27 @@ const FoodCatalogPage = () => {
             type="button"
             className={styles.clearBtn}
             onClick={() => setQuery("")}
-            aria-label="Очистить"
+            aria-label={t("clear", { ns: "foodCatalogPage" })}
           >
             ✕
           </button>
         )}
       </div>
 
-      {error ? <div className={styles.error}>{error}</div> : null}
+      {errorKey ? (
+        <div className={styles.error}>
+          {t(errorKey, { ns: "foodCatalogPage" })}
+        </div>
+      ) : null}
 
       {!qTrim ? (
         <div className={styles.emptyState}>
           <div className={styles.block}>
-            <div className={styles.blockTitle}>Популярные запросы</div>
+            <div className={styles.blockTitle}>
+              {t("popular queries title", { ns: "foodCatalogPage" })}
+            </div>
             <div className={styles.chips}>
-              {POPULAR_QUERIES.map((x) => (
+              {popularQueries.map((x) => (
                 <button
                   key={x}
                   type="button"
@@ -244,15 +258,19 @@ const FoodCatalogPage = () => {
             </div>
 
             <div className={styles.hint}>
-              Введите запрос, чтобы найти ресторан или блюдо.
+              {t("hint", { ns: "foodCatalogPage" })}
             </div>
           </div>
 
           <div className={styles.block}>
-            <div className={styles.blockTitle}>Популярные рестораны</div>
+            <div className={styles.blockTitle}>
+              {t("popular restaurants", { ns: "foodCatalogPage" })}
+            </div>
 
             {topSellers.length === 0 ? (
-              <div className={styles.empty}>Пока пусто</div>
+              <div className={styles.empty}>
+                {t("empty yet", { ns: "foodCatalogPage" })}
+              </div>
             ) : (
               <div className={styles.topSellersGrid}>
                 {topSellers.map((s) => {
@@ -295,15 +313,23 @@ const FoodCatalogPage = () => {
         </div>
       ) : null}
 
-      {loading && qTrim ? <div className={styles.loading}>Поиск…</div> : null}
+      {loading && qTrim ? (
+        <div className={styles.loading}>
+          {t("searching", { ns: "foodCatalogPage" })}
+        </div>
+      ) : null}
 
       {!loading && qTrim ? (
         <div className={styles.grid}>
           <section className={styles.block}>
-            <div className={styles.blockTitle}>Рестораны</div>
+            <div className={styles.blockTitle}>
+              {t("restaurants", { ns: "foodCatalogPage" })}
+            </div>
 
             {sellers.length === 0 ? (
-              <div className={styles.empty}>Ничего не найдено</div>
+              <div className={styles.empty}>
+                {t("nothing found", { ns: "foodCatalogPage" })}
+              </div>
             ) : (
               <div className={styles.sellersList}>
                 {sellers.map((s) => {
@@ -350,15 +376,21 @@ const FoodCatalogPage = () => {
           </section>
 
           <section className={styles.block}>
-            <div className={styles.blockTitle}>Блюда</div>
+            <div className={styles.blockTitle}>
+              {t("dishes", { ns: "foodCatalogPage" })}
+            </div>
 
             {items.length === 0 ? (
-              <div className={styles.empty}>Ничего не найдено</div>
+              <div className={styles.empty}>
+                {t("nothing found", { ns: "foodCatalogPage" })}
+              </div>
             ) : (
               <div className={styles.itemsList}>
                 {items.map((it) => {
                   const img = getImgSrc(it.img);
-                  const sellerTitle = it?.seller?.name || "Ресторан";
+                  const sellerTitle =
+                    it?.seller?.name ||
+                    t("restaurant", { ns: "foodCatalogPage" });
                   const sellerSlugOrId = it?.seller?.slug || it?.sellerId;
                   const itName = pickTr(it.name, it.translations?.name, uiLang);
 
@@ -411,7 +443,8 @@ const FoodCatalogPage = () => {
 
                         {it?.category?.name ? (
                           <div className={styles.itemMeta}>
-                            Категория: {it.category.name}
+                            {t("category", { ns: "foodCatalogPage" })}:{" "}
+                            {it.category.name}
                           </div>
                         ) : null}
 
@@ -426,7 +459,9 @@ const FoodCatalogPage = () => {
                               addToBasket(it, 1);
                             }}
                           >
-                            {it.isAvailable ? "Добавить" : "Нет в наличии"}
+                            {it.isAvailable
+                              ? t("add", { ns: "foodCatalogPage" })
+                              : t("out of stock", { ns: "foodCatalogPage" })}
                           </button>
                         </div>
                       </div>
