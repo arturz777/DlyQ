@@ -67,7 +67,7 @@ const BasketDevice = sequelize.define("basket_device", {
 
 const Device = sequelize.define("device", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  sellerId: { type: DataTypes.INTEGER, allowNull: false },
+  sellerId: { type: DataTypes.INTEGER, allowNull: true },
   name: { type: DataTypes.STRING, unique: true, allowNull: false },
   price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   oldPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
