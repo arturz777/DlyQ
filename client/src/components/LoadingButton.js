@@ -1,11 +1,12 @@
 import React from "react";
 import { Button, Spinner } from "react-bootstrap";
+import { useTranslation } from "react-i18next";
 
 const LoadingButton = React.forwardRef(
   (
     {
       loading = false,
-      loadingText = "Loading...",
+      loadingText,
       spinner = true,
       spinnerPlacement = "left",
       minWidth = 200,
@@ -15,6 +16,7 @@ const LoadingButton = React.forwardRef(
     },
     ref
   ) => {
+    const { t } = useTranslation();
     const isDisabled = Boolean(disabled || loading);
 
     const SpinnerEl = spinner ? (
@@ -32,6 +34,8 @@ const LoadingButton = React.forwardRef(
       />
     ) : null;
 
+    const text = loadingText ?? t("Loading...", { ns: "devicePage" });
+
     return (
       <Button
         ref={ref}
@@ -44,7 +48,7 @@ const LoadingButton = React.forwardRef(
         {loading ? (
           <>
             {spinnerPlacement === "left" ? SpinnerEl : null}
-            <span>{loadingText}</span>
+            <span>{text}</span>
             {spinnerPlacement === "right" ? SpinnerEl : null}
           </>
         ) : (
