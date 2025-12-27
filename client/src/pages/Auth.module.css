@@ -192,3 +192,15 @@
   border-radius: 6px;
   overflow: hidden;
 }
+
+.fieldError {
+  margin-top: -6px;
+  margin-bottom: 3px;
+  font-size: 12px;
+  color: #c40000;
+}
+
+.inputError {
+  border: 1px solid #c40000 !important;
+  box-shadow: 0 0 0 2px rgba(196, 0, 0, 0.12);
+}
