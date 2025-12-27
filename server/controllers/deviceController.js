@@ -136,6 +136,12 @@ class DeviceController {
         snoozeUntil,
       } = req.body;
 
+      const sellerIdNum = Number(sellerId);
+      const normalizedSellerId =
+        Number.isInteger(sellerIdNum) && sellerIdNum > 0
+          ? sellerIdNum
+          : null;
+
       if (!req.files || !req.files.img) {
         return res
           .status(400)
@@ -248,7 +254,7 @@ class DeviceController {
       const isVisible = req.body.isVisible === "false" ? false : true;
 
       const device = await Device.create({
-        sellerId: Number(sellerId) || 1,
+        sellerId: normalizedSellerId,
         name,
         price,
         oldPrice: oldPrice || null,
