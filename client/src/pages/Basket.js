@@ -88,6 +88,11 @@ const Basket = observer(() => {
   const [preferredTime, setPreferredTime] = useState("");
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
+  const [busyAction, setBusyAction] = useState({});
+
+  const setBusy = (key, action) =>
+    setBusyAction((prev) => ({ ...prev, [key]: action }));
+
   const { t, i18n } = useTranslation();
   const uiLang = normUiLang(i18n.language);
 
@@ -245,6 +250,7 @@ const Basket = observer(() => {
   }, [basket.items, hasOnlyPreorders, hasMixedItems, isPreorder, storeClosed]);
 
   const handleIncrement = async (uniqueKey) => {
+    if (busyAction[uniqueKey]) return;
     const item = basket.items.find((i) => i.uniqueKey === uniqueKey);
     if (!item) return;
 
@@ -255,24 +261,34 @@ const Basket = observer(() => {
       return;
     }
 
-    const normalizedOptions = Object.fromEntries(
-      Object.entries(item.selectedOptions || {}).map(([k, v]) => [k, getVal(v)])
-    );
-    const info = await fetchStockInfo(item.id, newCount, normalizedOptions);
+    setBusy(uniqueKey, "inc");
+    try {
+      const normalizedOptions = Object.fromEntries(
+        Object.entries(item.selectedOptions || {}).map(([k, v]) => [
+          k,
+          getVal(v),
+        ])
+      );
 
-    item.stockQuantity = info.quantity;
+      const info = await fetchStockInfo(item.id, newCount, normalizedOptions);
 
-    if (!info.isEnough) {
-      item.isPreorder = true;
-      basket.setSelected(item.uniqueKey, false);
-    } else {
-      item.isPreorder = false;
+      item.stockQuantity = info.quantity;
+
+      if (!info.isEnough) {
+        item.isPreorder = true;
+        basket.setSelected(item.uniqueKey, false);
+      } else {
+        item.isPreorder = false;
+      }
+
+      basket.updateItemCount(uniqueKey, newCount);
+    } finally {
+      setBusy(uniqueKey, null);
     }
-
-    basket.updateItemCount(uniqueKey, newCount);
   };
 
   const handleDecrement = async (uniqueKey) => {
+    if (busyAction[uniqueKey]) return;
     const item = basket.items.find((i) => i.uniqueKey === uniqueKey);
     if (!item) return;
 
@@ -286,20 +302,28 @@ const Basket = observer(() => {
       return;
     }
 
-    const normalizedOptions = Object.fromEntries(
-      Object.entries(item.selectedOptions || {}).map(([k, v]) => [k, getVal(v)])
-    );
+    setBusy(uniqueKey, "dec");
+    try {
+      const normalizedOptions = Object.fromEntries(
+        Object.entries(item.selectedOptions || {}).map(([k, v]) => [
+          k,
+          getVal(v),
+        ])
+      );
 
-    const info = await fetchStockInfo(item.id, newCount, normalizedOptions);
+      const info = await fetchStockInfo(item.id, newCount, normalizedOptions);
 
-    item.stockQuantity = info.quantity;
-    item.isPreorder = !info.isEnough;
+      item.stockQuantity = info.quantity;
+      item.isPreorder = !info.isEnough;
 
-    if (item.isPreorder) {
-      basket.setSelected(item.uniqueKey, false);
+      if (item.isPreorder) {
+        basket.setSelected(item.uniqueKey, false);
+      }
+
+      basket.updateItemCount(uniqueKey, newCount);
+    } finally {
+      setBusy(uniqueKey, null);
     }
-
-    basket.updateItemCount(uniqueKey, newCount);
   };
 
   const handleRemove = (uniqueKey) => {
@@ -403,6 +427,7 @@ const Basket = observer(() => {
     optionName,
     selectedValue
   ) => {
+    if (busyAction[itemUniqueKey]) return;
     const item = basket.items.find((i) => i.uniqueKey === itemUniqueKey);
     if (!item) return;
 
@@ -427,6 +452,7 @@ const Basket = observer(() => {
     const normalizedOptions = Object.fromEntries(
       Object.entries(newOptions || {}).map(([k, v]) => [k, getVal(v)])
     );
+
     const info = await fetchStockInfo(item.id, item.count, normalizedOptions);
 
     const qtyText = `${info.quantity} ${t("unit_pcs_short", { ns: "basket" })}`;
@@ -623,6 +649,8 @@ const Basket = observer(() => {
       (!itemIsOOS && hasSelectedOOS);
 
     const title = pickItemName(item, uiLang);
+    const action = busyAction[item.uniqueKey];
+    const busy = !!action;
 
     return (
       <Card
@@ -678,20 +706,34 @@ const Basket = observer(() => {
 
           <div className={styles.bottomRow}>
             <div className={styles.counter}>
-              <button onClick={() => handleDecrement(item.uniqueKey)}>-</button>
+              <button
+                onClick={() => handleDecrement(item.uniqueKey)}
+                disabled={busy}
+              >
+                {action === "dec" ? (
+                  <span className={styles.miniSpinner} />
+                ) : (
+                  "-"
+                )}
+              </button>
               <span className={styles.count}>
                 {basket.getItemCount(item.uniqueKey)}
               </span>
               <button
                 onClick={() => handleIncrement(item.uniqueKey)}
                 disabled={
-                  !item.isPreorder &&
-                  availableQuantities[item.uniqueKey] != null &&
-                  basket.getItemCount(item.uniqueKey) >=
-                    availableQuantities[item.uniqueKey]
+                  busy ||
+                  (!item.isPreorder &&
+                    availableQuantities[item.uniqueKey] != null &&
+                    basket.getItemCount(item.uniqueKey) >=
+                      availableQuantities[item.uniqueKey])
                 }
               >
-                +
+                {action === "inc" ? (
+                  <span className={styles.miniSpinner} />
+                ) : (
+                  "+"
+                )}
               </button>
             </div>
 
