@@ -1,31 +1,49 @@
 import {$authHost, $host} from "./index";
 import { jwtDecode } from "jwt-decode";
 
-export const registration = async (email, password, firstName, lastName, phone) => {
-  const { data } = await $host.post(
-    "/user/registration",
-    { email, password, firstName, lastName, phone },
-    { withCredentials: true } 
-  );
+const getLang = () => {
+  const l = (localStorage.getItem("i18nextLng") || "est")
+    .toLowerCase()
+    .split("-")[0];
 
-  localStorage.setItem('token', data.accessToken); 
-  return {
-    user: jwtDecode(data.accessToken),
-    token: data.accessToken
-  };
+  if (l === "et") return "est";
+  if (l === "ru") return "ru";
+  if (l === "en") return "en";
+  if (l === "est") return "est";
+  return "est";
 };
 
+export const registration = async (
+  email,
+  password,
+  firstName,
+  lastName,
+  phone
+) => {
+  const language = getLang();
+
+  const { data } = await $host.post(
+    "/user/registration",
+    { email, password, firstName, lastName, phone, language },
+    { withCredentials: true, headers: { "x-lang": language } }
+  );
+
+  localStorage.setItem("token", data.accessToken);
+  return { user: jwtDecode(data.accessToken), token: data.accessToken };
+};
 
 export const login = async (email, password) => {
+  const language = getLang();
+
   const response = await $host.post(
     "/user/login",
-    { email, password },
-    { withCredentials: true } 
+    { email, password, language },
+    { withCredentials: true, headers: { "x-lang": language } }
   );
-  const accessToken = response.data.accessToken;
 
+  const accessToken = response.data.accessToken;
   localStorage.setItem("token", accessToken);
-  return jwtDecode(accessToken); 
+  return jwtDecode(accessToken);
 };
 
 export const check = async () => {
@@ -59,10 +77,12 @@ export const changePassword = async (passwordData) => {
 };
 
 export const googleLogin = async (token) => {
+  const language = getLang();
+
   const { data } = await $host.post(
     "/user/google-login",
-    { token },
-    { withCredentials: true }
+    { token, language },
+    { withCredentials: true, headers: { "x-lang": language } }
   );
 
   localStorage.setItem("token", data.accessToken);
