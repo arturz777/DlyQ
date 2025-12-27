@@ -298,3 +298,34 @@
     padding: 5px 7px;
   }
 }
+
+.miniSpinner{
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  display: block;
+  animation: spin .7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.counter button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  line-height: 1;
+  border-radius: 8px;
+  border: 1px solid #d3d7df;
+  background: #fff;
+  color: #0072ce;
+}
+.counter button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
