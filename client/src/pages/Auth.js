@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import { LOGIN_ROUTE, REGISTRATION_ROUTE, SHOP_ROUTE } from "../utils/consts";
@@ -6,6 +6,7 @@ import { login, registration, googleLogin } from "../http/userAPI";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import { useTranslation } from "react-i18next";
+import LoadingButton from "../components/LoadingButton";
 import styles from "./Auth.module.css";
 
 const Auth = observer(() => {
@@ -15,10 +16,14 @@ const Auth = observer(() => {
   const isLogin = location.pathname === LOGIN_ROUTE;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [agreed, setAgreed] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { t, i18n } = useTranslation();
 
   const languages = [
@@ -27,7 +32,46 @@ const Auth = observer(() => {
     { code: "RU", language: "ru" },
   ];
 
+  const isEmailValid = (v) => /\S+@\S+\.\S+/.test(String(v || "").trim());
+
+  const validate = () => {
+    const e = {};
+
+    if (!email.trim()) e.email = t("email_required", { ns: "auth" });
+    else if (!isEmailValid(email)) e.email = t("email_invalid", { ns: "auth" });
+
+    if (!password.trim()) e.password = t("password_required", { ns: "auth" });
+    else if (password.trim().length < 6)
+      e.password = t("password_min", { ns: "auth", min: 6 });
+
+    if (!isLogin) {
+      if (!confirmPassword.trim())
+        e.confirmPassword = t("confirm_password_required", { ns: "auth" });
+      else if (confirmPassword !== password)
+        e.confirmPassword = t("passwords_not_match", { ns: "auth" });
+
+      if (!firstName.trim())
+        e.firstName = t("first_name_required", { ns: "auth" });
+
+      if (!phone.trim()) e.phone = t("phone_required", { ns: "auth" });
+
+      if (!agreed) e.agreed = t("agree_required", { ns: "auth" });
+    }
+
+    return e;
+  };
+
+  useEffect(() => {
+    setPassword("");
+    setConfirmPassword("");
+  }, [isLogin]);
+
   const click = async () => {
+    setSubmitted(true);
+    const e = validate();
+    setFieldErrors(e);
+    if (Object.keys(e).length) return;
+
     try {
       let data;
       if (isLogin) {
@@ -79,6 +123,9 @@ const Auth = observer(() => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+          {submitted && fieldErrors.email && (
+            <div className={styles.fieldError}>{fieldErrors.email}</div>
+          )}
           <input
             className={styles.inputField}
             placeholder={t("enter your password", { ns: "auth" })}
@@ -86,14 +133,35 @@ const Auth = observer(() => {
             onChange={(e) => setPassword(e.target.value)}
             type="password"
           />
+          {submitted && fieldErrors.confirmPassword && (
+            <div className={styles.fieldError}>
+              {fieldErrors.confirmPassword}
+            </div>
+          )}
+
           {!isLogin && (
             <>
+              <input
+                className={styles.inputField}
+                placeholder={t("confirm your password", { ns: "auth" })}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                type="password"
+              />
+              {submitted && fieldErrors.confirmPassword && (
+                <div className={styles.fieldError}>
+                  {fieldErrors.confirmPassword}
+                </div>
+              )}
               <input
                 className={styles.inputField}
                 placeholder={t("enter your first name", { ns: "auth" })}
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
               />
+              {submitted && fieldErrors.firstName && (
+                <div className={styles.fieldError}>{fieldErrors.firstName}</div>
+              )}
               <input
                 className={styles.inputField}
                 placeholder={t("enter your last name", { ns: "auth" })}
@@ -106,6 +174,9 @@ const Auth = observer(() => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
+              {submitted && fieldErrors.phone && (
+                <div className={styles.fieldError}>{fieldErrors.phone}</div>
+              )}
             </>
           )}
           <div className={styles.authSwitch}>
@@ -132,6 +203,9 @@ const Auth = observer(() => {
                 checked={agreed}
                 onChange={() => setAgreed(!agreed)}
               />
+              {submitted && fieldErrors.agreed && (
+                <div className={styles.fieldError}>{fieldErrors.agreed}</div>
+              )}
               <label htmlFor="policyCheckbox">
                 <span>
                   {t("agree to terms", { ns: "auth" })}{" "}
@@ -148,16 +222,19 @@ const Auth = observer(() => {
               </label>
             </div>
           )}
-          <button
-            type="button"
+          <LoadingButton
             className={styles.authButton}
             onClick={click}
-            disabled={!agreed && !isLogin}
+            loading={loading}
+            loadingText={t("processing", { ns: "auth" })}
+            disabled={!isLogin && !agreed}
+            minWidth={0}
+            style={{ width: "100%" }}
           >
             {isLogin
               ? t("login", { ns: "auth" })
               : t("register", { ns: "auth" })}
-          </button>
+          </LoadingButton>
         </form>
         {isLogin && (
           <div className={styles.googleLoginWrapper}>
