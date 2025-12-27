@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import appStore from "../store/appStore";
+import LoadingButton from "../components/LoadingButton";
 import styles from "./DevicePage.module.css";
 
 const getVal = (x) =>
@@ -51,6 +52,7 @@ const DevicePage = ({ id }) => {
   const deviceName = device.translations?.name?.[currentLang] || device.name;
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [[page, direction], setPage] = useState([0, 0]);
+  const [adding, setAdding] = useState(false);
   const imageIndex = activeIndex;
 
   const checkStock = async (deviceId, quantity, selectedOptions) => {
@@ -300,11 +302,11 @@ const DevicePage = ({ id }) => {
   }, [selectedVariant?.image, images]);
 
   const dateLocale = (() => {
-  const l = (i18n.language || "en").toLowerCase();
-  if (l.startsWith("ru")) return "ru-RU";
-  if (l === "est" || l.startsWith("et")) return "et-EE";
-  return "en-GB";
-})();
+    const l = (i18n.language || "en").toLowerCase();
+    if (l.startsWith("ru")) return "ru-RU";
+    if (l === "est" || l.startsWith("et")) return "et-EE";
+    return "en-GB";
+  })();
 
   const hyphenLang = (() => {
     const l = (i18n.language || "ru").toLowerCase();
@@ -354,13 +356,14 @@ const DevicePage = ({ id }) => {
   };
 
   const handleAddToBasket = async () => {
+    if (adding) return;
     if ((device.variants?.length || 0) > 0) {
       if ((device.options?.length || 0) === 0) {
         toast.error(
-  `❌ ${t("options must be configured for products with variants", {
-    ns: "devicePage",
-  })}`
-);
+          `❌ ${t("options must be configured for products with variants", {
+            ns: "devicePage",
+          })}`
+        );
         return;
       }
       const allChosen = device.options.every(
@@ -380,57 +383,63 @@ const DevicePage = ({ id }) => {
       }
     }
 
-    const cleanSelected = Object.fromEntries(
-      Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
-    );
-    const variantKey = device.variants?.length
-      ? makeVariantKey(cleanSelected)
-      : null;
+    setAdding(true);
+    try {
+      const cleanSelected = Object.fromEntries(
+        Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
+      );
+      const variantKey = device.variants?.length
+        ? makeVariantKey(cleanSelected)
+        : null;
 
-    const existingItem = basket.items.find(
-      (item) =>
-        item.id === device.id &&
-        ((variantKey && item.variantKey === variantKey) ||
-          (!variantKey &&
-            JSON.stringify(item.selectedOptions) ===
-              JSON.stringify(selectedOptions)))
-    );
+      const existingItem = basket.items.find(
+        (item) =>
+          item.id === device.id &&
+          ((variantKey && item.variantKey === variantKey) ||
+            (!variantKey &&
+              JSON.stringify(item.selectedOptions) ===
+                JSON.stringify(selectedOptions)))
+      );
 
-    const newCount = (existingItem?.count || 0) + 1;
+      const newCount = (existingItem?.count || 0) + 1;
 
-    const isAvailable = await checkStock(device.id, newCount, selectedOptions);
-    const isThisPreorder = !isAvailable;
+      const isAvailable = await checkStock(
+        device.id,
+        newCount,
+        selectedOptions
+      );
+      const isThisPreorder = !isAvailable;
 
-    const newItem = {
-      ...device,
-      selectedOptions,
-      variantKey,
+      const newItem = {
+        ...device,
+        selectedOptions,
+        variantKey,
+        sellerId: device.sellerId ?? null,
+        isPreorder: isThisPreorder || isStoreClosed,
+        stockQuantity:
+          selectedVariant && (device.variants?.length || 0) > 0
+            ? Number(selectedVariant.quantity) || 0
+            : Number(device.quantity) || 0,
+        isStoreClosed,
+        defaultSelected: !(isThisPreorder || isStoreClosed),
+      };
 
-      sellerId: device.sellerId ?? null,
+      basket.addItem(newItem);
 
-      isPreorder: isThisPreorder || isStoreClosed,
-      stockQuantity:
-        selectedVariant && (device.variants?.length || 0) > 0
-          ? Number(selectedVariant.quantity) || 0
-          : Number(device.quantity) || 0,
-      isStoreClosed,
+      toast.success(
+        <>
+          <strong className={styles.toastTitle}>{deviceName}</strong>
+          <span className={styles.toastSubtitle}>
+            {t("Added to cart!", { ns: "devicePage" })}
+          </span>
+        </>,
+        { style: { maxWidth: "400px" } }
+      );
 
-      defaultSelected: !(isThisPreorder || isStoreClosed),
-    };
-
-    basket.addItem(newItem);
-
-    toast.success(
-      <>
-        <strong className={styles.toastTitle}>{deviceName}</strong>
-        <span className={styles.toastSubtitle}>
-          {t("Added to cart!", { ns: "devicePage" })}
-        </span>
-      </>,
-      { style: { maxWidth: "400px" } }
-    );
-
-    setAvailableQuantity((prev) => prev - 1);
+      setAvailableQuantity((prev) => prev - 1);
+    } finally {
+      setAdding(false);
+    }
   };
 
   if (!device) return <p>{t("Loading...", { ns: "devicePage" })}</p>;
@@ -735,9 +744,10 @@ const DevicePage = ({ id }) => {
                 )}
               </div>
 
-              <button
+              <LoadingButton
                 className={styles.DevicePageAddToCart}
                 onClick={handleAddToBasket}
+                loading={adding}
                 disabled={needToSelectAllOptions}
               >
                 {needToSelectAllOptions
@@ -745,7 +755,7 @@ const DevicePage = ({ id }) => {
                   : availableQuantity <= 0
                   ? t("out_of_stock", { ns: "devicePage" })
                   : t("add_to_cart", { ns: "devicePage" })}
-              </button>
+              </LoadingButton>
             </div>
 
             <div className={styles.DevicePageInfoMobile} lang={hyphenLang}>
@@ -795,7 +805,9 @@ const DevicePage = ({ id }) => {
                           : t("expiry_date", { ns: "devicePage" })}
                       </strong>
                       <span>
-                        {new Date(device.expiryDate).toLocaleDateString(dateLocale)}
+                        {new Date(device.expiryDate).toLocaleDateString(
+                          dateLocale
+                        )}
                       </span>
                     </span>
                   </div>
@@ -859,9 +871,10 @@ const DevicePage = ({ id }) => {
         </div>
       </div>
       <div className={styles.DevicePageBuyBlockMobile}>
-        <button
+        <LoadingButton
           className={styles.DevicePageAddButtonCompact}
           onClick={handleAddToBasket}
+          loading={adding}
           disabled={needToSelectAllOptions}
         >
           <span className={styles.AddText}>
@@ -871,6 +884,7 @@ const DevicePage = ({ id }) => {
               ? t("out_of_stock", { ns: "devicePage" })
               : t("add_to_cart", { ns: "devicePage" })}
           </span>
+
           <span className={styles.AddPrice}>
             {showOld ? (
               <>
@@ -883,7 +897,7 @@ const DevicePage = ({ id }) => {
               `${finalPrice.toFixed(2)} €`
             )}
           </span>
-        </button>
+        </LoadingButton>
       </div>
     </div>
   );
