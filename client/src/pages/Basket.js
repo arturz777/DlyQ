@@ -708,7 +708,7 @@ const Basket = observer(() => {
             <div className={styles.counter}>
               <button
                 onClick={() => handleDecrement(item.uniqueKey)}
-                disabled={busy}
+                aria-busy={action === "dec"}
               >
                 {action === "dec" ? (
                   <span className={styles.miniSpinner} />
@@ -721,8 +721,8 @@ const Basket = observer(() => {
               </span>
               <button
                 onClick={() => handleIncrement(item.uniqueKey)}
+                aria-busy={action === "dec"}
                 disabled={
-                  busy ||
                   (!item.isPreorder &&
                     availableQuantities[item.uniqueKey] != null &&
                     basket.getItemCount(item.uniqueKey) >=
