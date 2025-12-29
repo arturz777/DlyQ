@@ -3,63 +3,56 @@ import Modal from "react-bootstrap/Modal";
 import { Form, Button } from "react-bootstrap";
 import { createBrand, updateBrand } from "../../http/deviceAPI";
 
-const CreateBrand = ({ show, onHide, editableBrand, onBrandSaved }) => {
-   const [value, setValue] = useState("");
-   const [errors, setErrors] = useState({});
+const CreateBrand = ({ show, onHide, editableBrand, onBrandSaved, initialName = "" }) => {
+  const [value, setValue] = useState("");
+  const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   useEffect(() => {
-    if (editableBrand) {
-      setValue(editableBrand.name);
-    } else {
-      setValue("");
-    }
-  }, [editableBrand]);
+    if (editableBrand) setValue(editableBrand.name || "");
+    else setValue(initialName || "");
+    setErrors({});
+    setIsSubmitted(false);
+  }, [editableBrand, initialName, show]);
 
   const handleSave = () => {
     setIsSubmitted(true);
-    if (!value.trim()) {
+
+    const trimmed = value.trim();
+    if (!trimmed) {
       setErrors({ name: "Введите название бренда" });
       return;
     }
 
     if (editableBrand) {
-      // Редактирование бренда
-      updateBrand(editableBrand.id, { name: value })
-        .then(() => {
+      updateBrand(editableBrand.id, { name: trimmed })
+        .then((data) => {
           setErrors({});
           setValue("");
           onHide();
-          onBrandSaved?.(); // Оповещаем о сохранении
+          onBrandSaved?.(data ?? { id: editableBrand.id, name: trimmed });
         })
         .catch((err) => console.error(err));
     } else {
-      // Создание нового бренда
-      createBrand({ name: value })
-        .then(() => {
+      createBrand({ name: trimmed })
+        .then((data) => {
           setErrors({});
           setValue("");
           onHide();
-          onBrandSaved?.();
+          onBrandSaved?.(data);
         })
         .catch((err) => console.error(err));
     }
   };
-  
-    const addBrand = () => {
-      createBrand({ name: value }).then((data) => {
-        setValue(""); 
-        onHide()
-      });
-    };
-  
+
   return (
-<Modal show={show} onHide={onHide} size="lg" centered>
+    <Modal show={show} onHide={onHide} size="lg" centered>
       <Modal.Header closeButton>
-        <Modal.Title id="contained-modal-title-vcenter">
+        <Modal.Title>
           {editableBrand ? "Редактировать бренд" : "Добавить бренд"}
         </Modal.Title>
       </Modal.Header>
+
       <Modal.Body>
         <Form>
           <Form.Control
@@ -67,13 +60,14 @@ const CreateBrand = ({ show, onHide, editableBrand, onBrandSaved }) => {
             value={value}
             onChange={(e) => setValue(e.target.value)}
           />
-          {isSubmitted && !value && (
-            <span style={{ color: "red", display: "block", marginTop: "5px" }}>
-              Введите название бренда
+          {isSubmitted && !value.trim() && (
+            <span style={{ color: "red", display: "block", marginTop: 5 }}>
+              {errors.name || "Введите название бренда"}
             </span>
           )}
         </Form>
       </Modal.Body>
+
       <Modal.Footer>
         <Button variant="outline-danger" onClick={onHide}>
           Закрыть
