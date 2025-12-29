@@ -34,6 +34,14 @@
   gap: 8px;
 }
 
+.dropdownSearchSticky {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #fff;
+  padding: 8px;
+}
+
 .basicWide {
   grid-column: 1 / -1;
 }
@@ -166,9 +174,8 @@
   border-radius: 0;
 }
 
-
 .modalBodyScrollable {
- overflow-y: auto;
+  overflow-y: auto;
   height: calc(99vh - 140px);
 }
 
@@ -264,7 +271,9 @@
   line-height: 1;
 }
 
-.valuesCompact { margin-top: 10px; }
+.valuesCompact {
+  margin-top: 10px;
+}
 
 .valueAdder :global(.form-control) {
   height: 30px;
@@ -313,6 +322,10 @@
   line-height: 1;
   color: #64748b;
 }
-.pillDel:hover { color: #ef4444; }
+.pillDel:hover {
+  color: #ef4444;
+}
 
-.optionsBox > div + div { margin-top: 10px; }
+.optionsBox > div + div {
+  margin-top: 10px;
+}
