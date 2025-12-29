@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useRef } from "react";
 import Modal from "react-bootstrap/Modal";
 import {
   Button,
@@ -22,6 +22,7 @@ import {
 } from "../../http/deviceAPI";
 import { observer } from "mobx-react-lite";
 import LoadingButton from "../../components/LoadingButton";
+import CreateBrand from "./CreateBrand";
 import styles from "./CreateDevice.module.css";
 
 const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
@@ -67,6 +68,62 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [newValueText, setNewValueText] = useState({});
   const [valueDrafts, setValueDrafts] = useState({});
   const [activeMainTab, setActiveMainTab] = useState("basic");
+  const [brandOpen, setBrandOpen] = useState(false);
+  const [brandQuery, setBrandQuery] = useState("");
+  const brandSearchRef = useRef(null);
+  const [showBrandModal, setShowBrandModal] = useState(false);
+
+  const TAB_ORDER = [
+    "basic",
+    "price",
+    "images",
+    "opts",
+    "description",
+    "info",
+    "expiry",
+    "stock",
+  ];
+
+  const getTabErrorMap = (errs = {}) => {
+    const keys = Object.keys(errs);
+
+    const hasOptErr = keys.some(
+      (k) => k.startsWith("option_") || k.startsWith("option_values_")
+    );
+
+    return {
+      basic: !!(errs.type || errs.name || errs.compat),
+      price: !!(errs.price || errs.oldPrice || errs.purchasePrice),
+      images: !!errs.img,
+      opts: !!(errs.variants || hasOptErr),
+      description: !!errs.description,
+      info: !!keys.some((k) => k.startsWith("info_")),
+      expiry: !!errs.expiryDate,
+      stock: !!errs.quantity,
+    };
+  };
+
+  const tabErrors = React.useMemo(() => getTabErrorMap(errors), [errors]);
+
+  const TabTitle = ({ icon, text, bad }) => (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <span>
+        {icon} {text}
+      </span>
+      {bad ? (
+        <span style={{ color: "#be0013ff", fontWeight: 700 }}>!</span>
+      ) : null}
+    </span>
+  );
+
+  const normBrandQuery = brandQuery.trim().toLowerCase();
+  const exactBrandExists = device.brands.some(
+    (b) => (b.name || "").trim().toLowerCase() === normBrandQuery
+  );
+
+  const filteredBrands = device.brands.filter((b) =>
+    (b.name || "").toLowerCase().includes(normBrandQuery)
+  );
 
   const addValueQuick = (optionIndex) => {
     const text = (newValueText[optionIndex] || "").trim();
@@ -163,6 +220,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
   const [translations, setTranslations] = useState({
     name: { en: "", ru: "", est: "" },
+    description: { en: "", ru: "", est: "" },
     options: [],
     info: [],
   });
@@ -373,9 +431,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         setCompatRows([]);
       }
     } else {
-      resetFields();
-      setIsUniversal(true);
-      setCompatRows([]);
     }
   }, [editableDevice, device.brands, device.types]);
 
@@ -450,19 +505,76 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     }
   }, [show]);
 
-  const resetFields = () => {
+  const resetAll = () => {
+    setIsNew(false);
+    setDiscount(false);
+    setOldPrice("");
+    setRecommended(false);
+
+    setBrandOpen(false);
+    setBrandQuery("");
+    setShowBrandModal(false);
+
     setName("");
-    setPrice("");
+    setPrice(null);
+    setDescription("");
+
     setInfo([]);
     setOptions([]);
     setVariants([]);
+
     setMainImage(null);
     setImages(Array(8).fill(null));
     setImagePreviews([]);
     setExistingImages([]);
+
+    setErrors({});
+    setOptionErrors({});
+    setIsSubmitted(false);
+
+    setPurchasePrice("");
+    setPurchaseHasVAT(false);
+
+    setExpiryKind("");
+    setExpiryDate("");
+    setSnoozeUntil("");
+
+    setIsUniversal(true);
+    setCompatRows([]);
+
+    setExtraTypeIds(new Set());
+    setExtraSubtypeIds(new Set());
+    setVisibleSubtypes([]);
+
+    setPickerOpenFor(null);
+    setNewValueText({});
+    setValueDrafts({});
+
+    setActiveMainTab("basic");
+    setActiveInfoLang("ru");
+    setActiveOptionsLang("ru");
+    setActiveDescLang("ru");
+    setActiveNameLang("ru");
+
+    setTranslations({
+      name: { en: "", ru: "", est: "" },
+      description: { en: "", ru: "", est: "" },
+      options: [],
+      info: [],
+    });
+
     setIsEditMode(false);
-    setQuantity("");
+    setQuantity(0);
+
     device.setSelectedBrand(null);
+    device.setSelectedType(null);
+    device.setSelectedSubType(null);
+    device.setSubtypes([]);
+  };
+
+  const handleClose = () => {
+    resetAll();
+    onHide();
   };
 
   const handleImageChange = (index, e) => {
@@ -988,6 +1100,11 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       setOptionErrors(validationErrors);
+
+      const map = getTabErrorMap(validationErrors);
+      const firstBadTab = TAB_ORDER.find((k) => map[k]) || "basic";
+      setActiveMainTab(firstBadTab);
+
       return;
     }
 
@@ -1100,8 +1217,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
     saveAction
       .then(() => {
-        onHide();
-        resetFields();
+        handleClose();
       })
       .catch((error) => {
         console.error(
@@ -1199,13 +1315,11 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     );
   };
 
-  // Добавить значение только в RU
   const commitValueRu = (optionIndex) => {
     const text = (valueDrafts[optionIndex] || "").trim();
     if (!text) return;
     const next = [...options];
     next[optionIndex] = next[optionIndex] || { name: "", values: [] };
-    // Проверка на дубли по RU
     const exists = (next[optionIndex].values || []).some(
       (v) => (v.value || "").trim().toLowerCase() === text.toLowerCase()
     );
@@ -1288,7 +1402,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   return (
     <Modal
       show={show}
-      onHide={onHide}
+      onHide={handleClose}
       fullscreen
       dialogClassName={styles.fullscreenDialog}
       contentClassName={styles.fullscreenContent}
@@ -1308,10 +1422,13 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
             className="mb-3"
             mountOnEnter
           >
-            {/* ===================== ОСНОВНОЕ ===================== */}
-            <Tab eventKey="basic" title="🧾 Основное">
+            <Tab
+              eventKey="basic"
+              title={
+                <TabTitle icon="🧾" text="Основное" bad={tabErrors.basic} />
+              }
+            >
               <div className={styles.basicLayout}>
-                {/* ===== Статус ===== */}
                 <div className={styles.basicCard}>
                   <div className={styles.basicCardTitle}>🏷 Статус товара</div>
 
@@ -1336,7 +1453,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                   </Form.Group>
                 </div>
 
-                {/* ===== Название ===== */}
                 <div className={styles.basicCard}>
                   <div className={styles.basicCardTitle}>🧾 Название</div>
 
@@ -1379,11 +1495,9 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                   />
                 </div>
 
-                {/* ===== Категории ===== */}
                 <div className={styles.basicCard}>
                   <div className={styles.basicCardTitle}>🗂 Категории</div>
 
-                  {/* Тип */}
                   <Dropdown className="mt-2 mb-2">
                     <Dropdown.Toggle>
                       {device.selectedType?.name || "Выберите тип"}
@@ -1510,41 +1624,95 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                   )}
                 </div>
 
-                {/* ===== Бренд ===== */}
                 <div className={styles.basicCard}>
                   <div className={styles.basicCardTitle}>🏷 Бренд</div>
 
-                  <Dropdown className="mt-2 mb-2">
+                  <Dropdown
+                    className="mt-2 mb-2"
+                    show={brandOpen}
+                    autoClose="outside"
+                    onToggle={(nextShow) => {
+                      setBrandOpen(nextShow);
+                      if (nextShow) {
+                        setTimeout(() => brandSearchRef.current?.focus(), 0);
+                      } else {
+                        setBrandQuery("");
+                      }
+                    }}
+                  >
                     <Dropdown.Toggle>
                       {device.selectedBrand?.name ||
                         "Выберите бренд (необязательно)"}
                     </Dropdown.Toggle>
 
                     <Dropdown.Menu className={styles.scrollableDropdownMenu}>
+                      <div className={styles.dropdownSearchSticky}>
+                        <InputGroup size="sm">
+                          <Form.Control
+                            ref={brandSearchRef}
+                            value={brandQuery}
+                            placeholder="Поиск бренда..."
+                            onChange={(e) => setBrandQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") setBrandOpen(false);
+                            }}
+                          />
+                          {filteredBrands.length === 0 && (
+                            <Button
+                              variant="outline-dark"
+                              disabled={!normBrandQuery || exactBrandExists}
+                              title={
+                                exactBrandExists
+                                  ? "Такой бренд уже есть"
+                                  : "Создать бренд"
+                              }
+                              onClick={() => {
+                                setBrandOpen(false);
+                                setShowBrandModal(true);
+                              }}
+                            >
+                              + Создать
+                            </Button>
+                          )}
+                        </InputGroup>
+                      </div>
+                      <Dropdown.Divider />
+
                       <Dropdown.Item
-                        onClick={() => device.setSelectedBrand(null)}
+                        onClick={() => {
+                          device.setSelectedBrand(null);
+                          setBrandOpen(false);
+                        }}
                       >
                         Без бренда
                       </Dropdown.Item>
-                      {device.brands.map((brand) => (
-                        <Dropdown.Item
-                          onClick={() => device.setSelectedBrand(brand)}
-                          key={brand.id}
-                        >
-                          {brand.name}
+
+                      {filteredBrands.length === 0 ? (
+                        <Dropdown.Item disabled>
+                          Ничего не найдено
                         </Dropdown.Item>
-                      ))}
+                      ) : (
+                        filteredBrands.map((brand) => (
+                          <Dropdown.Item
+                            key={brand.id}
+                            onClick={() => {
+                              device.setSelectedBrand(brand);
+                              setBrandOpen(false);
+                            }}
+                          >
+                            {brand.name}
+                          </Dropdown.Item>
+                        ))
+                      )}
                     </Dropdown.Menu>
                   </Dropdown>
                 </div>
 
-                {/* ===== Совместимость (на всю ширину) ===== */}
                 <div className={`${styles.basicCard} ${styles.basicWide}`}>
                   <div className={styles.basicCardTitle}>
                     🚗 Совместимость авто
                   </div>
 
-                  {/* Вставь сюда твой compatSection целиком */}
                   <div className={styles.compatSection}>
                     <Form.Check
                       type="checkbox"
@@ -1670,8 +1838,10 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
               </div>
             </Tab>
 
-            {/* ===================== ЦЕНЫ ===================== */}
-            <Tab eventKey="price" title="💰 Цены">
+            <Tab
+              eventKey="price"
+              title={<TabTitle icon="💰" text="Цены" bad={tabErrors.price} />}
+            >
               <Form.Group className="mt-2">
                 <Form.Check
                   type="checkbox"
@@ -1747,8 +1917,12 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
               </Form.Group>
             </Tab>
 
-            {/* ===================== ИЗОБРАЖЕНИЯ ===================== */}
-            <Tab eventKey="images" title="🖼 Изображения">
+            <Tab
+              eventKey="images"
+              title={
+                <TabTitle icon="🖼" text="Изображения" bad={tabErrors.images} />
+              }
+            >
               <div className={styles.ImageGrid}>
                 {images.map((img, index) => (
                   <div
@@ -1808,8 +1982,16 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
               </div>
             </Tab>
 
-            {/* ===================== ОПЦИИ И ВАРИАНТЫ ===================== */}
-            <Tab eventKey="opts" title="🧩 Опции и варианты">
+            <Tab
+              eventKey="opts"
+              title={
+                <TabTitle
+                  icon="🧩"
+                  text="Опции и варианты"
+                  bad={tabErrors.opts}
+                />
+              }
+            >
               <Row className="g-3">
                 <Col md={5}>
                   <div className="d-flex align-items-center justify-content-between mb-2">
@@ -2153,7 +2335,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
               </Row>
             </Tab>
 
-            {/* ===================== ОПИСАНИЕ ===================== */}
             <Tab eventKey="description" title="📄 Описание">
               <Tabs
                 id="description-lang-tabs"
@@ -2203,7 +2384,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
               </div>
             </Tab>
 
-            {/* ===================== ХАРАКТЕРИСТИКИ ===================== */}
             <Tab eventKey="info" title="⚙️ Характеристики">
               <div className="mb-3">
                 <Form.Label>Массовый ввод характеристик</Form.Label>
@@ -2306,8 +2486,16 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
               ))}
             </Tab>
 
-            {/* ===================== СРОК ГОДНОСТИ ===================== */}
-            <Tab eventKey="expiry" title="🧪 Срок годности">
+            <Tab
+              eventKey="expiry"
+              title={
+                <TabTitle
+                  icon="🧪"
+                  text="Срок годности"
+                  bad={tabErrors.expiry}
+                />
+              }
+            >
               <div className="mt-2">
                 <div className="d-flex gap-2 flex-wrap">
                   <Form.Select
@@ -2343,8 +2531,12 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
               </div>
             </Tab>
 
-            {/* ===================== ОСТАТКИ ===================== */}
-            <Tab eventKey="stock" title="📦 Остатки">
+            <Tab
+              eventKey="stock"
+              title={
+                <TabTitle icon="📦" text="Остатки" bad={tabErrors.stock} />
+              }
+            >
               <Form.Group>
                 <Form.Label>Количество на складе</Form.Label>
                 <Form.Control
@@ -2368,8 +2560,12 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         </Form>
       </Modal.Body>
 
-     <Modal.Footer>
-        <Button variant="outline-danger" onClick={onHide} disabled={loading}>
+      <Modal.Footer>
+        <Button
+          variant="outline-danger"
+          onClick={handleClose}
+          disabled={loading}
+        >
           Закрыть
         </Button>
 
@@ -2449,6 +2645,28 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
           </Button>
         </Modal.Footer>
       </Modal>
+      <CreateBrand
+        show={showBrandModal}
+        onHide={() => setShowBrandModal(false)}
+        editableBrand={null}
+        initialName={brandQuery}
+        onBrandSaved={async (saved) => {
+          setShowBrandModal(false);
+
+          const brands = await fetchBrands();
+          device.setBrands(brands);
+
+          const picked = saved?.id
+            ? brands.find((b) => b.id === saved.id)
+            : brands.find(
+                (b) => (b.name || "").trim().toLowerCase() === normBrandQuery
+              );
+
+          if (picked) device.setSelectedBrand(picked);
+
+          setBrandQuery("");
+        }}
+      />
     </Modal>
   );
 });
