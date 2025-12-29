@@ -141,6 +141,15 @@ const Admin = () => {
   const [menuSearch, setMenuSearch] = useState("");
   const [prefillMenuCategoryId, setPrefillMenuCategoryId] = useState(null);
 
+  const upsertBrand = (list, saved) => {
+    if (!saved) return list;
+    const idx = list.findIndex((b) => Number(b.id) === Number(saved.id));
+    if (idx === -1) return [saved, ...list];
+    const next = [...list];
+    next[idx] = { ...next[idx], ...saved };
+    return next;
+  };
+
   const reloadMenu = async (sellerId = activeSellerId) => {
     if (!sellerId) return;
     const [cats, items] = await Promise.all([
@@ -2672,14 +2681,20 @@ const Admin = () => {
         </TabPanel>
       </Tabs>
 
-      <CreateBrand
+       <CreateBrand
         show={brandVisible}
+        editableBrand={editableBrand}
         onHide={() => {
           setBrandVisible(false);
-          fetchBrands().then(setBrands);
+          setEditableBrand(null);
         }}
-        editableBrand={editableBrand}
+        onBrandSaved={(saved) => {
+          setBrands((prev) => upsertBrand(prev, saved));
+          device.setBrands(upsertBrand(device.brands || [], saved));
+          setEditableBrand(null);
+        }}
       />
+        
       <CreateDevice
         show={deviceVisible}
         onHide={() => {
