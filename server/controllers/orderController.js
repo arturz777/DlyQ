@@ -44,6 +44,25 @@ const SUPABASE_URL = mustEnv("SUPABASE_URL");
 const PLACEHOLDER_IMG =
   process.env.PLACEHOLDER_IMG || `${PUBLIC_URL}/static/placeholder.png`;
 
+const VAT_RATE_BEFORE_2025_07_01 = 0.22;
+const VAT_RATE_FROM_2025_07_01 = 0.24;
+
+function getVatRateByDate(dateLike) {
+  const d = new Date(dateLike);
+  const border = new Date("2025-07-01T00:00:00.000Z");
+  return d >= border ? VAT_RATE_FROM_2025_07_01 : VAT_RATE_BEFORE_2025_07_01;
+}
+
+function toNumberPrice(v) {
+  if (v == null) return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v === "string") {
+    const n = Number(v.replace(/[^\d.,-]/g, "").replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 const calculateDeliveryBase = (distance) => {
   let baseCost = 2;
   let distanceCost = distance * 0.5;
@@ -276,9 +295,10 @@ const createOrder = async (req, res) => {
     const courierFee = calculateDeliveryBase(distance);
     const isStoreClosedNow = !isShopOpenNow();
 
-       let isPreorder = false;
+    let isPreorder = false;
     const devicesToUpdate = [];
     const sellerIds = new Set();
+    const deviceCache = new Map();
 
     for (const item of orderDetails) {
       if (item.isRestaurantItem) {
@@ -295,6 +315,7 @@ const createOrder = async (req, res) => {
       
       const deviceId = item.deviceId ?? item.id;
       const device = await Device.findByPk(deviceId);
+      deviceCache.set(Number(device.id), device);
       if (!device) {
         return res
           .status(400)
@@ -475,10 +496,41 @@ const createOrder = async (req, res) => {
         }
       }
 
+      let sellPriceAtSale = null;
+      let purchasePriceAtSale = null;
+      let purchaseHasVATAtSale = null;
+      let vatRateAtSale = null;
+
+      if (!item.isRestaurantItem) {
+        const deviceId = Number(item.deviceId ?? item.id);
+        const device = deviceCache.get(deviceId);
+
+        sellPriceAtSale = toNumberPrice(
+          item.sellPriceAtSale ?? item.price ?? device?.price
+        );
+
+        purchasePriceAtSale = toNumberPrice(
+          item.purchasePriceAtSale ??
+            item.purchasePriceOverride ??
+            device?.purchasePrice
+        );
+
+        purchaseHasVATAtSale = Boolean(
+          item.purchaseHasVATAtSale ?? device?.purchaseHasVAT
+        );
+
+        vatRateAtSale = getVatRateByDate(new Date());
+      }
+
       return {
         ...item,
         name: translatedName,
         selectedOptions: localizedOptions,
+
+        sellPriceAtSale,
+        purchasePriceAtSale,
+        purchaseHasVATAtSale,
+        vatRateAtSale,
       };
     });
 
