@@ -9,7 +9,7 @@ const COMMISSION_RATE = 0.2;
 
 const PARCEL_PRICING = {
   base: 3.0,
-  perKm: 0.65,
+  perKm: 0.5,
   min: 3,
 };
 
