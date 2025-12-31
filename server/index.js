@@ -19,6 +19,7 @@ const cookieParser = require('cookie-parser');
 const Stripe = require("stripe");  
 const paymentsRouter = require("./routes/paymentsRouter.js");
 const foodCatalogRouter = require("./routes/foodCatalogRouter.js");
+const inventoryReceiptRouter = require("./routes/inventoryReceiptRouter");
 
 const PORT = process.env.PORT || 5000;
 const app = express();
@@ -56,11 +57,13 @@ const io = new Server(server, {
   },
 });
 
+app.use(
+  cors({
+    origin: 'https://dlyq-staging.netlify.app',
+    credentials: true,
+  })
+);
 
-app.use(cors({
-  origin: 'https://dlyq-staging.netlify.app',
-  credentials: true           
-}));
 app.use(express.json());
 app.use(express.static(path.resolve(__dirname, "static")));
 app.use(fileUpload({}));
@@ -74,6 +77,8 @@ app.use("/api/order", orderRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/payments", paymentsRouter);
 app.use("/api/food-catalog", foodCatalogRouter);
+app.use("/api/inventory", inventoryReceiptRouter);
+
 
 server.listen(PORT, () => console.log(`🚀 Сервер запущен на порту ${PORT}`));
 
