@@ -1,51 +1,88 @@
 import React, { useState, useEffect } from "react";
+import InventoryReceipts from "./InventoryReceipts";
+
+const base = process.env.REACT_APP_API_URL.replace(/\/+$/, "");
 
 const AdminAccounting = ({ devices }) => {
   const [activeTab, setActiveTab] = useState("all");
   const [soldDevices, setSoldDevices] = useState([]);
+  const [devicesLocal, setDevicesLocal] = useState(devices || []);
 
   useEffect(() => {
-  const fetchSoldDevices = async () => {
-    try {
-      const response = await fetch("/api/order/all");
-      const orders = await response.json();
+    setDevicesLocal(devices || []);
+  }, [devices]);
 
-      const allSold = [];
+  useEffect(() => {
+    const fetchSoldDevices = async () => {
+      try {
+        const response = await fetch(`${base}/order/admin`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`Orders ${response.status}: ${text.slice(0, 120)}`);
+        }
+        const orders = await response.json();
 
-      orders.forEach((order) => {
-  const details = JSON.parse(order.orderDetails || "[]");
-  details.forEach((item) => {
-    const existing = allSold.find((d) => d.deviceId === item.deviceId);
-    const deviceData = devices.find((d) => d.id === item.deviceId);
+        const allSold = [];
 
-    if (!deviceData) return; // Если устройство не найдено — пропускаем
+        orders.forEach((order) => {
+          const details = JSON.parse(order.orderDetails || "[]");
+          details.forEach((item) => {
+            const deviceId = Number(item.deviceId ?? item.id);
+            const sku = item.sku || item.variantSku || "";
+            const key = `${deviceId}_${sku}`;
 
-    const enrichedItem = {
-      deviceId: item.deviceId,
-      quantity: Number(item.count),
-      price: deviceData.price,
-      name: deviceData.name,
-      purchasePrice: deviceData.purchasePrice,
-      purchaseHasVAT: deviceData.purchaseHasVAT,
+            const existing = allSold.find((d) => d._key === key);
+
+            const deviceData = devicesLocal.find(
+              (d) => Number(d.id) === deviceId
+            );
+            if (!deviceData) return;
+
+            const unitSell = Number(
+              item.sellPriceAtSale ?? item.price ?? deviceData.price ?? 0
+            );
+
+            const unitCost =
+              item.purchasePriceAtSale != null
+                ? Number(item.purchasePriceAtSale)
+                : deviceData.purchasePrice != null
+                ? Number(deviceData.purchasePrice)
+                : null;
+
+            const enrichedItem = {
+              _key: key,
+              deviceId,
+              sku,
+              quantity: Number(item.count ?? item.quantity ?? 1),
+              price: unitSell,
+              name: item.name || deviceData.name,
+              purchasePrice: unitCost,
+              purchaseHasVAT: Boolean(
+                item.purchaseHasVATAtSale ?? deviceData.purchaseHasVAT
+              ),
+            };
+
+            if (existing) {
+              existing.quantity += enrichedItem.quantity;
+            } else {
+              allSold.push(enrichedItem);
+            }
+          });
+        });
+
+        setSoldDevices(allSold);
+      } catch (error) {
+        console.error("Ошибка загрузки проданных товаров:", error);
+      }
     };
 
-    if (existing) {
-      existing.quantity += enrichedItem.quantity;
-    } else {
-      allSold.push(enrichedItem);
-    }
-  });
-});
-
-
-      setSoldDevices(allSold);
-    } catch (error) {
-      console.error("Ошибка загрузки проданных товаров:", error);
-    }
-  };
-
-  fetchSoldDevices();
-}, []);
+    fetchSoldDevices();
+  }, []);
 
   const VAT_RATE = 0.24;
   const INCOME_TAX_RATE = 0.2;
@@ -57,8 +94,8 @@ const AdminAccounting = ({ devices }) => {
           maximumFractionDigits: 2,
         })
       : "—";
-	  
-  const currentDevices = activeTab === "sold" ? soldDevices : devices;
+
+  const currentDevices = activeTab === "sold" ? soldDevices : devicesLocal;
 
   const totalQuantity = currentDevices.reduce(
     (sum, d) => sum + Number(d.quantity || 0),
@@ -110,11 +147,11 @@ const AdminAccounting = ({ devices }) => {
     <div style={{ paddingBottom: "40px" }}>
       <h3 className="text-xl font-semibold mb-4">📊 Бухгалтерия</h3>
 
-      {/* Tabs */}
       <div style={{ marginBottom: "16px" }}>
         {[
           { key: "all", label: "🗃 Все товары" },
           { key: "sold", label: `💸 Проданные (${soldDevices.length})` },
+          { key: "receipts", label: "📦 Приход" },
           { key: "vat", label: "📄 Декларация по НДС" },
           { key: "other", label: "📑 Другая декларация" },
         ].map((tab) => (
@@ -135,8 +172,6 @@ const AdminAccounting = ({ devices }) => {
           </button>
         ))}
       </div>
-
-      {/* Таблица (для вкладок all) */}
       {activeTab === "all" && (
         <table
           style={{
@@ -208,7 +243,6 @@ const AdminAccounting = ({ devices }) => {
               );
             })}
 
-            {/* ИТОГО */}
             <tr style={{ fontWeight: "bold", background: "#eef2f7" }}>
               <td colSpan={2} style={tdStyle}>
                 Итого:
@@ -216,7 +250,10 @@ const AdminAccounting = ({ devices }) => {
 
               <td style={tdStyle}>
                 {format(
-                  devices.reduce((sum, d) => sum + Number(d.quantity || 0), 0)
+                  devicesLocal.reduce(
+                    (sum, d) => sum + Number(d.quantity || 0),
+                    0
+                  )
                 )}
               </td>
 
@@ -266,8 +303,7 @@ const AdminAccounting = ({ devices }) => {
           </tbody>
         </table>
       )}
-	  
-      {/* Таблица (для вкладок sold) */}
+
       {activeTab === "sold" && (
         <table
           style={{
@@ -339,7 +375,6 @@ const AdminAccounting = ({ devices }) => {
               );
             })}
 
-            {/* ИТОГО */}
             <tr style={{ fontWeight: "bold", background: "#eef2f7" }}>
               <td colSpan={2} style={tdStyle}>
                 Итого:
@@ -347,7 +382,10 @@ const AdminAccounting = ({ devices }) => {
 
               <td style={tdStyle}>
                 {format(
-                  soldDevices.reduce((sum, d) => sum + Number(d.quantity || 0), 0)
+                  soldDevices.reduce(
+                    (sum, d) => sum + Number(d.quantity || 0),
+                    0
+                  )
                 )}
               </td>
 
@@ -398,7 +436,6 @@ const AdminAccounting = ({ devices }) => {
         </table>
       )}
 
-      {/* Декларация по НДС */}
       {activeTab === "vat" && (
         <div
           style={{
@@ -422,7 +459,6 @@ const AdminAccounting = ({ devices }) => {
         </div>
       )}
 
-      {/* Другая декларация */}
       {activeTab === "other" && (
         <div
           style={{
@@ -435,6 +471,50 @@ const AdminAccounting = ({ devices }) => {
           <h4>📑 Другая декларация</h4>
           <p>Пока не реализована. Здесь появится расчёт налога с прибыли.</p>
         </div>
+      )}
+      {activeTab === "receipts" && (
+        <InventoryReceipts
+          devices={devicesLocal}
+          onPatchDevices={(rows) => {
+            setDevicesLocal((prev) => {
+              const next = prev.map((d) => ({ ...d }));
+
+              for (const r of rows) {
+                const d = next.find((x) => Number(x.id) === Number(r.deviceId));
+                if (!d) continue;
+
+                const qty = Number(r.quantity || 0);
+
+                if (r.variantId) {
+                  const vars = Array.isArray(d.variants)
+                    ? d.variants
+                    : (() => {
+                        try {
+                          return JSON.parse(d.variants || "[]");
+                        } catch {
+                          return [];
+                        }
+                      })();
+
+                  const vi = vars.find(
+                    (v) => Number(v.id) === Number(r.variantId)
+                  );
+                  if (vi) {
+                    vi.quantity = Number(vi.quantity || 0) + qty;
+                    vi.purchasePrice = Number(r.purchasePrice);
+                  }
+                  d.variants = vars;
+                } else {
+                  d.quantity = Number(d.quantity || 0) + qty;
+                  d.purchasePrice = Number(r.purchasePrice);
+                  d.purchaseHasVAT = !!r.purchaseHasVAT;
+                }
+              }
+
+              return next;
+            });
+          }}
+        />
       )}
     </div>
   );
