@@ -1,4 +1,4 @@
-const { Op } = require("sequelize");
+const { Op, fn, col } = require("sequelize");
 const fetch = require("node-fetch");
 const { Order, Courier, OrderDecline, Seller } = require("../models/models");
 const {
@@ -55,6 +55,41 @@ function safeParse(v, fallback) {
 }
 
 class CourierController {
+  async getFinance(req, res) {
+    try {
+      const courierId = req.user?.id;
+      if (!courierId)
+        return res.status(401).json({ message: "Вы не авторизованы." });
+
+      const row = await Order.findOne({
+        where: { courierId, status: "Delivered" },
+        attributes: [
+          [fn("COUNT", col("id")), "trips"],
+          [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "gross"],
+          [fn("COALESCE", fn("SUM", col("courierCommission")), 0), "withheld"],
+          [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
+        ],
+        raw: true,
+      });
+
+      // fallback для старых заказов без новых колонок:
+      const trips = Number(row?.trips || 0);
+      const gross = Number(row?.gross || 0);
+      const withheld = Number(row?.withheld || 0);
+      const net = Number(row?.net || 0);
+
+      return res.json({
+        trips,
+        gross: Number(gross.toFixed(2)),
+        withheld: Number(withheld.toFixed(2)),
+        net: Number(net.toFixed(2)),
+      });
+    } catch (e) {
+      console.error("getFinance error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
   async savePushToken(req, res) {
     try {
       const { token } = req.body;
@@ -175,6 +210,9 @@ class CourierController {
           "deliveryPrice",
           "courierFee",
           "courierId",
+          "courierFeeGross",
+          "courierCommission",
+          "courierCommissionRate",
           "offerExpiresAt",
           "offerCourierId",
           "sellerId",
@@ -316,6 +354,9 @@ class CourierController {
         deliveryPrice: order.deliveryPrice,
         courierFee: order.courierFee,
         courierId: order.courierId,
+        courierFeeGross: order.courierFeeGross,
+        courierCommission: order.courierCommission,
+        courierCommissionRate: order.courierCommissionRate,
 
         pickupAddress,
         pickupLat,
