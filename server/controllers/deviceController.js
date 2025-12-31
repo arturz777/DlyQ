@@ -12,6 +12,8 @@ const {
   VehicleMake,
   VehicleModel,
   DeviceCompatibility,
+  InventoryReceipt,
+  InventoryReceiptItem,
 } = require("../models/models");
 const ApiError = require("../error/ApiError");
 const { Op, fn, col, literal, QueryTypes } = require("sequelize");
@@ -113,6 +115,7 @@ const resolveVariantImage = (imgToken, mainUrl, thumbs = []) => {
 
 class DeviceController {
   async create(req, res, next) {
+    const t = await sequelize.transaction();
     try {
       let {
         sellerId,
@@ -136,13 +139,15 @@ class DeviceController {
         snoozeUntil,
       } = req.body;
 
+      const toBool = (v) => v === true || v === "true";
+      const purchaseHasVAT = toBool(req.body.purchaseHasVAT);
+
       const sellerIdNum = Number(sellerId);
       const normalizedSellerId =
-        Number.isInteger(sellerIdNum) && sellerIdNum > 0
-          ? sellerIdNum
-          : null;
+        Number.isInteger(sellerIdNum) && sellerIdNum > 0 ? sellerIdNum : null;
 
       if (!req.files || !req.files.img) {
+        await t.rollback();
         return res
           .status(400)
           .json({ message: "Необходимо загрузить изображение устройства." });
@@ -150,13 +155,12 @@ class DeviceController {
 
       const { img } = req.files;
       const fileName = `${uuid.v4()}${path.extname(img.name)}`;
-      const { data, error } = await supabase.storage
+      const { error: upErr } = await supabase.storage
         .from("images")
         .upload(fileName, img.data, { contentType: img.mimetype });
 
-      if (error) {
+      if (upErr)
         throw new Error("Ошибка загрузки изображения в Supabase Storage");
-      }
 
       const publicURL = `${PUBLIC_BUCKET_BASE}/${fileName}`;
 
@@ -169,23 +173,18 @@ class DeviceController {
         thumbnails = await Promise.all(
           images.map(async (image) => {
             const thumbFileName = `${uuid.v4()}${path.extname(image.name)}`;
-
-            const { data, error } = await supabase.storage
+            const { error } = await supabase.storage
               .from("images")
               .upload(thumbFileName, image.data, {
                 contentType: image.mimetype,
               });
 
-            if (error) {
-              console.error("Ошибка загрузки миниатюры в Supabase:", error);
-              return null;
-            }
-
+            if (error) return null;
             return `${PUBLIC_BUCKET_BASE}/${thumbFileName}`;
           })
         );
 
-        thumbnails = thumbnails.filter((url) => url !== null);
+        thumbnails = thumbnails.filter(Boolean);
       }
 
       let parsedOptions = Array.isArray(options)
@@ -193,33 +192,17 @@ class DeviceController {
         : options
         ? JSON.parse(options)
         : [];
+
       let parsedVariants = Array.isArray(req.body.variants)
         ? req.body.variants
         : req.body.variants
         ? JSON.parse(req.body.variants)
         : [];
 
-      let totalQty;
-      if (Array.isArray(parsedVariants) && parsedVariants.length) {
-        totalQty = parsedVariants.reduce(
-          (s, v) => s + (Number(v.quantity) || 0),
-          0
-        );
-      } else if (Array.isArray(parsedOptions) && parsedOptions.length) {
-        totalQty = parsedOptions.reduce(
-          (sum, option) =>
-            sum +
-            (option.values || []).reduce(
-              (optSum, v) => optSum + (Number(v.quantity) || 0),
-              0
-            ),
-          0
-        );
-      } else {
-        totalQty = Number(quantity) || 0;
-      }
-
-      if (discount === "true" && !oldPrice) {
+      if (
+        toBool(discount) &&
+        (oldPrice === undefined || oldPrice === null || oldPrice === "")
+      ) {
         oldPrice = price;
       }
 
@@ -232,19 +215,26 @@ class DeviceController {
 
       expiryKind = expiryKind || null;
       expiryDate = expiryDate || null;
+      snoozeUntil = snoozeUntil || null;
 
       if (expiryKind === "use_by" && expiryDate) {
         const today = new Date().toISOString().slice(0, 10);
         if (expiryDate < today) {
+          await t.rollback();
           return res.status(400).json({
             message: "Для use_by дата годности не может быть в прошлом.",
           });
         }
       }
 
-      snoozeUntil = snoozeUntil || null;
-
-      if (!name || !price || !typeId) {
+      if (
+        !name ||
+        price === undefined ||
+        price === null ||
+        price === "" ||
+        !typeId
+      ) {
+        await t.rollback();
         return res.status(400).json({
           message:
             "Обязательные поля (name, price, typeId) должны быть заполнены.",
@@ -253,29 +243,87 @@ class DeviceController {
 
       const isVisible = req.body.isVisible === "false" ? false : true;
 
-      const device = await Device.create({
-        sellerId: normalizedSellerId,
-        name,
-        price,
-        oldPrice: oldPrice || null,
-        brandId: brandId || null,
-        typeId,
-        subtypeId: subtypeId || null,
-        img: publicURL,
-        thumbnails,
-        options: parsedOptions,
-        quantity: totalQty,
-        description,
-        expiryKind,
-        expiryDate,
-        snoozeUntil,
-        isNew: isNew === "true",
-        discount: discount === "true",
-        recommended: recommended === "true",
-        purchasePrice: purchasePriceNum,
-        purchaseHasVAT: req.body.purchaseHasVAT === "true",
-        isVisible,
-      });
+      const receiptLines = [];
+      let optionsForSave = parsedOptions;
+
+      if (Array.isArray(parsedVariants) && parsedVariants.length) {
+        parsedVariants = parsedVariants.map((v) => {
+          const q = Number(v.quantity) || 0;
+          if (q > 0) {
+            const normalizedSelected = Object.fromEntries(
+              Object.entries(v.selected || {}).map(([k, val]) => [
+                k,
+                getVal(val),
+              ])
+            );
+            receiptLines.push({
+              mode: "variant",
+              key: makeVariantKey(normalizedSelected),
+              qty: q,
+              purchasePrice:
+                v.purchasePrice !== undefined &&
+                v.purchasePrice !== null &&
+                v.purchasePrice !== ""
+                  ? Number(v.purchasePrice)
+                  : purchasePriceNum,
+            });
+          }
+          return { ...v, quantity: 0 };
+        });
+      } else if (Array.isArray(parsedOptions) && parsedOptions.length) {
+        optionsForSave = (parsedOptions || []).map((opt) => {
+          const values = (opt.values || []).map((val) => {
+            const q = Number(val.quantity) || 0;
+            if (q > 0) {
+              receiptLines.push({
+                mode: "option",
+                optionName: opt.name,
+                optionValue: val.value,
+                qty: q,
+                purchasePrice: purchasePriceNum,
+              });
+            }
+            return { ...val, quantity: 0 };
+          });
+          return { ...opt, values };
+        });
+      } else {
+        const q = Number(quantity) || 0;
+        if (q > 0) {
+          receiptLines.push({
+            mode: "simple",
+            qty: q,
+            purchasePrice: purchasePriceNum,
+          });
+        }
+      }
+
+      const device = await Device.create(
+        {
+          sellerId: normalizedSellerId,
+          name,
+          price,
+          oldPrice: oldPrice || null,
+          brandId: brandId || null,
+          typeId,
+          subtypeId: subtypeId || null,
+          img: publicURL,
+          thumbnails,
+          options: optionsForSave,
+          quantity: 0,
+          description,
+          expiryKind,
+          expiryDate,
+          snoozeUntil,
+          isNew: toBool(isNew),
+          discount: toBool(discount),
+          recommended: toBool(recommended),
+          purchasePrice: purchasePriceNum,
+          purchaseHasVAT,
+          isVisible,
+        },
+        { transaction: t }
+      );
 
       const primaryId = subtypeId || null;
       let subtypeIdsArr = [];
@@ -294,8 +342,10 @@ class DeviceController {
           subtypeId: Number(stId),
           isPrimary: primaryId ? Number(stId) === Number(primaryId) : false,
         }));
-
-        await DeviceSubType.bulkCreate(rows, { ignoreDuplicates: true });
+        await DeviceSubType.bulkCreate(rows, {
+          ignoreDuplicates: true,
+          transaction: t,
+        });
       }
 
       try {
@@ -312,6 +362,7 @@ class DeviceController {
         if (allSubtypeIdsArr.length) {
           const subtypesRows = await SubType.findAll({
             where: { id: allSubtypeIdsArr },
+            transaction: t,
           });
           const subtypeTypeIds = new Set(subtypesRows.map((s) => s.typeId));
 
@@ -322,16 +373,19 @@ class DeviceController {
         }
 
         if (typeof device.setTypes === "function") {
-          await device.setTypes([...extraTypeIds]);
+          await device.setTypes([...extraTypeIds], { transaction: t });
         } else {
-          await DeviceType.destroy({ where: { deviceId: device.id } });
+          await DeviceType.destroy({
+            where: { deviceId: device.id },
+            transaction: t,
+          });
           if (extraTypeIds.size) {
             await DeviceType.bulkCreate(
               [...extraTypeIds].map((tid) => ({
                 deviceId: device.id,
                 typeId: tid,
               })),
-              { ignoreDuplicates: true }
+              { ignoreDuplicates: true, transaction: t }
             );
           }
         }
@@ -340,99 +394,93 @@ class DeviceController {
       }
 
       if (info) {
-        info = JSON.parse(info);
+        const arr = JSON.parse(info);
         await Promise.all(
-          info.map((i) =>
-            DeviceInfo.create({
-              title: i.title,
-              description: i.description,
-              deviceId: device.id,
-            })
+          arr.map((i) =>
+            DeviceInfo.create(
+              {
+                title: i.title,
+                description: i.description,
+                deviceId: device.id,
+              },
+              { transaction: t }
+            )
           )
         );
       }
 
       if (translations) {
-        translations = JSON.parse(translations);
+        const tr = JSON.parse(translations);
         const translationEntries = [];
 
-        Object.entries(translations.name || {}).forEach(([lang, text]) => {
-          if (text) {
+        Object.entries(tr.name || {}).forEach(([lang, text]) => {
+          if (text)
             translationEntries.push({
               key: `device_${device.id}.name`,
               lang,
               text,
             });
-          }
         });
 
-        Object.entries(translations.description || {}).forEach(
-          ([lang, text]) => {
-            if (text) {
-              translationEntries.push({
-                key: `device_${device.id}.description`,
-                lang,
-                text,
-              });
-            }
-          }
-        );
+        Object.entries(tr.description || {}).forEach(([lang, text]) => {
+          if (text)
+            translationEntries.push({
+              key: `device_${device.id}.description`,
+              lang,
+              text,
+            });
+        });
 
-        if (translations.info && Array.isArray(translations.info)) {
-          translations.info.forEach((info, index) => {
-            Object.entries(info.title || {}).forEach(([lang, text]) => {
-              if (text) {
+        if (tr.info && Array.isArray(tr.info)) {
+          tr.info.forEach((inf, index) => {
+            Object.entries(inf.title || {}).forEach(([lang, text]) => {
+              if (text)
                 translationEntries.push({
                   key: `device_${device.id}.info.${index}.title`,
                   lang,
                   text,
                 });
-              }
             });
-            Object.entries(info.description || {}).forEach(([lang, text]) => {
-              if (text) {
+            Object.entries(inf.description || {}).forEach(([lang, text]) => {
+              if (text)
                 translationEntries.push({
                   key: `device_${device.id}.info.${index}.description`,
                   lang,
                   text,
                 });
-              }
             });
           });
         }
 
-        if (translations.options && Array.isArray(translations.options)) {
-          translations.options.forEach((option, optionIndex) => {
-            Object.entries(option.name || {}).forEach(([lang, text]) => {
-              if (text) {
+        if (tr.options && Array.isArray(tr.options)) {
+          tr.options.forEach((opt, optIdx) => {
+            Object.entries(opt.name || {}).forEach(([lang, text]) => {
+              if (text)
                 translationEntries.push({
-                  key: `device_${device.id}.option.${optionIndex}.name`,
+                  key: `device_${device.id}.option.${optIdx}.name`,
                   lang,
                   text,
                 });
-              }
             });
 
-            if (option.values && Array.isArray(option.values)) {
-              option.values.forEach((value, valueIndex) => {
-                const valueTranslations = value.text || value;
-
-                Object.entries(valueTranslations).forEach(([lang, text]) => {
-                  if (text) {
+            if (opt.values && Array.isArray(opt.values)) {
+              opt.values.forEach((val, valIdx) => {
+                const valTr = val.text || val;
+                Object.entries(valTr).forEach(([lang, text]) => {
+                  if (text)
                     translationEntries.push({
-                      key: `device_${device.id}.option.${optionIndex}.value.${valueIndex}`,
+                      key: `device_${device.id}.option.${optIdx}.value.${valIdx}`,
                       lang,
                       text,
                     });
-                  }
                 });
               });
             }
           });
         }
 
-        if (translationEntries.length > 0) {
-          await Translation.bulkCreate(translationEntries);
+        if (translationEntries.length) {
+          await Translation.bulkCreate(translationEntries, { transaction: t });
         }
       }
 
@@ -440,14 +488,17 @@ class DeviceController {
         const { compat, isUniversal } = req.body;
 
         if (isUniversal === "true") {
-          await DeviceCompatibility.create({
-            deviceId: device.id,
-            isUniversal: true,
-            makeId: null,
-            modelId: null,
-            yearFrom: null,
-            yearTo: null,
-          });
+          await DeviceCompatibility.create(
+            {
+              deviceId: device.id,
+              isUniversal: true,
+              makeId: null,
+              modelId: null,
+              yearFrom: null,
+              yearTo: null,
+            },
+            { transaction: t }
+          );
         } else if (compat) {
           let arr = [];
           try {
@@ -456,15 +507,17 @@ class DeviceController {
             arr = [];
           }
           if (Array.isArray(arr) && arr.length) {
-            const rows = arr.map((c) => ({
-              deviceId: device.id,
-              makeId: c.makeId ?? null,
-              modelId: c.modelId ?? null,
-              yearFrom: c.yearFrom ?? null,
-              yearTo: c.yearTo ?? null,
-              isUniversal: false,
-            }));
-            await DeviceCompatibility.bulkCreate(rows);
+            await DeviceCompatibility.bulkCreate(
+              arr.map((c) => ({
+                deviceId: device.id,
+                makeId: c.makeId ?? null,
+                modelId: c.modelId ?? null,
+                yearFrom: c.yearFrom ?? null,
+                yearTo: c.yearTo ?? null,
+                isUniversal: false,
+              })),
+              { transaction: t }
+            );
           }
         }
       } catch (e) {
@@ -483,16 +536,149 @@ class DeviceController {
             sku: v.sku || null,
             price: v.price === "" ? null : v.price ?? null,
             oldPrice: v.oldPrice === "" ? null : v.oldPrice ?? null,
-            quantity: Number(v.quantity) || 0,
+            purchasePrice:
+              v.purchasePrice === "" ? null : v.purchasePrice ?? null,
+            quantity: 0,
             image: resolveVariantImage(v.image, publicURL, thumbnails),
             isActive: v.isActive !== false,
           };
         });
-        await DeviceVariant.bulkCreate(rows, { ignoreDuplicates: true });
+        await DeviceVariant.bulkCreate(rows, { transaction: t });
       }
 
+      if (receiptLines.length) {
+        const ppAttr = InventoryReceiptItem?.rawAttributes?.purchasePrice;
+        const mustPP = ppAttr && ppAttr.allowNull === false;
+
+        if (mustPP) {
+          const bad = receiptLines.some(
+            (x) =>
+              !Number.isFinite(Number(x.purchasePrice)) ||
+              Number(x.purchasePrice) <= 0
+          );
+          if (bad)
+            throw new Error(
+              "Авто-приход: не указана закупочная цена для стартовых остатков."
+            );
+        }
+
+        const dayKey = new Date().toLocaleDateString("en-CA", {
+          timeZone: "Europe/Tallinn",
+        });
+
+        const note = "Авто-приход при создании товара";
+
+        const [receipt] = await InventoryReceipt.findOrCreate({
+          where: { kind: "IN", dayKey },
+          defaults: {
+            kind: "IN",
+            dayKey,
+            receiptAt: new Date().toISOString(),
+            supplier: null,
+            note,
+          },
+          transaction: t,
+        });
+
+        let idByKey = new Map();
+        if (receiptLines.some((x) => x.mode === "variant")) {
+          const vars = await DeviceVariant.findAll({
+            where: { deviceId: device.id },
+            attributes: ["id", "key"],
+            transaction: t,
+          });
+          idByKey = new Map(vars.map((v) => [v.key, v.id]));
+        }
+
+        const raw = InventoryReceiptItem?.rawAttributes || {};
+        const receiptItems = receiptLines
+          .map((x) => {
+            const base = {
+              receiptId: receipt.id,
+              deviceId: device.id,
+              variantId:
+                x.mode === "variant" ? idByKey.get(x.key) || null : null,
+              quantity: Number(x.qty) || 0,
+              purchasePrice: x.purchasePrice ?? null,
+              purchaseHasVAT,
+            };
+
+            if (x.mode === "option") {
+              const payload = { [x.optionName]: x.optionValue };
+
+              if (raw.selectedOptions)
+                base.selectedOptions = JSON.stringify(payload);
+              else if (raw.selected) base.selected = JSON.stringify(payload);
+              else if (raw.optionName && raw.optionValue) {
+                base.optionName = x.optionName;
+                base.optionValue = String(x.optionValue);
+              } else if (raw.meta) base.meta = JSON.stringify(payload);
+            }
+
+            if (x.mode === "variant" && !base.variantId) return null;
+
+            return base;
+          })
+          .filter(Boolean);
+
+        await InventoryReceiptItem.bulkCreate(receiptItems, { transaction: t });
+
+        if (receiptLines.some((x) => x.mode === "variant")) {
+          for (const it of receiptItems) {
+            if (!it.variantId) continue;
+            await DeviceVariant.increment("quantity", {
+              by: it.quantity,
+              where: { id: it.variantId },
+              transaction: t,
+            });
+          }
+          const total = await DeviceVariant.sum("quantity", {
+            where: { deviceId: device.id },
+            transaction: t,
+          });
+          await device.update(
+            { quantity: Number(total) || 0 },
+            { transaction: t }
+          );
+        } else if (receiptLines.some((x) => x.mode === "option")) {
+          const opts = Array.isArray(optionsForSave) ? optionsForSave : [];
+          for (const line of receiptLines.filter((x) => x.mode === "option")) {
+            const opt = opts.find((o) => o.name === line.optionName);
+            if (!opt) continue;
+            const val = (opt.values || []).find(
+              (v) => v.value === line.optionValue
+            );
+            if (!val) continue;
+            val.quantity =
+              (Number(val.quantity) || 0) + (Number(line.qty) || 0);
+          }
+          const total = opts.reduce(
+            (sum, o) =>
+              sum +
+              (o.values || []).reduce(
+                (s, v) => s + (Number(v.quantity) || 0),
+                0
+              ),
+            0
+          );
+          await device.update(
+            { options: opts, quantity: total },
+            { transaction: t }
+          );
+        } else {
+          const q = receiptLines[0]?.qty || 0;
+          await device.update({ quantity: Number(q) || 0 }, { transaction: t });
+        }
+      }
+
+      await t.commit();
+
+      await device.reload();
       return res.json(device);
     } catch (e) {
+      try {
+        await t.rollback();
+      } catch {}
       next(ApiError.badRequest(e.message));
     }
   }
@@ -1047,35 +1233,6 @@ class DeviceController {
         ];
       }
 
-      let totalQty = device.quantity;
-
-      if (
-        hasVariantsPayload &&
-        Array.isArray(parsedVariants) &&
-        parsedVariants.length
-      ) {
-        totalQty = parsedVariants.reduce(
-          (s, v) => s + (Number(v.quantity) || 0),
-          0
-        );
-      } else if (
-        hasOptionsPayload &&
-        Array.isArray(parsedOptions) &&
-        parsedOptions.length
-      ) {
-        totalQty = parsedOptions.reduce(
-          (sum, option) =>
-            sum +
-            (option.values || []).reduce(
-              (optSum, v) => optSum + (Number(v.quantity) || 0),
-              0
-            ),
-          0
-        );
-      } else if (hasQuantityPayload) {
-        totalQty = Number(quantity) || 0;
-      }
-
       if (hasTranslationsPayload) {
         await Translation.destroy({
           where: { key: { [Op.like]: `device_${id}.%` } },
@@ -1185,7 +1342,6 @@ class DeviceController {
           img: fileName,
           thumbnails,
           options: hasOptionsPayload ? parsedOptions : device.options,
-          quantity: totalQty,
           description,
           expiryKind,
           expiryDate,
@@ -1286,8 +1442,6 @@ class DeviceController {
         );
       }
 
-      const updatedDevice = await Device.findOne({ where: { id } });
-
       if (hasCompatPayload) {
         try {
           await DeviceCompatibility.destroy({ where: { deviceId: id } });
@@ -1328,7 +1482,16 @@ class DeviceController {
       }
 
       if (hasVariantsPayload) {
+        const prev = await DeviceVariant.findAll({
+          where: { deviceId: id },
+          attributes: ["key", "quantity"],
+        });
+        const qtyByKey = new Map(
+          prev.map((v) => [v.key, Number(v.quantity) || 0])
+        );
+
         await DeviceVariant.destroy({ where: { deviceId: id } });
+
         if (Array.isArray(parsedVariants) && parsedVariants.length) {
           const rows = parsedVariants.map((v) => {
             const normalizedSelected = Object.fromEntries(
@@ -1337,21 +1500,33 @@ class DeviceController {
                 getVal(val),
               ])
             );
+
+            const key = makeVariantKey(normalizedSelected);
+
             return {
               deviceId: Number(id),
-              key: makeVariantKey(normalizedSelected),
+              key,
               selected: JSON.stringify(normalizedSelected),
               sku: v.sku || null,
               price: v.price === "" ? null : v.price ?? null,
               oldPrice: v.oldPrice === "" ? null : v.oldPrice ?? null,
-              quantity: Number(v.quantity) || 0,
+              purchasePrice:
+                v.purchasePrice === "" ? null : v.purchasePrice ?? null,
+              quantity: qtyByKey.get(key) || 0,
+
               image: resolveVariantImage(v.image, fileName, thumbnails),
               isActive: v.isActive !== false,
             };
           });
+
           await DeviceVariant.bulkCreate(rows, { ignoreDuplicates: true });
+
+          const total = rows.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+          await Device.update({ quantity: total }, { where: { id } });
         }
       }
+
+      const updatedDevice = await Device.findOne({ where: { id } });
 
       return res.json(updatedDevice);
     } catch (error) {
@@ -1953,7 +2128,7 @@ class DeviceController {
     }
   }
 
- async cursor(req, res) {
+  async cursor(req, res) {
     try {
       const toInt = (v) => {
         const n = Number(v);
@@ -2170,9 +2345,9 @@ class DeviceController {
       }
 
       let compatRows = [];
-if (ids.length) {
-  compatRows = await sequelize.query(
-    `
+      if (ids.length) {
+        compatRows = await sequelize.query(
+          `
     SELECT
       dc."deviceId"            AS "deviceId",
       dc."isUniversal"         AS "isUniversal",
@@ -2189,25 +2364,30 @@ if (ids.length) {
     WHERE dc."deviceId" IN (:ids)
     ORDER BY dc."deviceId" ASC
     `,
-    { replacements: { ids }, type: QueryTypes.SELECT }
-  );
-}
+          { replacements: { ids }, type: QueryTypes.SELECT }
+        );
+      }
 
-const compatByDevice = {};
-for (const r of compatRows) {
-  const dId = Number(r.deviceId);
-  if (!compatByDevice[dId]) compatByDevice[dId] = [];
-  compatByDevice[dId].push({
-    isUniversal: !!r["isUniversal"],
-    makeId: r.makeId ? Number(r.makeId) : null,
-    modelId: r.modelId ? Number(r.modelId) : null,
-    make: r["make.id"] ? { id: Number(r["make.id"]), name: r["make.name"] } : null,
-    model: r["model.id"]
-      ? { id: Number(r["model.id"]), name: r["model.name"], makeId: Number(r["model.makeId"] || 0) || null }
-      : null,
-  });
-}
-
+      const compatByDevice = {};
+      for (const r of compatRows) {
+        const dId = Number(r.deviceId);
+        if (!compatByDevice[dId]) compatByDevice[dId] = [];
+        compatByDevice[dId].push({
+          isUniversal: !!r["isUniversal"],
+          makeId: r.makeId ? Number(r.makeId) : null,
+          modelId: r.modelId ? Number(r.modelId) : null,
+          make: r["make.id"]
+            ? { id: Number(r["make.id"]), name: r["make.name"] }
+            : null,
+          model: r["model.id"]
+            ? {
+                id: Number(r["model.id"]),
+                name: r["model.name"],
+                makeId: Number(r["model.makeId"] || 0) || null,
+              }
+            : null,
+        });
+      }
 
       let rowsTr = [];
       if (ids.length) {
