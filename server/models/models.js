@@ -1,5 +1,5 @@
 const sequelize = require("../db");
-const { DataTypes } = require("sequelize");
+const { DataTypes, literal } = require("sequelize");
 
 const SellerUser = sequelize.define("seller_user", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -15,7 +15,7 @@ const Seller = sequelize.define("seller", {
   kind: { type: DataTypes.STRING, allowNull: true },
   img: { type: DataTypes.STRING, allowNull: true },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
-   address: { type: DataTypes.STRING, allowNull: true },
+  address: { type: DataTypes.STRING, allowNull: true },
   pickupLat: { type: DataTypes.DOUBLE, allowNull: true },
   pickupLng: { type: DataTypes.DOUBLE, allowNull: true },
 });
@@ -99,6 +99,13 @@ const DeviceVariant = sequelize.define(
     sku: { type: DataTypes.STRING, allowNull: true },
     price: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
     oldPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
+    purchasePrice: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
+      field: "purchasePrice",
+      validate: { min: 0 },
+    },
+
     quantity: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     image: { type: DataTypes.STRING, allowNull: true },
     isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
@@ -400,6 +407,114 @@ const Setting = sequelize.define("setting", {
   value: { type: DataTypes.JSONB, allowNull: true },
 });
 
+const InventoryReceipt = sequelize.define(
+  "inventory_receipt",
+  {
+    id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+    receiptAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+      field: "receipt_at",
+    },
+    dayKey: {
+      type: DataTypes.DATEONLY,
+      allowNull: false,
+      field: "day_key",
+      defaultValue: literal("CURRENT_DATE"),
+    },
+    kind: {
+      type: DataTypes.STRING(10),
+      allowNull: false,
+      defaultValue: "IN",
+      validate: { isIn: [["IN", "OUT"]] },
+    },
+    supplier: { type: DataTypes.STRING, allowNull: true },
+    note: { type: DataTypes.TEXT, allowNull: true },
+    createdBy: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: "created_by",
+    },
+  },
+  {
+    tableName: "inventory_receipts",
+    timestamps: false,
+    indexes: [{ fields: ["receipt_at"] }],
+  }
+);
+
+const InventoryReceiptItem = sequelize.define(
+  "inventory_receipt_item",
+  {
+    id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+
+    receiptId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      field: "receipt_id",
+    },
+    deviceId: { type: DataTypes.INTEGER, allowNull: false, field: "device_id" },
+    variantId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: "variant_id",
+    },
+
+    quantity: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+
+    purchasePrice: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
+      validate: { min: 0 },
+      field: "purchase_price",
+    },
+    purchaseHasVAT: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: "purchase_has_vat",
+    },
+  },
+  {
+    tableName: "inventory_receipt_items",
+    timestamps: false,
+    indexes: [
+      { fields: ["receipt_id"] },
+      { fields: ["device_id"] },
+      { fields: ["variant_id"] },
+    ],
+  }
+);
+
+InventoryReceipt.hasMany(InventoryReceiptItem, {
+  as: "items",
+  foreignKey: "receiptId",
+  onDelete: "CASCADE",
+});
+InventoryReceiptItem.belongsTo(InventoryReceipt, {
+  foreignKey: "receiptId",
+  as: "receipt",
+});
+
+Device.hasMany(InventoryReceiptItem, {
+  as: "receiptItems",
+  foreignKey: "deviceId",
+});
+InventoryReceiptItem.belongsTo(Device, {
+  foreignKey: "deviceId",
+  as: "device",
+});
+
+DeviceVariant.hasMany(InventoryReceiptItem, {
+  as: "receiptItems",
+  foreignKey: "variantId",
+});
+InventoryReceiptItem.belongsTo(DeviceVariant, {
+  foreignKey: "variantId",
+  as: "variant",
+});
+
 Seller.hasMany(MenuCategory, { foreignKey: "sellerId", as: "menuCategories" });
 MenuCategory.belongsTo(Seller, { foreignKey: "sellerId", as: "seller" });
 
@@ -608,4 +723,6 @@ module.exports = {
   MenuCategory,
   MenuItem,
   SellerUser,
+  InventoryReceipt,
+  InventoryReceiptItem,
 };
