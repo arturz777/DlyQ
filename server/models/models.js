@@ -253,6 +253,23 @@ const Order = sequelize.define(
       allowNull: true,
       defaultValue: 0,
     },
+    courierFeeGross: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: null,
+  },
+
+  courierCommission: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: null,
+  },
+
+  courierCommissionRate: {
+    type: DataTypes.DECIMAL(5, 4),
+    allowNull: true,
+    defaultValue: null,
+  },
     status: { type: DataTypes.STRING, defaultValue: "Pending" },
     warehouseStatus: { type: DataTypes.STRING, defaultValue: "pending" },
     desiredDeliveryDate: { type: DataTypes.DATE, allowNull: true },
