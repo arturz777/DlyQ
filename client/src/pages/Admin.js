@@ -40,6 +40,7 @@ import {
   deactivateMenuItem,
   toggleMenuItemAvailability,
 } from "../http/menuAPI";
+import { createReceipt, createWriteoff } from "../http/inventoryAPI";
 import CreateMenuCategory from "../components/modals/CreateMenuCategory";
 import CreateMenuItem from "../components/modals/CreateMenuItem";
 import CreateSeller from "../components/modals/CreateSeller";
@@ -553,32 +554,6 @@ const Admin = () => {
       }));
   };
 
-  const getZeroOptions = (d) => {
-    let opts = [];
-    if (Array.isArray(d.options)) opts = d.options;
-    else if (typeof d.options === "string") {
-      try {
-        opts = JSON.parse(d.options) || [];
-      } catch {}
-    }
-    const zeros = [];
-    (opts || []).forEach((opt) => {
-      const optName = asPlain(opt?.name) || opt?.name || "Опция";
-      (opt.values || []).forEach((val) => {
-        const q = Number(val?.quantity) || 0;
-        if (q <= 0) {
-          const textOrValue = asPlain(val?.text) || val?.value;
-          zeros.push({
-            kind: "option",
-            label: `${optName}: ${textOrValue}`,
-            raw: { opt, val },
-          });
-        }
-      });
-    });
-    return zeros;
-  };
-
   const loadModelsForMake = async (makeId) => {
     const list = await fetchModelsByMake(makeId);
     setModelsByMake((prev) => ({ ...prev, [makeId]: list }));
@@ -828,49 +803,29 @@ const Admin = () => {
     .sort((a, b) => (daysToExpire(a) ?? 9e9) - (daysToExpire(b) ?? 9e9));
 
   const outOfStockDevices = filteredDevices
-    .map((d) => {
-      const zerosVariants = getZeroVariants(d);
-      const zerosOptions = getZeroOptions(d);
-      const zeros = [...zerosVariants, ...zerosOptions];
+  .map((d) => {
+    const zeros = getZeroVariants(d);
 
-      const rawVariants = Array.isArray(d.variants)
-        ? d.variants
-        : parseMaybeJSON(d.variants) || [];
-      const activeVariants = rawVariants.filter((v) => v?.isActive ?? true);
+    const rawVariants = Array.isArray(d.variants)
+      ? d.variants
+      : parseMaybeJSON(d.variants) || [];
 
-      let optionValues = [];
-      if (Array.isArray(d.options)) {
-        optionValues = d.options.flatMap((o) => o.values || []);
-      } else if (typeof d.options === "string") {
-        try {
-          const parsed = JSON.parse(d.options) || [];
-          optionValues = parsed.flatMap((o) => o.values || []);
-        } catch {}
-      }
-      const activeOptionValues = optionValues.filter(
-        (v) => v?.isActive !== false
+    const activeVariants = rawVariants.filter((v) => v?.isActive ?? true);
+
+    let completelyOut = false;
+    if (activeVariants.length) {
+      completelyOut = activeVariants.every(
+        (v) => (Number(v?.quantity) || 0) <= 0
       );
+    } else {
+      completelyOut = (Number(d.quantity) || 0) <= 0;
+    }
 
-      let completelyOut = false;
-      if (activeVariants.length) {
-        completelyOut = activeVariants.every(
-          (v) => (Number(v?.quantity) || 0) <= 0
-        );
-      } else if (activeOptionValues.length) {
-        completelyOut = activeOptionValues.every(
-          (v) => (Number(v?.quantity) || 0) <= 0
-        );
-      } else {
-        completelyOut = (Number(d.quantity) || 0) <= 0;
-      }
-
-      const hasAnyZeros = zeros.length > 0;
-
-      const show = !isSnoozed(d) && (completelyOut || hasAnyZeros);
-      return show ? { device: d, zeros } : null;
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.device.name.localeCompare(b.device.name));
+    const show = !isSnoozed(d) && (completelyOut || zeros.length > 0);
+    return show ? { device: d, zeros } : null;
+  })
+  .filter(Boolean)
+  .sort((a, b) => a.device.name.localeCompare(b.device.name));
 
   const getCompatList = (d) => {
     if (!d) return [];
@@ -901,7 +856,7 @@ const Admin = () => {
       );
     }
 
-     return (
+    return (
       <div className={styles.compatRow}>
         <div className={styles.compatChips}>
           {compat.map((c, i) => {
@@ -2570,7 +2525,6 @@ const Admin = () => {
                     );
                   })}
 
-                  {/* Без категории */}
                   {(() => {
                     const unc = menuItemsByCategory.get("no") || [];
                     if (menuSearch.trim() && unc.length === 0) return null;
@@ -2681,7 +2635,7 @@ const Admin = () => {
         </TabPanel>
       </Tabs>
 
-    <CreateBrand
+      <CreateBrand
         show={brandVisible}
         editableBrand={editableBrand}
         onHide={() => {
@@ -2694,7 +2648,7 @@ const Admin = () => {
           setEditableBrand(null);
         }}
       />
-        
+
       <CreateDevice
         show={deviceVisible}
         onHide={() => {
