@@ -249,8 +249,7 @@ class InventoryReceiptController {
           "receiptAt",
           "supplier",
           "note",
-          "createdAt",
-        ], // ✅ kind
+        ],
         include: [
           {
             model: InventoryReceiptItem,
