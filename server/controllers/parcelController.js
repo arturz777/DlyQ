@@ -46,12 +46,6 @@ function distanceKm(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-function calcBase(distance) {
-  const baseCost = 2;
-  const distanceCost = distance * 0.5;
-  return Number((baseCost + distanceCost).toFixed(2));
-}
-
 class ParcelController {
   async quote(req, res) {
     try {
@@ -167,7 +161,7 @@ class ParcelController {
 
         totalPrice: Number(price),
         deliveryPrice: Number(price),
-        courierFee: Number(courierFee),
+        courierFee: Number(payout.net),
 
         status: "Waiting for courier",
         warehouseStatus: "none",
