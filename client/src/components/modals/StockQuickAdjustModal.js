@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { adjustDeviceStock } from "../../http/deviceAPI";
+import { createReceipt, createWriteoff } from "../../http/inventoryAPI";
 
 export default function StockQuickAdjustModal({
   show,
@@ -104,6 +104,24 @@ export default function StockQuickAdjustModal({
     return v?.sku || `Вариант #${idx + 1}`;
   };
 
+  const getPurchaseDefaults = (device, variant) => {
+    const price =
+      variant?.purchasePrice ??
+      device?.purchasePrice ??
+      device?.purchase_price ??
+      "";
+    const hasVAT =
+      variant?.purchaseHasVAT ??
+      device?.purchaseHasVAT ??
+      device?.purchase_has_vat ??
+      false;
+
+    return {
+      purchasePrice: Number(price) || 0,
+      purchaseHasVAT: !!hasVAT,
+    };
+  };
+
   const submit = async () => {
     const n = parseInt(qty, 10);
     if (!Number.isInteger(n) || n <= 0) {
@@ -116,8 +134,12 @@ export default function StockQuickAdjustModal({
     }
 
     const delta = action === "add" ? n : -n;
+
     let selectedOptions;
     let updatedDevice = { ...selectedDevice };
+
+    let usedVariantId = null;
+    let usedVariant = null;
 
     if (hasVariants) {
       if (selectedVariantIndex === "" || selectedVariantIndex === null) {
@@ -130,6 +152,9 @@ export default function StockQuickAdjustModal({
         alert("Вариант не найден");
         return;
       }
+
+      usedVariant = variant;
+      usedVariantId = variant?.id ? Number(variant.id) : null;
 
       selectedOptions = variant.selected || {};
 
@@ -172,13 +197,41 @@ export default function StockQuickAdjustModal({
     updatedDevice.quantity = baseQ + delta;
 
     try {
-      await adjustDeviceStock(selectedDevice.id, delta, selectedOptions);
+      const { purchasePrice, purchaseHasVAT } = getPurchaseDefaults(
+        selectedDevice,
+        usedVariant
+      );
+
+      const payload = {
+        kind: delta > 0 ? "IN" : "OUT",
+        receiptAt: new Date().toISOString(),
+        supplier: "Admin quick adjust",
+        note: `Корректировка остатков из админки (${
+          delta > 0 ? "+" : ""
+        }${delta})`,
+        items: [
+          {
+            deviceId: Number(selectedDevice.id),
+            variantId: usedVariantId,
+            quantity: Math.abs(delta),
+            purchasePrice: purchasePrice,
+            purchaseHasVAT: purchaseHasVAT,
+          },
+        ],
+      };
+
+      if (delta > 0) await createReceipt(payload);
+      else await createWriteoff(payload);
 
       onUpdated?.(updatedDevice);
       setSelectedDevice(updatedDevice);
     } catch (e) {
       console.error(e);
-      alert(e?.response?.data?.message || "Не удалось изменить остаток");
+      alert(
+        e?.response?.data?.message ||
+          e?.message ||
+          "Не удалось изменить остаток"
+      );
     }
   };
 
@@ -241,11 +294,7 @@ export default function StockQuickAdjustModal({
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div
-                      style={{
-                        fontSize: 12,
-                        color: "#666",
-                        marginBottom: 2,
-                      }}
+                      style={{ fontSize: 12, color: "#666", marginBottom: 2 }}
                     >
                       #{d.id}
                     </div>
@@ -270,8 +319,7 @@ export default function StockQuickAdjustModal({
           </div>
         </div>
 
-        {/* 🔹 если у товара есть variants — выбираем конкретный вариант */}
-        {hasVariants && (
+        {normalizedVariants.length > 0 && (
           <div style={{ marginBottom: 10 }}>
             <label style={labelStyle}>Вариант</label>
             <select
@@ -292,8 +340,7 @@ export default function StockQuickAdjustModal({
           </div>
         )}
 
-        {/* 🔹 опции показываем только если НЕТ variants */}
-        {!hasVariants && hasOptions && (
+        {normalizedVariants.length === 0 && normalizedOptions.length > 0 && (
           <>
             <div style={{ marginBottom: 10 }}>
               <label style={labelStyle}>Опция</label>
