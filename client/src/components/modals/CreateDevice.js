@@ -91,11 +91,13 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       (k) => k.startsWith("option_") || k.startsWith("option_values_")
     );
 
+    const hasVariantErr = keys.some((k) => k.startsWith("variant_"));
+
     return {
       basic: !!(errs.type || errs.name || errs.compat),
       price: !!(errs.price || errs.oldPrice || errs.purchasePrice),
       images: !!errs.img,
-      opts: !!(errs.variants || hasOptErr),
+      opts: !!(errs.variants || errs.variantsQty || hasOptErr || hasVariantErr),
       description: !!errs.description,
       info: !!keys.some((k) => k.startsWith("info_")),
       expiry: !!errs.expiryDate,
@@ -210,6 +212,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         sku: "",
         price: "",
         oldPrice: "",
+        purchasePrice: "",
         quantity: 0,
         image: "",
         isActive: true,
@@ -321,6 +324,8 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
               sku: v.sku || "",
               price: (v.price ?? "") === null ? "" : v.price ?? "",
               oldPrice: (v.oldPrice ?? "") === null ? "" : v.oldPrice ?? "",
+              purchasePrice:
+                (v.purchasePrice ?? "") === null ? "" : v.purchasePrice ?? "",
               quantity: Number(v.quantity) || 0,
               image: v.image || "",
               isActive: v.isActive !== false,
@@ -1047,12 +1052,47 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       errors.img = "Загрузите хотя бы одно изображение";
     }
 
-    if (variants.length === 0) {
-      if (quantity === "" || quantity === null || quantity === undefined) {
-        errors.quantity = "Введите количество товара";
-      } else if (Number(quantity) < 0) {
-        errors.quantity = "Количество не может быть отрицательным";
+    const totalVariantsQty = (variants || []).reduce(
+      (s, v) => s + (Number(v.quantity) || 0),
+      0
+    );
+
+    if (!isEditMode) {
+      if (variants.length > 0) {
+        if (totalVariantsQty <= 0) {
+          errors.variantsQty = "Укажите количество хотя бы для одного варианта";
+
+          variants.forEach((v, idx) => {
+            if ((Number(v.quantity) || 0) <= 0) {
+              errors[`variant_qty_${idx}`] = "Укажите кол-во > 0";
+            }
+          });
+        }
+
+        variants.forEach((v, idx) => {
+          const q = v.quantity;
+          if (
+            q === "" ||
+            q === null ||
+            q === undefined ||
+            Number.isNaN(Number(q))
+          ) {
+            errors[`variant_qty_${idx}`] = "Введите число";
+          } else if (Number(q) < 0) {
+            errors[`variant_qty_${idx}`] = "Не может быть отрицательным";
+          }
+        });
+      } else {
+        if (quantity === "" || quantity === null || quantity === undefined) {
+          errors.quantity = "Введите количество товара";
+        } else if (Number(quantity) <= 0) {
+          errors.quantity = "Количество должно быть больше 0";
+        }
       }
+    }
+
+    if (variants.length === 0 && Number(quantity) < 0) {
+      errors.quantity = "Количество не может быть отрицательным";
     }
 
     if (options.length >= 1 && variants.length === 0) {
@@ -1198,6 +1238,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         sku: v.sku || null,
         price: toNumOrNull(v.price),
         oldPrice: toNumOrNull(v.oldPrice),
+        purchasePrice: toNumOrNull(v.purchasePrice),
         quantity: Number(v.quantity) || 0,
         image: v.image || null,
         isActive: v.isActive !== false,
@@ -1588,7 +1629,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                     </Dropdown.Menu>
                   </Dropdown>
 
-                  {/* Доп. подтипы */}
                   {visibleSubtypes.length > 0 && (
                     <div className="mt-2">
                       <div className="mb-1">
@@ -1992,6 +2032,11 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                 />
               }
             >
+              {optionErrors.variantsQty && (
+                <div className="text-danger mt-2">
+                  {optionErrors.variantsQty}
+                </div>
+              )}
               <Row className="g-3">
                 <Col md={5}>
                   <div className="d-flex align-items-center justify-content-between mb-2">
@@ -2169,8 +2214,9 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                                 {o.name || `Опция ${i + 1}`}
                               </th>
                             ))}
-                            <th>SKU</th>
-                            <th>Цена (override)</th>
+                            <th>Код</th>
+                            <th>Себестоимость</th>
+                            <th>Цена варианта</th>
                             <th>Старая цена</th>
                             <th>Кол-во</th>
                             <th>Активен</th>
@@ -2197,6 +2243,26 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                                   placeholder="SKU"
                                 />
                               </td>
+                              <td style={{ minWidth: 140 }}>
+                                <Form.Control
+                                  type="number"
+                                  step="0.01"
+                                  value={v.purchasePrice ?? ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setVariants((prev) => {
+                                      const next = [...prev];
+                                      next[idx] = {
+                                        ...next[idx],
+                                        purchasePrice: val,
+                                      };
+                                      return next;
+                                    });
+                                  }}
+                                  placeholder="пусто = общая"
+                                />
+                              </td>
+
                               <td style={{ minWidth: 140 }}>
                                 <Form.Control
                                   type="number"
@@ -2230,16 +2296,25 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                                 <Form.Control
                                   type="number"
                                   value={v.quantity}
+                                  isInvalid={
+                                    !!optionErrors[`variant_qty_${idx}`]
+                                  }
                                   onChange={(e) => {
-                                    const n =
-                                      e.target.value === ""
-                                        ? ""
-                                        : parseInt(e.target.value, 10);
-                                    const next = [...variants];
-                                    next[idx].quantity = isNaN(n) ? 0 : n;
-                                    setVariants(next);
+                                    const val = e.target.value;
+                                    setVariants((prev) => {
+                                      const next = [...prev];
+                                      next[idx] = {
+                                        ...next[idx],
+                                        quantity:
+                                          val === "" ? "" : parseInt(val, 10),
+                                      };
+                                      return next;
+                                    });
                                   }}
                                 />
+                                <Form.Control.Feedback type="invalid">
+                                  {optionErrors[`variant_qty_${idx}`]}
+                                </Form.Control.Feedback>
                               </td>
                               <td>
                                 <Form.Check
@@ -2543,7 +2618,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                   type="number"
                   value={quantity}
                   onChange={(e) => setQuantity(Number(e.target.value))}
-                  min="0"
+                  min={isEditMode ? 0 : 1}
                   disabled={variants.length > 0}
                 />
                 {variants.length > 0 && (
