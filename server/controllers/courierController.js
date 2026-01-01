@@ -61,8 +61,15 @@ class CourierController {
       if (!courierId)
         return res.status(401).json({ message: "Вы не авторизованы." });
 
+      const { from, to } = req.query;
+
+      const where = { courierId, status: "Delivered" };
+      if (from && to) {
+        where.updatedAt = { [Op.gte]: new Date(from), [Op.lt]: new Date(to) };
+      }
+
       const row = await Order.findOne({
-        where: { courierId, status: "Delivered" },
+        where,
         attributes: [
           [fn("COUNT", col("id")), "trips"],
           [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "gross"],
@@ -72,20 +79,92 @@ class CourierController {
         raw: true,
       });
 
-      // fallback для старых заказов без новых колонок:
-      const trips = Number(row?.trips || 0);
-      const gross = Number(row?.gross || 0);
-      const withheld = Number(row?.withheld || 0);
-      const net = Number(row?.net || 0);
-
       return res.json({
-        trips,
-        gross: Number(gross.toFixed(2)),
-        withheld: Number(withheld.toFixed(2)),
-        net: Number(net.toFixed(2)),
+        trips: Number(row?.trips || 0),
+        gross: Number(Number(row?.gross || 0).toFixed(2)),
+        withheld: Number(Number(row?.withheld || 0).toFixed(2)),
+        net: Number(Number(row?.net || 0).toFixed(2)),
+        bonuses: 0,
+        tips: 0,
+        acceptRate: 100, // пока заглушка
       });
     } catch (e) {
       console.error("getFinance error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
+  async getHistory(req, res) {
+    try {
+      const courierId = req.user?.id;
+      if (!courierId)
+        return res.status(401).json({ message: "Вы не авторизованы." });
+
+      const { from, to } = req.query;
+
+      const where = { courierId, status: "Delivered" };
+      if (from && to) {
+        where.updatedAt = { [Op.gte]: new Date(from), [Op.lt]: new Date(to) };
+      }
+
+      const orders = await Order.findAll({
+        where,
+        order: [["updatedAt", "DESC"]],
+        attributes: [
+          "id",
+          "orderType",
+          "sellerId",
+          "pickupAddress",
+          "deliveryAddress",
+          "orderDetails",
+          "courierFee",
+          "courierCommission",
+          "courierFeeGross",
+          "updatedAt",
+        ],
+      });
+
+      const sellerIds = [
+        ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
+      ];
+      const sellers = sellerIds.length
+        ? await Seller.findAll({
+            where: { id: sellerIds },
+            attributes: ["id", "address"],
+          })
+        : [];
+      const sellerMap = new Map(sellers.map((s) => [s.id, s]));
+
+      const result = orders.map((order) => {
+        const o = order.toJSON();
+        const details = safeParse(o.orderDetails, []);
+        const isParcel = o.orderType === "parcel";
+        const isRestaurant =
+          !isParcel &&
+          Array.isArray(details) &&
+          details.some((x) => x?.isRestaurantItem);
+
+        const kind = isParcel ? "parcel" : isRestaurant ? "restaurant" : "shop";
+
+        const pickupAddress = isParcel
+          ? o.pickupAddress || null
+          : o.pickupAddress || sellerMap.get(o.sellerId)?.address || null;
+
+        return {
+          id: o.id,
+          kind,
+          deliveredAt: o.updatedAt,
+          pickupAddress,
+          deliveryAddress: o.deliveryAddress,
+          net: o.courierFee,
+          withheld: o.courierCommission,
+          gross: o.courierFeeGross,
+        };
+      });
+
+      return res.json(result);
+    } catch (e) {
+      console.error("getHistory error:", e);
       return res.status(500).json({ message: "Ошибка сервера" });
     }
   }
