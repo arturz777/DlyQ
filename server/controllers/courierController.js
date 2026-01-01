@@ -334,6 +334,8 @@ class CourierController {
           "offerCourierId",
           "sellerId",
           "userId",
+          "customerName",
+          "customerPhone",
         ],
       });
 
@@ -432,6 +434,15 @@ class CourierController {
 
       const prevStatus = order.status;
       const isParcel = order.orderType === "parcel";
+      const user = order.userId
+        ? await User.findByPk(order.userId, {
+            attributes: ["id", "firstName", "lastName", "phone", "email"],
+          })
+        : null;
+
+      const customerName =
+        order.customerName || buildCustomerName(user) || null;
+      const customerPhone = order.customerPhone || user?.phone || null;
 
       order.courierId = courierId;
       order.acceptedAt = new Date();
@@ -494,6 +505,9 @@ class CourierController {
         pickupAddress,
         pickupLat,
         pickupLng,
+        customerName,
+        customerPhone,
+        userId: order.userId,
       });
     } catch (error) {
       console.error("❌ Ошибка принятия заказа:", error);
