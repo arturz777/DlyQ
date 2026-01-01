@@ -82,11 +82,11 @@ router.get(
   courierController.getHistory
 );
 
-router.get(
-  "/finance",
-  authMiddleware,
-  roleMiddleware("COURIER"),
-  courierController.getFinance
-);
+// router.get(
+//   "/finance",
+//   authMiddleware,
+//   roleMiddleware("COURIER"),
+//   courierController.getFinance
+// );
 
 module.exports = router;
