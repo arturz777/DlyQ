@@ -100,8 +100,6 @@ class CourierController {
           "orderType",
           "sellerId",
           "userId",
-          "customerName",
-          "customerPhone",
           "pickupAddress",
           "deliveryAddress",
           "totalPrice",
@@ -334,8 +332,6 @@ class CourierController {
           "offerCourierId",
           "sellerId",
           "userId",
-          "customerName",
-          "customerPhone",
         ],
       });
 
