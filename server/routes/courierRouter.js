@@ -75,6 +75,18 @@ router.get(
   courierController.getAllCouriers
 );
 
-router.get("/finance", authMiddleware, courierController.getFinance);
+router.get(
+  "/history",
+  authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.getHistory
+);
+
+router.get(
+  "/finance",
+  authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.getFinance
+);
 
 module.exports = router;
