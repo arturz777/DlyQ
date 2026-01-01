@@ -55,7 +55,7 @@ function safeParse(v, fallback) {
 }
 
 class CourierController {
-  async getFinance(req, res) {
+  async getHistory(req, res) {
     try {
       const courierId = req.user?.id;
       if (!courierId)
@@ -64,32 +64,69 @@ class CourierController {
       const { from, to } = req.query;
 
       const where = { courierId, status: "Delivered" };
-      if (from && to) {
-        where.updatedAt = { [Op.gte]: new Date(from), [Op.lt]: new Date(to) };
+
+      // фильтр по deliveredAt если есть, иначе по updatedAt
+      const timeField = Order.rawAttributes?.deliveredAt
+        ? "deliveredAt"
+        : "updatedAt";
+
+      if (from || to) {
+        where[timeField] = {};
+        if (from) where[timeField][Op.gte] = new Date(from);
+        if (to) where[timeField][Op.lt] = new Date(to);
       }
 
-      const row = await Order.findOne({
+      const orders = await Order.findAll({
         where,
+        order: [[timeField, "DESC"]],
         attributes: [
-          [fn("COUNT", col("id")), "trips"],
-          [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "gross"],
-          [fn("COALESCE", fn("SUM", col("courierCommission")), 0), "withheld"],
-          [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
+          "id",
+          "orderType",
+          "pickupAddress",
+          "deliveryAddress",
+          "sellerId",
+          "totalPrice",
+          "courierFee",
+          "courierCommission",
+          timeField,
+          "createdAt",
         ],
-        raw: true,
       });
 
-      return res.json({
-        trips: Number(row?.trips || 0),
-        gross: Number(Number(row?.gross || 0).toFixed(2)),
-        withheld: Number(Number(row?.withheld || 0).toFixed(2)),
-        net: Number(Number(row?.net || 0).toFixed(2)),
-        bonuses: 0,
-        tips: 0,
-        acceptRate: 100, // пока заглушка
+      // если нужно подставить адрес продавца как pickup (как в activeOrders)
+      const sellerIds = [
+        ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
+      ];
+      const sellers = sellerIds.length
+        ? await Seller.findAll({
+            where: { id: sellerIds },
+            attributes: ["id", "address"],
+          })
+        : [];
+      const sellerMap = new Map(sellers.map((s) => [s.id, s]));
+
+      const out = orders.map((o) => {
+        const j = o.toJSON();
+        const s = j.sellerId ? sellerMap.get(j.sellerId) : null;
+        const isParcel = j.orderType === "parcel";
+
+        return {
+          id: j.id,
+          kind: j.orderType,
+          deliveredAt: j[timeField] || j.createdAt,
+          pickupAddress: isParcel
+            ? j.pickupAddress || null
+            : j.pickupAddress || s?.address || null,
+          deliveryAddress: j.deliveryAddress || null,
+          sum: Number(j.totalPrice || 0),
+          net: Number(j.courierFee || 0),
+          withheld: Number(j.courierCommission || 0),
+        };
       });
+
+      return res.json(out);
     } catch (e) {
-      console.error("getFinance error:", e);
+      console.error("getHistory error:", e);
       return res.status(500).json({ message: "Ошибка сервера" });
     }
   }
@@ -591,6 +628,10 @@ class CourierController {
 
       order.status = "Delivered";
       order.estimatedTime = null;
+
+      if (Order.rawAttributes?.deliveredAt) {
+        order.deliveredAt = new Date();
+      }
 
       await order.save();
 
