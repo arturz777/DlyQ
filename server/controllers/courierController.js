@@ -81,6 +81,7 @@ class CourierController {
         attributes: [
           "id",
           "orderType",
+          "sellerId",
           "pickupAddress",
           "deliveryAddress",
           "totalPrice",
@@ -89,9 +90,24 @@ class CourierController {
         ],
       });
 
+      const sellerIds = [
+        ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
+      ];
+
+      const sellers = sellerIds.length
+        ? await Seller.findAll({
+            where: { id: { [Op.in]: sellerIds } },
+            attributes: ["id", "name", "kind"],
+          })
+        : [];
+
+      const sellerMap = new Map(sellers.map((s) => [Number(s.id), s.toJSON()]));
+
       return res.json(
         orders.map((o) => {
           const j = o.toJSON();
+          const s = j.sellerId ? sellerMap.get(Number(j.sellerId)) : null;
+
           return {
             id: j.id,
             kind: j.orderType,
@@ -99,6 +115,10 @@ class CourierController {
             pickupAddress: j.pickupAddress || null,
             deliveryAddress: j.deliveryAddress || null,
             sum: Number(j.totalPrice || 0),
+
+            sellerId: j.sellerId || null,
+            sellerName: s?.name || null,
+            sellerKind: s?.kind || null,
           };
         })
       );
