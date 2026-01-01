@@ -65,7 +65,7 @@ class CourierController {
 
       const where = { courierId, status: "Delivered" };
 
-      // фильтр по deliveredAt если есть, иначе по updatedAt
+      // если deliveredAt нет — используем updatedAt
       const timeField = Order.rawAttributes?.deliveredAt
         ? "deliveredAt"
         : "updatedAt";
@@ -84,46 +84,25 @@ class CourierController {
           "orderType",
           "pickupAddress",
           "deliveryAddress",
-          "sellerId",
           "totalPrice",
-          "courierFee",
-          "courierCommission",
+          timeField,
           "createdAt",
         ],
       });
 
-      // если нужно подставить адрес продавца как pickup (как в activeOrders)
-      const sellerIds = [
-        ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
-      ];
-      const sellers = sellerIds.length
-        ? await Seller.findAll({
-            where: { id: sellerIds },
-            attributes: ["id", "address"],
-          })
-        : [];
-      const sellerMap = new Map(sellers.map((s) => [s.id, s]));
-
-      const out = orders.map((o) => {
-        const j = o.toJSON();
-        const s = j.sellerId ? sellerMap.get(j.sellerId) : null;
-        const isParcel = j.orderType === "parcel";
-
-        return {
-          id: j.id,
-          kind: j.orderType,
-          deliveredAt: j[timeField] || j.createdAt,
-          pickupAddress: isParcel
-            ? j.pickupAddress || null
-            : j.pickupAddress || s?.address || null,
-          deliveryAddress: j.deliveryAddress || null,
-          sum: Number(j.totalPrice || 0),
-          net: Number(j.courierFee || 0),
-          withheld: Number(j.courierCommission || 0),
-        };
-      });
-
-      return res.json(out);
+      return res.json(
+        orders.map((o) => {
+          const j = o.toJSON();
+          return {
+            id: j.id,
+            kind: j.orderType,
+            deliveredAt: j[timeField] || j.createdAt,
+            pickupAddress: j.pickupAddress || null,
+            deliveryAddress: j.deliveryAddress || null,
+            sum: Number(j.totalPrice || 0),
+          };
+        })
+      );
     } catch (e) {
       console.error("getHistory error:", e);
       return res.status(500).json({ message: "Ошибка сервера" });
