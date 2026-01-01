@@ -55,78 +55,78 @@ function safeParse(v, fallback) {
 }
 
 class CourierController {
-  async getHistory(req, res) {
-    try {
-      const courierId = req.user?.id;
-      if (!courierId)
-        return res.status(401).json({ message: "Вы не авторизованы." });
+async getHistory(req, res) {
+  try {
+    const courierId = req.user?.id;
+    if (!courierId) return res.status(401).json({ message: "Вы не авторизованы." });
 
-      const { from, to } = req.query;
+    const { from, to } = req.query;
 
-      const where = { courierId, status: "Delivered" };
+    const where = { courierId, status: "Delivered" };
 
-      const timeField = Order.rawAttributes?.deliveredAt
-        ? "deliveredAt"
-        : "updatedAt";
+    const timeField = Order.rawAttributes?.deliveredAt ? "deliveredAt" : "updatedAt";
 
-      if (from || to) {
-        where[timeField] = {};
-        if (from) where[timeField][Op.gte] = new Date(from);
-        if (to) where[timeField][Op.lt] = new Date(to);
-      }
-
-      const orders = await Order.findAll({
-        where,
-        order: [[timeField, "DESC"]],
-        attributes: [
-          "id",
-          "orderType",
-          "sellerId",
-          "pickupAddress",
-          "deliveryAddress",
-          "totalPrice",
-          timeField,
-          "createdAt",
-        ],
-      });
-
-      const sellerIds = [
-        ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
-      ];
-
-      const sellers = sellerIds.length
-        ? await Seller.findAll({
-            where: { id: { [Op.in]: sellerIds } },
-            attributes: ["id", "name", "kind"],
-          })
-        : [];
-
-      const sellerMap = new Map(sellers.map((s) => [Number(s.id), s.toJSON()]));
-
-      return res.json(
-        orders.map((o) => {
-          const j = o.toJSON();
-          const s = j.sellerId ? sellerMap.get(Number(j.sellerId)) : null;
-
-          return {
-            id: j.id,
-            kind: j.orderType,
-            deliveredAt: j[timeField] || j.createdAt,
-            pickupAddress: j.pickupAddress || null,
-            deliveryAddress: j.deliveryAddress || null,
-            sum: Number(j.totalPrice || 0),
-
-            sellerId: j.sellerId || null,
-            sellerName: s?.name || null,
-            sellerKind: s?.kind || null,
-          };
-        })
-      );
-    } catch (e) {
-      console.error("getHistory error:", e);
-      return res.status(500).json({ message: "Ошибка сервера" });
+    if (from || to) {
+      where[timeField] = {};
+      if (from) where[timeField][Op.gte] = new Date(from);
+      if (to) where[timeField][Op.lt] = new Date(to);
     }
+
+    const orders = await Order.findAll({
+      where,
+      order: [[timeField, "DESC"]],
+      attributes: [
+        "id",
+        "orderType",
+        "sellerId",
+        "pickupAddress",
+        "deliveryAddress",
+        "totalPrice",
+        timeField,
+        "createdAt",
+      ],
+      raw: true,
+    });
+
+    const sellerIds = [...new Set(orders.map(o => o.sellerId).filter(Boolean))];
+
+    const sellers = sellerIds.length
+      ? await Seller.findAll({
+          where: { id: { [Op.in]: sellerIds } },
+          attributes: ["id", "name", "kind"],
+          raw: true,
+        })
+      : [];
+
+    const sellerMap = new Map(sellers.map(s => [Number(s.id), s]));
+
+    return res.json(
+      orders.map((o) => {
+        const seller = o.sellerId ? sellerMap.get(Number(o.sellerId)) : null;
+
+        const kind =
+          o.orderType === "parcel"
+            ? "parcel"
+            : seller
+            ? "restaurant"
+            : "market";
+
+        return {
+          id: o.id,
+          kind,
+          sellerName: seller?.name || null,
+          deliveredAt: o[timeField] || o.createdAt,
+          pickupAddress: o.pickupAddress || null,
+          deliveryAddress: o.deliveryAddress || null,
+          sum: Number(o.totalPrice || 0),
+        };
+      })
+    );
+  } catch (e) {
+    console.error("getHistory error:", e);
+    return res.status(500).json({ message: "Ошибка сервера" });
   }
+}
 
   async getFinance(req, res) {
     try {
