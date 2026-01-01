@@ -88,7 +88,6 @@ class CourierController {
           "totalPrice",
           "courierFee",
           "courierCommission",
-          timeField,
           "createdAt",
         ],
       });
