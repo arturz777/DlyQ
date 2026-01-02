@@ -1,886 +1,565 @@
-const { Op, fn, col } = require("sequelize");
-const fetch = require("node-fetch");
-const {
-  Order,
-  Courier,
-  OrderDecline,
-  Seller,
-  User,
-} = require("../models/models");
-const {
-  sendOrderToNextCourier,
-} = require("../services/orderDistributionService");
+import React, { useState, useEffect } from "react";
+import { fetchActiveOrder, updateOrderStatus } from "../http/orderAPI";
+import { useNavigate } from "react-router-dom";
+import { useRef } from "react";
+import { useMap } from "react-leaflet";
+import { io } from "socket.io-client";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Polyline,
+  Popup,
+} from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import { useTranslation } from "react-i18next";
+import styles from "./OrderSidebar.module.css";
 
-const PARCEL_FLOW = [
-  "Accepted",
-  "Arrived at pickup",
-  "In transit",
-  "Arrived at destination",
-  "Delivered",
-];
+const socket = io(process.env.REACT_APP_API_URL);
 
-const PARCEL_STATUSES = new Set(PARCEL_FLOW);
+const WAREHOUSE_LOCATION = { lat: 59.51372, lng: 24.828888 };
 
-const COURIER_ACTIVE_STATUSES = [
-  "Waiting for courier",
-  "Ready for pickup",
-  "Picked up",
-  "Accepted",
-  "Arrived at pickup",
-  "In transit",
-  "Arrived at destination",
-];
+const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
+  const [order, setOrder] = useState(null);
+  const [showIcon, setShowIcon] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(null);
+  const [courierLocation, setCourierLocation] = useState(null);
+  const [isAccepted, setIsAccepted] = useState(false);
+  const [route, setRoute] = useState([]);
+  const [routeTime, setRouteTime] = useState(null);
+  const [isPreorder, setIsPreorder] = useState(false);
+  const [preorderDate, setPreorderDate] = useState(null);
+  const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+  const courierMarkerRef = useRef(null);
+  const orderRef = useRef(null);
 
-const ETA_CACHE = new Map(); // courierId -> { ts, lat, lng, orderId }
+  useEffect(() => {
+    orderRef.current = order;
+  }, [order]);
 
-function haversineMeters(a, b) {
-  const R = 6371000;
-  const toRad = (x) => (x * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(s));
-}
+  const dateLocale = (() => {
+    const l = String(i18n.language || "en").toLowerCase();
+    if (l.startsWith("ru")) return "ru-RU";
+    if (l === "est" || l.startsWith("et")) return "et-EE";
+    return "en-GB";
+  })();
 
-async function pushLiveEtaForCourier({ courierId, lat, lng, io }) {
-  // 1) найдём активный заказ курьера
-  const order = await Order.findOne({
-    where: {
-      courierId,
-      status: { [Op.in]: ["Picked up", "In transit"] }, // shop / parcel
-    },
-    attributes: ["id", "orderType", "status", "deliveryLat", "deliveryLng"],
+  const courierIcon = new L.Icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png", // 🚗 машинка
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40],
   });
 
-  if (!order || !order.deliveryLat || !order.deliveryLng) return;
-
-  // 2) троттлинг: не чаще 25 сек И/ИЛИ если не сдвинулся > 120м
-  const now = Date.now();
-  const prev = ETA_CACHE.get(courierId);
-
-  if (prev && prev.orderId === order.id) {
-    const dt = now - prev.ts;
-    const dist = haversineMeters({ lat: prev.lat, lng: prev.lng }, { lat, lng });
-
-    if (dt < 25000 && dist < 120) return;
-  }
-
-  ETA_CACHE.set(courierId, { ts: now, lat, lng, orderId: order.id });
-
-  // 3) считаем ETA от ТЕКУЩЕЙ позиции курьера до точки доставки
-  const API_KEY = process.env.ORS_API_KEY; // лучше в env
-  if (!API_KEY) return;
-
-  const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${API_KEY}&start=${lng},${lat}&end=${order.deliveryLng},${order.deliveryLat}`;
-
-  try {
-    const r = await fetch(url);
-    const data = await r.json();
-    const sec = Math.round(data?.features?.[0]?.properties?.segments?.[0]?.duration ?? 0);
-    if (!sec) return;
-
-    io.to(`order:${order.id}`).emit("orderEtaUpdate", {
-  orderId: order.id,
-  etaSeconds: sec,
-});
-
-  } catch (e) {
-    console.log("pushLiveEtaForCourier error:", e?.message || e);
-  }
-}
-
-function buildCustomerName(u) {
-  if (!u) return null;
-  const parts = [];
-  if (u.firstName) parts.push(u.firstName);
-  if (u.lastName) parts.push(u.lastName);
-  const full = parts.join(" ").trim();
-  if (full) return full;
-  if (u.email) return u.email;
-  return null;
-}
-
-function canMoveParcel(from, to) {
-  const i = PARCEL_FLOW.indexOf(from);
-  return i !== -1 && PARCEL_FLOW[i + 1] === to;
-}
-
-function buildCourierName(user) {
-  const parts = [];
-  if (user.firstName) parts.push(user.firstName);
-  if (user.lastName) parts.push(user.lastName);
-  const full = parts.join(" ").trim();
-
-  if (full) return full;
-  if (user.email) return user.email;
-  return `Courier #${user.id}`;
-}
-
-function safeParse(v, fallback) {
-  if (v == null) return fallback;
-  if (typeof v === "string") {
-    try {
-      return JSON.parse(v);
-    } catch {
-      return fallback;
+  useEffect(() => {
+    if (courierMarkerRef.current && courierLocation) {
+      courierMarkerRef.current.setLatLng([
+        courierLocation.lat,
+        courierLocation.lng,
+      ]);
     }
-  }
-  if (typeof v === "object") return v;
-  return fallback;
-}
+  }, [courierLocation]);
 
-class CourierController {
-  async getHistory(req, res) {
+  const AutoPanToCourier = ({ position }) => {
+    const map = useMap();
+    useEffect(() => {
+      if (position) {
+        map.panTo(position);
+      }
+    }, [position]);
+    return null;
+  };
+
+  const loadOrder = async () => {
     try {
-      const courierId = req.user?.id;
-      if (!courierId)
-        return res.status(401).json({ message: "Вы не авторизованы." });
-
-      const { from, to } = req.query;
-
-      const where = { courierId, status: "Delivered" };
-
-      const timeField = Order.rawAttributes?.deliveredAt
-        ? "deliveredAt"
-        : "updatedAt";
-
-      if (from || to) {
-        where[timeField] = {};
-        if (from) where[timeField][Op.gte] = new Date(from);
-        if (to) where[timeField][Op.lt] = new Date(to);
-      }
-
-      const orders = await Order.findAll({
-        where,
-        order: [[timeField, "DESC"]],
-        attributes: [
-          "id",
-          "orderType",
-          "sellerId",
-          "userId",
-          "pickupAddress",
-          "deliveryAddress",
-          "totalPrice",
-          timeField,
-          "createdAt",
-        ],
-        raw: true,
-      });
-
-      const sellerIds = [
-        ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
-      ];
-
-      const sellers = sellerIds.length
-        ? await Seller.findAll({
-            where: { id: { [Op.in]: sellerIds } },
-            attributes: ["id", "name", "kind"],
-            raw: true,
-          })
-        : [];
-
-      const sellerMap = new Map(sellers.map((s) => [Number(s.id), s]));
-
-      const userIds = [...new Set(orders.map((o) => o.userId).filter(Boolean))];
-
-      const users = userIds.length
-        ? await User.findAll({
-            where: { id: { [Op.in]: userIds } },
-            attributes: ["id", "firstName", "lastName", "phone", "email"],
-            raw: true,
-          })
-        : [];
-
-      const userMap = new Map(users.map((u) => [Number(u.id), u]));
-
-      return res.json(
-        orders.map((o) => {
-          const seller = o.sellerId ? sellerMap.get(Number(o.sellerId)) : null;
-          const u = o.userId ? userMap.get(Number(o.userId)) : null;
-
-          const kind =
-            o.orderType === "parcel"
-              ? "parcel"
-              : seller
-              ? "restaurant"
-              : "market";
-
-          return {
-            id: o.id,
-            kind,
-            sellerName: seller?.name || null,
-            deliveredAt: o[timeField] || o.createdAt,
-            pickupAddress: o.pickupAddress || null,
-            deliveryAddress: o.deliveryAddress || null,
-            sum: Number(o.totalPrice || 0),
-            customerName: o.customerName || buildCustomerName(u) || null,
-            customerPhone: o.customerPhone || u?.phone || null,
-          };
-        })
-      );
-    } catch (e) {
-      console.error("getHistory error:", e);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async getFinance(req, res) {
-    try {
-      const courierId = req.user?.id;
-      if (!courierId)
-        return res.status(401).json({ message: "Вы не авторизованы." });
-
-      const { from, to } = req.query;
-
-      const where = { courierId, status: "Delivered" };
-      if (from && to) {
-        where.updatedAt = { [Op.gte]: new Date(from), [Op.lt]: new Date(to) };
-      }
-
-      const row = await Order.findOne({
-        where,
-        attributes: [
-          [fn("COUNT", col("id")), "trips"],
-          [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "gross"],
-          [fn("COALESCE", fn("SUM", col("courierCommission")), 0), "withheld"],
-          [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
-        ],
-        raw: true,
-      });
-
-      return res.json({
-        trips: Number(row?.trips || 0),
-        gross: Number(Number(row?.gross || 0).toFixed(2)),
-        withheld: Number(Number(row?.withheld || 0).toFixed(2)),
-        net: Number(Number(row?.net || 0).toFixed(2)),
-        bonuses: 0,
-        tips: 0,
-        acceptRate: 100,
-      });
-    } catch (e) {
-      console.error("getFinance error:", e);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async savePushToken(req, res) {
-    try {
-      const { token } = req.body;
-      const courierId = req.user?.id;
-
-      if (!courierId) {
-        console.warn("⚠️ savePushToken: нет req.user, авторизация не прошла");
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      if (!token) {
-        console.warn("⚠️ savePushToken: пустой token");
-        return res.status(400).json({ message: "Токен не передан." });
-      }
-
-      let courier = await Courier.findByPk(courierId);
-      if (!courier) {
-        courier = await Courier.create({
-          id: courierId,
-          name: buildCourierName(req.user),
-          status: "offline",
-        });
-      }
-
-      courier.expoPushToken = token;
-      await courier.save();
-
-      return res.json({ message: "Push-токен сохранён" });
-    } catch (error) {
-      console.error("❌ Ошибка сохранения push-токена:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async getAllCouriers(req, res) {
-    try {
-      const couriers = await Courier.findAll({
-        attributes: [
-          "id",
-          "name",
-          "currentLat",
-          "currentLng",
-          "status",
-          "expoPushToken",
-        ],
-      });
-      res.json(couriers);
-    } catch (error) {
-      console.error("Ошибка получения курьеров:", error);
-      res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async getSelf(req, res) {
-    try {
-      const courierId = req.user.id;
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      let courier = await Courier.findByPk(courierId);
-
-      if (!courier) {
-        courier = await Courier.create({
-          id: courierId,
-          name: buildCourierName(req.user),
-          status: "offline",
-        });
-      }
-
-      return res.json({
-        id: courier.id,
-        name: courier.name,
-        status: courier.status,
-        currentLat: courier.currentLat,
-        currentLng: courier.currentLng,
-        expoPushToken: courier.expoPushToken,
-      });
-    } catch (error) {
-      console.error("❌ Ошибка получения курьера:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async getActiveOrders(req, res) {
-    try {
-      const courierId = req.user.id;
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      const courier = await Courier.findByPk(courierId);
-      if (!courier || courier.status !== "online") {
-        return res.json([]);
-      }
-
-      const orders = await Order.findAll({
-        where: {
-          status: { [Op.in]: COURIER_ACTIVE_STATUSES },
-          [Op.or]: [
-            { courierId: courierId },
-            { courierId: null, offerCourierId: courierId },
-          ],
-        },
-
-        order: [["createdAt", "DESC"]],
-        attributes: [
-          "id",
-          "orderType",
-          "status",
-          "pickupAddress",
-          "pickupLat",
-          "pickupLng",
-          "deliveryLat",
-          "deliveryLng",
-          "deliveryAddress",
-          "orderDetails",
-          "deliveryPrice",
-          "courierFee",
-          "courierId",
-          "courierFeeGross",
-          "courierCommission",
-          "courierCommissionRate",
-          "offerExpiresAt",
-          "offerCourierId",
-          "sellerId",
-          "userId",
-          "processingTime",
-          "processingStartTime",
-        ],
-      });
-
-      if (orders.length === 0) {
-        return res.json([]);
-      }
-
-      const sellerIds = [
-        ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
-      ];
-
-      const sellers = sellerIds.length
-        ? await Seller.findAll({
-            where: { id: sellerIds },
-            attributes: ["id", "address", "pickupLat", "pickupLng"],
-          })
-        : [];
-
-      const sellerMap = new Map(sellers.map((s) => [s.id, s]));
-
-      const userIds = [...new Set(orders.map((o) => o.userId).filter(Boolean))];
-
-      const users = userIds.length
-        ? await User.findAll({
-            where: { id: { [Op.in]: userIds } },
-            attributes: ["id", "firstName", "lastName", "phone", "email"],
-            raw: true,
-          })
-        : [];
-
-      const userMap = new Map(users.map((u) => [Number(u.id), u]));
-
-      const formattedOrders = orders.map((order) => {
-        const o = order.toJSON();
-        const s = o.sellerId ? sellerMap.get(o.sellerId) : null;
-        const u = o.userId ? userMap.get(Number(o.userId)) : null;
-
-        const isParcel = o.orderType === "parcel";
-
-        return {
-          ...o,
-          orderDetails: safeParse(order.orderDetails, []),
-          pickupAddress: isParcel
-            ? o.pickupAddress || null
-            : o.pickupAddress || s?.address || null,
-          pickupLat: isParcel
-            ? o.pickupLat ?? null
-            : o.pickupLat ?? s?.pickupLat ?? null,
-          pickupLng: isParcel
-            ? o.pickupLng ?? null
-            : o.pickupLng ?? s?.pickupLng ?? null,
-          customerName: o.customerName || buildCustomerName(u) || null,
-          customerPhone: o.customerPhone || u?.phone || null,
-          processingTime: order.processingTime,
-          processingStartTime: order.processingStartTime,
-        };
-      });
-
-      return res.json(formattedOrders);
-    } catch (error) {
-      console.error("❌ Ошибка получения активных заказов:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async acceptOrder(req, res) {
-    try {
-      const { id } = req.params;
-      const courierId = req.user.id;
-
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      let courier = await Courier.findByPk(courierId);
-      if (!courier) {
-        courier = await Courier.create({
-          id: courierId,
-          name: buildCourierName(req.user),
-          status: "offline",
-        });
-      }
-
-      const order = await Order.findByPk(id);
-
-      if (!order) {
-        return res.status(404).json({ message: "Заказ не найден." });
-      }
-
-      if (
-        order.status !== "Waiting for courier" &&
-        order.status !== "Ready for pickup"
-      ) {
-        return res
-          .status(400)
-          .json({ message: "Заказ уже занят или не доступен для курьера." });
-      }
-
-      const prevStatus = order.status;
-      const isParcel = order.orderType === "parcel";
-      const user = order.userId
-        ? await User.findByPk(order.userId, {
-            attributes: ["id", "firstName", "lastName", "phone", "email"],
-          })
-        : null;
-
-      const customerName =
-        order.customerName || buildCustomerName(user) || null;
-      const customerPhone = order.customerPhone || user?.phone || null;
-
-      order.courierId = courierId;
-      order.acceptedAt = new Date();
-      order.offerCourierId = null;
-      order.offerExpiresAt = null;
-
-      if (isParcel) {
-        order.status = "Accepted";
-      } else {
-        order.status =
-          prevStatus === "Ready for pickup" ? "Ready for pickup" : "Accepted";
-      }
-
-      await order.save();
-
-      const io = req.app.get("io");
-
-     io.to(`order:${order.id}`).emit("orderStatusUpdate", {
-        id: order.id,
-        status: order.status,
-        accepted: true,
-        courierId: order.courierId,
-        courierLocation:
-          courier.currentLat && courier.currentLng
-            ? { lat: courier.currentLat, lng: courier.currentLng }
-            : null,
-      });
-
-      let pickupAddress = null,
-        pickupLat = null,
-        pickupLng = null;
-
-      if (isParcel) {
-        pickupAddress = order.pickupAddress || null;
-        pickupLat = order.pickupLat ?? null;
-        pickupLng = order.pickupLng ?? null;
-      } else {
-        const s = order.sellerId ? await Seller.findByPk(order.sellerId) : null;
-        pickupAddress = order.pickupAddress || s?.address || null;
-        pickupLat = order.pickupLat ?? s?.pickupLat ?? null;
-        pickupLng = order.pickupLng ?? s?.pickupLng ?? null;
-      }
-
-      return res.json({
-        id: order.id,
-        orderType: order.orderType,
-        status: order.status,
-
-        deliveryLat: order.deliveryLat,
-        deliveryLng: order.deliveryLng,
-        deliveryAddress: order.deliveryAddress,
-
-        deliveryPrice: order.deliveryPrice,
-        courierFee: order.courierFee,
-        courierId: order.courierId,
-        courierFeeGross: order.courierFeeGross,
-        courierCommission: order.courierCommission,
-        courierCommissionRate: order.courierCommissionRate,
-        processingTime: order.processingTime,
-        processingStartTime: order.processingStartTime,
-
-        pickupAddress,
-        pickupLat,
-        pickupLng,
-        customerName,
-        customerPhone,
-        userId: order.userId,
-      });
-    } catch (error) {
-      console.error("❌ Ошибка принятия заказа:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-
-  async toggleCourierStatus(req, res) {
-    try {
-      const { status } = req.body;
-      const courierId = req.user.id;
-
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      let courier = await Courier.findByPk(courierId);
-
-      if (!courier) {
-        courier = await Courier.create({
-          id: courierId,
-          name: buildCourierName(req.user),
-          status: "offline",
-        });
-      }
-
-      courier.status = status;
-      await courier.save();
-
-      const io = req.app.get("io");
-      io.emit("courierStatusUpdate", { courierId, status });
-
-      if (status === "online") {
-        try {
-          const ACTIVE_STATUSES = ["Waiting for courier", "Ready for pickup"];
-
-          const waitingOrders = await Order.findAll({
-            where: {
-              status: { [Op.in]: ACTIVE_STATUSES },
-              courierId: null,
-              offerCourierId: null,
-            },
-            order: [["createdAt", "ASC"]],
-          });
-
-          for (const order of waitingOrders) {
-            await sendOrderToNextCourier(order);
+      const activeOrder = await fetchActiveOrder();
+
+      if (activeOrder) {
+        setOrder(activeOrder);
+        setShowIcon(true);
+
+        if (activeOrder.desiredDeliveryDate) {
+          setIsPreorder(true);
+          setPreorderDate(activeOrder.desiredDeliveryDate);
+        } else {
+          setIsPreorder(false);
+          setPreorderDate(null);
+        }
+
+        if (
+          activeOrder.status === "Waiting for courier" &&
+          activeOrder.processingTime &&
+          activeOrder.updatedAt
+        ) {
+          const [value, unit] = activeOrder.processingTime.split(" ");
+          let totalSeconds = 0;
+
+          if (unit.includes("min")) totalSeconds = parseInt(value, 10) * 60;
+          else if (unit.includes("hour"))
+            totalSeconds = parseInt(value, 10) * 60 * 60;
+          else if (unit.includes("day"))
+            totalSeconds = parseInt(value, 10) * 24 * 60 * 60;
+
+          const started = new Date(activeOrder.updatedAt).getTime();
+          const now = Date.now();
+          const elapsed = Math.floor((now - started) / 1000);
+          const remaining = Math.max(totalSeconds - elapsed, 0);
+
+          setTimeLeft(remaining);
+        } else {
+          const isParcel = activeOrder.orderType === "parcel";
+          const inTransitStatus = isParcel ? "In transit" : "Picked up";
+
+          if (
+            activeOrder.status === inTransitStatus &&
+            activeOrder.estimatedTime &&
+            activeOrder.pickupStartTime
+          ) {
+            const started = new Date(activeOrder.pickupStartTime).getTime();
+            const now = Date.now();
+            const elapsed = Math.floor((now - started) / 1000);
+            const remaining = Math.max(activeOrder.estimatedTime - elapsed, 0);
+            setTimeLeft(remaining);
           }
-        } catch (err) {
-          console.error(
-            "❌ Ошибка автораспределения заказов при выходе курьера в онлайн:",
-            err
-          );
         }
-      }
 
-      return res.json({ message: `Вы в статусе: ${status}` });
+        if (activeOrder.courierLocation) {
+          setCourierLocation(activeOrder.courierLocation);
+        }
+
+        if (
+          activeOrder.deliveryLat &&
+          activeOrder.deliveryLng &&
+          activeOrder.courierLocation
+        ) {
+          fetchRoute(activeOrder.courierLocation, {
+            lat: activeOrder.deliveryLat,
+            lng: activeOrder.deliveryLng,
+          });
+        }
+      } else {
+        setOrder(null);
+        setShowIcon(false);
+      }
     } catch (error) {
-      console.error("❌ Ошибка смены статуса курьера:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
+      console.warn(t("no active order", { ns: "orderSidebar" }), error);
+      setOrder(null);
+      setShowIcon(false);
     }
-  }
+  };
 
-  async updateDeliveryStatus(req, res) {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
-      const courierId = req.user.id;
+  useEffect(() => {
+    loadOrder();
 
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
+    const handleOrderUpdate = (updatedOrder) => {
+      if (updatedOrder && updatedOrder.id) {
+        setOrder((prev) => {
+          if (!prev) return updatedOrder;
+          if (prev.id !== updatedOrder.id) return prev;
+          return { ...prev, ...updatedOrder };
+        });
 
-      const order = await Order.findByPk(id);
-      if (!order) {
-        return res.status(404).json({ message: "Заказ не найден." });
-      }
+        setShowIcon(true);
 
-      if (order.courierId !== courierId) {
-        return res
-          .status(403)
-          .json({ message: "Этот заказ вам не принадлежит." });
-      }
-
-      const isParcel = order.orderType === "parcel";
-
-      if (isParcel) {
-        if (!PARCEL_STATUSES.has(status)) {
-          return res
-            .status(400)
-            .json({ message: "Неверный статус для parcel" });
+        if (updatedOrder.accepted === true) {
+          setIsAccepted(true);
+          if (updatedOrder.courierLocation) {
+            setCourierLocation(updatedOrder.courierLocation);
+          }
         }
-        if (!canMoveParcel(order.status, status)) {
-          return res.status(400).json({
-            message: `Нельзя перейти ${order.status} → ${status}`,
+
+        if (updatedOrder.desiredDeliveryDate) {
+          setIsPreorder(true);
+          setPreorderDate(updatedOrder.desiredDeliveryDate);
+        } else {
+          setIsPreorder(false);
+          setPreorderDate(null);
+        }
+
+        if (
+          updatedOrder.status === "Waiting for courier" &&
+          updatedOrder.processingTime
+        ) {
+          const [value, unit] = updatedOrder.processingTime.split(" ");
+          let timeInSeconds = 0;
+
+          if (unit.includes(`${t("minutes", { ns: "orderSidebar" })}`)) {
+            timeInSeconds = parseInt(value, 10) * 60;
+          } else if (unit.includes(`${t("days", { ns: "orderSidebar" })}`)) {
+            timeInSeconds = parseInt(value, 10) * 24 * 60 * 60;
+          }
+
+          setTimeLeft(timeInSeconds);
+        } else {
+          const isParcel = updatedOrder.orderType === "parcel";
+          const inTransitStatus = isParcel ? "In transit" : "Picked up";
+
+          if (
+            updatedOrder.status === inTransitStatus &&
+            updatedOrder.estimatedTime &&
+            updatedOrder.pickupStartTime
+          ) {
+            const started = new Date(updatedOrder.pickupStartTime).getTime();
+            const now = Date.now();
+            const elapsed = Math.floor((now - started) / 1000);
+            const remaining = Math.max(updatedOrder.estimatedTime - elapsed, 0);
+
+            setTimeLeft(remaining);
+          } else if (
+            updatedOrder.status === "Arrived at destination" ||
+            updatedOrder.status === "Delivered"
+          ) {
+            setTimeLeft(null);
+          }
+        }
+
+        if (updatedOrder.courierLocation && updatedOrder.accepted === true) {
+          setCourierLocation(updatedOrder.courierLocation);
+        }
+
+        if (
+          updatedOrder.deliveryLat &&
+          updatedOrder.deliveryLng &&
+          updatedOrder.courierLocation
+        ) {
+          fetchRoute(updatedOrder.courierLocation, {
+            lat: updatedOrder.deliveryLat,
+            lng: updatedOrder.deliveryLng,
           });
         }
       }
+    };
 
-      order.status = status;
+    const handleCourierLocationUpdate = (location) => {
+      setCourierLocation(location);
 
-      if (isParcel && status === "In transit") {
-        const estimatedTime = await calculateRouteTime(order);
-        order.estimatedTime = estimatedTime;
-        order.pickupStartTime = new Date();
+      const o = orderRef.current;
+      if (o && o.deliveryLat && o.deliveryLng) {
+        fetchRoute(location, { lat: o.deliveryLat, lng: o.deliveryLng });
       }
+    };
 
-      if (!isParcel && status === "Picked up") {
-        const estimatedTime = await calculateRouteTime(order);
-        order.estimatedTime = estimatedTime;
-        order.pickupStartTime = new Date();
+    const handleEta = (p) => {
+      const o = orderRef.current;
+      if (!p?.orderId || !o) return;
+      if (o.id !== p.orderId) return;
+
+      const isParcel = o.orderType === "parcel";
+      const inTransitStatus = isParcel ? "In transit" : "Picked up";
+
+      if (o.status === inTransitStatus) {
+        setTimeLeft(Math.max(0, Number(p.etaSeconds || 0)));
       }
+    };
 
-      await order.save();
+    socket.on("orderStatusUpdate", handleOrderUpdate);
+    socket.on("courierLocationUpdate", handleCourierLocationUpdate);
+    socket.on("orderEtaUpdate", handleEta);
 
-      const io = req.app.get("io");
-      io.to(`order:${order.id}`).emit("orderStatusUpdate", {
-        id: order.id,
-        status: order.status,
-        estimatedTime: order.estimatedTime || null,
-      });
+    window.addEventListener("orderUpdated", loadOrder);
 
-      return res.json(order);
-    } catch (error) {
-      console.error("❌ Ошибка обновления статуса доставки:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
+    return () => {
+      socket.off("orderStatusUpdate", handleOrderUpdate);
+      socket.off("courierLocationUpdate", handleCourierLocationUpdate);
+      socket.off("orderEtaUpdate", handleEta);
+      window.removeEventListener("orderUpdated", loadOrder);
+    };
+  }, []);
 
-  async completeDelivery(req, res) {
+  useEffect(() => {
+    if (!order?.id) return;
+
+    socket.emit("joinOrderRoom", { orderId: order.id });
+
+    return () => {
+      socket.emit("leaveOrderRoom", { orderId: order.id });
+    };
+  }, [order?.id]);
+
+  useEffect(() => {
+    if (timeLeft === null) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prevTime) => (prevTime !== null ? prevTime - 1 : null));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft]);
+
+  const formatTime = (seconds) => {
+    if (seconds <= 0) return `${t("zero seconds", { ns: "orderSidebar" })}`;
+
+    const days = Math.floor(seconds / (24 * 60 * 60));
+    const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
+    const mins = Math.floor((seconds % (60 * 60)) / 60);
+    const secs = seconds % 60;
+
+    let result = "";
+    if (days > 0) result += `${days} ${t("days", { ns: "orderSidebar" })} `;
+    if (hours > 0) result += `${hours} ${t("hours", { ns: "orderSidebar" })} `;
+    if (mins > 0) result += `${mins} ${t("minutes", { ns: "orderSidebar" })} `;
+    if (secs > 0 && days === 0 && hours === 0)
+      result += `${secs} ${t("seconds", { ns: "orderSidebar" })} `;
+
+    return result.trim();
+  };
+
+  const fetchRoute = async (start, end) => {
+    if (!start || !end) return;
+
+    const API_KEY = "5b3ce3597851110001cf624889e39f2834a84a62aaca04f731838a64";
+    const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${API_KEY}&start=${start.lng},${start.lat}&end=${end.lng},${end.lat}`;
+
     try {
-      const { id } = req.params;
-      const courierId = req.user.id;
-
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      const order = await Order.findByPk(id);
-      if (!order) {
-        return res.status(404).json({ message: "Заказ не найден." });
-      }
-
-      if (order.courierId !== courierId) {
-        return res
-          .status(403)
-          .json({ message: "Этот заказ вам не принадлежит." });
-      }
-
-      order.status = "Delivered";
-      order.estimatedTime = null;
-
-      if (Order.rawAttributes?.deliveredAt) {
-        order.deliveredAt = new Date();
-      }
-
-      await order.save();
-
-      const io = req.app.get("io");
-      io.to(`order:${order.id}`).emit("orderStatusUpdate", {
-        id: order.id,
-        status: order.status,
-        estimatedTime: null,
-      });
-
-      try {
-        const ACTIVE_STATUSES = ["Waiting for courier", "Ready for pickup"];
-
-        const waitingOrders = await Order.findAll({
-          where: {
-            status: { [Op.in]: ACTIVE_STATUSES },
-            courierId: null,
-            offerCourierId: null,
-          },
-          order: [["createdAt", "ASC"]],
-        });
-
-        for (const o of waitingOrders) {
-          await sendOrderToNextCourier(o);
-        }
-      } catch (err) {
-        console.error(
-          "❌ Ошибка автораспределения заказов после завершения доставки:",
-          err
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.features && data.features.length > 0) {
+        const coordinates = data.features[0].geometry.coordinates.map(
+          (coord) => [coord[1], coord[0]]
         );
+        setRoute(coordinates);
+
+        const durationInSeconds =
+          data.features[0].properties.segments[0].duration;
+        setRouteTime(Math.round(durationInSeconds));
       }
-
-      return res.json(order);
     } catch (error) {
-      console.error("❌ Ошибка завершения доставки:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
+      console.error(t("route fetch error", { ns: "orderSidebar" }), error);
     }
-  }
+  };
 
-  async updateCourierLocation(req, res) {
+  const handleToggleSidebar = () => {
+    setSidebarOpen((prevState) => {
+      const newState = !prevState;
+      localStorage.setItem("orderSidebarOpen", newState);
+      return newState;
+    });
+  };
+
+  const handleCompleteOrder = async () => {
+    if (!order) return;
     try {
-      const { lat, lng } = req.body;
-      const courierId = req.user.id;
-
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
-
-      if (lat == null || lng == null) {
-        return res.status(400).json({ message: "Координаты не переданы." });
-      }
-
-      let courier = await Courier.findByPk(courierId);
-
-      if (!courier) {
-        courier = await Courier.create({
-          id: courierId,
-          name: buildCourierName(req.user),
-          status: "offline",
-        });
-      }
-
-      courier.currentLat = lat;
-      courier.currentLng = lng;
-      await courier.save();
-
-      const io = req.app.get("io");
-      io.emit("courierLocationUpdate", { courierId, lat, lng });
-      await pushLiveEtaForCourier({ courierId, lat, lng, io });
-
-      return res.json({ message: "Местоположение обновлено!" });
+      await updateOrderStatus(order.id, "Completed");
+      setOrder(null);
+      setShowIcon(false);
+      window.dispatchEvent(new Event("orderUpdated"));
     } catch (error) {
-      console.error("❌ Ошибка обновления местоположения курьера:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
+      console.error(t("complete order error", { ns: "orderSidebar" }), error);
     }
-  }
+  };
 
-  async declineOrder(req, res) {
-    try {
-      const { id } = req.params;
-      const courierId = req.user.id;
+  const isParcel = order?.orderType === "parcel";
 
-      if (!courierId) {
-        return res.status(401).json({ message: "Вы не авторизованы." });
-      }
+  return (
+    <>
+      {showIcon && setSidebarOpen && (
+        <div
+          className={styles.floatingIcon}
+          onClick={() => setSidebarOpen(true)}
+        >
+          {t("order", { ns: "userProfile" })}
+        </div>
+      )}
+      <div className={`${styles.sidebar} ${isSidebarOpen ? styles.open : ""}`}>
+        <div className={styles.header}>
+          <h3>{t("delivery status", { ns: "orderSidebar" })}</h3>
+          <button onClick={() => setSidebarOpen(false)}>×</button>
+        </div>
 
-      const order = await Order.findByPk(id);
-      if (!order) {
-        return res.status(404).json({ message: "Заказ не найден." });
-      }
+        {order ? (
+          <div>
+            {isPreorder ? (
+              <p className={styles.preorderInfo}>
+                <strong>{t("preorder", { ns: "orderSidebar" })}</strong>
+                {t("scheduled delivery", { ns: "orderSidebar" })}{" "}
+                <span className={styles.preorderDate}>
+                  {new Date(preorderDate).toLocaleString(dateLocale, {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </p>
+            ) : (
+              <p>
+                <strong>{t("status", { ns: "orderSidebar" })}</strong>
+                <span className={styles.statusText}>
+                  {!order?.status ||
+                    (order?.status === "Pending" &&
+                      `${t("waiting for order confirmation", {
+                        ns: "orderSidebar",
+                      })}`)}
 
-      await OrderDecline.findOrCreate({
-        where: { orderId: order.id, courierId },
-        defaults: { orderId: order.id, courierId },
-      });
+                  {isParcel &&
+                    order?.status === "Waiting for courier" &&
+                    t("parcel searching courier...", { ns: "orderSidebar" })}
 
-      await sendOrderToNextCourier(order);
+                  {isParcel &&
+                    order?.status === "Accepted" &&
+                    t("parcel courier going to point A", {
+                      ns: "orderSidebar",
+                    })}
 
-      const io = req.app.get("io");
+                  {isParcel &&
+                    order?.status === "Arrived at pickup" &&
+                    t("parcel courier arrived at point A", {
+                      ns: "orderSidebar",
+                    })}
 
-      const courierPayload = {
-        id: order.id,
-        status: order.status,
-        deliveryLat: order.deliveryLat,
-        deliveryLng: order.deliveryLng,
-        deliveryAddress: order.deliveryAddress,
-        deliveryPrice: order.deliveryPrice,
-        courierFee: order.courierFee,
-        courierId: order.courierId,
-        offerExpiresAt: order.offerExpiresAt,
-      };
+                  {isParcel &&
+                    order?.status === "In transit" &&
+                    t("parcel courier going to point B", {
+                      ns: "orderSidebar",
+                    })}
 
-      io.emit("warehouseOrder", courierPayload);
+                  {isParcel &&
+                    order?.status === "Arrived at destination" &&
+                    t("parcel courier arrived at point B", {
+                      ns: "orderSidebar",
+                    })}
 
-      return res.json({ message: "Заказ отклонён", orderId: order.id });
-    } catch (error) {
-      console.error("❌ Ошибка отклонения заказа курьером:", error);
-      return res.status(500).json({ message: "Ошибка сервера" });
-    }
-  }
-}
+                  {isParcel &&
+                    order?.status === "Delivered" &&
+                    t("parcel delivered", { ns: "orderSidebar" })}
 
-async function calculateRouteTime(order) {
-  if (!order.deliveryLat || !order.deliveryLng) {
-    return 15 * 60;
-  }
+                  {!isParcel &&
+                    order?.status === "Waiting for courier" &&
+                    `${t("order accepted", { ns: "orderSidebar" })}`}
 
-  const courier = await Courier.findByPk(order.courierId);
-  if (!courier || !courier.currentLat || !courier.currentLng) {
-    return 15 * 60;
-  }
+                  {!isParcel &&
+                    order?.status === "Ready for pickup" &&
+                    `${t("order is ready waiting for the courier", {
+                      ns: "orderSidebar",
+                    })}`}
 
-  const API_KEY = "5b3ce3597851110001cf624889e39f2834a84a62aaca04f731838a64";
-  const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${API_KEY}&start=${courier.currentLng},${courier.currentLat}&end=${order.deliveryLng},${order.deliveryLat}`;
+                  {!isParcel &&
+                    order?.status === "Picked up" &&
+                    t("courier picked up the order", { ns: "orderSidebar" })}
 
-  try {
-    const response = await fetch(url);
-    const data = await response.json();
+                  {!isParcel &&
+                    order?.status === "Arrived at destination" &&
+                    `${t("courier has arrived", { ns: "orderSidebar" })}`}
 
-    if (data.features && data.features.length > 0) {
-      const realTime = Math.round(
-        data.features[0].properties.segments[0].duration
-      );
-      return realTime;
-    } else {
-      console.warn(
-        "⚠️ Не удалось получить данные маршрута, оставляем 15 минут."
-      );
-      return 15 * 60;
-    }
-  } catch (error) {
-    console.error("❌ Ошибка получения маршрута:", error);
-    return 15 * 60;
-  }
-}
+                  {!isParcel &&
+                    order?.status === "Delivered" &&
+                    `${t("order delivered", { ns: "orderSidebar" })}`}
+                </span>
+              </p>
+            )}
+            {!order.preorderDate &&
+              order?.status === "Waiting for courier" &&
+              timeLeft !== null && (
+                <p>
+                  <strong>
+                    {t("preparation time", { ns: "orderSidebar" })}
+                  </strong>{" "}
+                  ⏳ {formatTime(timeLeft)}
+                </p>
+              )}
 
-module.exports = new CourierController();
+            {((order?.orderType === "parcel" &&
+              order?.status === "In transit") ||
+              (order?.orderType !== "parcel" &&
+                order?.status === "Picked up")) &&
+              timeLeft !== null && (
+                <p>
+                  <strong>
+                    {t("time in transit", { ns: "orderSidebar" })}
+                  </strong>{" "}
+                  🚗 {formatTime(timeLeft)}
+                </p>
+              )}
+
+            <div className={styles.mapContainer}>
+              <MapContainer
+                center={[order.deliveryLat, order.deliveryLng]}
+                zoom={13}
+                style={{ height: "300px", width: "100%" }}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution="&copy; OpenStreetMap"
+                />
+                {courierLocation && (
+                  <AutoPanToCourier
+                    position={[courierLocation.lat, courierLocation.lng]}
+                  />
+                )}
+                <Marker
+                  position={[order.deliveryLat, order.deliveryLng]}
+                  icon={
+                    new L.Icon({
+                      iconUrl:
+                        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+                      iconSize: [25, 41],
+                    })
+                  }
+                />
+                {courierLocation &&
+                  (isAccepted ||
+                    (isParcel
+                      ? [
+                          "Accepted",
+                          "Arrived at pickup",
+                          "In transit",
+                          "Arrived at destination",
+                        ].includes(order?.status)
+                      : [
+                          "Accepted",
+                          "Picked up",
+                          "Arrived at destination",
+                        ].includes(order?.status))) && (
+                    <Marker
+                      position={[courierLocation.lat, courierLocation.lng]}
+                      icon={courierIcon}
+                      ref={courierMarkerRef}
+                    >
+                      <Popup>🚗 {t("courier", { ns: "orderSidebar" })}</Popup>
+                    </Marker>
+                  )}
+
+                {route.length > 0 && (
+                  <Polyline positions={route} color="blue" />
+                )}
+                <Marker
+                  position={[WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng]}
+                  icon={
+                    new L.Icon({
+                      iconUrl:
+                        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+                      iconSize: [25, 41],
+                    })
+                  }
+                >
+                  <Popup>📦 {t("warehouse", { ns: "orderSidebar" })}</Popup>
+                </Marker>
+              </MapContainer>
+            </div>
+            {(order.status === "Delivered" || order.status === "Completed") && (
+              <button
+                className={styles.completeButton}
+                onClick={handleCompleteOrder}
+              >
+                {t("confirm delivery", { ns: "orderSidebar" })}
+              </button>
+            )}
+            <button
+              className={styles.orderHistoryButton}
+              onClick={() => navigate("/profile")}
+            >
+              {t("my orders", { ns: "orderSidebar" })}
+            </button>
+          </div>
+        ) : (
+          <p>{t("no active orders", { ns: "orderSidebar" })}</p>
+        )}
+      </div>
+    </>
+  );
+};
+
+export default OrderSidebar;
