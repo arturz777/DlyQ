@@ -51,10 +51,13 @@ app.post(
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: 'https://dlyq-staging.netlify.app',
+    origin: "https://dlyq-staging.netlify.app",
     methods: ["GET", "POST"],
-    credentials: true
+    credentials: true,
   },
+  transports: ["websocket"],     // 👈 важно
+  pingInterval: 25000,
+  pingTimeout: 60000,
 });
 
 app.use(
