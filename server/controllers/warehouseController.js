@@ -191,7 +191,13 @@ class WarehouseController {
 
       const io = req.app.get("io");
       io.emit("warehouseOrder", order);
-      io.emit("orderStatusUpdate", order);
+      io.to(`order:${order.id}`).emit("orderStatusUpdate", {
+        id: order.id,
+        status: order.status,
+        warehouseStatus: order.warehouseStatus,
+        processingTime: order.processingTime,
+        processingStartTime: order.processingStartTime,
+      });
 
       try {
         await sendOrderToNextCourier(order);
@@ -231,7 +237,11 @@ class WarehouseController {
 
       const io = req.app.get("io");
       io.emit("orderReady", order);
-      io.emit("orderStatusUpdate", { id: order.id, status: order.status });
+      io.to(`order:${order.id}`).emit("orderStatusUpdate", {
+        id: order.id,
+        status: order.status,
+        warehouseStatus: order.warehouseStatus,
+      });
 
       try {
         if (order.courierId) await sendOrderAssignedPush(order);
