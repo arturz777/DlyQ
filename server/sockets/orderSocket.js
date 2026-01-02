@@ -4,9 +4,9 @@ module.exports = function orderSocket(io, socket) {
 
     if (!orderId) return;
 
-    for (const r of socket.rooms) {
-      if (typeof r === "string" && r.startsWith("order:")) socket.leave(r);
-    }
+    for (const r of [...socket.rooms]) {
+  if (typeof r === "string" && r.startsWith("order:")) socket.leave(r);
+}
 
     const room = `order:${orderId}`;
     socket.join(room);
