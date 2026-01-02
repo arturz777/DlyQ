@@ -1,5 +1,4 @@
-const Router = require("express");
-const router = new Router();
+const router = require("express").Router();
 const courierController = require("../controllers/courierController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
@@ -73,6 +72,20 @@ router.get(
   authMiddleware,
   checkRoleMiddleware("ADMIN"),
   courierController.getAllCouriers
+);
+
+router.get(
+  "/history",
+  authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.getHistory
+);
+
+router.get(
+  "/finance",
+  authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.getFinance
 );
 
 module.exports = router;
