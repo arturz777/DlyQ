@@ -66,6 +66,7 @@ app.use(
 
 app.use(express.json());
 app.use(express.static(path.resolve(__dirname, "static")));
+//proda
 app.use(fileUpload({}));
 app.use(cookieParser());
 app.use('/api/geo', geoRouter);
@@ -79,34 +80,10 @@ app.use("/api/payments", paymentsRouter);
 app.use("/api/food-catalog", foodCatalogRouter);
 app.use("/api/inventory", inventoryReceiptRouter);
 
-
 server.listen(PORT, () => console.log(`🚀 Сервер запущен на порту ${PORT}`));
 
-io.on("connection", (socket) => {
-  socket.on("joinWarehouseRoom", ({ sellerId }) => {
-    for (const r of socket.rooms) {
-      if (typeof r === "string" && r.startsWith("warehouse:")) socket.leave(r);
-    }
-    const room = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
-    socket.join(room);
-  });
-
-  socket.on("joinOrderRoom", ({ orderId }) => {
-    if (!orderId) return;
-    for (const r of socket.rooms) {
-      if (typeof r === "string" && r.startsWith("order:")) socket.leave(r);
-    }
-    socket.join(`order:${orderId}`);
-  });
-
-  socket.on("leaveOrderRoom", ({ orderId }) => {
-    if (!orderId) return;
-    socket.leave(`order:${orderId}`);
-  });
-});
-
-const chatSocket = require("./sockets/chatSocket");
-chatSocket(io);
+const registerSockets = require("./sockets");
+registerSockets(io);
 
 const getWarehouseRoom = (sellerId) =>
   sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
