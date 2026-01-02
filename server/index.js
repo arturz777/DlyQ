@@ -93,7 +93,14 @@ io.on("connection", (socket) => {
 
   socket.on("joinOrderRoom", ({ orderId }) => {
     if (!orderId) return;
-    socket.join(`order:${orderId}`);
+
+    for (const r of socket.rooms) {
+      if (typeof r === "string" && r.startsWith("order:")) socket.leave(r);
+    }
+
+    const room = `order:${orderId}`;
+    socket.join(room);
+    console.log("✅ socket joined room:", room, "socket:", socket.id);
   });
 
   socket.on("leaveOrderRoom", ({ orderId }) => {
