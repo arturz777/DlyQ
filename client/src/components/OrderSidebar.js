@@ -270,12 +270,32 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   useEffect(() => {
     if (!order?.id) return;
 
-    socket.emit("joinOrderRoom", { orderId: order.id });
+    const join = () => socket.emit("joinOrderRoom", { orderId: order.id });
+
+    if (socket.connected) join();
+    else socket.once("connect", join);
 
     return () => {
+      socket.off("connect", join);
       socket.emit("leaveOrderRoom", { orderId: order.id });
     };
   }, [order?.id]);
+
+  useEffect(() => {
+    const onConnect = () => {
+      const id = orderRef.current?.id;
+      if (id) {
+        socket.emit("joinOrderRoom", { orderId: id });
+        console.log("🔁 rejoin order room after connect:", id);
+      }
+    };
+
+    socket.on("connect", onConnect);
+
+    return () => {
+      socket.off("connect", onConnect);
+    };
+  }, []);
 
   useEffect(() => {
     if (timeLeft === null) return;
