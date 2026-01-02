@@ -522,7 +522,7 @@ class CourierController {
 
       const io = req.app.get("io");
 
-      io.emit("orderStatusUpdate", {
+     io.to(`order:${order.id}`).emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
         accepted: true,
@@ -688,7 +688,7 @@ class CourierController {
       await order.save();
 
       const io = req.app.get("io");
-      io.emit("orderStatusUpdate", {
+      io.to(`order:${order.id}`).emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
         estimatedTime: order.estimatedTime || null,
@@ -731,7 +731,7 @@ class CourierController {
       await order.save();
 
       const io = req.app.get("io");
-      io.emit("orderStatusUpdate", {
+      io.to(`order:${order.id}`).emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
         estimatedTime: null,
