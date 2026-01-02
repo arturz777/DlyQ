@@ -31,68 +31,6 @@ const COURIER_ACTIVE_STATUSES = [
   "Arrived at destination",
 ];
 
-const ETA_CACHE = new Map();
-
-function haversineMeters(a, b) {
-  const R = 6371000;
-  const toRad = (x) => (x * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(s));
-}
-
-async function pushLiveEtaForCourier({ courierId, lat, lng, io }) {
-  // 1) найдём активный заказ курьера
-  const order = await Order.findOne({
-    where: {
-      courierId,
-      status: { [Op.in]: ["Picked up", "In transit"] }, // shop / parcel
-    },
-    attributes: ["id", "orderType", "status", "deliveryLat", "deliveryLng"],
-  });
-
-  if (!order || !order.deliveryLat || !order.deliveryLng) return;
-
-  // 2) троттлинг: не чаще 25 сек И/ИЛИ если не сдвинулся > 120м
-  const now = Date.now();
-  const prev = ETA_CACHE.get(courierId);
-
-  if (prev && prev.orderId === order.id) {
-    const dt = now - prev.ts;
-    const dist = haversineMeters({ lat: prev.lat, lng: prev.lng }, { lat, lng });
-
-    if (dt < 25000 && dist < 120) return;
-  }
-
-  ETA_CACHE.set(courierId, { ts: now, lat, lng, orderId: order.id });
-
-  // 3) считаем ETA от ТЕКУЩЕЙ позиции курьера до точки доставки
-  const API_KEY = process.env.ORS_API_KEY; // лучше в env
-  if (!API_KEY) return;
-
-  const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${API_KEY}&start=${lng},${lat}&end=${order.deliveryLng},${order.deliveryLat}`;
-
-  try {
-    const r = await fetch(url);
-    const data = await r.json();
-    const sec = Math.round(data?.features?.[0]?.properties?.segments?.[0]?.duration ?? 0);
-    if (!sec) return;
-
-    io.to(`order:${order.id}`).emit("orderEtaUpdate", {
-  orderId: order.id,
-  etaSeconds: sec,
-});
-
-  } catch (e) {
-    console.log("pushLiveEtaForCourier error:", e?.message || e);
-  }
-}
-
 function buildCustomerName(u) {
   if (!u) return null;
   const parts = [];
@@ -522,7 +460,7 @@ class CourierController {
 
       const io = req.app.get("io");
 
-     io.to(`order:${order.id}`).emit("orderStatusUpdate", {
+      io.emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
         accepted: true,
@@ -688,7 +626,7 @@ class CourierController {
       await order.save();
 
       const io = req.app.get("io");
-      io.to(`order:${order.id}`).emit("orderStatusUpdate", {
+      io.emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
         estimatedTime: order.estimatedTime || null,
@@ -731,7 +669,7 @@ class CourierController {
       await order.save();
 
       const io = req.app.get("io");
-      io.to(`order:${order.id}`).emit("orderStatusUpdate", {
+      io.emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
         estimatedTime: null,
@@ -795,7 +733,6 @@ class CourierController {
 
       const io = req.app.get("io");
       io.emit("courierLocationUpdate", { courierId, lat, lng });
-      await pushLiveEtaForCourier({ courierId, lat, lng, io });
 
       return res.json({ message: "Местоположение обновлено!" });
     } catch (error) {
