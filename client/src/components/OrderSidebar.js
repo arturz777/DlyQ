@@ -268,18 +268,25 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   }, []);
 
   useEffect(() => {
-    if (!order?.id) return;
+  if (!order?.id) return;
 
-    const join = () => socket.emit("joinOrderRoom", { orderId: order.id });
+  const join = () => {
+    console.log("➡️ joinOrderRoom", order.id, "socket:", socket.id);
+    socket.emit("joinOrderRoom", { orderId: order.id });
+  };
 
-    if (socket.connected) join();
-    else socket.once("connect", join);
+  // join сразу
+  join();
 
-    return () => {
-      socket.off("connect", join);
-      socket.emit("leaveOrderRoom", { orderId: order.id });
-    };
-  }, [order?.id]);
+  // и join на каждый reconnect
+  socket.on("connect", join);
+
+  return () => {
+    socket.off("connect", join);
+    socket.emit("leaveOrderRoom", { orderId: order.id });
+  };
+}, [order?.id]);
+
 
   useEffect(() => {
     const onConnect = () => {
