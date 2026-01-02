@@ -85,14 +85,20 @@ server.listen(PORT, () => console.log(`🚀 Сервер запущен на п�
 io.on("connection", (socket) => {
   socket.on("joinWarehouseRoom", ({ sellerId }) => {
     for (const r of socket.rooms) {
-      if (typeof r === "string" && r.startsWith("warehouse:")) {
-        socket.leave(r);
-      }
+      if (typeof r === "string" && r.startsWith("warehouse:")) socket.leave(r);
     }
-
     const room = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
     socket.join(room);
-    console.log("✅ socket joined room:", room, "socket:", socket.id);
+  });
+
+  socket.on("joinOrderRoom", ({ orderId }) => {
+    if (!orderId) return;
+    socket.join(`order:${orderId}`);
+  });
+
+  socket.on("leaveOrderRoom", ({ orderId }) => {
+    if (!orderId) return;
+    socket.leave(`order:${orderId}`);
   });
 });
 
