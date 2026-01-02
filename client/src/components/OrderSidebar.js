@@ -33,11 +33,6 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const courierMarkerRef = useRef(null);
-  const orderRef = useRef(null);
-
-  useEffect(() => {
-    orderRef.current = order;
-  }, [order]);
 
   const dateLocale = (() => {
     const l = String(i18n.language || "en").toLowerCase();
@@ -155,12 +150,11 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
 
     const handleOrderUpdate = (updatedOrder) => {
       if (updatedOrder && updatedOrder.id) {
-        setOrder((prev) => {
-          if (!prev) return updatedOrder;
-          if (prev.id !== updatedOrder.id) return prev;
-          return { ...prev, ...updatedOrder };
-        });
-
+        setOrder((prevOrder) =>
+          prevOrder && prevOrder.id === updatedOrder.id
+            ? { ...prevOrder, ...updatedOrder }
+            : prevOrder
+        );
         setShowIcon(true);
 
         if (updatedOrder.accepted === true) {
@@ -232,51 +226,25 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
       }
     };
 
-    const handleCourierLocationUpdate = (location) => {
-      setCourierLocation(location);
-
-      const o = orderRef.current;
-      if (o && o.deliveryLat && o.deliveryLng) {
-        fetchRoute(location, { lat: o.deliveryLat, lng: o.deliveryLng });
-      }
-    };
-
-    const handleEta = (p) => {
-      const o = orderRef.current;
-      if (!p?.orderId || !o) return;
-      if (o.id !== p.orderId) return;
-
-      const isParcel = o.orderType === "parcel";
-      const inTransitStatus = isParcel ? "In transit" : "Picked up";
-
-      if (o.status === inTransitStatus) {
-        setTimeLeft(Math.max(0, Number(p.etaSeconds || 0)));
-      }
-    };
-
     socket.on("orderStatusUpdate", handleOrderUpdate);
-    socket.on("courierLocationUpdate", handleCourierLocationUpdate);
-    socket.on("orderEtaUpdate", handleEta);
+    socket.on("courierLocationUpdate", (location) => {
+      setCourierLocation(location);
+      if (order && order.deliveryLat && order.deliveryLng) {
+        fetchRoute(location, {
+          lat: order.deliveryLat,
+          lng: order.deliveryLng,
+        });
+      }
+    });
 
     window.addEventListener("orderUpdated", loadOrder);
 
     return () => {
       socket.off("orderStatusUpdate", handleOrderUpdate);
-      socket.off("courierLocationUpdate", handleCourierLocationUpdate);
-      socket.off("orderEtaUpdate", handleEta);
+      socket.off("courierLocationUpdate");
       window.removeEventListener("orderUpdated", loadOrder);
     };
   }, []);
-
-  useEffect(() => {
-    if (!order?.id) return;
-
-    socket.emit("joinOrderRoom", { orderId: order.id });
-
-    return () => {
-      socket.emit("leaveOrderRoom", { orderId: order.id });
-    };
-  }, [order?.id]);
 
   useEffect(() => {
     if (timeLeft === null) return;
