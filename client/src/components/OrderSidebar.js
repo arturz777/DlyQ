@@ -15,8 +15,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useTranslation } from "react-i18next";
 import styles from "./OrderSidebar.module.css";
-
-const socket = io(process.env.REACT_APP_API_URL);
+import { socket } from "../socket";
 
 const WAREHOUSE_LOCATION = { lat: 59.51372, lng: 24.828888 };
 
