@@ -1,6 +1,12 @@
-const { Op } = require("sequelize");
+const { Op, fn, col } = require("sequelize");
 const fetch = require("node-fetch");
-const { Order, Courier, OrderDecline, Seller } = require("../models/models");
+const {
+  Order,
+  Courier,
+  OrderDecline,
+  Seller,
+  User,
+} = require("../models/models");
 const {
   sendOrderToNextCourier,
 } = require("../services/orderDistributionService");
@@ -24,6 +30,17 @@ const COURIER_ACTIVE_STATUSES = [
   "In transit",
   "Arrived at destination",
 ];
+
+function buildCustomerName(u) {
+  if (!u) return null;
+  const parts = [];
+  if (u.firstName) parts.push(u.firstName);
+  if (u.lastName) parts.push(u.lastName);
+  const full = parts.join(" ").trim();
+  if (full) return full;
+  if (u.email) return u.email;
+  return null;
+}
 
 function canMoveParcel(from, to) {
   const i = PARCEL_FLOW.indexOf(from);
@@ -55,6 +72,139 @@ function safeParse(v, fallback) {
 }
 
 class CourierController {
+  async getHistory(req, res) {
+    try {
+      const courierId = req.user?.id;
+      if (!courierId)
+        return res.status(401).json({ message: "Вы не авторизованы." });
+
+      const { from, to } = req.query;
+
+      const where = { courierId, status: "Delivered" };
+
+      const timeField = Order.rawAttributes?.deliveredAt
+        ? "deliveredAt"
+        : "updatedAt";
+
+      if (from || to) {
+        where[timeField] = {};
+        if (from) where[timeField][Op.gte] = new Date(from);
+        if (to) where[timeField][Op.lt] = new Date(to);
+      }
+
+      const orders = await Order.findAll({
+        where,
+        order: [[timeField, "DESC"]],
+        attributes: [
+          "id",
+          "orderType",
+          "sellerId",
+          "userId",
+          "pickupAddress",
+          "deliveryAddress",
+          "totalPrice",
+          timeField,
+          "createdAt",
+        ],
+        raw: true,
+      });
+
+      const sellerIds = [
+        ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
+      ];
+
+      const sellers = sellerIds.length
+        ? await Seller.findAll({
+            where: { id: { [Op.in]: sellerIds } },
+            attributes: ["id", "name", "kind"],
+            raw: true,
+          })
+        : [];
+
+      const sellerMap = new Map(sellers.map((s) => [Number(s.id), s]));
+
+      const userIds = [...new Set(orders.map((o) => o.userId).filter(Boolean))];
+
+      const users = userIds.length
+        ? await User.findAll({
+            where: { id: { [Op.in]: userIds } },
+            attributes: ["id", "firstName", "lastName", "phone", "email"],
+            raw: true,
+          })
+        : [];
+
+      const userMap = new Map(users.map((u) => [Number(u.id), u]));
+
+      return res.json(
+        orders.map((o) => {
+          const seller = o.sellerId ? sellerMap.get(Number(o.sellerId)) : null;
+          const u = o.userId ? userMap.get(Number(o.userId)) : null;
+
+          const kind =
+            o.orderType === "parcel"
+              ? "parcel"
+              : seller
+              ? "restaurant"
+              : "market";
+
+          return {
+            id: o.id,
+            kind,
+            sellerName: seller?.name || null,
+            deliveredAt: o[timeField] || o.createdAt,
+            pickupAddress: o.pickupAddress || null,
+            deliveryAddress: o.deliveryAddress || null,
+            sum: Number(o.totalPrice || 0),
+            customerName: o.customerName || buildCustomerName(u) || null,
+            customerPhone: o.customerPhone || u?.phone || null,
+          };
+        })
+      );
+    } catch (e) {
+      console.error("getHistory error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
+  async getFinance(req, res) {
+    try {
+      const courierId = req.user?.id;
+      if (!courierId)
+        return res.status(401).json({ message: "Вы не авторизованы." });
+
+      const { from, to } = req.query;
+
+      const where = { courierId, status: "Delivered" };
+      if (from && to) {
+        where.updatedAt = { [Op.gte]: new Date(from), [Op.lt]: new Date(to) };
+      }
+
+      const row = await Order.findOne({
+        where,
+        attributes: [
+          [fn("COUNT", col("id")), "trips"],
+          [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "gross"],
+          [fn("COALESCE", fn("SUM", col("courierCommission")), 0), "withheld"],
+          [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
+        ],
+        raw: true,
+      });
+
+      return res.json({
+        trips: Number(row?.trips || 0),
+        gross: Number(Number(row?.gross || 0).toFixed(2)),
+        withheld: Number(Number(row?.withheld || 0).toFixed(2)),
+        net: Number(Number(row?.net || 0).toFixed(2)),
+        bonuses: 0,
+        tips: 0,
+        acceptRate: 100,
+      });
+    } catch (e) {
+      console.error("getFinance error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
   async savePushToken(req, res) {
     try {
       const { token } = req.body;
@@ -175,9 +325,15 @@ class CourierController {
           "deliveryPrice",
           "courierFee",
           "courierId",
+          "courierFeeGross",
+          "courierCommission",
+          "courierCommissionRate",
           "offerExpiresAt",
           "offerCourierId",
           "sellerId",
+          "userId",
+          "processingTime",
+          "processingStartTime",
         ],
       });
 
@@ -198,9 +354,22 @@ class CourierController {
 
       const sellerMap = new Map(sellers.map((s) => [s.id, s]));
 
+      const userIds = [...new Set(orders.map((o) => o.userId).filter(Boolean))];
+
+      const users = userIds.length
+        ? await User.findAll({
+            where: { id: { [Op.in]: userIds } },
+            attributes: ["id", "firstName", "lastName", "phone", "email"],
+            raw: true,
+          })
+        : [];
+
+      const userMap = new Map(users.map((u) => [Number(u.id), u]));
+
       const formattedOrders = orders.map((order) => {
         const o = order.toJSON();
         const s = o.sellerId ? sellerMap.get(o.sellerId) : null;
+        const u = o.userId ? userMap.get(Number(o.userId)) : null;
 
         const isParcel = o.orderType === "parcel";
 
@@ -216,6 +385,10 @@ class CourierController {
           pickupLng: isParcel
             ? o.pickupLng ?? null
             : o.pickupLng ?? s?.pickupLng ?? null,
+          customerName: o.customerName || buildCustomerName(u) || null,
+          customerPhone: o.customerPhone || u?.phone || null,
+          processingTime: order.processingTime,
+          processingStartTime: order.processingStartTime,
         };
       });
 
@@ -261,6 +434,15 @@ class CourierController {
 
       const prevStatus = order.status;
       const isParcel = order.orderType === "parcel";
+      const user = order.userId
+        ? await User.findByPk(order.userId, {
+            attributes: ["id", "firstName", "lastName", "phone", "email"],
+          })
+        : null;
+
+      const customerName =
+        order.customerName || buildCustomerName(user) || null;
+      const customerPhone = order.customerPhone || user?.phone || null;
 
       order.courierId = courierId;
       order.acceptedAt = new Date();
@@ -316,10 +498,18 @@ class CourierController {
         deliveryPrice: order.deliveryPrice,
         courierFee: order.courierFee,
         courierId: order.courierId,
+        courierFeeGross: order.courierFeeGross,
+        courierCommission: order.courierCommission,
+        courierCommissionRate: order.courierCommissionRate,
+        processingTime: order.processingTime,
+        processingStartTime: order.processingStartTime,
 
         pickupAddress,
         pickupLat,
         pickupLng,
+        customerName,
+        customerPhone,
+        userId: order.userId,
       });
     } catch (error) {
       console.error("❌ Ошибка принятия заказа:", error);
@@ -471,6 +661,10 @@ class CourierController {
 
       order.status = "Delivered";
       order.estimatedTime = null;
+
+      if (Order.rawAttributes?.deliveredAt) {
+        order.deliveredAt = new Date();
+      }
 
       await order.save();
 
