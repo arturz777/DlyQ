@@ -155,11 +155,12 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
 
     const handleOrderUpdate = (updatedOrder) => {
       if (updatedOrder && updatedOrder.id) {
-        setOrder((prevOrder) =>
-          prevOrder && prevOrder.id === updatedOrder.id
-            ? { ...prevOrder, ...updatedOrder }
-            : prevOrder
-        );
+        setOrder((prev) => {
+          if (!prev) return updatedOrder;
+          if (prev.id !== updatedOrder.id) return prev;
+          return { ...prev, ...updatedOrder };
+        });
+
         setShowIcon(true);
 
         if (updatedOrder.accepted === true) {
