@@ -460,16 +460,17 @@ class CourierController {
 
       const io = req.app.get("io");
 
-      io.emit("orderStatusUpdate", {
-        id: order.id,
-        status: order.status,
-        accepted: true,
-        courierId: order.courierId,
-        courierLocation:
-          courier.currentLat && courier.currentLng
-            ? { lat: courier.currentLat, lng: courier.currentLng }
-            : null,
-      });
+      io.to(`order:${order.id}`).emit("orderStatusUpdate", {
+  id: order.id,
+  status: order.status,
+  accepted: true,
+  courierId: order.courierId,
+  courierLocation:
+    courier.currentLat && courier.currentLng
+      ? { lat: courier.currentLat, lng: courier.currentLng }
+      : null,
+});
+
 
       let pickupAddress = null,
         pickupLat = null,
@@ -626,11 +627,12 @@ class CourierController {
       await order.save();
 
       const io = req.app.get("io");
-      io.emit("orderStatusUpdate", {
-        id: order.id,
-        status: order.status,
-        estimatedTime: order.estimatedTime || null,
-      });
+     io.to(`order:${order.id}`).emit("orderStatusUpdate", {
+  id: order.id,
+  status: order.status,
+  estimatedTime: order.estimatedTime || null,
+});
+
 
       return res.json(order);
     } catch (error) {
@@ -669,11 +671,12 @@ class CourierController {
       await order.save();
 
       const io = req.app.get("io");
-      io.emit("orderStatusUpdate", {
-        id: order.id,
-        status: order.status,
-        estimatedTime: null,
-      });
+      io.to(`order:${order.id}`).emit("orderStatusUpdate", {
+  id: order.id,
+  status: order.status,
+  estimatedTime: order.estimatedTime || null,
+});
+
 
       try {
         const ACTIVE_STATUSES = ["Waiting for courier", "Ready for pickup"];
