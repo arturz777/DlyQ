@@ -828,6 +828,12 @@ const updateOrderStatus = async (req, res) => {
     order.status = newStatus;
     await order.save();
 
+    const io = req.app.get("io");
+    io.to(`order:${order.id}`).emit("orderStatusUpdate", {
+      id: order.id,
+      status: order.status,
+    });
+
     res.json({ message: "Статус заказа обновлён!", order });
   } catch (error) {
     res.status(500).json({ message: "Ошибка сервера" });
@@ -947,19 +953,20 @@ const getUserOrders = async (req, res) => {
 
 const getActiveOrder = async (req, res) => {
   try {
-    const userId = req.user ? req.user.id : null;
+    const userId = req.user.id;
 
     const order = await Order.findOne({
       where: {
         userId,
         status: {
-          [Op.in]: [
+         [Op.in]: [
             "Pending",
+            "preorder",  
             "Waiting for courier",
             "Ready for pickup",
-
-
-            
+            "Accepted",
+            "Arrived at pickup",
+            "In transit",
             "Picked up",
             "Arrived at destination",
             "Delivered",
