@@ -85,9 +85,7 @@ const LocationPicker = ({ setFormData }) => {
 
       const fallback = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
 
-      fetch(
-        `${process.env.REACT_APP_API_URL}api/geo/reverse?lat=${lat}&lon=${lon}`
-      )
+      fetch(`${API}/geo/reverse?lat=${lat}&lon=${lon}`)
         .then((res) => res.json())
         .then((data) => {
           const addr = data.short_display_name || data.display_name;
@@ -190,9 +188,7 @@ const [deletingId, setDeletingId] = useState(null);
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(
-          `${
-            process.env.REACT_APP_API_URL
-          }/geo/search?q=${encodeURIComponent(q)}`
+          `${API}/geo/search?q=${encodeURIComponent(q)}`
         );
         const data = await res.json();
         setSuggestions(Array.isArray(data) ? data.slice(0, 5) : []);
@@ -208,15 +204,12 @@ const [deletingId, setDeletingId] = useState(null);
     const loadSaved = async () => {
       if (!user.isAuth) return;
       try {
-        const res = await fetch(
-          `${process.env.REACT_APP_API_URL}/payments/payment-methods`,
-          {
-            credentials: "include",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-            },
-          }
-        );
+        const res = await fetch(`${API}/payments/payment-methods`, {
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        });
         if (!res.ok) return;
         const { cards } = await res.json();
         setSavedCards(Array.isArray(cards) ? cards : []);
@@ -231,32 +224,34 @@ const [deletingId, setDeletingId] = useState(null);
     loadSaved();
   }, [user.isAuth]);
 
-   useEffect(() => {
-   const updateLocation = (latitude, longitude) => {
-  setFormData((prev) => ({
-    ...prev,
-    latitude,
-    longitude,
-  }));
-
-  const fallback = `${Number(latitude).toFixed(6)}, ${Number(longitude).toFixed(6)}`;
-
-  fetch(`${process.env.REACT_APP_API_URL}api/geo/reverse?lat=${latitude}&lon=${longitude}`)
-    .then((res) => res.json())
-    .then((data) => {
-      const addr = data.short_display_name || data.display_name;
+  useEffect(() => {
+    const updateLocation = (latitude, longitude) => {
       setFormData((prev) => ({
         ...prev,
-        address: addr || prev.address || fallback,
+        latitude,
+        longitude,
       }));
-    })
-    .catch(() => {
-      setFormData((prev) => ({
-        ...prev,
-        address: prev.address || fallback,
-      }));
-    });
-};
+
+      const fallback = `${Number(latitude).toFixed(6)}, ${Number(
+        longitude
+      ).toFixed(6)}`;
+
+      fetch(`${API}/geo/reverse?lat=${latitude}&lon=${longitude}`)
+        .then((res) => res.json())
+        .then((data) => {
+          const addr = data.short_display_name || data.display_name;
+          setFormData((prev) => ({
+            ...prev,
+            address: addr || prev.address || fallback,
+          }));
+        })
+        .catch(() => {
+          setFormData((prev) => ({
+            ...prev,
+            address: prev.address || fallback,
+          }));
+        });
+    };
 
     try {
       const saved = JSON.parse(localStorage.getItem("userFormData") || "null");
@@ -313,31 +308,25 @@ const [deletingId, setDeletingId] = useState(null);
   const handleDeleteCard = async (pmIdToDelete) => {
     try {
       setDeletingId(pmIdToDelete);
-      const r = await fetch(
-        `${process.env.REACT_APP_API_URL}/payments/detach-pm`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-          },
-          body: JSON.stringify({ pmId: pmIdToDelete }),
-        }
-      );
+      const r = await fetch(`${API}api/payments/detach-pm`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+        body: JSON.stringify({ pmId: pmIdToDelete }),
+      });
       if (!r.ok) {
         const msg = await r.text().catch(() => "");
         toast.error(msg || t("failed to remove card", { ns: "paymentForm" }));
         return;
       }
 
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/payments/payment-methods`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-          },
-        }
-      );
+      const res = await fetch(`${API}api/payments/payment-methods`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+      });
       const { cards } = await res.json();
       const list = Array.isArray(cards) ? cards : [];
       setSavedCards(list);
@@ -371,9 +360,7 @@ const [deletingId, setDeletingId] = useState(null);
   setAddressLoading(true);
   try {
       const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/geo/search?q=${encodeURIComponent(
-          q
-        )}`
+        `${API}api/geo/search?q=${encodeURIComponent(q)}`
       );
     if (!res.ok) throw new Error("search failed");
     const data = await res.json();
@@ -561,14 +548,12 @@ const handleSubmit = async (event) => {
     try {
       const amountCents = Math.round((totalPrice + deliveryCost) * 100);
 
-      const piRes = await fetch(
-        `${process.env.REACT_APP_API_URL}/payments/create-intent`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-          },
+     const piRes = await fetch(`${API}api/payments/create-intent`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
           body: JSON.stringify({
             amount: amountCents,
             currency: "eur",
