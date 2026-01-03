@@ -12,6 +12,7 @@ import MainPage from "../pages/MainPage";
 import SellerPage from "../pages/SellerPage";
 import ParcelPage from "../pages/ParcelPage";
 import FoodCatalogPage from "../pages/FoodCatalogPage";
+import { socket } from "../socket";
 
 const Basket = lazy(() => import("../pages/Basket"));
 const CatalogPage = lazy(() => import("../pages/CatalogPage"));
