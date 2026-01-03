@@ -5,8 +5,6 @@ import { socket } from "../socket";
 import { useTranslation } from "react-i18next";
 import styles from "./ChatBox.module.css";
 
-const socket = io("https://dlyq-backend-staging.onrender.com");
-
 const ChatBox = ({
   userId,
   userRole,
