@@ -80,7 +80,7 @@ const LocationPicker = ({ setFormData }) => {
         longitude: e.latlng.lng,
       }));
       
-       fetch(`${API}/api/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
+       fetch(`${API}/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
         .then(async (res) => {
           if (!res.ok) throw new Error(`reverse failed: ${res.status}`);
           return res.json();
@@ -232,7 +232,7 @@ const [deletingId, setDeletingId] = useState(null);
         longitude,
       }));
 
-     fetch(`${API}/api/geo/reverse?lat=${latitude}&lon=${longitude}`)
+     fetch(`${API}/geo/reverse?lat=${latitude}&lon=${longitude}`)
         .then(async (res) => {
           if (!res.ok) throw new Error(`reverse failed: ${res.status}`);
           return res.json();
