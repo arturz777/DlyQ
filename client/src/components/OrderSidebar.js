@@ -3,7 +3,6 @@ import { fetchActiveOrder, updateOrderStatus } from "../http/orderAPI";
 import { useNavigate } from "react-router-dom";
 import { useRef } from "react";
 import { useMap } from "react-leaflet";
-import { io } from "socket.io-client";
 import {
   MapContainer,
   TileLayer,
@@ -231,11 +230,14 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
       }
     };
 
-    const handleCourierLocationUpdate = (location) => {
+    const handleCourierLocationUpdate = (p) => {
+      const o = orderRef.current;
+      if (!o || p?.orderId !== o.id) return;
+
+      const location = { lat: p.lat, lng: p.lng };
       setCourierLocation(location);
 
-      const o = orderRef.current;
-      if (o && o.deliveryLat && o.deliveryLng) {
+      if (o.deliveryLat && o.deliveryLng) {
         fetchRoute(location, { lat: o.deliveryLat, lng: o.deliveryLng });
       }
     };
@@ -267,36 +269,35 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     };
   }, []);
 
-useEffect(() => {
-  if (!order?.id) return;
+  useEffect(() => {
+    if (!order?.id) return;
 
-  const join = () => socket.emit("joinOrderRoom", { orderId: order.id });
+    const join = () => socket.emit("joinOrderRoom", { orderId: order.id });
 
-  if (socket.connected) join();
-  else socket.once("connect", join);
+    if (socket.connected) join();
+    else socket.once("connect", join);
 
-  return () => {
-    socket.off("connect", join);
-    socket.emit("leaveOrderRoom", { orderId: order.id });
-  };
-}, [order?.id]);
-
+    return () => {
+      socket.off("connect", join);
+      socket.emit("leaveOrderRoom", { orderId: order.id });
+    };
+  }, [order?.id]);
 
   useEffect(() => {
-  const onConnect = () => {
-    const id = orderRef.current?.id;
-    if (id) {
-      socket.emit("joinOrderRoom", { orderId: id });
-      console.log("🔁 rejoin order room after connect:", id);
-    }
-  };
+    const onConnect = () => {
+      const id = orderRef.current?.id;
+      if (id) {
+        socket.emit("joinOrderRoom", { orderId: id });
+        console.log("🔁 rejoin order room after connect:", id);
+      }
+    };
 
-  socket.on("connect", onConnect);
+    socket.on("connect", onConnect);
 
-  return () => {
-    socket.off("connect", onConnect);
-  };
-}, []);
+    return () => {
+      socket.off("connect", onConnect);
+    };
+  }, []);
 
   useEffect(() => {
     if (timeLeft === null) return;
