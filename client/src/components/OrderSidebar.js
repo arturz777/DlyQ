@@ -121,7 +121,7 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
             : Date.now();
           const elapsed = Math.floor((Date.now() - started) / 1000);
 
-          setTimeLeft(Math.max(totalSeconds - elapsed, 0));
+          setTimeLeft(totalSeconds - elapsed);
         } else {
           const isParcel = activeOrder.orderType === "parcel";
           const inTransitStatus = isParcel ? "In transit" : "Picked up";
@@ -207,7 +207,7 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
             : Date.now();
           const elapsed = Math.floor((Date.now() - started) / 1000);
 
-          setTimeLeft(Math.max(totalSeconds - elapsed, 0));
+          setTimeLeft(totalSeconds - elapsed);
         } else {
           const isParcel = updatedOrder.orderType === "parcel";
           const inTransitStatus = isParcel ? "In transit" : "Picked up";
@@ -316,21 +316,30 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   }, [timeLeft]);
 
   const formatTime = (seconds) => {
-    if (seconds <= 0) return `${t("zero seconds", { ns: "orderSidebar" })}`;
+    if (seconds == null) return "";
 
-    const days = Math.floor(seconds / (24 * 60 * 60));
-    const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
-    const mins = Math.floor((seconds % (60 * 60)) / 60);
-    const secs = seconds % 60;
+    const sign = seconds < 0 ? "-" : "";
+    let s = Math.abs(Math.trunc(seconds));
+
+    const days = Math.floor(s / (24 * 60 * 60));
+    s %= 24 * 60 * 60;
+
+    const hours = Math.floor(s / (60 * 60));
+    s %= 60 * 60;
+
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
 
     let result = "";
     if (days > 0) result += `${days} ${t("days", { ns: "orderSidebar" })} `;
     if (hours > 0) result += `${hours} ${t("hours", { ns: "orderSidebar" })} `;
     if (mins > 0) result += `${mins} ${t("minutes", { ns: "orderSidebar" })} `;
-    if (secs > 0 && days === 0 && hours === 0)
+    if (days === 0 && hours === 0) {
       result += `${secs} ${t("seconds", { ns: "orderSidebar" })} `;
+    }
 
-    return result.trim();
+    const trimmed = result.trim();
+    return sign + (trimmed || `0 ${t("seconds", { ns: "orderSidebar" })}`);
   };
 
   const fetchRoute = async (start, end) => {
