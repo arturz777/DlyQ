@@ -73,27 +73,35 @@ const MapUpdater = ({ latitude, longitude }) => {
 const LocationPicker = ({ setFormData }) => {
   const { t } = useTranslation("paymentForm");
   useMapEvents({
-    click(e) {
+   click(e) {
+      const lat = e.latlng.lat;
+      const lon = e.latlng.lng;
+
       setFormData((prev) => ({
         ...prev,
-        latitude: e.latlng.lat,
-        longitude: e.latlng.lng,
+        latitude: lat,
+        longitude: lon,
       }));
-      
-       fetch(`${API}/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
-       .then((res) => res.json())
+
+      const fallback = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+
+      fetch(
+        `${process.env.REACT_APP_API_URL}api/geo/reverse?lat=${lat}&lon=${lon}`
+      )
+        .then((res) => res.json())
         .then((data) => {
+          const addr = data.short_display_name || data.display_name;
           setFormData((prev) => ({
             ...prev,
-            address:
-              data.short_display_name ||
-              data.display_name ||
-              t("address not found", { ns: "paymentForm" }),
+            address: addr || prev.address || fallback,
           }));
         })
-        .catch((err) =>
-          console.error(t("address not found", { ns: "paymentForm" }), err)
-        );
+        .catch(() => {
+          setFormData((prev) => ({
+            ...prev,
+            address: prev.address || fallback,
+          }));
+        });
 
       toast.info(t("address selected", { ns: "paymentForm" }));
     },
@@ -224,26 +232,31 @@ const [deletingId, setDeletingId] = useState(null);
   }, [user.isAuth]);
 
    useEffect(() => {
-    const updateLocation = (latitude, longitude) => {
+   const updateLocation = (latitude, longitude) => {
+  setFormData((prev) => ({
+    ...prev,
+    latitude,
+    longitude,
+  }));
+
+  const fallback = `${Number(latitude).toFixed(6)}, ${Number(longitude).toFixed(6)}`;
+
+  fetch(`${process.env.REACT_APP_API_URL}api/geo/reverse?lat=${latitude}&lon=${longitude}`)
+    .then((res) => res.json())
+    .then((data) => {
+      const addr = data.short_display_name || data.display_name;
       setFormData((prev) => ({
         ...prev,
-        latitude,
-        longitude,
+        address: addr || prev.address || fallback,
       }));
-
-    fetch(`${API}/geo/reverse?lat=${latitude}&lon=${longitude}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setFormData((prev) => ({
-            ...prev,
-            address:
-              data.short_display_name || data.display_name || prev.address,
-          }));
-        })
-        .catch((err) =>
-          console.error(t("fetching address error", { ns: "paymentForm" }), err)
-        );
-    };
+    })
+    .catch(() => {
+      setFormData((prev) => ({
+        ...prev,
+        address: prev.address || fallback,
+      }));
+    });
+};
 
     try {
       const saved = JSON.parse(localStorage.getItem("userFormData") || "null");
