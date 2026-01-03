@@ -569,6 +569,15 @@ const createOrder = async (req, res) => {
 
     const order = await Order.create(orderData);
 
+     const io = req.app.get("io");
+
+    const whRoom = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
+    io.to(whRoom).emit("newOrder", order);
+
+    if (userId) {
+      io.to(`user:${userId}`).emit("orderCreated", { orderId: order.id });
+    }
+
     try {
       await sendNewOrderPushToWarehouse(order);
     } catch (err) {
@@ -579,7 +588,6 @@ const createOrder = async (req, res) => {
       await device.update({ quantity: device.quantity - count });
     }
 
-    const io = req.app.get("io");
     const room = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
     io.to(room).emit("newOrder", order);
 
@@ -828,6 +836,12 @@ const updateOrderStatus = async (req, res) => {
     order.status = newStatus;
     await order.save();
 
+    const io = req.app.get("io");
+    io.to(`order:${order.id}`).emit("orderStatusUpdate", {
+      id: order.id,
+      status: order.status,
+    });
+
     res.json({ message: "Статус заказа обновлён!", order });
   } catch (error) {
     res.status(500).json({ message: "Ошибка сервера" });
@@ -947,19 +961,20 @@ const getUserOrders = async (req, res) => {
 
 const getActiveOrder = async (req, res) => {
   try {
-    const userId = req.user ? req.user.id : null;
+    const userId = req.user.id;
 
     const order = await Order.findOne({
       where: {
         userId,
         status: {
-          [Op.in]: [
+         [Op.in]: [
             "Pending",
+            "preorder",  
             "Waiting for courier",
             "Ready for pickup",
-
-
-            
+            "Accepted",
+            "Arrived at pickup",
+            "In transit",
             "Picked up",
             "Arrived at destination",
             "Delivered",
@@ -1019,13 +1034,26 @@ const adminUpdateOrderStatus = async (req, res) => {
     order.pickupStartTime = new Date();
   }
 
-  await order.save();
+ await order.save();
 
   const io = req.app.get("io");
 
-  io.emit("orderStatusUpdate", order);
+  const payload = {
+    id: order.id,
+    status: order.status,
+    warehouseStatus: order.warehouseStatus,
+    processingTime: order.processingTime,
+    processingStartTime: order.processingStartTime,
+    estimatedTime: order.estimatedTime,
+    pickupStartTime: order.pickupStartTime,
+    courierId: order.courierId,
+  };
 
-   if (['Waiting for courier', 'Ready for pickup'].includes(order.status)) {
+  io.to(`order:${order.id}`).emit("orderStatusUpdate", payload);
+  if (order.userId)
+    io.to(`user:${order.userId}`).emit("orderStatusUpdate", payload);
+
+  if (["Waiting for courier", "Ready for pickup"].includes(order.status)) {
     const courierPayload = {
       id: order.id,
       status: order.status,
@@ -1037,12 +1065,12 @@ const adminUpdateOrderStatus = async (req, res) => {
       courierId: order.courierId,
     };
 
-    io.emit('warehouseOrder', courierPayload);
+    io.emit("warehouseOrder", courierPayload);
 
     try {
       await sendOrderToNextCourier(order);
     } catch (err) {
-      console.error('push error (adminUpdateOrderStatus):', err);
+      console.error("push error (adminUpdateOrderStatus):", err);
     }
   }
 
@@ -1074,8 +1102,8 @@ const assignCourier = async (req, res) => {
       orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
     });
 
-     sendOrderAssignedPush(order).catch(err =>
-      console.error("push error:", err),
+    sendOrderAssignedPush(order).catch((err) =>
+      console.error("push error:", err)
     );
 
     res.json({ message: "Курьер назначен", order });
