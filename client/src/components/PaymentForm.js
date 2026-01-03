@@ -231,7 +231,7 @@ const [deletingId, setDeletingId] = useState(null);
         longitude,
       }));
 
-    fetch(`${API}/api/geo/reverse?lat=${latitude}&lon=${longitude}`)
+    fetch(`${API}/geo/reverse?lat=${latitude}&lon=${longitude}`)
         .then((res) => res.json())
         .then((data) => {
           setFormData((prev) => ({
