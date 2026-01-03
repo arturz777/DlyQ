@@ -223,6 +223,8 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
             const remaining = Math.max(updatedOrder.estimatedTime - elapsed, 0);
 
             setTimeLeft(remaining);
+          } else if (updatedOrder.status === inTransitStatus) {
+            setTimeLeft(null);
           } else if (
             updatedOrder.status === "Arrived at destination" ||
             updatedOrder.status === "Delivered"
