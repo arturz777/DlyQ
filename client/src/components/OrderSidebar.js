@@ -70,6 +70,26 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     return null;
   };
 
+  const parseDurationToSeconds = (str) => {
+    if (!str) return 0;
+
+    const m = String(str)
+      .trim()
+      .match(/^(\d+)\s*([a-zA-Zа-яА-ЯёЁ.]+)?/);
+    if (!m) return 0;
+
+    const value = parseInt(m[1], 10);
+    const unit = (m[2] || "").toLowerCase();
+
+    if (!Number.isFinite(value)) return 0;
+    if (unit.includes("min") || unit.includes("мин")) return value * 60;
+    if (unit.includes("hour") || unit.includes("час")) return value * 60 * 60;
+    if (unit.includes("day") || unit.includes("дн"))
+      return value * 24 * 60 * 60;
+
+    return value * 60;
+  };
+
   const loadOrder = async () => {
     try {
       const activeOrder = await fetchActiveOrder();
@@ -88,24 +108,20 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
 
         if (
           activeOrder.status === "Waiting for courier" &&
-          activeOrder.processingTime &&
-          activeOrder.updatedAt
+          activeOrder.processingTime
         ) {
-          const [value, unit] = activeOrder.processingTime.split(" ");
-          let totalSeconds = 0;
+          const totalSeconds = parseDurationToSeconds(
+            activeOrder.processingTime
+          );
 
-          if (unit.includes("min")) totalSeconds = parseInt(value, 10) * 60;
-          else if (unit.includes("hour"))
-            totalSeconds = parseInt(value, 10) * 60 * 60;
-          else if (unit.includes("day"))
-            totalSeconds = parseInt(value, 10) * 24 * 60 * 60;
+          const startedAt =
+            activeOrder.processingStartTime || activeOrder.updatedAt;
+          const started = startedAt
+            ? new Date(startedAt).getTime()
+            : Date.now();
+          const elapsed = Math.floor((Date.now() - started) / 1000);
 
-          const started = new Date(activeOrder.updatedAt).getTime();
-          const now = Date.now();
-          const elapsed = Math.floor((now - started) / 1000);
-          const remaining = Math.max(totalSeconds - elapsed, 0);
-
-          setTimeLeft(remaining);
+          setTimeLeft(Math.max(totalSeconds - elapsed, 0));
         } else {
           const isParcel = activeOrder.orderType === "parcel";
           const inTransitStatus = isParcel ? "In transit" : "Picked up";
@@ -180,16 +196,18 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
           updatedOrder.status === "Waiting for courier" &&
           updatedOrder.processingTime
         ) {
-          const [value, unit] = updatedOrder.processingTime.split(" ");
-          let timeInSeconds = 0;
+          const totalSeconds = parseDurationToSeconds(
+            updatedOrder.processingTime
+          );
 
-          if (unit.includes(`${t("minutes", { ns: "orderSidebar" })}`)) {
-            timeInSeconds = parseInt(value, 10) * 60;
-          } else if (unit.includes(`${t("days", { ns: "orderSidebar" })}`)) {
-            timeInSeconds = parseInt(value, 10) * 24 * 60 * 60;
-          }
+          const startedAt =
+            updatedOrder.processingStartTime || updatedOrder.updatedAt;
+          const started = startedAt
+            ? new Date(startedAt).getTime()
+            : Date.now();
+          const elapsed = Math.floor((Date.now() - started) / 1000);
 
-          setTimeLeft(timeInSeconds);
+          setTimeLeft(Math.max(totalSeconds - elapsed, 0));
         } else {
           const isParcel = updatedOrder.orderType === "parcel";
           const inTransitStatus = isParcel ? "In transit" : "Picked up";
