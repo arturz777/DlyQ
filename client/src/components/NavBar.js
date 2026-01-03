@@ -6,7 +6,7 @@ import { ADMIN_ROUTE } from "../utils/consts";
 import { observer } from "mobx-react-lite";
 import { useNavigate } from "react-router-dom";
 import SearchBar from "./SearchBar";
-import { io } from "socket.io-client";
+import { socket } from "../socket";
 import { useTranslation } from "react-i18next";
 import styles from "./NavBar.module.css";
 
@@ -76,36 +76,41 @@ const NavBar = observer(() => {
       .catch(console.error);
   }, [user?.user?.id]);
 
-  useEffect(() => {
-    const socket = io(`${process.env.REACT_APP_API_URL}`);
+useEffect(() => {
+  if (!user?.user?.id) return;
 
-    if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
-      socket.emit("joinAdminNotifications");
+  const isAdmin = String(user?.user?.role || "").toUpperCase() === "ADMIN";
+  if (!isAdmin) return;
 
-      socket.on("newChatMessage", (msg) => {
-        setUnreadChats((prev) => {
-          const updated = new Set(prev);
-          updated.add(msg.chatId);
-          return updated;
-        });
-      });
+  socket.emit("joinAdminNotifications");
 
-      socket.on("readMessages", ({ chatId, userId: readerId }) => {
-        if (readerId === user.user.id) {
-          setUnreadChats((prev) => {
-            const updated = new Set(prev);
-            updated.delete(chatId);
-            return updated;
-          });
-        }
+  const onNewChatMessage = (msg) => {
+    setUnreadChats((prev) => {
+      const updated = new Set(prev);
+      updated.add(msg.chatId);
+      return updated;
+    });
+  };
+
+  const onReadMessages = ({ chatId, userId: readerId }) => {
+    if (readerId === user.user.id) {
+      setUnreadChats((prev) => {
+        const updated = new Set(prev);
+        updated.delete(chatId);
+        return updated;
       });
     }
+  };
 
-    return () => {
-      socket.disconnect();
-    };
-  }, [user]);
+  socket.on("newChatMessage", onNewChatMessage);
+  socket.on("readMessages", onReadMessages);
 
+  return () => {
+    socket.off("newChatMessage", onNewChatMessage);
+    socket.off("readMessages", onReadMessages);
+  };
+}, [user?.user?.id, user?.user?.role]);
+  
   useEffect(() => {
     const onDocClick = (e) => {
       if (
