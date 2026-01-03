@@ -152,7 +152,6 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     loadOrder();
 
     const handleOrderUpdate = (updatedOrder) => {
-      console.log("📩 orderStatusUpdate:", updatedOrder);
       if (updatedOrder && updatedOrder.id) {
         setOrder((prev) => {
           if (!prev) return updatedOrder;
@@ -271,22 +270,20 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   }, []);
 
   useEffect(() => {
-  if (!order?.id) return;
+    if (!order?.id) return;
 
-  const joinRoom = () => {
-    socket.emit("joinOrderRoom", { orderId: order.id });
-    console.log("➡️ joinOrderRoom emit:", order.id, "connected:", socket.connected);
-  };
+    const joinRoom = () => {
+      socket.emit("joinOrderRoom", { orderId: order.id });
+    };
 
-  if (socket.connected) joinRoom();     // если уже подключен
-  socket.on("connect", joinRoom);       // на реконнект
+    if (socket.connected) joinRoom();
+    socket.on("connect", joinRoom);
 
-  return () => {
-    socket.off("connect", joinRoom);
-    socket.emit("leaveOrderRoom", { orderId: order.id });
-    console.log("⬅️ leaveOrderRoom emit:", order.id);
-  };
-}, [order?.id]);
+    return () => {
+      socket.off("connect", joinRoom);
+      socket.emit("leaveOrderRoom", { orderId: order.id });
+    };
+  }, [order?.id]);
 
   useEffect(() => {
     if (timeLeft === null) return;
