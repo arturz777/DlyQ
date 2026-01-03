@@ -39,12 +39,6 @@ const AppRouter = () => {
 
     const join = () => {
       socket.emit("joinUserRoom", { userId });
-      console.log(
-        "➡️ joinUserRoom emit:",
-        userId,
-        "connected:",
-        socket.connected
-      );
     };
 
     join();
