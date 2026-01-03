@@ -460,7 +460,7 @@ class CourierController {
 
       const io = req.app.get("io");
 
-      io.emit("orderStatusUpdate", {
+      io.to(`order:${order.id}`).emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
         accepted: true,
@@ -626,7 +626,7 @@ class CourierController {
       await order.save();
 
       const io = req.app.get("io");
-      io.emit("orderStatusUpdate", {
+      io.to(`order:${order.id}`).emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
         estimatedTime: order.estimatedTime || null,
@@ -669,10 +669,10 @@ class CourierController {
       await order.save();
 
       const io = req.app.get("io");
-      io.emit("orderStatusUpdate", {
+      io.to(`order:${order.id}`).emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
-        estimatedTime: null,
+        estimatedTime: order.estimatedTime || null,
       });
 
       try {
@@ -732,7 +732,23 @@ class CourierController {
       await courier.save();
 
       const io = req.app.get("io");
-      io.emit("courierLocationUpdate", { courierId, lat, lng });
+
+      const activeOrders = await Order.findAll({
+        where: {
+          courierId,
+          status: { [Op.in]: COURIER_ACTIVE_STATUSES },
+        },
+        attributes: ["id"],
+      });
+
+      for (const o of activeOrders) {
+        io.to(`order:${o.id}`).emit("courierLocationUpdate", {
+          orderId: o.id,
+          lat,
+          lng,
+          courierId,
+        });
+      }
 
       return res.json({ message: "Местоположение обновлено!" });
     } catch (error) {
