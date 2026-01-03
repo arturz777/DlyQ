@@ -31,6 +31,29 @@ const AppRouter = () => {
   const isSeller = user.isAuth && role === "SELLER";
   const isAdmin = user.isAuth && role === "ADMIN";
 
+  const userId = user.isAuth ? user.user?.id : null;
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const join = () => {
+      socket.emit("joinUserRoom", { userId });
+      console.log(
+        "➡️ joinUserRoom emit:",
+        userId,
+        "connected:",
+        socket.connected
+      );
+    };
+
+    join();
+    socket.on("connect", join);
+
+    return () => {
+      socket.off("connect", join);
+    };
+  }, [userId]);
+
   if (!isAdmin && appStore.maintenance.enabled === null) {
     return null;
   }
