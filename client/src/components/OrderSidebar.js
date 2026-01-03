@@ -419,6 +419,9 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
                         ns: "orderSidebar",
                       })}`)}
 
+                  {order?.status === "preorder" &&
+                    t("waiting for order confirmation", { ns: "orderSidebar" })}
+
                   {isParcel &&
                     order?.status === "Waiting for courier" &&
                     t("parcel searching courier...", { ns: "orderSidebar" })}
