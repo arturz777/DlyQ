@@ -152,6 +152,7 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     loadOrder();
 
     const handleOrderUpdate = (updatedOrder) => {
+      console.log("📩 orderStatusUpdate:", updatedOrder);
       if (updatedOrder && updatedOrder.id) {
         setOrder((prev) => {
           if (!prev) return updatedOrder;
@@ -270,34 +271,25 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   }, []);
 
   useEffect(() => {
-    if (!order?.id) return;
+  if (!order?.id) return;
 
-    const join = () => socket.emit("joinOrderRoom", { orderId: order.id });
+  const joinRoom = () => {
+    socket.emit("joinOrderRoom", { orderId: order.id });
+    console.log("➡️ joinOrderRoom emit:", order.id, "connected:", socket.connected);
+  };
 
-    if (socket.connected) join();
-    else socket.once("connect", join);
+  // пробуем сразу (если ещё не подключён — socket.io обычно отправит после connect)
+  joinRoom();
 
-    return () => {
-      socket.off("connect", join);
-      socket.emit("leaveOrderRoom", { orderId: order.id });
-    };
-  }, [order?.id]);
+  // на каждый реконнект — повторный join
+  socket.on("connect", joinRoom);
 
-  useEffect(() => {
-    const onConnect = () => {
-      const id = orderRef.current?.id;
-      if (id) {
-        socket.emit("joinOrderRoom", { orderId: id });
-        console.log("🔁 rejoin order room after connect:", id);
-      }
-    };
-
-    socket.on("connect", onConnect);
-
-    return () => {
-      socket.off("connect", onConnect);
-    };
-  }, []);
+  return () => {
+    socket.off("connect", joinRoom);
+    socket.emit("leaveOrderRoom", { orderId: order.id });
+    console.log("⬅️ leaveOrderRoom emit:", order.id);
+  };
+}, [order?.id]);
 
   useEffect(() => {
     if (timeLeft === null) return;
