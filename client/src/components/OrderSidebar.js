@@ -3,7 +3,6 @@ import { fetchActiveOrder, updateOrderStatus } from "../http/orderAPI";
 import { useNavigate } from "react-router-dom";
 import { useRef } from "react";
 import { useMap } from "react-leaflet";
-import { io } from "socket.io-client";
 import {
   MapContainer,
   TileLayer,
@@ -15,8 +14,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useTranslation } from "react-i18next";
 import styles from "./OrderSidebar.module.css";
-
-const socket = io(process.env.REACT_APP_API_URL);
+import { socket } from "../socket";
 
 const WAREHOUSE_LOCATION = { lat: 59.51372, lng: 24.828888 };
 
@@ -33,6 +31,11 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const courierMarkerRef = useRef(null);
+  const orderRef = useRef(null);
+
+  useEffect(() => {
+    orderRef.current = order;
+  }, [order]);
 
   const dateLocale = (() => {
     const l = String(i18n.language || "en").toLowerCase();
@@ -150,11 +153,12 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
 
     const handleOrderUpdate = (updatedOrder) => {
       if (updatedOrder && updatedOrder.id) {
-        setOrder((prevOrder) =>
-          prevOrder && prevOrder.id === updatedOrder.id
-            ? { ...prevOrder, ...updatedOrder }
-            : prevOrder
-        );
+        setOrder((prev) => {
+          if (!prev) return updatedOrder;
+          if (prev.id !== updatedOrder.id) return prev;
+          return { ...prev, ...updatedOrder };
+        });
+
         setShowIcon(true);
 
         if (updatedOrder.accepted === true) {
@@ -226,25 +230,60 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
       }
     };
 
-    socket.on("orderStatusUpdate", handleOrderUpdate);
-    socket.on("courierLocationUpdate", (location) => {
+    const handleCourierLocationUpdate = (p) => {
+      const o = orderRef.current;
+      if (!o || p?.orderId !== o.id) return;
+
+      const location = { lat: p.lat, lng: p.lng };
       setCourierLocation(location);
-      if (order && order.deliveryLat && order.deliveryLng) {
-        fetchRoute(location, {
-          lat: order.deliveryLat,
-          lng: order.deliveryLng,
-        });
+
+      if (o.deliveryLat && o.deliveryLng) {
+        fetchRoute(location, { lat: o.deliveryLat, lng: o.deliveryLng });
       }
-    });
+    };
+
+    const handleEta = (p) => {
+      const o = orderRef.current;
+      if (!p?.orderId || !o) return;
+      if (o.id !== p.orderId) return;
+
+      const isParcel = o.orderType === "parcel";
+      const inTransitStatus = isParcel ? "In transit" : "Picked up";
+
+      if (o.status === inTransitStatus) {
+        setTimeLeft(Math.max(0, Number(p.etaSeconds || 0)));
+      }
+    };
+
+    socket.on("orderStatusUpdate", handleOrderUpdate);
+    socket.on("courierLocationUpdate", handleCourierLocationUpdate);
+    socket.on("orderEtaUpdate", handleEta);
 
     window.addEventListener("orderUpdated", loadOrder);
 
     return () => {
       socket.off("orderStatusUpdate", handleOrderUpdate);
-      socket.off("courierLocationUpdate");
+      socket.off("courierLocationUpdate", handleCourierLocationUpdate);
+      socket.off("orderEtaUpdate", handleEta);
       window.removeEventListener("orderUpdated", loadOrder);
     };
   }, []);
+
+  useEffect(() => {
+    if (!order?.id) return;
+
+    const joinRoom = () => {
+      socket.emit("joinOrderRoom", { orderId: order.id });
+    };
+
+    if (socket.connected) joinRoom();
+    socket.on("connect", joinRoom);
+
+    return () => {
+      socket.off("connect", joinRoom);
+      socket.emit("leaveOrderRoom", { orderId: order.id });
+    };
+  }, [order?.id]);
 
   useEffect(() => {
     if (timeLeft === null) return;
