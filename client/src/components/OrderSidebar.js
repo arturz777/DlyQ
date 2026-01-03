@@ -267,8 +267,6 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     };
   }, []);
 
- import { socket } from "../socket";
-
 useEffect(() => {
   if (!order?.id) return;
 
