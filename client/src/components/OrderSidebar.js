@@ -193,7 +193,7 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
         }
 
         if (
-          updatedOrder.status === "Waiting for courier" &&
+          ["Waiting for courier", "Accepted"].includes(updatedOrder.status) &&
           updatedOrder.processingTime
         ) {
           const totalSeconds = parseDurationToSeconds(
@@ -456,6 +456,10 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
                     `${t("order accepted", { ns: "orderSidebar" })}`}
 
                   {!isParcel &&
+                    order?.status === "Accepted" &&
+                    `${t("order accepted", { ns: "orderSidebar" })}`}
+
+                  {!isParcel &&
                     order?.status === "Ready for pickup" &&
                     `${t("order is ready waiting for the courier", {
                       ns: "orderSidebar",
@@ -476,7 +480,7 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
               </p>
             )}
             {!order.preorderDate &&
-              order?.status === "Waiting for courier" &&
+              ["Waiting for courier", "Accepted"].includes(order?.status) &&
               timeLeft !== null && (
                 <p>
                   <strong>
