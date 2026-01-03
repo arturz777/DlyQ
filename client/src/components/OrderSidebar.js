@@ -267,26 +267,24 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     };
   }, []);
 
-  useEffect(() => {
-  if (!order?.id) return;
+ import { socket } from "../socket";
+
+useEffect(() => {
+  if (!orderId) return;
 
   const join = () => {
-    console.log("➡️ joinOrderRoom", order.id, "socket:", socket.id);
-    socket.emit("joinOrderRoom", { orderId: order.id });
+    console.log("➡️ joinOrderRoom emit", orderId, "socket:", socket?.id, "connected:", socket?.connected);
+    socket.emit("joinOrderRoom", { orderId });
   };
 
-  // join сразу
-  join();
-
-  // и join на каждый reconnect
-  socket.on("connect", join);
+  if (socket.connected) join();
+  else socket.once("connect", join);
 
   return () => {
-    socket.off("connect", join);
-    socket.emit("leaveOrderRoom", { orderId: order.id });
+    console.log("⬅️ leaveOrderRoom emit", orderId);
+    socket.emit("leaveOrderRoom", { orderId });
   };
-}, [order?.id]);
-
+}, [orderId]);
 
   useEffect(() => {
     const onConnect = () => {
