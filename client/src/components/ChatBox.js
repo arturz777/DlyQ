@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
 import { ChatContext } from "../context/ChatContext";
 import { normalizeChatRole } from "../utils/chatRoles";
-import { io } from "socket.io-client";
+import { socket } from "../socket";
 import { useTranslation } from "react-i18next";
 import styles from "./ChatBox.module.css";
 
