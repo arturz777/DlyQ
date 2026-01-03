@@ -26,6 +26,8 @@ import LoadingIconButton from "../components/LoadingIconButton";
 import { useTranslation } from "react-i18next";
 import styles from "./PaymentForm.module.css";
 
+const API = (process.env.REACT_APP_API_URL || "").replace(/\/+$/, "");
+
 const customIcon = new L.Icon({
   iconUrl:
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
@@ -78,10 +80,8 @@ const LocationPicker = ({ setFormData }) => {
         longitude: e.latlng.lng,
       }));
       
-       fetch(
-        `${process.env.REACT_APP_API_URL}/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`
-      )
-         .then((res) => res.json())
+       fetch(`${API}/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
+       .then((res) => res.json())
         .then((data) => {
           setFormData((prev) => ({
             ...prev,
@@ -231,9 +231,7 @@ const [deletingId, setDeletingId] = useState(null);
         longitude,
       }));
 
-      fetch(
-        `${process.env.REACT_APP_API_URL}/geo/reverse?lat=${latitude}&lon=${longitude}`
-      )
+    fetch(`${API}/geo/reverse?lat=${latitude}&lon=${longitude}`)
         .then((res) => res.json())
         .then((data) => {
           setFormData((prev) => ({
