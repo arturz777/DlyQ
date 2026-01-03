@@ -12,6 +12,7 @@ import MainPage from "../pages/MainPage";
 import SellerPage from "../pages/SellerPage";
 import ParcelPage from "../pages/ParcelPage";
 import FoodCatalogPage from "../pages/FoodCatalogPage";
+import { socket } from "../socket";
 
 const Basket = lazy(() => import("../pages/Basket"));
 const CatalogPage = lazy(() => import("../pages/CatalogPage"));
@@ -30,6 +31,23 @@ const AppRouter = () => {
   const role = String(user.user?.role || "").toUpperCase();
   const isSeller = user.isAuth && role === "SELLER";
   const isAdmin = user.isAuth && role === "ADMIN";
+
+  const userId = user.isAuth ? user.user?.id : null;
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const join = () => {
+      socket.emit("joinUserRoom", { userId });
+    };
+
+    join();
+    socket.on("connect", join);
+
+    return () => {
+      socket.off("connect", join);
+    };
+  }, [userId]);
 
   if (!isAdmin && appStore.maintenance.enabled === null) {
     return null;
