@@ -569,6 +569,17 @@ const createOrder = async (req, res) => {
 
     const order = await Order.create(orderData);
 
+      const io = req.app.get("io");
+
+// в склад ты уже шлёшь — ок
+const whRoom = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
+io.to(whRoom).emit("newOrder", order);
+
+// ✅ а вот клиенту (если есть userId)
+if (userId) {
+  io.to(`user:${userId}`).emit("orderCreated", { orderId: order.id });
+}
+
     try {
       await sendNewOrderPushToWarehouse(order);
     } catch (err) {
@@ -579,7 +590,6 @@ const createOrder = async (req, res) => {
       await device.update({ quantity: device.quantity - count });
     }
 
-    const io = req.app.get("io");
     const room = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
     io.to(room).emit("newOrder", order);
 
