@@ -629,7 +629,8 @@ class CourierController {
       io.to(`order:${order.id}`).emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
-        estimatedTime: order.estimatedTime || null,
+        estimatedTime: order.estimatedTime ?? null,
+        pickupStartTime: order.pickupStartTime ?? null,
       });
 
       return res.json(order);
@@ -672,7 +673,8 @@ class CourierController {
       io.to(`order:${order.id}`).emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
-        estimatedTime: order.estimatedTime || null,
+        estimatedTime: order.estimatedTime ?? null,
+        pickupStartTime: order.pickupStartTime ?? null,
       });
 
       try {
