@@ -278,11 +278,8 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     console.log("➡️ joinOrderRoom emit:", order.id, "connected:", socket.connected);
   };
 
-  // пробуем сразу (если ещё не подключён — socket.io обычно отправит после connect)
-  joinRoom();
-
-  // на каждый реконнект — повторный join
-  socket.on("connect", joinRoom);
+  if (socket.connected) joinRoom();     // если уже подключен
+  socket.on("connect", joinRoom);       // на реконнект
 
   return () => {
     socket.off("connect", joinRoom);
