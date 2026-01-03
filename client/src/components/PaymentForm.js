@@ -26,6 +26,8 @@ import LoadingIconButton from "../components/LoadingIconButton";
 import { useTranslation } from "react-i18next";
 import styles from "./PaymentForm.module.css";
 
+const API = (process.env.REACT_APP_API_URL || "").replace(/\/+$/, "");
+
 const customIcon = new L.Icon({
   iconUrl:
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
@@ -78,24 +80,23 @@ const LocationPicker = ({ setFormData }) => {
         longitude: e.latlng.lng,
       }));
       
-       fetch(
-        `${process.env.REACT_APP_API_URL}/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`
-      )
-         .then((res) => res.json())
+       fetch(`${API}/api/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
+        .then(async (res) => {
+          if (!res.ok) throw new Error(`reverse failed: ${res.status}`);
+          return res.json();
+        })
         .then((data) => {
+          const addr = data?.short_display_name || data?.display_name;
           setFormData((prev) => ({
             ...prev,
-            address:
-              data.short_display_name ||
-              data.display_name ||
-              t("address not found", { ns: "paymentForm" }),
+            address: addr || prev.address,
           }));
+          if (!addr) toast.error(t("address not found", { ns: "paymentForm" }));
         })
-        .catch((err) =>
-          console.error(t("address not found", { ns: "paymentForm" }), err)
-        );
-
-      toast.info(t("address selected", { ns: "paymentForm" }));
+        .catch((err) => {
+          console.error("reverse error:", err);
+          toast.error(t("address not found", { ns: "paymentForm" }));
+        });
     },
   });
   return null;
@@ -231,20 +232,21 @@ const [deletingId, setDeletingId] = useState(null);
         longitude,
       }));
 
-      fetch(
-        `${process.env.REACT_APP_API_URL}/geo/reverse?lat=${latitude}&lon=${longitude}`
-      )
-        .then((res) => res.json())
+     fetch(`${API}/api/geo/reverse?lat=${latitude}&lon=${longitude}`)
+        .then(async (res) => {
+          if (!res.ok) throw new Error(`reverse failed: ${res.status}`);
+          return res.json();
+        })
         .then((data) => {
+          const addr = data?.short_display_name || data?.display_name;
           setFormData((prev) => ({
             ...prev,
-            address:
-              data.short_display_name || data.display_name || prev.address,
+            address: addr || prev.address,
           }));
         })
-        .catch((err) =>
-          console.error(t("fetching address error", { ns: "paymentForm" }), err)
-        );
+        .catch((err) => {
+          console.error("reverse error:", err);
+        });
     };
 
     try {
