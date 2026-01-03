@@ -81,22 +81,21 @@ const LocationPicker = ({ setFormData }) => {
       }));
       
        fetch(`${API}/geo/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
-        .then(async (res) => {
-          if (!res.ok) throw new Error(`reverse failed: ${res.status}`);
-          return res.json();
-        })
+       .then((res) => res.json())
         .then((data) => {
-          const addr = data?.short_display_name || data?.display_name;
           setFormData((prev) => ({
             ...prev,
-            address: addr || prev.address,
+            address:
+              data.short_display_name ||
+              data.display_name ||
+              t("address not found", { ns: "paymentForm" }),
           }));
-          if (!addr) toast.error(t("address not found", { ns: "paymentForm" }));
         })
-        .catch((err) => {
-          console.error("reverse error:", err);
-          toast.error(t("address not found", { ns: "paymentForm" }));
-        });
+        .catch((err) =>
+          console.error(t("address not found", { ns: "paymentForm" }), err)
+        );
+
+      toast.info(t("address selected", { ns: "paymentForm" }));
     },
   });
   return null;
@@ -232,21 +231,18 @@ const [deletingId, setDeletingId] = useState(null);
         longitude,
       }));
 
-     fetch(`${API}/geo/reverse?lat=${latitude}&lon=${longitude}`)
-        .then(async (res) => {
-          if (!res.ok) throw new Error(`reverse failed: ${res.status}`);
-          return res.json();
-        })
+    fetch(`${API}/api/geo/reverse?lat=${latitude}&lon=${longitude}`)
+        .then((res) => res.json())
         .then((data) => {
-          const addr = data?.short_display_name || data?.display_name;
           setFormData((prev) => ({
             ...prev,
-            address: addr || prev.address,
+            address:
+              data.short_display_name || data.display_name || prev.address,
           }));
         })
-        .catch((err) => {
-          console.error("reverse error:", err);
-        });
+        .catch((err) =>
+          console.error(t("fetching address error", { ns: "paymentForm" }), err)
+        );
     };
 
     try {
