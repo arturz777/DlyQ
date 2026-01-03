@@ -1,44 +1,37 @@
 const { ChatMessage } = require("../models/models");
 
-module.exports = function (io) {
-  io.on("connection", (socket) => {
-    console.log("💬 Новый сокет подключен:", socket.id);
+module.exports = function chatSocket(io, socket) {
+  console.log("💬 chat socket init:", socket.id);
 
-    socket.on("joinChat", (chatId) => {
-      socket.join(`chat_${chatId}`);
-      console.log(`🔗 Socket ${socket.id} присоединился к чату ${chatId}`);
-    });
+  socket.on("joinChat", (chatId) => {
+    socket.join(`chat_${chatId}`);
+  });
 
-    socket.on("joinAdminNotifications", () => {
-      socket.join("admin_notifications");
-      console.log(`🛎️ Socket ${socket.id} присоединился к admin_notifications`);
-    });
+  socket.on("joinAdminNotifications", () => {
+    socket.join("admin_notifications");
+  });
 
-    socket.on("sendMessage", async (data) => {
-      const { chatId, senderId, senderRole, text } = data;
+  socket.on("sendMessage", async (data) => {
+    const { chatId, senderId, senderRole, text } = data;
 
-      try {
-        const newMessage = await ChatMessage.create({
-          chatId,
-          senderId,
-          senderRole,
-          text,
-          isRead: false,
-        });
+    try {
+      const newMessage = await ChatMessage.create({
+        chatId,
+        senderId,
+        senderRole,
+        text,
+        isRead: false,
+      });
 
-        io.to(`chat_${chatId}`).emit("receiveMessage", newMessage);
-        io.to("admin_notifications").emit("newChatMessage", newMessage);
-      } catch (err) {
-        console.error("❌ Ошибка при создании сообщения:", err);
-      }
-    });
+      io.to(`chat_${chatId}`).emit("receiveMessage", newMessage);
+      io.to("admin_notifications").emit("newChatMessage", newMessage);
+    } catch (err) {
+      console.error("❌ sendMessage error:", err);
+    }
+  });
 
-    socket.on("readMessages", ({ chatId, userId }) => {
-      io.emit("readMessages", { chatId, userId });
-    });
-
-    socket.on("disconnect", () => {
-      console.log("❌ Socket отключился:", socket.id);
-    });
+  // ВАЖНО: не шлём всем подряд
+  socket.on("readMessages", ({ chatId, userId }) => {
+    io.to(`chat_${chatId}`).emit("readMessages", { chatId, userId });
   });
 };
