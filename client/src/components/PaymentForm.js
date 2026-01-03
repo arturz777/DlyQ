@@ -554,17 +554,16 @@ const handleSubmit = async (event) => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
         },
-          body: JSON.stringify({
-            amount: amountCents,
-            currency: "eur",
-            receipt_email: formData.email,
-            metadata: {
-              phone: phoneNormalized,
-            },
-          }),
-        }
-      );
-
+        body: JSON.stringify({
+          amount: amountCents,
+          currency: "eur",
+          receipt_email: formData.email,
+          metadata: {
+            phone: phoneNormalized,
+          },
+        }),
+      });
+      
       if (!piRes.ok) {
         toast.error(t("payment initialization error", { ns: "paymentForm" }));
         return;
