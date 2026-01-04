@@ -22,6 +22,7 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const [order, setOrder] = useState(null);
   const [showIcon, setShowIcon] = useState(false);
   const [timeLeft, setTimeLeft] = useState(null);
+  const [timerEndMs, setTimerEndMs] = useState(null);
   const [courierLocation, setCourierLocation] = useState(null);
   const [isAccepted, setIsAccepted] = useState(false);
   const [route, setRoute] = useState([]);
@@ -123,9 +124,9 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
           const started = startedAt
             ? new Date(startedAt).getTime()
             : Date.now();
-          const elapsed = Math.floor((Date.now() - started) / 1000);
-
-          setTimeLeft(totalSeconds - elapsed);
+          const endMs = started + totalSeconds * 1000;
+          setTimerEndMs(endMs);
+          setTimeLeft(Math.floor((endMs - Date.now()) / 1000));
         } else {
           const isParcel = activeOrder.orderType === "parcel";
           const inTransitStatus = isParcel ? "In transit" : "Picked up";
@@ -138,8 +139,13 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
             const started = new Date(activeOrder.pickupStartTime).getTime();
             const now = Date.now();
             const elapsed = Math.floor((now - started) / 1000);
-            const remaining = Math.max(activeOrder.estimatedTime - elapsed, 0);
-            setTimeLeft(remaining);
+            const endMs =
+              started + Number(activeOrder.estimatedTime || 0) * 1000;
+            setTimerEndMs(endMs);
+            setTimeLeft(Math.floor((endMs - Date.now()) / 1000));
+          } else {
+            setTimerEndMs(null);
+            setTimeLeft(null);
           }
         }
 
@@ -160,6 +166,8 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
       } else {
         setOrder(null);
         setShowIcon(false);
+        setTimerEndMs(null);
+        setTimeLeft(null);
       }
     } catch (error) {
       console.warn(t("no active order", { ns: "orderSidebar" }), error);
@@ -212,9 +220,9 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
         const startedAt =
           updatedOrder.processingStartTime || updatedOrder.updatedAt;
         const started = startedAt ? new Date(startedAt).getTime() : Date.now();
-        const elapsed = Math.floor((Date.now() - started) / 1000);
-
-        setTimeLeft(totalSeconds - elapsed);
+        const endMs = started + totalSeconds * 1000;
+        setTimerEndMs(endMs);
+        setTimeLeft(Math.floor((endMs - Date.now()) / 1000));
       } else {
         const isParcel = updatedOrder.orderType === "parcel";
         const inTransitStatus = isParcel ? "In transit" : "Picked up";
@@ -227,15 +235,18 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
           const started = new Date(updatedOrder.pickupStartTime).getTime();
           const now = Date.now();
           const elapsed = Math.floor((now - started) / 1000);
-          const remaining = Math.max(updatedOrder.estimatedTime - elapsed, 0);
-
-          setTimeLeft(remaining);
+          const endMs =
+            started + Number(updatedOrder.estimatedTime || 0) * 1000;
+          setTimerEndMs(endMs);
+          setTimeLeft(Math.floor((endMs - Date.now()) / 1000));
         } else if (updatedOrder.status === inTransitStatus) {
+          setTimerEndMs(null);
           setTimeLeft(null);
         } else if (
           updatedOrder.status === "Arrived at destination" ||
           updatedOrder.status === "Delivered"
         ) {
+          setTimerEndMs(null);
           setTimeLeft(null);
         }
       }
@@ -277,7 +288,10 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
       const inTransitStatus = isParcel ? "In transit" : "Picked up";
 
       if (o.status === inTransitStatus) {
-        setTimeLeft(Math.max(0, Number(p.etaSeconds || 0)));
+        const etaSec = Number(p.etaSeconds || 0);
+        const endMs = Date.now() + etaSec * 1000;
+        setTimerEndMs(endMs);
+        setTimeLeft(Math.floor((endMs - Date.now()) / 1000));
       }
     };
 
@@ -312,14 +326,25 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   }, [order?.id]);
 
   useEffect(() => {
-    if (timeLeft === null) return;
+    if (timerEndMs == null) return;
 
-    const timer = setInterval(() => {
-      setTimeLeft((prevTime) => (prevTime !== null ? prevTime - 1 : null));
-    }, 1000);
+    const tick = () => {
+      setTimeLeft(Math.floor((timerEndMs - Date.now()) / 1000));
+    };
 
-    return () => clearInterval(timer);
-  }, [timeLeft]);
+    tick();
+    const id = setInterval(tick, 1000);
+
+    const sync = () => tick();
+    window.addEventListener("focus", sync);
+    document.addEventListener("visibilitychange", sync);
+
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", sync);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, [timerEndMs]);
 
   const formatTime = (seconds) => {
     if (seconds == null) return "";
