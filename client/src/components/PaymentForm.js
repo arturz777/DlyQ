@@ -308,7 +308,7 @@ const [deletingId, setDeletingId] = useState(null);
   const handleDeleteCard = async (pmIdToDelete) => {
     try {
       setDeletingId(pmIdToDelete);
-      const r = await fetch(`${API}api/payments/detach-pm`, {
+      const r = await fetch(`${API}/payments/detach-pm`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -322,7 +322,7 @@ const [deletingId, setDeletingId] = useState(null);
         return;
       }
 
-      const res = await fetch(`${API}api/payments/payment-methods`, {
+      const res = await fetch(`${API}/payments/payment-methods`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
         },
@@ -548,7 +548,7 @@ const handleSubmit = async (event) => {
     try {
       const amountCents = Math.round((totalPrice + deliveryCost) * 100);
 
-     const piRes = await fetch(`${API}api/payments/create-intent`, {
+     const piRes = await fetch(`${API}/payments/create-intent`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
