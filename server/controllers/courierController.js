@@ -10,6 +10,7 @@ const {
 const {
   sendOrderToNextCourier,
 } = require("../services/orderDistributionService");
+const { scheduleCourierSearch } = require("../services/courierSearchScheduler");
 
 const PARCEL_FLOW = [
   "Accepted",
@@ -553,14 +554,27 @@ class CourierController {
               offerCourierId: null,
             },
             order: [["createdAt", "ASC"]],
+            attributes: [
+              "id",
+              "status",
+              "orderType",
+              "warehouseStatus",
+              "processingTime",
+              "processingStartTime",
+              "courierId",
+              "offerCourierId",
+              "offerExpiresAt",
+            ],
           });
 
-          for (const order of waitingOrders) {
-            await sendOrderToNextCourier(order);
+          const io = req.app.get("io");
+
+          for (const o of waitingOrders) {
+            await scheduleCourierSearch(o, io);
           }
         } catch (err) {
           console.error(
-            "❌ Ошибка автораспределения заказов при выходе курьера в онлайн:",
+            "❌ Ошибка планирования распределения при выходе курьера в онлайн:",
             err
           );
         }
@@ -687,14 +701,27 @@ class CourierController {
             offerCourierId: null,
           },
           order: [["createdAt", "ASC"]],
+          attributes: [
+            "id",
+            "status",
+            "orderType",
+            "warehouseStatus",
+            "processingTime",
+            "processingStartTime",
+            "courierId",
+            "offerCourierId",
+            "offerExpiresAt",
+          ],
         });
 
+        const io = req.app.get("io");
+
         for (const o of waitingOrders) {
-          await sendOrderToNextCourier(o);
+          await scheduleCourierSearch(o, io);
         }
       } catch (err) {
         console.error(
-          "❌ Ошибка автораспределения заказов после завершения доставки:",
+          "❌ Ошибка планирования распределения после завершения доставки:",
           err
         );
       }
@@ -773,14 +800,14 @@ class CourierController {
         return res.status(404).json({ message: "Заказ не найден." });
       }
 
+      const io = req.app.get("io");
+
       await OrderDecline.findOrCreate({
         where: { orderId: order.id, courierId },
         defaults: { orderId: order.id, courierId },
       });
 
-      await sendOrderToNextCourier(order);
-
-      const io = req.app.get("io");
+      await sendOrderToNextCourier(order, { io });
 
       const courierPayload = {
         id: order.id,
@@ -793,8 +820,6 @@ class CourierController {
         courierId: order.courierId,
         offerExpiresAt: order.offerExpiresAt,
       };
-
-      io.emit("warehouseOrder", courierPayload);
 
       return res.json({ message: "Заказ отклонён", orderId: order.id });
     } catch (error) {
