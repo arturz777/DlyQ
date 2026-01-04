@@ -22,6 +22,8 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const [order, setOrder] = useState(null);
   const [showIcon, setShowIcon] = useState(false);
   const [timeLeft, setTimeLeft] = useState(null);
+  const [timerEndMs, setTimerEndMs] = useState(null);
+  const [nowMs, setNowMs] = useState(Date.now());
   const [courierLocation, setCourierLocation] = useState(null);
   const [isAccepted, setIsAccepted] = useState(false);
   const [route, setRoute] = useState([]);
@@ -32,6 +34,9 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const { t, i18n } = useTranslation();
   const courierMarkerRef = useRef(null);
   const orderRef = useRef(null);
+
+  const computedTimeLeft =
+    timerEndMs != null ? Math.floor((timerEndMs - nowMs) / 1000) : null;
 
   useEffect(() => {
     orderRef.current = order;
@@ -120,12 +125,11 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
 
           const startedAt =
             activeOrder.processingStartTime || activeOrder.updatedAt;
-          const started = startedAt
+          const startMs = startedAt
             ? new Date(startedAt).getTime()
             : Date.now();
-          const elapsed = Math.floor((Date.now() - started) / 1000);
 
-          setTimeLeft(totalSeconds - elapsed);
+          setTimerEndMs(startMs + totalSeconds * 1000);
         } else {
           const isParcel = activeOrder.orderType === "parcel";
           const inTransitStatus = isParcel ? "In transit" : "Picked up";
@@ -135,11 +139,12 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
             activeOrder.estimatedTime &&
             activeOrder.pickupStartTime
           ) {
-            const started = new Date(activeOrder.pickupStartTime).getTime();
-            const now = Date.now();
-            const elapsed = Math.floor((now - started) / 1000);
-            const remaining = Math.max(activeOrder.estimatedTime - elapsed, 0);
-            setTimeLeft(remaining);
+            const startMs = new Date(activeOrder.pickupStartTime).getTime();
+            const etaSec = Number(activeOrder.estimatedTime || 0);
+
+            setTimerEndMs(startMs + etaSec * 1000);
+          } else {
+            setTimerEndMs(null);
           }
         }
 
@@ -277,7 +282,8 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
       const inTransitStatus = isParcel ? "In transit" : "Picked up";
 
       if (o.status === inTransitStatus) {
-        setTimeLeft(Math.max(0, Number(p.etaSeconds || 0)));
+        const etaSec = Math.max(0, Number(p.etaSeconds || 0));
+        setTimerEndMs(Date.now() + etaSec * 1000);
       }
     };
 
@@ -312,14 +318,11 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   }, [order?.id]);
 
   useEffect(() => {
-    if (timeLeft === null) return;
+    if (timerEndMs == null) return;
 
-    const timer = setInterval(() => {
-      setTimeLeft((prevTime) => (prevTime !== null ? prevTime - 1 : null));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeLeft]);
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [timerEndMs]);
 
   const formatTime = (seconds) => {
     if (seconds == null) return "";
@@ -504,12 +507,12 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
             )}
             {!order.preorderDate &&
               ["Waiting for courier", "Accepted"].includes(order?.status) &&
-              timeLeft !== null && (
+              computedTimeLeft !== null && (
                 <p>
                   <strong>
                     {t("preparation time", { ns: "orderSidebar" })}
                   </strong>{" "}
-                  ⏳ {formatTime(timeLeft)}
+                  ⏳ {formatTime(computedTimeLeft)}
                 </p>
               )}
 
