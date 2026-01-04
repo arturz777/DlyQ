@@ -63,7 +63,11 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const AutoPanToCourier = ({ position }) => {
     const map = useMap();
     useEffect(() => {
-      if (position) {
+      if (
+        position &&
+        Number.isFinite(position[0]) &&
+        Number.isFinite(position[1])
+      ) {
         map.panTo(position);
       }
     }, [position]);
@@ -168,85 +172,87 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     loadOrder();
 
     const handleOrderUpdate = (updatedOrder) => {
-      if (updatedOrder && updatedOrder.id) {
-        setOrder((prev) => {
-          if (!prev) return updatedOrder;
-          if (prev.id !== updatedOrder.id) return prev;
-          return { ...prev, ...updatedOrder };
-        });
+      if (!updatedOrder?.id) return;
 
-        setShowIcon(true);
+      setOrder((prev) => {
+        if (!prev) return prev;
+        if (prev.id !== updatedOrder.id) return prev;
+        return { ...prev, ...updatedOrder };
+      });
 
-        if (updatedOrder.accepted === true) {
-          setIsAccepted(true);
-          if (updatedOrder.courierLocation) {
-            setCourierLocation(updatedOrder.courierLocation);
-          }
-        }
+      if (!orderRef.current) {
+        loadOrder();
+      }
 
-        if (updatedOrder.desiredDeliveryDate) {
-          setIsPreorder(true);
-          setPreorderDate(updatedOrder.desiredDeliveryDate);
-        } else {
-          setIsPreorder(false);
-          setPreorderDate(null);
-        }
+      setShowIcon(true);
 
-        if (
-          ["Waiting for courier", "Accepted"].includes(updatedOrder.status) &&
-          updatedOrder.processingTime
-        ) {
-          const totalSeconds = parseDurationToSeconds(
-            updatedOrder.processingTime
-          );
-
-          const startedAt =
-            updatedOrder.processingStartTime || updatedOrder.updatedAt;
-          const started = startedAt
-            ? new Date(startedAt).getTime()
-            : Date.now();
-          const elapsed = Math.floor((Date.now() - started) / 1000);
-
-          setTimeLeft(totalSeconds - elapsed);
-        } else {
-          const isParcel = updatedOrder.orderType === "parcel";
-          const inTransitStatus = isParcel ? "In transit" : "Picked up";
-
-          if (
-            updatedOrder.status === inTransitStatus &&
-            updatedOrder.estimatedTime &&
-            updatedOrder.pickupStartTime
-          ) {
-            const started = new Date(updatedOrder.pickupStartTime).getTime();
-            const now = Date.now();
-            const elapsed = Math.floor((now - started) / 1000);
-            const remaining = Math.max(updatedOrder.estimatedTime - elapsed, 0);
-
-            setTimeLeft(remaining);
-          } else if (updatedOrder.status === inTransitStatus) {
-            setTimeLeft(null);
-          } else if (
-            updatedOrder.status === "Arrived at destination" ||
-            updatedOrder.status === "Delivered"
-          ) {
-            setTimeLeft(null);
-          }
-        }
-
-        if (updatedOrder.courierLocation && updatedOrder.accepted === true) {
+      if (updatedOrder.accepted === true) {
+        setIsAccepted(true);
+        if (updatedOrder.courierLocation) {
           setCourierLocation(updatedOrder.courierLocation);
         }
+      }
+
+      if (updatedOrder.desiredDeliveryDate) {
+        setIsPreorder(true);
+        setPreorderDate(updatedOrder.desiredDeliveryDate);
+      } else {
+        setIsPreorder(false);
+        setPreorderDate(null);
+      }
+
+      if (
+        ["Waiting for courier", "Accepted"].includes(updatedOrder.status) &&
+        updatedOrder.processingTime
+      ) {
+        const totalSeconds = parseDurationToSeconds(
+          updatedOrder.processingTime
+        );
+
+        const startedAt =
+          updatedOrder.processingStartTime || updatedOrder.updatedAt;
+        const started = startedAt ? new Date(startedAt).getTime() : Date.now();
+        const elapsed = Math.floor((Date.now() - started) / 1000);
+
+        setTimeLeft(totalSeconds - elapsed);
+      } else {
+        const isParcel = updatedOrder.orderType === "parcel";
+        const inTransitStatus = isParcel ? "In transit" : "Picked up";
 
         if (
-          updatedOrder.deliveryLat &&
-          updatedOrder.deliveryLng &&
-          updatedOrder.courierLocation
+          updatedOrder.status === inTransitStatus &&
+          updatedOrder.estimatedTime &&
+          updatedOrder.pickupStartTime
         ) {
-          fetchRoute(updatedOrder.courierLocation, {
-            lat: updatedOrder.deliveryLat,
-            lng: updatedOrder.deliveryLng,
-          });
+          const started = new Date(updatedOrder.pickupStartTime).getTime();
+          const now = Date.now();
+          const elapsed = Math.floor((now - started) / 1000);
+          const remaining = Math.max(updatedOrder.estimatedTime - elapsed, 0);
+
+          setTimeLeft(remaining);
+        } else if (updatedOrder.status === inTransitStatus) {
+          setTimeLeft(null);
+        } else if (
+          updatedOrder.status === "Arrived at destination" ||
+          updatedOrder.status === "Delivered"
+        ) {
+          setTimeLeft(null);
         }
+      }
+
+      if (updatedOrder.courierLocation && updatedOrder.accepted === true) {
+        setCourierLocation(updatedOrder.courierLocation);
+      }
+
+      if (
+        updatedOrder.deliveryLat &&
+        updatedOrder.deliveryLng &&
+        updatedOrder.courierLocation
+      ) {
+        fetchRoute(updatedOrder.courierLocation, {
+          lat: updatedOrder.deliveryLat,
+          lng: updatedOrder.deliveryLng,
+        });
       }
     };
 
@@ -387,6 +393,9 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   };
 
   const isParcel = order?.orderType === "parcel";
+  const dLat = Number(order?.deliveryLat);
+  const dLng = Number(order?.deliveryLng);
+  const hasDelivery = Number.isFinite(dLat) && Number.isFinite(dLng);
 
   return (
     <>
@@ -518,69 +527,82 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
               )}
 
             <div className={styles.mapContainer}>
-              <MapContainer
-                center={[order.deliveryLat, order.deliveryLng]}
-                zoom={13}
-                style={{ height: "300px", width: "100%" }}
-              >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution="&copy; OpenStreetMap"
-                />
-                {courierLocation && (
-                  <AutoPanToCourier
-                    position={[courierLocation.lat, courierLocation.lng]}
-                  />
-                )}
-                <Marker
-                  position={[order.deliveryLat, order.deliveryLng]}
-                  icon={
-                    new L.Icon({
-                      iconUrl:
-                        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-                      iconSize: [25, 41],
-                    })
-                  }
-                />
-                {courierLocation &&
-                  (isAccepted ||
-                    (isParcel
-                      ? [
-                          "Accepted",
-                          "Arrived at pickup",
-                          "In transit",
-                          "Arrived at destination",
-                        ].includes(order?.status)
-                      : [
-                          "Accepted",
-                          "Picked up",
-                          "Arrived at destination",
-                        ].includes(order?.status))) && (
-                    <Marker
-                      position={[courierLocation.lat, courierLocation.lng]}
-                      icon={courierIcon}
-                      ref={courierMarkerRef}
-                    >
-                      <Popup>🚗 {t("courier", { ns: "orderSidebar" })}</Popup>
-                    </Marker>
-                  )}
-
-                {route.length > 0 && (
-                  <Polyline positions={route} color="blue" />
-                )}
-                <Marker
-                  position={[WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng]}
-                  icon={
-                    new L.Icon({
-                      iconUrl:
-                        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-                      iconSize: [25, 41],
-                    })
-                  }
+              {hasDelivery ? (
+                <MapContainer
+                  center={[order.deliveryLat, order.deliveryLng]}
+                  zoom={13}
+                  style={{ height: "300px", width: "100%" }}
                 >
-                  <Popup>📦 {t("warehouse", { ns: "orderSidebar" })}</Popup>
-                </Marker>
-              </MapContainer>
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution="&copy; OpenStreetMap"
+                  />
+                  {courierLocation && (
+                    <AutoPanToCourier
+                      position={[courierLocation.lat, courierLocation.lng]}
+                    />
+                  )}
+                  <Marker
+                    position={[order.deliveryLat, order.deliveryLng]}
+                    icon={
+                      new L.Icon({
+                        iconUrl:
+                          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+                        iconSize: [25, 41],
+                      })
+                    }
+                  />
+                  {courierLocation &&
+                    (isAccepted ||
+                      (isParcel
+                        ? [
+                            "Accepted",
+                            "Arrived at pickup",
+                            "In transit",
+                            "Arrived at destination",
+                          ].includes(order?.status)
+                        : [
+                            "Accepted",
+                            "Picked up",
+                            "Arrived at destination",
+                          ].includes(order?.status))) && (
+                      <Marker
+                        position={[courierLocation.lat, courierLocation.lng]}
+                        icon={courierIcon}
+                        ref={courierMarkerRef}
+                      >
+                        <Popup>🚗 {t("courier", { ns: "orderSidebar" })}</Popup>
+                      </Marker>
+                    )}
+
+                  {route.length > 0 && (
+                    <Polyline positions={route} color="blue" />
+                  )}
+                  <Marker
+                    position={[WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng]}
+                    icon={
+                      new L.Icon({
+                        iconUrl:
+                          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+                        iconSize: [25, 41],
+                      })
+                    }
+                  >
+                    <Popup>📦 {t("warehouse", { ns: "orderSidebar" })}</Popup>
+                  </Marker>
+                </MapContainer>
+              ) : (
+                <div
+                  style={{
+                    height: 300,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {t("loading map...", { ns: "orderSidebar" })}
+                </div>
+              )}
             </div>
             {(order.status === "Delivered" || order.status === "Completed") && (
               <button
