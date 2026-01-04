@@ -4,7 +4,7 @@ const router = new Router();
 
 const NOMINATIM_HEADERS = {
   "User-Agent": "DlyQ (dlyq2025@gmail.com)",
-  "Accept": "application/json",
+  Accept: "application/json",
 };
 
 function cleanPoiName(name) {
@@ -20,8 +20,7 @@ function formatShortAddress(place) {
   const poiRaw =
     place.namedetails?.name || place.name || a.building || a.amenity || a.shop;
   const poi = cleanPoiName(poiRaw);
-  const street =
-    a.road || a.pedestrian || a.residential || a.footway || a.path;
+  const street = a.road || a.pedestrian || a.residential || a.footway || a.path;
   const house = a.house_number;
   const district = a.city_district || a.suburb || a.neighbourhood;
   const city = a.city || a.town || a.village || a.municipality;
@@ -39,19 +38,26 @@ function formatShortAddress(place) {
 
 router.get("/reverse", async (req, res) => {
   const { lat, lon } = req.query;
-  if (!lat || !lon) return res.status(400).json({ error: "lat and lon required" });
+  if (!lat || !lon)
+    return res.status(400).json({ error: "lat and lon required" });
+
+  const fallback = `${Number(lat).toFixed(6)}, ${Number(lon).toFixed(6)}`;
 
   try {
     const url =
       `https://nominatim.openstreetmap.org/reverse?format=json` +
-      `&addressdetails=1&namedetails=1&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`;
+      `&addressdetails=1&namedetails=1&lat=${encodeURIComponent(
+        lat
+      )}&lon=${encodeURIComponent(lon)}`;
     const response = await fetch(url, { headers: NOMINATIM_HEADERS });
 
     const contentType = response.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
       const text = await response.text();
       console.error("❌ Nominatim вернул HTML:", text.slice(0, 500));
-      return res.status(502).json({ error: "Invalid response from geocoding service" });
+      return res
+        .status(502)
+        .json({ error: "Invalid response from geocoding service" });
     }
 
     const data = await response.json();
@@ -65,7 +71,11 @@ router.get("/reverse", async (req, res) => {
     });
   } catch (err) {
     console.error("Reverse geocoding failed:", err);
-    res.status(500).json({ error: "Reverse geocoding failed" });
+    return res.json({
+      display_name: fallback,
+      short_display_name: fallback,
+      fallback: true,
+    });
   }
 });
 
@@ -83,7 +93,9 @@ router.get("/search", async (req, res) => {
     if (!contentType.includes("application/json")) {
       const text = await response.text();
       console.error("❌ Nominatim вернул HTML:", text.slice(0, 500));
-      return res.status(502).json({ error: "Invalid response from geocoding service" });
+      return res
+        .status(502)
+        .json({ error: "Invalid response from geocoding service" });
     }
 
     const data = await response.json();
