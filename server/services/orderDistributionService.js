@@ -1,4 +1,4 @@
-const { Op, fn, col } = require("sequelize");
+const { Op, fn, col, literal } = require("sequelize");
 const { Order, Courier, OrderDecline, Seller } = require("../models/models");
 const { sendWarehouseOrderPushToCourier } = require("./pushService");
 
@@ -256,7 +256,7 @@ async function sendOrderToNextCourier(order, { io } = {}) {
             acceptRate: fn(
               "GREATEST",
               0,
-              fn("LEAST", 100, col("acceptRate") - 1)
+              fn("LEAST", 100, literal('COALESCE("acceptRate", 100) - 1'))
             ),
           },
           { where: { id: nextCourier.id, status: "online" } }
