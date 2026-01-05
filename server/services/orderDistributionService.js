@@ -131,7 +131,7 @@ async function sendOrderToNextCourier(order, { io } = {}) {
 
   if (!candidates.length) {
     await OrderDecline.destroy({ where: { orderId: fresh.id } });
-    candidates = couriers.filter((c) => !busyCouriers.has(Number(c.id)));
+    candidates = couriers.filter((c) => !busyCouriers.has(String(c.id)));
   }
 
   if (!candidates.length) {
@@ -159,12 +159,12 @@ async function sendOrderToNextCourier(order, { io } = {}) {
       );
     }
 
+    const rate = c.acceptRate == null ? 100 : Number(c.acceptRate);
+
     return {
       ...c,
       dist,
-      acceptRate: Number.isFinite(Number(c.acceptRate))
-        ? Number(c.acceptRate)
-        : 100,
+      acceptRate: Number.isFinite(rate) ? rate : 100,
       offersSent: Number(c.offersSent || 0),
       _tie: Math.random(),
     };
