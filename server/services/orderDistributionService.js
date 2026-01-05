@@ -1,5 +1,5 @@
-const { Order, Courier, OrderDecline, Seller } = require("../models/models");
 const { Op } = require("sequelize");
+const { Order, Courier, OrderDecline, Seller } = require("../models/models");
 const { sendWarehouseOrderPushToCourier } = require("./pushService");
 
 const ACTIVE_STATUSES = [
@@ -10,6 +10,10 @@ const ACTIVE_STATUSES = [
 ];
 
 const OFFER_TTL_SECONDS = 15;
+
+const BASE_POOL_METERS = 200;
+const PERFECT_BONUS_METERS = 500;
+const MAX_POOL_METERS = 600;
 
 async function getPickupPoint(order) {
   if (order.pickupLat != null && order.pickupLng != null) {
@@ -42,12 +46,20 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+function calcAcceptRate(c) {
+  const sent = Number(c?.offersSent || 0);
+  const acc = Number(c?.offersAccepted || 0);
+  if (sent <= 0) return 100;
+  return Math.max(0, Math.min(100, Math.floor((acc / sent) * 100)));
+}
+
 async function sendOrderToNextCourier(order, { io } = {}) {
   const fresh = order?.id ? await Order.findByPk(order.id) : null;
   if (!fresh) return;
 
   if (!["Waiting for courier", "Ready for pickup"].includes(fresh.status))
     return;
+
   if (fresh.courierId) return;
 
   const now = new Date();
@@ -64,7 +76,15 @@ async function sendOrderToNextCourier(order, { io } = {}) {
       status: "online",
       expoPushToken: { [Op.ne]: null },
     },
-    attributes: ["id", "name", "currentLat", "currentLng", "expoPushToken"],
+    attributes: [
+      "id",
+      "name",
+      "currentLat",
+      "currentLng",
+      "expoPushToken",
+      "offersSent",
+      "offersAccepted",
+    ],
     raw: true,
   });
 
@@ -120,44 +140,91 @@ async function sendOrderToNextCourier(order, { io } = {}) {
 
   const pickup = await getPickupPoint(fresh);
 
-  candidates = candidates
-    .map((c) => {
-      let dist = Number.POSITIVE_INFINITY;
+  candidates = candidates.map((c) => {
+    let dist = Number.POSITIVE_INFINITY;
 
-      if (
-        pickup &&
-        c.currentLat != null &&
-        c.currentLng != null &&
-        Number.isFinite(Number(c.currentLat)) &&
-        Number.isFinite(Number(c.currentLng))
-      ) {
-        dist = haversineMeters(
-          pickup.lat,
-          pickup.lng,
-          Number(c.currentLat),
-          Number(c.currentLng)
-        );
-      }
+    if (
+      pickup &&
+      c.currentLat != null &&
+      c.currentLng != null &&
+      Number.isFinite(Number(c.currentLat)) &&
+      Number.isFinite(Number(c.currentLng))
+    ) {
+      dist = haversineMeters(
+        pickup.lat,
+        pickup.lng,
+        Number(c.currentLat),
+        Number(c.currentLng)
+      );
+    }
 
-      return { ...c, dist };
-    })
-    .sort((a, b) => {
-      if (a.dist !== b.dist) return a.dist - b.dist;
-      return Number(a.id) - Number(b.id);
-    });
+    return {
+      ...c,
+      dist,
+      acceptRate: calcAcceptRate(c),
+      offersSent: Number(c.offersSent || 0),
+      _tie: Math.random(),
+    };
+  });
 
-  const nextCourier = candidates[0];
+  const finite = candidates.filter((c) => Number.isFinite(c.dist));
+  const bestDist = finite.length
+    ? Math.min(...finite.map((c) => c.dist))
+    : null;
+
+  let pool = candidates;
+
+  if (bestDist != null) {
+    const baseWindow = bestDist + BASE_POOL_METERS;
+    const bonusWindow = bestDist + BASE_POOL_METERS + PERFECT_BONUS_METERS;
+
+    const baseLimit = Math.min(MAX_POOL_METERS, baseWindow);
+    const bonusLimit = Math.min(MAX_POOL_METERS, bonusWindow);
+
+    const perfectWithinBonus = finite.some(
+      (c) => c.acceptRate === 100 && c.dist <= bonusLimit
+    );
+
+    const limit = perfectWithinBonus ? bonusLimit : baseLimit;
+
+    pool = finite.filter((c) => c.dist <= limit);
+
+    if (!pool.length) pool = candidates;
+  }
+
+  pool.sort((a, b) => {
+    if (b.acceptRate !== a.acceptRate) return b.acceptRate - a.acceptRate;
+
+    const aFin = Number.isFinite(a.dist);
+    const bFin = Number.isFinite(b.dist);
+
+    if (aFin && bFin && a.dist !== b.dist) return a.dist - b.dist;
+    if (aFin && !bFin) return -1;
+    if (!aFin && bFin) return 1;
+
+    if (a.offersSent !== b.offersSent) return a.offersSent - b.offersSent;
+    return a._tie - b._tie;
+  });
+
+  const nextCourier = pool[0];
 
   fresh.offerCourierId = nextCourier.id;
   fresh.offerExpiresAt = new Date(Date.now() + OFFER_TTL_SECONDS * 1000);
   await fresh.save();
 
+  try {
+    await Courier.increment("offersSent", {
+      by: 1,
+      where: { id: nextCourier.id },
+    });
+  } catch (e) {
+    console.error("offersSent increment error:", e);
+  }
+
   await sendWarehouseOrderPushToCourier(fresh, nextCourier);
 
   if (io) {
-    io.to(`courier:${nextCourier.id}`).emit("warehouseOrder", {
-      id: fresh.id,
-    });
+    io.to(`courier:${nextCourier.id}`).emit("warehouseOrder", { id: fresh.id });
   }
 
   setTimeout(async () => {
@@ -167,6 +234,9 @@ async function sendOrderToNextCourier(order, { io } = {}) {
       if (o.courierId) return;
 
       if (Number(o.offerCourierId) !== Number(nextCourier.id)) return;
+
+      const now2 = new Date();
+      if (o.offerExpiresAt && o.offerExpiresAt > now2) return;
 
       o.offerCourierId = null;
       o.offerExpiresAt = null;
