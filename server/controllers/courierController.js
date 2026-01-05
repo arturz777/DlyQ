@@ -838,7 +838,7 @@ class CourierController {
         return res.status(404).json({ message: "Заказ не найден." });
       }
 
-      if (Number(order.offerCourierId) === Number(courierId)) {
+      if (String(order.offerCourierId) === String(courierId)) {
         order.offerCourierId = null;
         order.offerExpiresAt = null;
         await order.save();
