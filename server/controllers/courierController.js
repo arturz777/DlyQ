@@ -44,20 +44,25 @@ async function bumpAcceptRate(courierId, delta) {
     attributes: ["id", "acceptRate"],
     raw: true,
   });
-  console.log("bumpAcceptRate raw", { courierId, delta, acceptRate: c?.acceptRate, pid: process.pid, host: process.env.HOSTNAME });
+
+  console.log("bumpAcceptRate raw", {
+    courierId,
+    delta,
+    acceptRate: c?.acceptRate,
+    pid: process.pid,
+    host: process.env.HOSTNAME,
+  });
+
   if (!c) return;
 
-  const cur = Number.isFinite(Number(c.acceptRate))
-    ? Number(c.acceptRate)
-    : 100;
+  const cur = Number.isFinite(Number(c.acceptRate)) ? Number(c.acceptRate) : 100;
   const next = Math.max(0, Math.min(100, cur + Number(delta || 0)));
 
-  console.log("bumpAcceptRate", { courierId, cur, delta, next });
-
   if (next !== cur) {
-    c.acceptRate = next;
-    await c.save();
+    await Courier.update({ acceptRate: next }, { where: { id: courierId } });
   }
+
+  console.log("bumpAcceptRate", { courierId, cur, delta, next });
 }
 
 function buildCustomerName(u) {
