@@ -50,6 +50,8 @@ async function bumpAcceptRate(courierId, delta) {
     : 100;
   const next = Math.max(0, Math.min(100, cur + Number(delta || 0)));
 
+  console.log("bumpAcceptRate", { courierId, cur, delta, next });
+
   if (next !== cur) {
     c.acceptRate = next;
     await c.save();
@@ -864,7 +866,16 @@ class CourierController {
         await order.save();
       }
 
-      await bumpAcceptRate(courierId, -1);
+      await Courier.update(
+        {
+          acceptRate: fn(
+            "GREATEST",
+            0,
+            fn("LEAST", 100, literal('COALESCE("acceptRate", 100) - 1'))
+          ),
+        },
+        { where: { id: courierId } }
+      );
 
       const io = req.app.get("io");
 
