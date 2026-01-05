@@ -39,6 +39,23 @@ function calcAcceptRate(sent, acc) {
   return Math.max(0, Math.min(100, Math.floor((acc / sent) * 100)));
 }
 
+async function bumpAcceptRate(courierId, delta) {
+  const c = await Courier.findByPk(courierId, {
+    attributes: ["id", "acceptRate"],
+  });
+  if (!c) return;
+
+  const cur = Number.isFinite(Number(c.acceptRate))
+    ? Number(c.acceptRate)
+    : 100;
+  const next = Math.max(0, Math.min(100, cur + Number(delta || 0)));
+
+  if (next !== cur) {
+    c.acceptRate = next;
+    await c.save();
+  }
+}
+
 function buildCustomerName(u) {
   if (!u) return null;
   const parts = [];
@@ -198,14 +215,11 @@ class CourierController {
       });
 
       const courier = await Courier.findByPk(courierId, {
-        attributes: ["offersSent", "offersAccepted"],
+        attributes: ["acceptRate"],
         raw: true,
       });
 
-      const acceptRate = calcAcceptRate(
-        courier?.offersSent,
-        courier?.offersAccepted
-      );
+      const acceptRate = Number(courier?.acceptRate ?? 100);
 
       return res.json({
         trips: Number(row?.trips || 0),
@@ -243,6 +257,7 @@ class CourierController {
           id: courierId,
           name: buildCourierName(req.user),
           status: "offline",
+          acceptRate: 100,
         });
       }
 
@@ -479,6 +494,8 @@ class CourierController {
         by: 1,
         where: { id: courierId },
       });
+
+      await bumpAcceptRate(courierId, +1);
 
       const io = req.app.get("io");
 
@@ -821,12 +838,13 @@ class CourierController {
         return res.status(404).json({ message: "Заказ не найден." });
       }
 
-      // ✅ ВАЖНО: снять активный оффер, иначе sendOrderToNextCourier выйдет
       if (Number(order.offerCourierId) === Number(courierId)) {
         order.offerCourierId = null;
         order.offerExpiresAt = null;
         await order.save();
       }
+
+      await bumpAcceptRate(courierId, -1);
 
       const io = req.app.get("io");
 
