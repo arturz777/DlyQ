@@ -113,8 +113,8 @@ async function sendOrderToNextCourier(order, { io } = {}) {
 
   const busyCouriers = new Set();
   for (const o of busyOrders) {
-    if (o.courierId) busyCouriers.add(Number(o.courierId));
-    if (o.offerCourierId) busyCouriers.add(Number(o.offerCourierId));
+    if (o.courierId) busyCouriers.add(String(o.courierId));
+    if (o.offerCourierId) busyCouriers.add(String(o.offerCourierId));
   }
 
   const declines = await OrderDecline.findAll({
@@ -123,10 +123,10 @@ async function sendOrderToNextCourier(order, { io } = {}) {
     raw: true,
   });
 
-  const declinedSet = new Set(declines.map((d) => Number(d.courierId)));
+  const declinedSet = new Set(declines.map((d) => String(d.courierId)));
 
   let candidates = couriers.filter(
-    (c) => !declinedSet.has(Number(c.id)) && !busyCouriers.has(Number(c.id))
+    (c) => !declinedSet.has(String(c.id)) && !busyCouriers.has(String(c.id))
   );
 
   if (!candidates.length) {
@@ -236,7 +236,7 @@ async function sendOrderToNextCourier(order, { io } = {}) {
       if (!o) return;
       if (o.courierId) return;
 
-      if (Number(o.offerCourierId) !== Number(nextCourier.id)) return;
+      if (String(o.offerCourierId) !== String(nextCourier.id)) return;
 
       const now2 = new Date();
       if (o.offerExpiresAt && o.offerExpiresAt > now2) return;
