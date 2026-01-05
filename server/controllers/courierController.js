@@ -42,7 +42,9 @@ function calcAcceptRate(sent, acc) {
 async function bumpAcceptRate(courierId, delta) {
   const c = await Courier.findByPk(courierId, {
     attributes: ["id", "acceptRate"],
+    raw: true,
   });
+  console.log("bumpAcceptRate raw", { courierId, delta, acceptRate: c?.acceptRate, pid: process.pid, host: process.env.HOSTNAME });
   if (!c) return;
 
   const cur = Number.isFinite(Number(c.acceptRate))
