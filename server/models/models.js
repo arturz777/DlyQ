@@ -331,6 +331,12 @@ const Courier = sequelize.define("courier", {
   currentLat: { type: DataTypes.FLOAT, allowNull: true },
   currentLng: { type: DataTypes.FLOAT, allowNull: true },
   expoPushToken: { type: DataTypes.STRING, allowNull: true },
+  offersSent: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+  offersAccepted: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
 });
 
 const Warehouse = sequelize.define("warehouse", {
