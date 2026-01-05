@@ -40,21 +40,26 @@ function calcAcceptRate(sent, acc) {
 }
 
 async function bumpAcceptRate(courierId, delta) {
-  const c = await Courier.findByPk(courierId, {
-    attributes: ["id", "acceptRate"],
-    raw: true,
+  const d = Number(delta || 0);
+  if (!Number.isFinite(d) || d === 0) return;
+
+  const [count, rows] = await Courier.update(
+    {
+      acceptRate: fn(
+        "GREATEST",
+        0,
+        fn("LEAST", 100, literal(`COALESCE("acceptRate", 100) + ${d}`))
+      ),
+    },
+    { where: { id: courierId }, returning: ["id", "acceptRate"] }
+  );
+
+  console.log("bumpAcceptRate updated", {
+    courierId,
+    d,
+    count,
+    acceptRate: rows?.[0]?.acceptRate,
   });
-  if (!c) return;
-
-  const cur = Number.isFinite(Number(c.acceptRate))
-    ? Number(c.acceptRate)
-    : 100;
-  const next = Math.max(0, Math.min(100, cur + Number(delta || 0)));
-
-  if (next !== cur) {
-    c.acceptRate = next;
-    await c.save();
-  }
 }
 
 function buildCustomerName(u) {
