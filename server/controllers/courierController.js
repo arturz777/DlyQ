@@ -834,6 +834,13 @@ class CourierController {
       }
 
       const order = await Order.findByPk(id);
+
+      if (String(order.offerCourierId) !== String(courierId)) {
+        return res
+          .status(400)
+          .json({ message: "Этот заказ вам не предлагался." });
+      }
+
       if (!order) {
         return res.status(404).json({ message: "Заказ не найден." });
       }
