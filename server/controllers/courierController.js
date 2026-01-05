@@ -32,6 +32,13 @@ const COURIER_ACTIVE_STATUSES = [
   "Arrived at destination",
 ];
 
+function calcAcceptRate(sent, acc) {
+  sent = Number(sent || 0);
+  acc = Number(acc || 0);
+  if (sent <= 0) return 100;
+  return Math.max(0, Math.min(100, Math.floor((acc / sent) * 100)));
+}
+
 function buildCustomerName(u) {
   if (!u) return null;
   const parts = [];
@@ -176,9 +183,8 @@ class CourierController {
       const { from, to } = req.query;
 
       const where = { courierId, status: "Delivered" };
-      if (from && to) {
+      if (from && to)
         where.updatedAt = { [Op.gte]: new Date(from), [Op.lt]: new Date(to) };
-      }
 
       const row = await Order.findOne({
         where,
@@ -191,6 +197,16 @@ class CourierController {
         raw: true,
       });
 
+      const courier = await Courier.findByPk(courierId, {
+        attributes: ["offersSent", "offersAccepted"],
+        raw: true,
+      });
+
+      const acceptRate = calcAcceptRate(
+        courier?.offersSent,
+        courier?.offersAccepted
+      );
+
       return res.json({
         trips: Number(row?.trips || 0),
         gross: Number(Number(row?.gross || 0).toFixed(2)),
@@ -198,7 +214,7 @@ class CourierController {
         net: Number(Number(row?.net || 0).toFixed(2)),
         bonuses: 0,
         tips: 0,
-        acceptRate: 100,
+        acceptRate,
       });
     } catch (e) {
       console.error("getFinance error:", e);
@@ -458,6 +474,11 @@ class CourierController {
       }
 
       await order.save();
+
+      await Courier.increment("offersAccepted", {
+        by: 1,
+        where: { id: courierId },
+      });
 
       const io = req.app.get("io");
 
@@ -800,6 +821,13 @@ class CourierController {
         return res.status(404).json({ message: "Заказ не найден." });
       }
 
+      // ✅ ВАЖНО: снять активный оффер, иначе sendOrderToNextCourier выйдет
+      if (Number(order.offerCourierId) === Number(courierId)) {
+        order.offerCourierId = null;
+        order.offerExpiresAt = null;
+        await order.save();
+      }
+
       const io = req.app.get("io");
 
       await OrderDecline.findOrCreate({
@@ -808,18 +836,6 @@ class CourierController {
       });
 
       await sendOrderToNextCourier(order, { io });
-
-      const courierPayload = {
-        id: order.id,
-        status: order.status,
-        deliveryLat: order.deliveryLat,
-        deliveryLng: order.deliveryLng,
-        deliveryAddress: order.deliveryAddress,
-        deliveryPrice: order.deliveryPrice,
-        courierFee: order.courierFee,
-        courierId: order.courierId,
-        offerExpiresAt: order.offerExpiresAt,
-      };
 
       return res.json({ message: "Заказ отклонён", orderId: order.id });
     } catch (error) {
