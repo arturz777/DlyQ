@@ -844,7 +844,16 @@ class CourierController {
         await order.save();
       }
 
-      await bumpAcceptRate(courierId, -1);
+      await Courier.update(
+        {
+          acceptRate: fn(
+            "GREATEST",
+            0,
+            fn("LEAST", 100, literal('COALESCE("acceptRate", 100) - 1'))
+          ),
+        },
+        { where: { id: courierId } }
+      );
 
       const io = req.app.get("io");
 
