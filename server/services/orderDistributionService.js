@@ -251,7 +251,16 @@ async function sendOrderToNextCourier(order, { io } = {}) {
       });
 
       try {
-        await bumpAcceptRate(nextCourier.id, -1);
+        await Courier.update(
+          {
+            acceptRate: fn(
+              "GREATEST",
+              0,
+              fn("LEAST", 100, literal('COALESCE("acceptRate", 100) - 1'))
+            ),
+          },
+          { where: { id: nextCourier.id, status: "online" } }
+        );
       } catch (e) {
         console.error("acceptRate timeout penalty error:", e);
       }
