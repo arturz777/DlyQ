@@ -451,6 +451,19 @@ class CourierController {
 
       const order = await Order.findByPk(id);
 
+      if (order.courierId && String(order.courierId) !== String(courierId)) {
+        return res.status(400).json({ message: "Заказ уже занят." });
+      }
+
+      if (
+        order.offerCourierId &&
+        String(order.offerCourierId) !== String(courierId)
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Этот заказ вам не предлагался." });
+      }
+
       if (!order) {
         return res.status(404).json({ message: "Заказ не найден." });
       }
@@ -835,14 +848,14 @@ class CourierController {
 
       const order = await Order.findByPk(id);
 
+      if (!order) {
+        return res.status(404).json({ message: "Заказ не найден." });
+      }
+
       if (String(order.offerCourierId) !== String(courierId)) {
         return res
           .status(400)
           .json({ message: "Этот заказ вам не предлагался." });
-      }
-
-      if (!order) {
-        return res.status(404).json({ message: "Заказ не найден." });
       }
 
       if (String(order.offerCourierId) === String(courierId)) {
@@ -851,16 +864,7 @@ class CourierController {
         await order.save();
       }
 
-      await Courier.update(
-        {
-          acceptRate: fn(
-            "GREATEST",
-            0,
-            fn("LEAST", 100, literal('COALESCE("acceptRate", 100) - 1'))
-          ),
-        },
-        { where: { id: courierId } }
-      );
+      await bumpAcceptRate(courierId, -1);
 
       const io = req.app.get("io");
 
