@@ -1,4 +1,4 @@
-const { Op, fn, col, literal } = require("sequelize");
+const { Op, fn, col } = require("sequelize");
 const fetch = require("node-fetch");
 const {
   Order,
@@ -37,23 +37,6 @@ function calcAcceptRate(sent, acc) {
   acc = Number(acc || 0);
   if (sent <= 0) return 100;
   return Math.max(0, Math.min(100, Math.floor((acc / sent) * 100)));
-}
-
-async function bumpAcceptRate(courierId, delta) {
-  const c = await Courier.findByPk(courierId, {
-    attributes: ["id", "acceptRate"],
-  });
-  if (!c) return;
-
-  const cur = Number.isFinite(Number(c.acceptRate))
-    ? Number(c.acceptRate)
-    : 100;
-  const next = Math.max(0, Math.min(100, cur + Number(delta || 0)));
-
-  if (next !== cur) {
-    c.acceptRate = next;
-    await c.save();
-  }
 }
 
 function buildCustomerName(u) {
@@ -215,11 +198,14 @@ class CourierController {
       });
 
       const courier = await Courier.findByPk(courierId, {
-        attributes: ["acceptRate"],
+        attributes: ["offersSent", "offersAccepted"],
         raw: true,
       });
 
-      const acceptRate = Number(courier?.acceptRate ?? 100);
+      const acceptRate = calcAcceptRate(
+        courier?.offersSent,
+        courier?.offersAccepted
+      );
 
       return res.json({
         trips: Number(row?.trips || 0),
@@ -257,7 +243,8 @@ class CourierController {
           id: courierId,
           name: buildCourierName(req.user),
           status: "offline",
-          acceptRate: 100,
+          offersSent: 0,
+          offersAccepted: 0,
         });
       }
 
@@ -507,8 +494,6 @@ class CourierController {
         by: 1,
         where: { id: courierId },
       });
-
-      await bumpAcceptRate(courierId, +1);
 
       const io = req.app.get("io");
 
@@ -863,17 +848,6 @@ class CourierController {
         order.offerExpiresAt = null;
         await order.save();
       }
-
-      await Courier.update(
-        {
-          acceptRate: fn(
-            "GREATEST",
-            0,
-            fn("LEAST", 100, literal('COALESCE("acceptRate", 100) - 1'))
-          ),
-        },
-        { where: { id: courierId } }
-      );
 
       const io = req.app.get("io");
 
