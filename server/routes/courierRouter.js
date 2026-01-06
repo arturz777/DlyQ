@@ -18,6 +18,18 @@ router.post(
   courierController.acceptOrder
 );
 
+router.get("/radar",
+   authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.getRadar
+);
+
+router.post("/grab/:id",
+   authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.grabOrder
+);
+
 router.post(
   "/status",
   authMiddleware,
