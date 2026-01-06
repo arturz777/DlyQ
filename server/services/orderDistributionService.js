@@ -1,4 +1,4 @@
-const { Op, fn, col, literal } = require("sequelize");
+const { Op } = require("sequelize");
 const { Order, Courier, OrderDecline, Seller } = require("../models/models");
 const { sendWarehouseOrderPushToCourier } = require("./pushService");
 
@@ -84,7 +84,6 @@ async function sendOrderToNextCourier(order, { io } = {}) {
       "expoPushToken",
       "offersSent",
       "offersAccepted",
-      "acceptRate",
     ],
     raw: true,
   });
@@ -159,13 +158,14 @@ async function sendOrderToNextCourier(order, { io } = {}) {
       );
     }
 
-    const rate = c.acceptRate == null ? 100 : Number(c.acceptRate);
+    const rate = calcAcceptRate(c);
 
     return {
       ...c,
       dist,
-      acceptRate: Number.isFinite(rate) ? rate : 100,
+      acceptRate: rate,
       offersSent: Number(c.offersSent || 0),
+      offersAccepted: Number(c.offersAccepted || 0),
       _tie: Math.random(),
     };
   });
@@ -250,20 +250,6 @@ async function sendOrderToNextCourier(order, { io } = {}) {
         defaults: { orderId: o.id, courierId: nextCourier.id },
       });
 
-      try {
-        await Courier.update(
-          {
-            acceptRate: fn(
-              "GREATEST",
-              0,
-              fn("LEAST", 100, literal('COALESCE("acceptRate", 100) - 1'))
-            ),
-          },
-          { where: { id: nextCourier.id, status: "online" } }
-        );
-      } catch (e) {
-        console.error("acceptRate timeout penalty error:", e);
-      }
       await sendOrderToNextCourier(o, { io });
     } catch (e) {
       console.error("offer expire -> next courier error:", e);
