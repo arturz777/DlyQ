@@ -12,6 +12,14 @@ const {
 } = require("../services/orderDistributionService");
 const { scheduleCourierSearch } = require("../services/courierSearchScheduler");
 
+const WAREHOUSE_POINT = {
+  id: 0,
+  name: "Shop",
+  pickupLat: 59.51372,
+  pickupLng: 24.828888,
+  kind: "market",
+};
+
 const RADAR_ORDER_STATUSES = ["Waiting for courier", "Ready for pickup"];
 
 const GRAB_MAX_METERS = 50000;
@@ -502,13 +510,31 @@ class CourierController {
         raw: true,
       });
 
-      if (!courier || courier.status !== "online") return res.json([]);
+      // 1) ВСЕ продавцы (рестораны/шопы) с координатами
+      const sellers = await Seller.findAll({
+        where: {
+          pickupLat: { [Op.ne]: null },
+          pickupLng: { [Op.ne]: null },
+        },
+        attributes: ["id", "name", "pickupLat", "pickupLng", "kind"],
+        raw: true,
+      });
 
+      // + добавим "шоп/склад" как псевдо-seller
+      sellers.push({
+        id: WAREHOUSE_POINT.id,
+        name: WAREHOUSE_POINT.name,
+        pickupLat: WAREHOUSE_POINT.pickupLat,
+        pickupLng: WAREHOUSE_POINT.pickupLng,
+        kind: WAREHOUSE_POINT.kind,
+      });
+
+      // 2) заказы для радара (могут быть и без sellerId => это склад)
       const orders = await Order.findAll({
         where: {
           status: { [Op.in]: RADAR_ORDER_STATUSES },
           courierId: null,
-          // offerCourierId: null,
+          offerCourierId: null,
         },
         attributes: [
           "id",
@@ -522,20 +548,6 @@ class CourierController {
         raw: true,
       });
 
-      if (!orders.length) return res.json([]);
-
-      const sellerIds = [
-        ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
-      ];
-
-      const sellers = await Seller.findAll({
-        where: { id: { [Op.in]: sellerIds } },
-        attributes: ["id", "name", "pickupLat", "pickupLng"],
-        raw: true,
-      });
-
-      const sellerMap = new Map(sellers.map((s) => [Number(s.id), s]));
-
       const bySeller = new Map();
       for (const o of orders) {
         const sid = o.sellerId == null ? 0 : Number(o.sellerId);
@@ -543,40 +555,52 @@ class CourierController {
         bySeller.get(sid).push(o);
       }
 
-      const busySet = await getBusyCourierIdSet();
-
-      const allOnlineCouriers = await Courier.findAll({
-        where: { status: "online" },
-        attributes: ["id", "currentLat", "currentLng"],
-        raw: true,
-      });
-
       const nowMs = Date.now();
+
+      const needCompetition =
+        courier?.status === "online" &&
+        courier?.currentLat != null &&
+        courier?.currentLng != null &&
+        orders.length > 0;
+
+      const busySet = needCompetition ? await getBusyCourierIdSet() : new Set();
+
+      const allOnlineCouriers = needCompetition
+        ? await Courier.findAll({
+            where: { status: "online" },
+            attributes: ["id", "currentLat", "currentLng"],
+            raw: true,
+          })
+        : [];
 
       const result = [];
 
-      for (const [sid, list] of bySeller.entries()) {
-        const s = sellerMap.get(sid);
-        if (!s || s.pickupLat == null || s.pickupLng == null) continue;
-
+      for (const s of sellers) {
+        const sid = Number(s.id);
+        const list = bySeller.get(sid) || [];
         list.sort(
           (a, b) =>
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
-        const top = list[0];
+        const top = list[0] || null;
 
-        const prepLeftSec =
-          top.status === "Ready for pickup"
+        const ordersCount = list.length;
+
+        const prepLeftSec = top
+          ? top.status === "Ready for pickup"
             ? getPrepLeftSec(top, nowMs) ?? -1
-            : getPrepLeftSec(top, nowMs);
+            : getPrepLeftSec(top, nowMs)
+          : null;
 
-        const isReady =
-          top.status === "Ready for pickup" ||
-          (prepLeftSec != null && prepLeftSec <= 0);
+        const isReady = top
+          ? top.status === "Ready for pickup" ||
+            (prepLeftSec != null && prepLeftSec <= 0)
+          : false;
 
         let canGrab = false;
 
-        if (courier.currentLat != null && courier.currentLng != null) {
+        // склад (id=0) и продавцы без заказов — просто показываем, без grab
+        if (top && needCompetition && sid !== 0) {
           const distSelf = haversineMeters(
             Number(courier.currentLat),
             Number(courier.currentLng),
@@ -610,10 +634,11 @@ class CourierController {
         result.push({
           sellerId: sid,
           name: s.name,
+          kind: s.kind || (sid === 0 ? "market" : null),
           lat: Number(s.pickupLat),
           lng: Number(s.pickupLng),
-          ordersCount: list.length,
-          topOrderId: top.id,
+          ordersCount,
+          topOrderId: top?.id ?? null,
           prepLeftSec,
           isReady,
           canGrab,
