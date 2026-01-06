@@ -508,8 +508,7 @@ class CourierController {
         where: {
           status: { [Op.in]: RADAR_ORDER_STATUSES },
           courierId: null,
-          sellerId: { [Op.ne]: null },
-          offerCourierId: null,
+          // offerCourierId: null,
         },
         attributes: [
           "id",
@@ -539,7 +538,7 @@ class CourierController {
 
       const bySeller = new Map();
       for (const o of orders) {
-        const sid = Number(o.sellerId);
+        const sid = o.sellerId == null ? 0 : Number(o.sellerId);
         if (!bySeller.has(sid)) bySeller.set(sid, []);
         bySeller.get(sid).push(o);
       }
