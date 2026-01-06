@@ -634,10 +634,6 @@ class CourierController {
     if (!courierId)
       return res.status(401).json({ message: "Вы не авторизованы." });
 
-    const GRAB_MAX_METERS = 250;
-    const COMPETITION_RADIUS_METERS = 600;
-    const BLOCK_IF_NEARBY_GTE = 2;
-
     try {
       const courier = await Courier.findByPk(courierId);
       if (!courier || courier.status !== "online") {
