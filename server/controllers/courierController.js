@@ -12,6 +12,70 @@ const {
 } = require("../services/orderDistributionService");
 const { scheduleCourierSearch } = require("../services/courierSearchScheduler");
 
+const RADAR_ORDER_STATUSES = ["Waiting for courier", "Ready for pickup"];
+
+const BUSY_STATUSES = [
+  "Accepted",
+  "Arrived at pickup",
+  "Picked up",
+  "In transit",
+  "Arrived at destination",
+];
+
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const toRad = (x) => (x * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function parseProcessingTimeToSec(processingTime) {
+  if (!processingTime) return null;
+  const s = String(processingTime).trim();
+  const m = s.match(/\d+/);
+  const num = m ? Number(m[0]) : null;
+  if (!num) return null;
+
+  // у тебя обычно "10 min" / "10 мин"
+  if (s.toLowerCase().includes("day") || s.toLowerCase().includes("д"))
+    return num * 24 * 60 * 60;
+  return num * 60;
+}
+
+function getPrepLeftSec(order, nowMs) {
+  const durSec = parseProcessingTimeToSec(order?.processingTime);
+  const startMs = order?.processingStartTime
+    ? new Date(order.processingStartTime).getTime()
+    : order?.updatedAt
+    ? new Date(order.updatedAt).getTime()
+    : null;
+
+  if (!durSec || !startMs) return null;
+  const endMs = startMs + durSec * 1000;
+  return Math.floor((endMs - nowMs) / 1000);
+}
+
+async function getBusyCourierIdSet() {
+  const rows = await Order.findAll({
+    where: {
+      courierId: { [Op.ne]: null },
+      status: { [Op.in]: BUSY_STATUSES },
+    },
+    attributes: ["courierId"],
+    raw: true,
+  });
+
+  const set = new Set();
+  for (const r of rows) set.add(String(r.courierId));
+  return set;
+}
+
 const PARCEL_FLOW = [
   "Accepted",
   "Arrived at pickup",
@@ -420,6 +484,276 @@ class CourierController {
       return res.json(formattedOrders);
     } catch (error) {
       console.error("❌ Ошибка получения активных заказов:", error);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
+  async getRadar(req, res) {
+    try {
+      const courierId = req.user?.id;
+      if (!courierId)
+        return res.status(401).json({ message: "Вы не авторизованы." });
+
+      const courier = await Courier.findByPk(courierId, {
+        attributes: ["id", "status", "currentLat", "currentLng"],
+        raw: true,
+      });
+
+      // если курьер не online — радар пустой
+      if (!courier || courier.status !== "online") return res.json([]);
+
+      const orders = await Order.findAll({
+        where: {
+          status: { [Op.in]: RADAR_ORDER_STATUSES },
+          courierId: null,
+          sellerId: { [Op.ne]: null },
+          // если надо только рестораны — можно ещё:
+          // orderType: { [Op.ne]: "parcel" },
+        },
+        attributes: [
+          "id",
+          "sellerId",
+          "status",
+          "processingTime",
+          "processingStartTime",
+          "createdAt",
+          "updatedAt",
+        ],
+        raw: true,
+      });
+
+      if (!orders.length) return res.json([]);
+
+      const sellerIds = [
+        ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
+      ];
+
+      const sellers = await Seller.findAll({
+        where: { id: { [Op.in]: sellerIds } },
+        attributes: ["id", "name", "pickupLat", "pickupLng"],
+        raw: true,
+      });
+
+      const sellerMap = new Map(sellers.map((s) => [Number(s.id), s]));
+
+      // группируем заказы по sellerId
+      const bySeller = new Map();
+      for (const o of orders) {
+        const sid = Number(o.sellerId);
+        if (!bySeller.has(sid)) bySeller.set(sid, []);
+        bySeller.get(sid).push(o);
+      }
+
+      // курьеры для "сколько рядом"
+      const busySet = await getBusyCourierIdSet();
+
+      const allOnlineCouriers = await Courier.findAll({
+        where: { status: "online" },
+        attributes: ["id", "currentLat", "currentLng"],
+        raw: true,
+      });
+
+      const nowMs = Date.now();
+
+      const GRAB_MAX_METERS = 250;
+      const COMPETITION_RADIUS_METERS = 600;
+      const BLOCK_IF_NEARBY_GTE = 2;
+
+      const result = [];
+
+      for (const [sid, list] of bySeller.entries()) {
+        const s = sellerMap.get(sid);
+        if (!s || s.pickupLat == null || s.pickupLng == null) continue;
+
+        // сортируем заказы "по очереди" (самый старый первый)
+        list.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+        const top = list[0];
+
+        const prepLeftSec =
+          top.status === "Ready for pickup"
+            ? getPrepLeftSec(top, nowMs) ?? -1
+            : getPrepLeftSec(top, nowMs);
+
+        const isReady =
+          top.status === "Ready for pickup" ||
+          (prepLeftSec != null && prepLeftSec <= 0);
+
+        // canGrab считаем только если у текущего курьера есть координаты
+        let canGrab = false;
+
+        if (courier.currentLat != null && courier.currentLng != null) {
+          const distSelf = haversineMeters(
+            Number(courier.currentLat),
+            Number(courier.currentLng),
+            Number(s.pickupLat),
+            Number(s.pickupLng)
+          );
+
+          if (distSelf <= GRAB_MAX_METERS) {
+            // сколько "свободных" курьеров рядом (online и НЕ busy), кроме себя
+            let nearby = 0;
+
+            for (const c of allOnlineCouriers) {
+              if (String(c.id) === String(courierId)) continue;
+              if (busySet.has(String(c.id))) continue; // заняты доставкой — не считаем
+              if (c.currentLat == null || c.currentLng == null) continue;
+
+              const d = haversineMeters(
+                Number(c.currentLat),
+                Number(c.currentLng),
+                Number(s.pickupLat),
+                Number(s.pickupLng)
+              );
+
+              if (d <= COMPETITION_RADIUS_METERS) nearby++;
+              if (nearby >= BLOCK_IF_NEARBY_GTE) break;
+            }
+
+            if (nearby < BLOCK_IF_NEARBY_GTE) canGrab = true;
+          }
+        }
+
+        result.push({
+          sellerId: sid,
+          name: s.name,
+          lat: Number(s.pickupLat),
+          lng: Number(s.pickupLng),
+          ordersCount: list.length,
+          topOrderId: top.id,
+          prepLeftSec,
+          isReady,
+          canGrab,
+        });
+      }
+
+      return res.json(result);
+    } catch (e) {
+      console.error("getRadar error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
+  async grabOrder(req, res) {
+    const courierId = req.user?.id;
+    const { id } = req.params;
+
+    if (!courierId)
+      return res.status(401).json({ message: "Вы не авторизованы." });
+
+    const GRAB_MAX_METERS = 250;
+    const COMPETITION_RADIUS_METERS = 600;
+    const BLOCK_IF_NEARBY_GTE = 2;
+
+    try {
+      const courier = await Courier.findByPk(courierId);
+      if (!courier || courier.status !== "online") {
+        return res.status(400).json({ message: "Курьер не онлайн." });
+      }
+      if (courier.currentLat == null || courier.currentLng == null) {
+        return res.status(400).json({ message: "Нет геопозиции курьера." });
+      }
+
+      const order = await Order.findByPk(id);
+      if (!order) return res.status(404).json({ message: "Заказ не найден." });
+
+      if (!["Waiting for courier", "Ready for pickup"].includes(order.status)) {
+        return res
+          .status(400)
+          .json({ message: "Заказ не доступен для забора." });
+      }
+      if (order.courierId) {
+        return res.status(400).json({ message: "Заказ уже занят." });
+      }
+
+      const seller = order.sellerId
+        ? await Seller.findByPk(order.sellerId)
+        : null;
+      if (!seller || seller.pickupLat == null || seller.pickupLng == null) {
+        return res.status(400).json({ message: "Нет координат ресторана." });
+      }
+
+      const distSelf = haversineMeters(
+        Number(courier.currentLat),
+        Number(courier.currentLng),
+        Number(seller.pickupLat),
+        Number(seller.pickupLng)
+      );
+
+      if (distSelf > GRAB_MAX_METERS) {
+        return res
+          .status(400)
+          .json({ message: "Слишком далеко от ресторана." });
+      }
+
+      const busySet = await getBusyCourierIdSet();
+
+      const allOnlineCouriers = await Courier.findAll({
+        where: { status: "online" },
+        attributes: ["id", "currentLat", "currentLng"],
+        raw: true,
+      });
+
+      let nearby = 0;
+      for (const c of allOnlineCouriers) {
+        if (String(c.id) === String(courierId)) continue;
+        if (busySet.has(String(c.id))) continue;
+        if (c.currentLat == null || c.currentLng == null) continue;
+
+        const d = haversineMeters(
+          Number(c.currentLat),
+          Number(c.currentLng),
+          Number(seller.pickupLat),
+          Number(seller.pickupLng)
+        );
+
+        if (d <= COMPETITION_RADIUS_METERS) nearby++;
+        if (nearby >= BLOCK_IF_NEARBY_GTE) break;
+      }
+
+      if (nearby >= BLOCK_IF_NEARBY_GTE) {
+        return res
+          .status(400)
+          .json({ message: "Рядом есть курьеры — нельзя забрать." });
+      }
+
+      // важно: защита от гонки — делаем UPDATE с условием courierId IS NULL
+      const [updated] = await Order.update(
+        {
+          courierId,
+          acceptedAt: new Date(),
+          offerCourierId: null,
+          offerExpiresAt: null,
+          status:
+            order.orderType === "parcel"
+              ? "Accepted"
+              : order.status === "Ready for pickup"
+              ? "Ready for pickup"
+              : "Accepted",
+        },
+        {
+          where: { id: order.id, courierId: null },
+        }
+      );
+
+      if (!updated) {
+        return res.status(400).json({ message: "Заказ уже успели забрать." });
+      }
+
+      const fresh = await Order.findByPk(order.id);
+      const io = req.app.get("io");
+      io.to(`order:${fresh.id}`).emit("orderStatusUpdate", {
+        id: fresh.id,
+        status: fresh.status,
+        courierId: fresh.courierId,
+        accepted: true,
+      });
+
+      return res.json(fresh);
+    } catch (e) {
+      console.error("grabOrder error:", e);
       return res.status(500).json({ message: "Ошибка сервера" });
     }
   }
