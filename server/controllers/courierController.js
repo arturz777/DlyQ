@@ -509,6 +509,7 @@ class CourierController {
           status: { [Op.in]: RADAR_ORDER_STATUSES },
           courierId: null,
           sellerId: { [Op.ne]: null },
+          offerCourierId: null,
         },
         attributes: [
           "id",
@@ -653,6 +654,11 @@ class CourierController {
       }
       if (order.courierId) {
         return res.status(400).json({ message: "Заказ уже занят." });
+      }
+      if (order.offerCourierId) {
+        return res
+          .status(400)
+          .json({ message: "Заказ распределяется через предложения." });
       }
 
       const seller = order.sellerId
