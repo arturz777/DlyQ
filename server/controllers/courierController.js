@@ -14,6 +14,10 @@ const { scheduleCourierSearch } = require("../services/courierSearchScheduler");
 
 const RADAR_ORDER_STATUSES = ["Waiting for courier", "Ready for pickup"];
 
+const GRAB_MAX_METERS = 50000;
+const COMPETITION_RADIUS_METERS = 50000;
+const BLOCK_IF_NEARBY_GTE = 2;
+
 const BUSY_STATUSES = [
   "Accepted",
   "Arrived at pickup",
@@ -42,7 +46,6 @@ function parseProcessingTimeToSec(processingTime) {
   const num = m ? Number(m[0]) : null;
   if (!num) return null;
 
-  // у тебя обычно "10 min" / "10 мин"
   if (s.toLowerCase().includes("day") || s.toLowerCase().includes("д"))
     return num * 24 * 60 * 60;
   return num * 60;
@@ -499,7 +502,6 @@ class CourierController {
         raw: true,
       });
 
-      // если курьер не online — радар пустой
       if (!courier || courier.status !== "online") return res.json([]);
 
       const orders = await Order.findAll({
@@ -507,8 +509,6 @@ class CourierController {
           status: { [Op.in]: RADAR_ORDER_STATUSES },
           courierId: null,
           sellerId: { [Op.ne]: null },
-          // если надо только рестораны — можно ещё:
-          // orderType: { [Op.ne]: "parcel" },
         },
         attributes: [
           "id",
@@ -536,7 +536,6 @@ class CourierController {
 
       const sellerMap = new Map(sellers.map((s) => [Number(s.id), s]));
 
-      // группируем заказы по sellerId
       const bySeller = new Map();
       for (const o of orders) {
         const sid = Number(o.sellerId);
@@ -544,7 +543,6 @@ class CourierController {
         bySeller.get(sid).push(o);
       }
 
-      // курьеры для "сколько рядом"
       const busySet = await getBusyCourierIdSet();
 
       const allOnlineCouriers = await Courier.findAll({
@@ -555,17 +553,12 @@ class CourierController {
 
       const nowMs = Date.now();
 
-      const GRAB_MAX_METERS = 250;
-      const COMPETITION_RADIUS_METERS = 600;
-      const BLOCK_IF_NEARBY_GTE = 2;
-
       const result = [];
 
       for (const [sid, list] of bySeller.entries()) {
         const s = sellerMap.get(sid);
         if (!s || s.pickupLat == null || s.pickupLng == null) continue;
 
-        // сортируем заказы "по очереди" (самый старый первый)
         list.sort(
           (a, b) =>
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -581,7 +574,6 @@ class CourierController {
           top.status === "Ready for pickup" ||
           (prepLeftSec != null && prepLeftSec <= 0);
 
-        // canGrab считаем только если у текущего курьера есть координаты
         let canGrab = false;
 
         if (courier.currentLat != null && courier.currentLng != null) {
@@ -593,12 +585,11 @@ class CourierController {
           );
 
           if (distSelf <= GRAB_MAX_METERS) {
-            // сколько "свободных" курьеров рядом (online и НЕ busy), кроме себя
             let nearby = 0;
 
             for (const c of allOnlineCouriers) {
               if (String(c.id) === String(courierId)) continue;
-              if (busySet.has(String(c.id))) continue; // заняты доставкой — не считаем
+              if (busySet.has(String(c.id))) continue;
               if (c.currentLat == null || c.currentLng == null) continue;
 
               const d = haversineMeters(
