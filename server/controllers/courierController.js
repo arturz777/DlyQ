@@ -88,7 +88,10 @@ class CourierController {
 
       const { from, to } = req.query;
 
-      const where = { courierId, status: "Delivered" };
+      const where = {
+        courierId,
+        status: { [Op.in]: ["Delivered", "Completed"] },
+      };
 
       const timeField = Order.rawAttributes?.deliveredAt
         ? "deliveredAt"
@@ -182,7 +185,10 @@ class CourierController {
 
       const { from, to } = req.query;
 
-      const where = { courierId, status: "Delivered" };
+      const where = {
+        courierId,
+        status: { [Op.in]: ["Delivered", "Completed"] },
+      };
       if (from && to)
         where.updatedAt = { [Op.gte]: new Date(from), [Op.lt]: new Date(to) };
 
