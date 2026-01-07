@@ -18,6 +18,20 @@ router.post(
   courierController.acceptOrder
 );
 
+router.get(
+  "/orders/:id/self-pick-info",
+  authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.selfPickInfo
+);
+
+router.post(
+  "/orders/:id/self-pick",
+  authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.selfPick
+);
+
 router.post(
   "/status",
   authMiddleware,
