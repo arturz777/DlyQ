@@ -32,6 +32,13 @@ router.post(
   courierController.selfPick
 );
 
+router.get(
+  "/self-pick-candidates",
+  authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.selfPickCandidates
+);
+
 router.post(
   "/status",
   authMiddleware,
