@@ -12,6 +12,72 @@ const {
 } = require("../services/orderDistributionService");
 const { scheduleCourierSearch } = require("../services/courierSearchScheduler");
 
+const RADAR_STATUSES = ["Waiting for courier", "Ready for pickup"];
+
+function parseProcessingTimeToSec(processingTime) {
+  if (!processingTime) return null;
+  const s = String(processingTime).trim();
+  const m = s.match(/\d+/);
+  const num = m ? Number(m[0]) : null;
+  if (!num) return null;
+  // minutes by default
+  return num * 60;
+}
+
+function getPrepLeftSec(order, nowMs) {
+  const durSec = parseProcessingTimeToSec(order?.processingTime);
+  const startMs = order?.processingStartTime
+    ? new Date(order.processingStartTime).getTime()
+    : order?.updatedAt
+    ? new Date(order.updatedAt).getTime()
+    : order?.createdAt
+    ? new Date(order.createdAt).getTime()
+    : null;
+
+  if (!durSec || !startMs) return null;
+  const endMs = startMs + durSec * 1000;
+  return Math.floor((endMs - nowMs) / 1000);
+}
+
+// ВАЖНО: тут считаем курьеров рядом (0 или 1 — ок)
+async function countNearOnlineCouriersMeters(
+  pickupLat,
+  pickupLng,
+  nearRadiusKm,
+  excludeCourierId
+) {
+  const couriers = await Courier.findAll({
+    where: {
+      status: "online",
+      currentLat: { [Op.ne]: null },
+      currentLng: { [Op.ne]: null },
+      ...(excludeCourierId ? { id: { [Op.ne]: excludeCourierId } } : {}),
+    },
+    attributes: ["id", "currentLat", "currentLng"],
+    raw: true,
+  });
+
+  let count = 0;
+  for (const c of couriers) {
+    const d = haversineKm(
+      Number(c.currentLat),
+      Number(c.currentLng),
+      Number(pickupLat),
+      Number(pickupLng)
+    );
+    if (d <= nearRadiusKm) count++;
+  }
+  return count;
+}
+
+async function resolveSellerPickup(sellerId) {
+  const s = await Seller.findByPk(sellerId, {
+    attributes: ["id", "pickupLat", "pickupLng", "name", "kind"],
+    raw: true,
+  });
+  return s || null;
+}
+
 function haversineKm(lat1, lng1, lat2, lng2) {
   const toRad = (v) => (v * Math.PI) / 180;
   const R = 6371;
@@ -142,6 +208,115 @@ function safeParse(v, fallback) {
 }
 
 class CourierController {
+  async selfPickCandidates(req, res) {
+    try {
+      const courierId = req.user?.id;
+      if (!courierId)
+        return res.status(401).json({ message: "Вы не авторизованы." });
+
+      // настройки
+      const ACCEPT_RADIUS_KM = 30; // тест: насколько далеко можно самозабрать
+      const NEAR_RADIUS_KM = 1; // рядом с заведением: сколько курьеров вокруг
+
+      const courier = await Courier.findByPk(courierId, {
+        attributes: ["id", "status", "currentLat", "currentLng"],
+        raw: true,
+      });
+
+      if (!courier || courier.status !== "online") {
+        return res.json({ candidates: [], reason: "offline" });
+      }
+      if (courier.currentLat == null || courier.currentLng == null) {
+        return res.json({ candidates: [], reason: "no_geo" });
+      }
+
+      const freeOrders = await Order.findAll({
+        where: {
+          courierId: null,
+          offerCourierId: null,
+          status: { [Op.in]: RADAR_STATUSES },
+          orderType: { [Op.ne]: "parcel" },
+          sellerId: { [Op.ne]: null },
+        },
+        attributes: [
+          "id",
+          "sellerId",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "processingTime",
+          "processingStartTime",
+        ],
+        order: [["createdAt", "ASC"]],
+        raw: true,
+      });
+
+      // 1-й заказ на seller
+      const firstBySeller = new Map();
+      for (const o of freeOrders) {
+        const sid = Number(o.sellerId);
+        if (!firstBySeller.has(sid)) firstBySeller.set(sid, o);
+      }
+
+      const nowMs = Date.now();
+      const out = [];
+
+      for (const [sellerId, order] of firstBySeller.entries()) {
+        const s = await resolveSellerPickup(sellerId);
+        if (!s || s.pickupLat == null || s.pickupLng == null) continue;
+
+        const distanceKm = haversineKm(
+          Number(courier.currentLat),
+          Number(courier.currentLng),
+          Number(s.pickupLat),
+          Number(s.pickupLng)
+        );
+
+        const nearCouriers = await countNearOnlineCouriersMeters(
+          s.pickupLat,
+          s.pickupLng,
+          NEAR_RADIUS_KM,
+          courierId
+        );
+
+        const canShow = distanceKm <= ACCEPT_RADIUS_KM && nearCouriers <= 1;
+
+        const prepLeftSec =
+          order.status === "Ready for pickup"
+            ? getPrepLeftSec(order, nowMs) ?? -1
+            : getPrepLeftSec(order, nowMs);
+
+        out.push({
+          sellerId,
+          sellerName: s.name,
+          kind: s.kind,
+          pickupLat: Number(s.pickupLat),
+          pickupLng: Number(s.pickupLng),
+
+          orderId: order.id,
+          orderStatus: order.status,
+          prepLeftSec,
+          isReady:
+            order.status === "Ready for pickup" ||
+            (prepLeftSec != null && prepLeftSec <= 0),
+
+          nearCouriers,
+          distanceKm: Number(distanceKm.toFixed(2)),
+          canShow,
+        });
+      }
+
+      return res.json({
+        acceptRadiusKm: ACCEPT_RADIUS_KM,
+        nearRadiusKm: NEAR_RADIUS_KM,
+        candidates: out,
+      });
+    } catch (e) {
+      console.error("selfPickCandidates error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
   async selfPickInfo(req, res) {
     try {
       const courierId = req.user?.id;
