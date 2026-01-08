@@ -312,8 +312,8 @@ class CourierController {
       }
 
       for (const [sellerId, pack] of bucketBySeller.entries()) {
-        const order = pack.first;
-        const ordersCount = pack.count;
+  const order = pack.best;
+  const ordersCount = pack.count;
 
         const s =
           Number(sellerId) === 0
@@ -345,9 +345,9 @@ class CourierController {
         const canShow = distanceKm <= ACCEPT_RADIUS_KM && nearCouriers <= 1;
 
         const prepLeftSec =
-          order.status === "Ready for pickup"
-            ? getPrepLeftSec(order, nowMs) ?? -1
-            : getPrepLeftSec(order, nowMs);
+    order.status === "Ready for pickup"
+      ? (pack.bestLeft ?? -1)
+      : pack.bestLeft;
 
         out.push({
           sellerId,
