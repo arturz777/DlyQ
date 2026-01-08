@@ -12,6 +12,14 @@ const {
 } = require("../services/orderDistributionService");
 const { scheduleCourierSearch } = require("../services/courierSearchScheduler");
 
+const WAREHOUSE = {
+  id: 0,
+  name: "DlyQ Market",
+  kind: "market",
+  lat: 59.51372,
+  lng: 24.828888,
+};
+
 const RADAR_STATUSES = ["Waiting for courier", "Ready for pickup"];
 
 function parseProcessingTimeToSec(processingTime) {
@@ -127,6 +135,13 @@ async function resolvePickupPoint(order) {
     };
   }
 
+  if (!order.sellerId) {
+    return {
+      lat: order.pickupLat ?? WAREHOUSE.lat,
+      lng: order.pickupLng ?? WAREHOUSE.lng,
+    };
+  }
+
   const s = order.sellerId
     ? await Seller.findByPk(order.sellerId, {
         attributes: ["pickupLat", "pickupLng", "address"],
@@ -236,7 +251,6 @@ class CourierController {
           offerCourierId: null,
           status: { [Op.in]: RADAR_STATUSES },
           orderType: { [Op.ne]: "parcel" },
-          sellerId: { [Op.ne]: null },
         },
         attributes: [
           "id",
@@ -251,10 +265,9 @@ class CourierController {
         raw: true,
       });
 
-      // 1-й заказ на seller
       const firstBySeller = new Map();
       for (const o of freeOrders) {
-        const sid = Number(o.sellerId);
+        const sid = o.sellerId == null ? 0 : Number(o.sellerId);
         if (!firstBySeller.has(sid)) firstBySeller.set(sid, o);
       }
 
@@ -262,7 +275,17 @@ class CourierController {
       const out = [];
 
       for (const [sellerId, order] of firstBySeller.entries()) {
-        const s = await resolveSellerPickup(sellerId);
+        const s =
+          Number(sellerId) === 0
+            ? {
+                id: 0,
+                pickupLat: WAREHOUSE.lat,
+                pickupLng: WAREHOUSE.lng,
+                name: WAREHOUSE.name,
+                kind: "market",
+              }
+            : await resolveSellerPickup(sellerId);
+
         if (!s || s.pickupLat == null || s.pickupLng == null) continue;
 
         const distanceKm = haversineKm(
