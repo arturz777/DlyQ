@@ -265,16 +265,21 @@ class CourierController {
         raw: true,
       });
 
-      const firstBySeller = new Map();
+      const bucketBySeller = new Map();
       for (const o of freeOrders) {
-        const sid = o.sellerId == null ? 0 : Number(o.sellerId);
-        if (!firstBySeller.has(sid)) firstBySeller.set(sid, o);
+        const sid = o.sellerId == null ? 0 : Number(o.sellerId); // 0 = склад/магазин
+        const b = bucketBySeller.get(sid);
+        if (!b) bucketBySeller.set(sid, { first: o, count: 1 });
+        else b.count += 1;
       }
 
       const nowMs = Date.now();
       const out = [];
 
-      for (const [sellerId, order] of firstBySeller.entries()) {
+      for (const [sellerId, pack] of bucketBySeller.entries()) {
+        const order = pack.first;
+        const ordersCount = pack.count;
+
         const s =
           Number(sellerId) === 0
             ? {
@@ -322,6 +327,8 @@ class CourierController {
           isReady:
             order.status === "Ready for pickup" ||
             (prepLeftSec != null && prepLeftSec <= 0),
+
+          ordersCount,
 
           nearCouriers,
           distanceKm: Number(distanceKm.toFixed(2)),
