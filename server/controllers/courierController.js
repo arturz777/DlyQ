@@ -22,20 +22,26 @@ const WAREHOUSE = {
 
 const RADAR_STATUSES = ["Waiting for courier", "Ready for pickup"];
 
+const MAX_VISIBLE_SEC = 60 * 60;
+
 function parseProcessingTimeToSec(processingTime) {
   if (!processingTime) return null;
   const s = String(processingTime).trim().toLowerCase();
 
-  const m = s.match(/(\d+)\s*(d|day|days|д|дн|дня|дней|h|hr|hour|hours|ч|час|часа|часов|m|min|minute|minutes|м|мин|минут)?/);
+  const m = s.match(
+    /(\d+)\s*(d|day|days|д|дн|дня|дней|h|hr|hour|hours|ч|час|часа|часов|m|min|minute|minutes|м|мин|минут)?/
+  );
   if (!m) return null;
 
   const num = Number(m[1]);
   if (!num) return null;
 
-  const unit = m[2] || 'm';
+  const unit = m[2] || "m";
 
-  if (['d','day','days','д','дн','дня','дней'].includes(unit)) return num * 24 * 60 * 60;
-  if (['h','hr','hour','hours','ч','час','часа','часов'].includes(unit)) return num * 60 * 60;
+  if (["d", "day", "days", "д", "дн", "дня", "дней"].includes(unit))
+    return num * 24 * 60 * 60;
+  if (["h", "hr", "hour", "hours", "ч", "час", "часа", "часов"].includes(unit))
+    return num * 60 * 60;
   return num * 60;
 }
 
@@ -272,16 +278,38 @@ class CourierController {
         raw: true,
       });
 
-      const bucketBySeller = new Map();
-      for (const o of freeOrders) {
-        const sid = o.sellerId == null ? 0 : Number(o.sellerId); // 0 = склад/магазин
-        const b = bucketBySeller.get(sid);
-        if (!b) bucketBySeller.set(sid, { first: o, count: 1 });
-        else b.count += 1;
-      }
-
       const nowMs = Date.now();
       const out = [];
+      const bucketBySeller = new Map();
+
+      for (const o of freeOrders) {
+        const sid = o.sellerId == null ? 0 : Number(o.sellerId);
+
+        const left = getPrepLeftSec(o, nowMs);
+
+        const isReady =
+          o.status === "Ready for pickup" || (left != null && left <= 0);
+
+        const visible = isReady || left == null || left <= MAX_VISIBLE_SEC;
+        if (!visible) continue;
+
+        let b = bucketBySeller.get(sid);
+        if (!b) {
+          bucketBySeller.set(sid, { best: o, bestLeft: left, count: 1 });
+          continue;
+        }
+
+        b.count += 1;
+
+        const aLeft =
+          b.best.status === "Ready for pickup" ? -1 : b.bestLeft ?? 1e15;
+        const bLeft = o.status === "Ready for pickup" ? -1 : left ?? 1e15;
+
+        if (bLeft < aLeft) {
+          b.best = o;
+          b.bestLeft = left;
+        }
+      }
 
       for (const [sellerId, pack] of bucketBySeller.entries()) {
         const order = pack.first;
