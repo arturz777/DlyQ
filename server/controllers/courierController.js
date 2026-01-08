@@ -24,11 +24,18 @@ const RADAR_STATUSES = ["Waiting for courier", "Ready for pickup"];
 
 function parseProcessingTimeToSec(processingTime) {
   if (!processingTime) return null;
-  const s = String(processingTime).trim();
-  const m = s.match(/\d+/);
-  const num = m ? Number(m[0]) : null;
+  const s = String(processingTime).trim().toLowerCase();
+
+  const m = s.match(/(\d+)\s*(d|day|days|д|дн|дня|дней|h|hr|hour|hours|ч|час|часа|часов|m|min|minute|minutes|м|мин|минут)?/);
+  if (!m) return null;
+
+  const num = Number(m[1]);
   if (!num) return null;
-  // minutes by default
+
+  const unit = m[2] || 'm';
+
+  if (['d','day','days','д','дн','дня','дней'].includes(unit)) return num * 24 * 60 * 60;
+  if (['h','hr','hour','hours','ч','час','часа','часов'].includes(unit)) return num * 60 * 60;
   return num * 60;
 }
 
