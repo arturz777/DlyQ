@@ -6,7 +6,6 @@ import InputGroup from "react-bootstrap/InputGroup";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import { updateDeviceVisibility } from "../http/deviceAPI";
-import { fetchAllCouriers } from "../http/courierAPI";
 import { assignCourierToOrder } from "../http/orderAPI";
 import { fetchTranslations, updateTranslation } from "../http/translationAPI";
 import {
@@ -328,10 +327,6 @@ const Admin = () => {
       console.error("Ошибка при обновлении:", err);
     }
   };
-
-  useEffect(() => {
-    fetchAllCouriers().then(setCouriers).catch(console.error);
-  }, []);
 
   const filteredDevices = React.useMemo(() => {
     return devices
