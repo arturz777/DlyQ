@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { observer } from "mobx-react-lite";
 import { useRef } from "react";
 import { useMap } from "react-leaflet";
+import { Context } from "../index";
 import {
   MapContainer,
   TileLayer,
@@ -20,6 +22,7 @@ import { socket } from "../socket";
 const WAREHOUSE_LOCATION = { lat: 59.51372, lng: 24.828888 };
 
 const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
+  const { user } = useContext(Context);
   const [order, setOrder] = useState(null);
   const [showIcon, setShowIcon] = useState(false);
   const [timeLeft, setTimeLeft] = useState(null);
@@ -36,43 +39,46 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const orderRef = useRef(null);
   const [deliveryChatId, setDeliveryChatId] = useState(null);
 
-  useEffect(() => {
-    const onChatReady = ({ orderId, chatId }) => {
-      if (!orderRef.current?.id) return;
-      if (orderRef.current.id !== orderId) return;
-      setDeliveryChatId(chatId);
-      socket.emit("joinChat", { chatId, userId });
-    };
-
-    socket.on("deliveryChatReady", onChatReady);
-    return () => socket.off("deliveryChatReady", onChatReady);
-  }, []);
+  const userId = user.user?.id;
 
   useEffect(() => {
-    if (!order?.id) return;
-    if (!order?.courierId) return;
+  const onChatReady = ({ orderId, chatId }) => {
+    if (!orderRef.current?.id) return;
+    if (orderRef.current.id !== orderId) return;
+    if (!chatId || !userId) return;
 
-    let cancelled = false;
+    setDeliveryChatId(chatId);
+    socket.emit("joinChat", { chatId, userId });
+  };
 
-    (async () => {
-      try {
-        const data = await fetchDeliveryChat(order.id);
-        if (cancelled) return;
+  socket.on("deliveryChatReady", onChatReady);
+  return () => socket.off("deliveryChatReady", onChatReady);
+}, [userId]);
 
-        setDeliveryChatId(data?.chatId || null);
+useEffect(() => {
+  if (!order?.id) return;
+  if (!order?.courierId) return;
+  if (!userId) return;
 
-        if (data?.chatId) {
-          socket.emit("joinChat", { chatId: data.chatId });
-        }
-      } catch (e) {
-        console.log("fetchDeliveryChat web error:", e?.message || e);
+  let cancelled = false;
+
+  (async () => {
+    try {
+      const data = await fetchDeliveryChat(order.id);
+      if (cancelled) return;
+
+      setDeliveryChatId(data?.chatId || null);
+
+      if (data?.chatId) {
+        socket.emit("joinChat", { chatId: data.chatId, userId });
       }
-    })();
+    } catch (e) {
+      console.log("fetchDeliveryChat web error:", e?.message || e);
+    }
+  })();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [order?.id, order?.courierId]);
+  return () => { cancelled = true; };
+}, [order?.id, order?.courierId, userId]);
 
   useEffect(() => {
     orderRef.current = order;
@@ -692,4 +698,4 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   );
 };
 
-export default OrderSidebar;
+export default observer(OrderSidebar);
