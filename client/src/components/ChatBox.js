@@ -58,7 +58,7 @@ const ChatBox = ({
   useEffect(() => {
     if (!activeChatId) return;
 
-    socket.emit("joinChat", activeChatId);
+   socket.emit("joinChat", { chatId: activeChatId, userId });
 
     const handleMessage = async (msg) => {
       const chatExists = chats.some((chat) => chat.id === msg.chatId);
