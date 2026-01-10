@@ -68,7 +68,7 @@ class ChatController {
       }
 
       const want = [
-        { userId: order.userId, role: "customer" },
+        { userId: order.userId, role: "client" },
         { userId: order.courierId, role: "courier" },
       ];
 
