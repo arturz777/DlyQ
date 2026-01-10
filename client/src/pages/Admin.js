@@ -6,6 +6,7 @@ import InputGroup from "react-bootstrap/InputGroup";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import { updateDeviceVisibility } from "../http/deviceAPI";
+import { fetchAllCouriers } from "../http/courierAPI";
 import { assignCourierToOrder } from "../http/orderAPI";
 import { fetchTranslations, updateTranslation } from "../http/translationAPI";
 import {
@@ -214,7 +215,7 @@ const Admin = () => {
   }, [sortedMenuCategories, menuItemsByCategory, menuSearch]);
 
   useEffect(() => {
-     const socket = io(`https://dlyq-backend-staging.onrender.com`);
+     const socket = io(`api.dlyq.ee`);
 
     socket.on("courierLocationUpdate", ({ courierId, lat, lng }) => {
       setCouriers((prev) =>
@@ -327,6 +328,10 @@ const Admin = () => {
       console.error("Ошибка при обновлении:", err);
     }
   };
+
+  useEffect(() => {
+    fetchAllCouriers().then(setCouriers).catch(console.error);
+  }, []);
 
   const filteredDevices = React.useMemo(() => {
     return devices
@@ -477,7 +482,7 @@ const Admin = () => {
   useEffect(() => {
     if (!user?.user?.id) return;
 
-    fetch(`https://dlyq-backend-staging.onrender.com/api/chat/user/${user.user.id}`)
+    fetch(`https://api.dlyq.ee/api/chat/user/${user.user.id}`)
       .then((res) => res.json())
       .then((data) => {
         const unread = new Set();
@@ -494,7 +499,7 @@ const Admin = () => {
   }, [user?.user?.id]);
 
   useEffect(() => {
-    const socket = io(`https://dlyq-backend-staging.onrender.com`);
+    const socket = io(`https://api.dlyq.ee`);
 
     if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
       socket.emit("joinAdminNotifications");
@@ -715,7 +720,7 @@ const Admin = () => {
       alert("Заполните все поля!");
       return;
     }
-    const response = await fetch(`https://dlyq-backend-staging.onrender.com/api/translations`, {
+    const response = await fetch(`https://api.dlyq.ee/api/translations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: newKey, lang: newLang, text: newText }),
@@ -733,7 +738,7 @@ const Admin = () => {
     }
   };
 
-   const typesMap = new Map(types.map((type) => [type.id, type]));
+  const typesMap = new Map(types.map((type) => [type.id, type]));
   const subtypesMap = new Map(subtypes.map((subtype) => [subtype.id, subtype]));
 
   const today = new Date();
