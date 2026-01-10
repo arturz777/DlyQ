@@ -250,35 +250,39 @@
   box-shadow: var(--shadow-sm);
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Кнопка теперь НЕ fixed */
 .chatButton {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  z-index: var(--z-fab);
+  position: static;
+  right: auto;
+  top: auto;
 
   display: inline-flex;
   align-items: center;
   gap: 10px;
 
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-radius: 999px;
 
   background: var(--brand);
   color: #fff;
   border: none;
 
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
 
   transition: transform 160ms ease, filter 160ms ease;
-  -webkit-tap-highlight-color: transparent;
 }
 
 .chatButton:hover {
   filter: brightness(0.98);
   transform: translateY(-1px);
 }
-
 .chatButton:active {
   transform: translateY(0);
 }
