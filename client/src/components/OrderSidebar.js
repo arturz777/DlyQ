@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { fetchActiveOrder, updateOrderStatus } from "../http/orderAPI";
 import { useNavigate } from "react-router-dom";
 import { useRef } from "react";
 import { useMap } from "react-leaflet";
@@ -12,6 +11,8 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { fetchActiveOrder, updateOrderStatus } from "../http/orderAPI";
+import { fetchDeliveryChat } from "../http/chatAPI";
 import { useTranslation } from "react-i18next";
 import styles from "./OrderSidebar.module.css";
 import { socket } from "../socket";
@@ -33,6 +34,45 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const { t, i18n } = useTranslation();
   const courierMarkerRef = useRef(null);
   const orderRef = useRef(null);
+  const [deliveryChatId, setDeliveryChatId] = useState(null);
+
+  useEffect(() => {
+    const onChatReady = ({ orderId, chatId }) => {
+      if (!orderRef.current?.id) return;
+      if (orderRef.current.id !== orderId) return;
+      setDeliveryChatId(chatId);
+      socket.emit("joinChat", { chatId, userId });
+    };
+
+    socket.on("deliveryChatReady", onChatReady);
+    return () => socket.off("deliveryChatReady", onChatReady);
+  }, []);
+
+  useEffect(() => {
+    if (!order?.id) return;
+    if (!order?.courierId) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await fetchDeliveryChat(order.id);
+        if (cancelled) return;
+
+        setDeliveryChatId(data?.chatId || null);
+
+        if (data?.chatId) {
+          socket.emit("joinChat", { chatId: data.chatId });
+        }
+      } catch (e) {
+        console.log("fetchDeliveryChat web error:", e?.message || e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [order?.id, order?.courierId]);
 
   useEffect(() => {
     orderRef.current = order;
