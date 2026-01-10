@@ -6,4 +6,7 @@ export const socket = io(socketUrl, {
   transports: ["websocket"],
   withCredentials: true,
   autoConnect: true,
+  auth: {
+    token: localStorage.getItem("token"),
+  },
 });
