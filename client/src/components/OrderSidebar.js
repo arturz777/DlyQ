@@ -43,10 +43,16 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
 
   const userId = user.user?.id;
 
+  const canShowChat = (o) => {
+  if (!o) return false;
+  if (!o.courierId) return false;
+  if (o.accepted === true) return true;
+  return isOrderAccepted(o);
+};
+
   useEffect(() => {
     const onChatReady = ({ orderId, chatId }) => {
-      if (!orderRef.current?.id) return;
-      if (orderRef.current.id !== orderId) return;
+      if (orderId !== orderRef.current?.id) return;
       if (!chatId || !userId) return;
 
       setDeliveryChatId(chatId);
@@ -57,32 +63,61 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
     return () => socket.off("deliveryChatReady", onChatReady);
   }, [userId]);
 
-  useEffect(() => {
-    if (!order?.id) return;
-    if (!order?.courierId) return;
-    if (!userId) return;
+  const isOrderAccepted = (o) => {
+    if (!o) return false;
+    const st = o.status;
 
-    let cancelled = false;
+    if (o.orderType === "parcel") {
+      return [
+        "Accepted",
+        "Arrived at pickup",
+        "In transit",
+        "Arrived at destination",
+        "Delivered",
+        "Completed",
+      ].includes(st);
+    }
 
-    (async () => {
-      try {
-        const data = await fetchDeliveryChat(order.id);
-        if (cancelled) return;
+    return [
+      "Accepted",
+      "Ready for pickup",
+      "Picked up",
+      "Arrived at destination",
+      "Delivered",
+      "Completed",
+    ].includes(st);
+  };
 
-        setDeliveryChatId(data?.chatId || null);
+ useEffect(() => {
+  if (!order?.id || !userId) return;
 
-        if (data?.chatId) {
-          socket.emit("joinChat", { chatId: data.chatId, userId });
-        }
-      } catch (e) {
-        console.log("fetchDeliveryChat web error:", e?.message || e);
-      }
-    })();
+  if (!canShowChat(order) || !order?.courierId) {
+    setDeliveryChatId(null);
+    return;
+  }
 
-    return () => {
-      cancelled = true;
-    };
-  }, [order?.id, order?.courierId, userId]);
+  let cancelled = false;
+
+  (async () => {
+    try {
+      const data = await fetchDeliveryChat(order.id);
+      if (cancelled) return;
+
+      console.log("fetchDeliveryChat ->", data);
+
+      const chatId = data?.chatId ?? data?.id ?? null;
+      setDeliveryChatId(chatId);
+
+      if (chatId) socket.emit("joinChat", { chatId, userId });
+    } catch (e) {
+      console.log("fetchDeliveryChat web error:", e?.message || e);
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [order?.id, order?.status, order?.orderType, order?.accepted, order?.courierId, userId]);
 
   useEffect(() => {
     orderRef.current = order;
@@ -482,14 +517,28 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
           {t("order", { ns: "userProfile" })}
         </div>
       )}
+      {canShowChat(order) && deliveryChatId && (
+        <button
+          className={styles.chatButton}
+          onClick={() => openSupportChat(deliveryChatId)}
+          type="button"
+        >
+          💬 Чат с курьером
+        </button>
+      )}
       <div className={`${styles.sidebar} ${isSidebarOpen ? styles.open : ""}`}>
         <div className={styles.header}>
           <h3>{t("delivery status", { ns: "orderSidebar" })}</h3>
-          <button onClick={() => setSidebarOpen(false)}>×</button>
+          <button
+            className={styles.closeButton}
+            onClick={() => setSidebarOpen(false)}
+          >
+            ×
+          </button>
         </div>
 
         {order ? (
-          <div>
+          <div className={styles.body}>
             {isPreorder ? (
               <p className={styles.preorderInfo}>
                 <strong>{t("preorder", { ns: "orderSidebar" })}</strong>
@@ -600,15 +649,6 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
                   🚗 {formatTime(timeLeft)}
                 </p>
               )}
-
-            {deliveryChatId && (
-              <button
-                className={styles.chatButton}
-                onClick={() => openSupportChat(deliveryChatId)}
-              >
-                💬 Чат с курьером
-              </button>
-            )}
 
             <div className={styles.mapContainer}>
               {hasDelivery ? (
