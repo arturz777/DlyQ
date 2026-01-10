@@ -40,8 +40,22 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const orderRef = useRef(null);
   const [deliveryChatId, setDeliveryChatId] = useState(null);
   const { openSupportChat } = useContext(ChatContext);
+  const [pendingChatId, setPendingChatId] = useState(null);
 
   const userId = user.user?.id;
+
+  const handleOpenChat = () => {
+  if (!deliveryChatId) return;
+  setPendingChatId(deliveryChatId);
+  setSidebarOpen(false);
+};
+
+useEffect(() => {
+  if (!isSidebarOpen && pendingChatId) {
+    openSupportChat(pendingChatId);
+    setPendingChatId(null);
+  }
+}, [isSidebarOpen, pendingChatId, openSupportChat]);
 
   const canShowChat = (o) => {
     if (!o) return false;
@@ -532,7 +546,7 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
             {isSidebarOpen && canShowChat(order) && deliveryChatId && (
               <button
                 className={styles.chatButton}
-                onClick={() => openSupportChat(deliveryChatId)}
+                onClick={handleOpenChat}
                 type="button"
               >
                 💬{" "}
