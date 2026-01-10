@@ -6,6 +6,7 @@ const {
   OrderDecline,
   Seller,
   User,
+  Chat,
 } = require("../models/models");
 const {
   sendOrderToNextCourier,
@@ -60,7 +61,6 @@ function getPrepLeftSec(order, nowMs) {
   return Math.floor((endMs - nowMs) / 1000);
 }
 
-// ВАЖНО: тут считаем курьеров рядом (0 или 1 — ок)
 async function countNearOnlineCouriersMeters(
   pickupLat,
   pickupLng,
@@ -242,9 +242,8 @@ class CourierController {
       if (!courierId)
         return res.status(401).json({ message: "Вы не авторизованы." });
 
-      // настройки
-      const ACCEPT_RADIUS_KM = 30; // тест: насколько далеко можно самозабрать
-      const NEAR_RADIUS_KM = 1; // рядом с заведением: сколько курьеров вокруг
+      const ACCEPT_RADIUS_KM = 30;
+      const NEAR_RADIUS_KM = 1;
 
       const courier = await Courier.findByPk(courierId, {
         attributes: ["id", "status", "currentLat", "currentLng"],
@@ -312,8 +311,8 @@ class CourierController {
       }
 
       for (const [sellerId, pack] of bucketBySeller.entries()) {
-  const order = pack.best;
-  const ordersCount = pack.count;
+        const order = pack.best;
+        const ordersCount = pack.count;
 
         const s =
           Number(sellerId) === 0
@@ -345,9 +344,9 @@ class CourierController {
         const canShow = distanceKm <= ACCEPT_RADIUS_KM && nearCouriers <= 1;
 
         const prepLeftSec =
-    order.status === "Ready for pickup"
-      ? (pack.bestLeft ?? -1)
-      : pack.bestLeft;
+          order.status === "Ready for pickup"
+            ? pack.bestLeft ?? -1
+            : pack.bestLeft;
 
         out.push({
           sellerId,
@@ -390,13 +389,12 @@ class CourierController {
 
       const { id } = req.params;
 
-      const ACCEPT_RADIUS_KM = 30; // тест
-      const NEAR_RADIUS_KM = 1; // "возле заведения" (можешь 0.5)
+      const ACCEPT_RADIUS_KM = 30;
+      const NEAR_RADIUS_KM = 1;
 
       const order = await Order.findByPk(id);
       if (!order) return res.status(404).json({ message: "Заказ не найден." });
 
-      // заказ должен быть свободен и в нужном статусе
       const allowedStatuses = new Set([
         "Waiting for courier",
         "Ready for pickup",
@@ -458,10 +456,9 @@ class CourierController {
 
       const { id } = req.params;
 
-      const ACCEPT_RADIUS_KM = 30; // тест
+      const ACCEPT_RADIUS_KM = 30;
       const NEAR_RADIUS_KM = 1;
 
-      // ВАЖНО: берём заказ свежим
       const order = await Order.findByPk(id);
       if (!order) return res.status(404).json({ message: "Заказ не найден." });
 
@@ -516,13 +513,11 @@ class CourierController {
           .json({ message: "Возле заведения уже достаточно курьеров." });
       }
 
-      // Принятие (как у тебя)
       order.courierId = courierId;
       order.acceptedAt = new Date();
       order.offerCourierId = null;
       order.offerExpiresAt = null;
 
-      // parcel / not parcel — статус как тебе нужно
       if (order.orderType === "parcel") order.status = "Accepted";
       else
         order.status =
@@ -530,8 +525,28 @@ class CourierController {
 
       await order.save();
 
-      // socket события можно те же что у тебя
       const io = req.app.get("io");
+
+      let chat = await Chat.findOne({
+        where: { type: "delivery", orderId: order.id },
+      });
+      if (!chat)
+        chat = await Chat.create({ type: "delivery", orderId: order.id });
+
+      await ChatParticipant.findOrCreate({
+        where: { chatId: chat.id, userId: order.userId },
+        defaults: { chatId: chat.id, userId: order.userId, role: "customer" },
+      });
+      await ChatParticipant.findOrCreate({
+        where: { chatId: chat.id, userId: courierId },
+        defaults: { chatId: chat.id, userId: courierId, role: "courier" },
+      });
+
+      io.to(`order:${order.id}`).emit("deliveryChatReady", {
+        orderId: order.id,
+        chatId: chat.id,
+      });
+
       io.to(`order:${order.id}`).emit("orderStatusUpdate", {
         id: order.id,
         status: order.status,
@@ -962,12 +977,32 @@ class CourierController {
 
       await order.save();
 
+      const io = req.app.get("io");
+
+      let chat = await Chat.findOne({
+        where: { type: "delivery", orderId: order.id },
+      });
+      if (!chat)
+        chat = await Chat.create({ type: "delivery", orderId: order.id });
+
+      await ChatParticipant.findOrCreate({
+        where: { chatId: chat.id, userId: order.userId },
+        defaults: { chatId: chat.id, userId: order.userId, role: "customer" },
+      });
+      await ChatParticipant.findOrCreate({
+        where: { chatId: chat.id, userId: courierId },
+        defaults: { chatId: chat.id, userId: courierId, role: "courier" },
+      });
+
+      io.to(`order:${order.id}`).emit("deliveryChatReady", {
+        orderId: order.id,
+        chatId: chat.id,
+      });
+
       await Courier.increment("offersAccepted", {
         by: 1,
         where: { id: courierId },
       });
-
-      const io = req.app.get("io");
 
       io.to(`order:${order.id}`).emit("orderStatusUpdate", {
         id: order.id,
