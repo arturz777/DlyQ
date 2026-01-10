@@ -7,6 +7,7 @@ const {
   Seller,
   User,
   Chat,
+  ChatParticipant,
 } = require("../models/models");
 const {
   sendOrderToNextCourier,
@@ -535,7 +536,7 @@ class CourierController {
 
       await ChatParticipant.findOrCreate({
         where: { chatId: chat.id, userId: order.userId },
-        defaults: { chatId: chat.id, userId: order.userId, role: "customer" },
+        defaults: { chatId: chat.id, userId: order.userId, role: "client" }
       });
       await ChatParticipant.findOrCreate({
         where: { chatId: chat.id, userId: courierId },
@@ -987,7 +988,7 @@ class CourierController {
 
       await ChatParticipant.findOrCreate({
         where: { chatId: chat.id, userId: order.userId },
-        defaults: { chatId: chat.id, userId: order.userId, role: "customer" },
+        defaults: { chatId: chat.id, userId: order.userId, role: "client" }
       });
       await ChatParticipant.findOrCreate({
         where: { chatId: chat.id, userId: courierId },
