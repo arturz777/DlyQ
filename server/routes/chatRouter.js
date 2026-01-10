@@ -1,8 +1,10 @@
-const Router = require("express");
+const { Router } = require("express");
 const router = new Router();
 const chatController = require("../controllers/chatController");
+const authMiddleware = require("../middleware/authMiddleware");
 
-router.get("/delivery/:orderId", chatController.getOrCreateDeliveryChat);
+router.get("/delivery/:orderId", authMiddleware, chatController.getOrCreateDeliveryChat);
+
 router.get("/user/:userId", chatController.getUserChats);
 router.post("/", chatController.createChat);
 router.get("/:chatId/messages", chatController.getMessages);
