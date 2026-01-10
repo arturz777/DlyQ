@@ -1,11 +1,16 @@
-const { ChatMessage } = require("../models/models");
+const { ChatMessage, ChatParticipant } = require("../models/models");
 
 module.exports = function chatSocket(io, socket) {
   console.log("💬 chat socket init:", socket.id);
 
-  socket.on("joinChat", (chatId) => {
-    socket.join(`chat_${chatId}`);
-  });
+  socket.on("joinChat", async ({ chatId, userId }) => {
+  if (!chatId || !userId) return;
+
+  const ok = await ChatParticipant.findOne({ where: { chatId, userId } });
+  if (!ok) return;
+
+  socket.join(`chat_${chatId}`);
+});
 
   socket.on("joinAdminNotifications", () => {
     socket.join("admin_notifications");
@@ -30,7 +35,6 @@ module.exports = function chatSocket(io, socket) {
     }
   });
 
-  // ВАЖНО: не шлём всем подряд
   socket.on("readMessages", ({ chatId, userId }) => {
     io.to(`chat_${chatId}`).emit("readMessages", { chatId, userId });
   });
