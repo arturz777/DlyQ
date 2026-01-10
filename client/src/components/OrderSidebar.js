@@ -15,6 +15,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { fetchActiveOrder, updateOrderStatus } from "../http/orderAPI";
 import { fetchDeliveryChat } from "../http/chatAPI";
+import { ChatContext } from "../context/ChatContext";
 import { useTranslation } from "react-i18next";
 import styles from "./OrderSidebar.module.css";
 import { socket } from "../socket";
@@ -38,47 +39,50 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const courierMarkerRef = useRef(null);
   const orderRef = useRef(null);
   const [deliveryChatId, setDeliveryChatId] = useState(null);
+  const { openSupportChat } = useContext(ChatContext);
 
   const userId = user.user?.id;
 
   useEffect(() => {
-  const onChatReady = ({ orderId, chatId }) => {
-    if (!orderRef.current?.id) return;
-    if (orderRef.current.id !== orderId) return;
-    if (!chatId || !userId) return;
+    const onChatReady = ({ orderId, chatId }) => {
+      if (!orderRef.current?.id) return;
+      if (orderRef.current.id !== orderId) return;
+      if (!chatId || !userId) return;
 
-    setDeliveryChatId(chatId);
-    socket.emit("joinChat", { chatId, userId });
-  };
+      setDeliveryChatId(chatId);
+      socket.emit("joinChat", { chatId, userId });
+    };
 
-  socket.on("deliveryChatReady", onChatReady);
-  return () => socket.off("deliveryChatReady", onChatReady);
-}, [userId]);
+    socket.on("deliveryChatReady", onChatReady);
+    return () => socket.off("deliveryChatReady", onChatReady);
+  }, [userId]);
 
-useEffect(() => {
-  if (!order?.id) return;
-  if (!order?.courierId) return;
-  if (!userId) return;
+  useEffect(() => {
+    if (!order?.id) return;
+    if (!order?.courierId) return;
+    if (!userId) return;
 
-  let cancelled = false;
+    let cancelled = false;
 
-  (async () => {
-    try {
-      const data = await fetchDeliveryChat(order.id);
-      if (cancelled) return;
+    (async () => {
+      try {
+        const data = await fetchDeliveryChat(order.id);
+        if (cancelled) return;
 
-      setDeliveryChatId(data?.chatId || null);
+        setDeliveryChatId(data?.chatId || null);
 
-      if (data?.chatId) {
-        socket.emit("joinChat", { chatId: data.chatId, userId });
+        if (data?.chatId) {
+          socket.emit("joinChat", { chatId: data.chatId, userId });
+        }
+      } catch (e) {
+        console.log("fetchDeliveryChat web error:", e?.message || e);
       }
-    } catch (e) {
-      console.log("fetchDeliveryChat web error:", e?.message || e);
-    }
-  })();
+    })();
 
-  return () => { cancelled = true; };
-}, [order?.id, order?.courierId, userId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [order?.id, order?.courierId, userId]);
 
   useEffect(() => {
     orderRef.current = order;
@@ -596,6 +600,15 @@ useEffect(() => {
                   🚗 {formatTime(timeLeft)}
                 </p>
               )}
+
+            {deliveryChatId && (
+              <button
+                className={styles.chatButton}
+                onClick={() => openSupportChat(deliveryChatId)}
+              >
+                💬 Чат с курьером
+              </button>
+            )}
 
             <div className={styles.mapContainer}>
               {hasDelivery ? (
