@@ -5,8 +5,7 @@ import { Context } from "../../index";
 import styles from "./ChatModal.module.css";
 
 const ChatModal = () => {
-  const { supportChatVisible, supportChatId, closeSupportChat } =
-    useContext(ChatContext);
+  const { chatVisible, chatId, chatMode, closeChat } = useContext(ChatContext);
   const { user } = useContext(Context);
 
   if (!supportChatVisible) return null;
@@ -27,7 +26,8 @@ const ChatModal = () => {
         <ChatBox
           userId={fallbackUser.id}
           userRole={fallbackUser.role}
-          chatId={supportChatId}
+          chatId={chatId}
+          showHistory={chatMode === "support"}
         />
       </div>
     </div>
