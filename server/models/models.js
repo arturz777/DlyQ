@@ -284,6 +284,8 @@ const Order = sequelize.define(
     deliveryLat: { type: DataTypes.FLOAT, allowNull: true },
     deliveryLng: { type: DataTypes.FLOAT, allowNull: true },
     deliveryAddress: { type: DataTypes.STRING, allowNull: false },
+    deliveryChatId: { type: DataTypes.BIGINT, allowNull: true },
+    restaurantChatId: { type: DataTypes.BIGINT, allowNull: true },
     orderType: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -395,11 +397,19 @@ const Chat = sequelize.define(
   "chat",
   {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    type: { type: DataTypes.ENUM("support", "delivery"), allowNull: false },
+    type: {
+      type: DataTypes.ENUM("support", "delivery", "restaurant"),
+      allowNull: false,
+    },
     orderId: { type: DataTypes.INTEGER, allowNull: true },
+    closedAt: { type: DataTypes.DATE, allowNull: true },
+    supportKey: { type: DataTypes.STRING, allowNull: true },
   },
   {
-    indexes: [{ unique: true, fields: ["type", "orderId"] }],
+    indexes: [
+      { unique: true, fields: ["type", "orderId"] },
+      { unique: true, fields: ["type", "supportKey"] },
+    ],
   }
 );
 
@@ -581,6 +591,9 @@ ChatMessage.belongsTo(Chat, { foreignKey: "chatId" });
 
 User.hasMany(ChatParticipant, { foreignKey: "userId" });
 ChatParticipant.belongsTo(User, { foreignKey: "userId", as: "user" });
+
+Order.belongsTo(Chat, { as: "deliveryChat", foreignKey: "deliveryChatId" });
+Order.belongsTo(Chat, { as: "restaurantChat", foreignKey: "restaurantChatId" });
 
 User.belongsToMany(Seller, {
   through: SellerUser,
