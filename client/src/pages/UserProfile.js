@@ -96,13 +96,11 @@ const UserProfile = () => {
   const handleProductClick = (product) => {
     if (!product) return;
 
-    // ✅ блюдо
     if (product.isRestaurantItem || product.menuItemId) {
       setSelectedDish(product);
       return;
     }
 
-    // ✅ девайс
     const deviceId =
       product.deviceId || product.device_id || product.id || product.device?.id;
 
@@ -114,16 +112,11 @@ const UserProfile = () => {
   return (
     <div className={styles.shopWrapper}>
       <div className={styles.mainContent}>
-        <div className={styles.buttonsContainer}>
-          <OrderSidebar
-            isSidebarOpen={isSidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-          />
-        </div>
+        <div className={styles.buttonsContainer}></div>
 
         <button
           className={styles.openSidebarButton}
-          onClick={() => setSidebarOpen(true)}
+          onClick={() => window.dispatchEvent(new Event("openOrderSidebar"))}
         >
           {t("order", { ns: "userProfile" })}
         </button>
