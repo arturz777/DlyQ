@@ -8,9 +8,10 @@ import styles from "./ChatBox.module.css";
 const ChatBox = ({
   userId,
   userRole,
-  forceOpenChatId = null,
   chatId = null,
+  forceOpenChatId = null,
   onUnreadChange,
+  showHistory = true,
 }) => {
   const [activeChatId, setActiveChatId] = useState(chatId || forceOpenChatId);
   const [chats, setChats] = useState([]);
@@ -31,6 +32,8 @@ const ChatBox = ({
   }, [chatId, forceOpenChatId]);
 
   useEffect(() => {
+    if (!showHistory) return;
+    
     const loadChats = () => {
       fetch(`https://dlyq-backend-staging.onrender.com/api/chat/user/${userId}`)
         .then((res) => res.json())
@@ -53,7 +56,7 @@ const ChatBox = ({
     };
 
     loadChats();
-  }, [userId, forceOpenChatId, view]);
+  }, [userId, forceOpenChatId, view, showHistory]);
 
   useEffect(() => {
     if (!activeChatId) return;
@@ -228,7 +231,7 @@ const ChatBox = ({
   messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 }, [messages]);
 
-  return (
+ return (
     <div className={styles.chatWrapper}>
       <div className={styles.chatHeader}>
         <button className={styles.closeButton} onClick={closeSupportChat}>
@@ -236,20 +239,21 @@ const ChatBox = ({
         </button>
       </div>
 
-      <button onClick={() => setView(view === "chat" ? "history" : "chat")}>
-        {view === "chat" ? (
-          <>
-            {t("historyLabel", { ns: "chatBox" })}{" "}
-            {unreadChats.size > 0 && (
-              <span className={styles.unreadDotButton} />
-            )}
-          </>
-        ) : (
-         t("back", { ns: "chatBox" })
-        )}
-      </button>
-
-      {view === "history" ? (
+      {showHistory && (
+        <button onClick={() => setView(view === "chat" ? "history" : "chat")}>
+          {view === "chat" ? (
+            <>
+              {t("historyLabel", { ns: "chatBox" })}{" "}
+              {unreadChats.size > 0 && (
+                <span className={styles.unreadDotButton} />
+              )}
+            </>
+          ) : (
+            t("back", { ns: "chatBox" })
+          )}
+        </button>
+      )}
+      {showHistory && view === "history" ? (
         <div className={styles.sidebar}>
           <h4>{t("chatHistoryTitle", { ns: "chatBox" })}</h4>
           {chats
