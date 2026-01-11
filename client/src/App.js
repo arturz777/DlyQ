@@ -25,6 +25,20 @@ const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
 
 const AppLayout = observer(() => {
   const location = useLocation();
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+
+    useEffect(() => {
+  const open = () => setSidebarOpen(true);
+  const close = () => setSidebarOpen(false);
+
+  window.addEventListener("openOrderSidebar", open);
+  window.addEventListener("closeOrderSidebar", close);
+
+  return () => {
+    window.removeEventListener("openOrderSidebar", open);
+    window.removeEventListener("closeOrderSidebar", close);
+  };
+}, []);
 
   function useMediaQuery(query) {
     const getMatch = () =>
@@ -64,10 +78,15 @@ const AppLayout = observer(() => {
     <>
       {appStore.isLoading && <LoadingBar />}
 
-      <Elements stripe={stripePromise}>
+       <Elements stripe={stripePromise}>
         {!hideDesktopNavBar && <NavBar />}
         <AppRouter />
-        {!hideLayout && <OrderSidebar />}
+        {!hideLayout && (
+          <OrderSidebar
+            isSidebarOpen={isSidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+          />
+        )}
       </Elements>
 
       {!hideLayout && (
