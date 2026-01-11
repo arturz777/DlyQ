@@ -21,7 +21,6 @@ import {
 import { useTranslation } from "react-i18next";
 import DeviceItem from "../components/DeviceItem";
 import DeviceList from "../components/DeviceList";
-import OrderSidebar from "../components/OrderSidebar";
 import SlideModal from "../components/modals/SlideModal";
 import styles from "./Shop.module.css";
 import catalogStyles from "./CatalogPage.module.css";
@@ -40,7 +39,6 @@ const Shop = () => {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   const bottomRef = useRef(null);
@@ -324,11 +322,6 @@ const Shop = () => {
           ))
         )}
       </div>
-
-      <OrderSidebar
-        isSidebarOpen={isSidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-      />
 
       <section className={styles.section}>
         <h2>{t("discounts", { ns: "homePage" })}</h2>
