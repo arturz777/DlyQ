@@ -536,7 +536,7 @@ class CourierController {
 
       await ChatParticipant.findOrCreate({
         where: { chatId: chat.id, userId: order.userId },
-        defaults: { chatId: chat.id, userId: order.userId, role: "client" }
+        defaults: { chatId: chat.id, userId: order.userId, role: "client" },
       });
       await ChatParticipant.findOrCreate({
         where: { chatId: chat.id, userId: courierId },
@@ -926,6 +926,8 @@ class CourierController {
 
       const order = await Order.findByPk(id);
 
+      if (!order) return res.status(404).json({ message: "Заказ не найден." });
+
       if (order.courierId && String(order.courierId) !== String(courierId)) {
         return res.status(400).json({ message: "Заказ уже занят." });
       }
@@ -986,9 +988,14 @@ class CourierController {
       if (!chat)
         chat = await Chat.create({ type: "delivery", orderId: order.id });
 
+      if (!order.deliveryChatId) {
+        order.deliveryChatId = chat.id;
+        await order.save();
+      }
+
       await ChatParticipant.findOrCreate({
         where: { chatId: chat.id, userId: order.userId },
-        defaults: { chatId: chat.id, userId: order.userId, role: "client" }
+        defaults: { chatId: chat.id, userId: order.userId, role: "client" },
       });
       await ChatParticipant.findOrCreate({
         where: { chatId: chat.id, userId: courierId },
