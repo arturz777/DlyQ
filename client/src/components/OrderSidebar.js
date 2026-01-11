@@ -14,7 +14,7 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { fetchActiveOrder, updateOrderStatus } from "../http/orderAPI";
-import { fetchDeliveryChat } from "../http/chatAPI";
+import { fetchDeliveryChat, fetchSellerChat } from "../http/chatAPI";
 import { ChatContext } from "../context/ChatContext";
 import { useTranslation } from "react-i18next";
 import styles from "./OrderSidebar.module.css";
@@ -22,7 +22,18 @@ import { socket } from "../socket";
 
 const WAREHOUSE_LOCATION = { lat: 59.51372, lng: 24.828888 };
 
-const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
+const OrderSidebar = ({
+  isSidebarOpen: controlledOpen,
+  setSidebarOpen: controlledSetOpen,
+}) => {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+
+  const isControlled =
+    typeof controlledOpen === "boolean" &&
+    typeof controlledSetOpen === "function";
+
+  const isSidebarOpen = isControlled ? controlledOpen : uncontrolledOpen;
+  const setSidebarOpen = isControlled ? controlledSetOpen : setUncontrolledOpen;
   const { user } = useContext(Context);
   const [order, setOrder] = useState(null);
   const [showIcon, setShowIcon] = useState(false);
@@ -39,29 +50,37 @@ const OrderSidebar = ({ isSidebarOpen, setSidebarOpen }) => {
   const courierMarkerRef = useRef(null);
   const orderRef = useRef(null);
   const [deliveryChatId, setDeliveryChatId] = useState(null);
-  const { openSupportChat } = useContext(ChatContext);
-  const [pendingChatId, setPendingChatId] = useState(null);
+  const { openChat } = useContext(ChatContext);
+  const [sellerChatId, setSellerChatId] = useState(null);
+  const [pendingChat, setPendingChat] = useState(null);
 
   const userId = user.user?.id;
 
-  const handleOpenChat = () => {
-  if (!deliveryChatId) return;
-  setPendingChatId(deliveryChatId);
-  setSidebarOpen(false);
-};
+  const requestOpenChat = (id, kind) => {
+    if (!id) return;
+    setPendingChat({ id, kind });
+    setSidebarOpen(false);
+  };
 
-useEffect(() => {
-  if (!isSidebarOpen && pendingChatId) {
-    openSupportChat(pendingChatId);
-    setPendingChatId(null);
-  }
-}, [isSidebarOpen, pendingChatId, openSupportChat]);
+  useEffect(() => {
+    if (!isSidebarOpen && pendingChat?.id) {
+      openChat(pendingChat.id, pendingChat.kind);
+      setPendingChat(null);
+    }
+  }, [isSidebarOpen, pendingChat, openChat]);
 
   const canShowChat = (o) => {
     if (!o) return false;
     if (!o.courierId) return false;
     if (o.accepted === true) return true;
     return isOrderAccepted(o);
+  };
+
+  const canShowSellerChat = (o) => {
+    if (!o) return false;
+    if (o.orderType === "parcel") return false;
+    if (!o.sellerId) return false;
+    return true;
   };
 
   useEffect(() => {
@@ -75,6 +94,19 @@ useEffect(() => {
 
     socket.on("deliveryChatReady", onChatReady);
     return () => socket.off("deliveryChatReady", onChatReady);
+  }, [userId]);
+
+  useEffect(() => {
+    const onSellerChatReady = ({ orderId, chatId }) => {
+      if (orderId !== orderRef.current?.id) return;
+      if (!chatId || !userId) return;
+
+      setSellerChatId(chatId);
+      socket.emit("joinChat", { chatId, userId });
+    };
+
+    socket.on("sellerChatReady", onSellerChatReady);
+    return () => socket.off("sellerChatReady", onSellerChatReady);
   }, [userId]);
 
   const isOrderAccepted = (o) => {
@@ -117,8 +149,6 @@ useEffect(() => {
         const data = await fetchDeliveryChat(order.id);
         if (cancelled) return;
 
-        console.log("fetchDeliveryChat ->", data);
-
         const chatId = data?.chatId ?? data?.id ?? null;
         setDeliveryChatId(chatId);
 
@@ -139,6 +169,35 @@ useEffect(() => {
     order?.courierId,
     userId,
   ]);
+
+  useEffect(() => {
+    if (!order?.id || !userId) return;
+
+    if (!canShowSellerChat(order)) {
+      setSellerChatId(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await fetchSellerChat(order.id);
+        if (cancelled) return;
+
+        const chatId = data?.chatId ?? data?.id ?? null;
+        setSellerChatId(chatId);
+
+        if (chatId) socket.emit("joinChat", { chatId, userId });
+      } catch (e) {
+        console.log("fetchSellerChat web error:", e?.message || e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [order?.id, order?.status, order?.sellerId, userId]);
 
   useEffect(() => {
     orderRef.current = order;
@@ -530,7 +589,7 @@ useEffect(() => {
 
   return (
     <>
-      {showIcon && setSidebarOpen && (
+      {showIcon && !isSidebarOpen && (
         <div
           className={styles.floatingIcon}
           onClick={() => setSidebarOpen(true)}
@@ -546,13 +605,27 @@ useEffect(() => {
             {isSidebarOpen && canShowChat(order) && deliveryChatId && (
               <button
                 className={styles.chatButton}
-                onClick={handleOpenChat}
+                onClick={() => requestOpenChat(deliveryChatId, "delivery")}
                 type="button"
               >
                 💬{" "}
                 {t("chatWithCourier", {
                   ns: "orderSidebar",
                   defaultValue: "Чат с курьером",
+                })}
+              </button>
+            )}
+
+            {isSidebarOpen && canShowSellerChat(order) && sellerChatId && (
+              <button
+                className={styles.chatButton}
+                onClick={() => requestOpenChat(sellerChatId, "seller")}
+                type="button"
+              >
+                🍔{" "}
+                {t("chatWithRestaurant", {
+                  ns: "orderSidebar",
+                  defaultValue: "Чат с рестораном",
                 })}
               </button>
             )}
