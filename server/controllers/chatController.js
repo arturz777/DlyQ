@@ -9,29 +9,33 @@ const { Op } = require("sequelize");
 
 class ChatController {
   async createChat(req, res) {
-    const { type, orderId, participants } = req.body;
+    try {
+      const { type, orderId, participants = [] } = req.body;
 
-    let existingChat = null;
-
-    if (type === "delivery" && orderId) {
-      existingChat = await Chat.findOne({ where: { type, orderId } });
-    }
-
-    if (!existingChat) {
-      const chat = await Chat.create({ type, orderId });
-
-      for (const p of participants) {
-        await ChatParticipant.create({
-          chatId: chat.id,
-          userId: p.userId,
-          role: p.role,
-        });
+      let existingChat = null;
+      if (type === "delivery" && orderId) {
+        existingChat = await Chat.findOne({ where: { type, orderId } });
       }
 
-      return res.json(chat);
-    }
+      if (!existingChat) {
+        const chat = await Chat.create({ type, orderId });
 
-    return res.json(existingChat);
+        for (const p of participants) {
+          await ChatParticipant.create({
+            chatId: chat.id,
+            userId: p.userId,
+            role: p.role,
+          });
+        }
+
+        return res.json(chat);
+      }
+
+      return res.json(existingChat);
+    } catch (e) {
+      console.error("createChat error:", e);
+      return res.status(500).json({ message: "Server error" });
+    }
   }
 
   async getOrCreateDeliveryChat(req, res) {
