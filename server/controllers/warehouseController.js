@@ -190,6 +190,25 @@ class WarehouseController {
       order.status = "Waiting for courier";
       await order.save();
 
+      const [restaurantChat] = await Chat.findOrCreate({
+        where: { type: "restaurant", orderId: order.id },
+        defaults: { type: "restaurant", orderId: order.id },
+      });
+
+      if (!order.restaurantChatId) {
+        order.restaurantChatId = restaurantChat.id;
+        await order.save();
+      }
+
+      await ChatParticipant.findOrCreate({
+        where: { chatId: restaurantChat.id, userId: req.user.id },
+        defaults: {
+          chatId: restaurantChat.id,
+          userId: req.user.id,
+          role: "warehouse",
+        },
+      });
+
       const io = req.app.get("io");
       io.to(`order:${order.id}`).emit("orderStatusUpdate", {
         id: order.id,
