@@ -583,7 +583,7 @@ const createOrder = async (req, res) => {
 
     await order.update({
       deliveryChatId: deliveryChat.id,
-      restaurantChatId: sellerChat.id,
+      sellerChatId: sellerChat.id,
     });
 
     if (order.userId) {
