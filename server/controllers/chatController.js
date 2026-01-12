@@ -4,6 +4,7 @@ const {
   ChatMessage,
   User,
   Order,
+  SellerUser,
 } = require("../models/models");
 const { Op } = require("sequelize");
 
@@ -14,8 +15,7 @@ function normalizeChatRole(appRole) {
     admin: "admin",
     courier: "courier",
     warehouse: "warehouse",
-    seller: "restaurant",
-    restaurant: "restaurant",
+    seller: "seller",
   };
   const role = String(appRole || "").toLowerCase();
   return map[role] || "client";
@@ -26,7 +26,7 @@ class ChatController {
     try {
       const { type, orderId, participants = [] } = req.body;
 
-      if (!["delivery", "restaurant", "support"].includes(type)) {
+      if (!["delivery", "seller", "warehouse", "support"].includes(type)) {
         return res.status(400).json({ message: "Bad type" });
       }
 
@@ -87,8 +87,8 @@ class ChatController {
       return res.status(403).json({ message: "Forbidden" });
 
     const chat = await Chat.findOrCreate({
-      where: { type: "restaurant", orderId },
-      defaults: { type: "restaurant", orderId },
+      where: { type: "seller", orderId },
+      defaults: { type: "seller", orderId },
     }).then(([c]) => c);
 
     if (chat.closedAt)
