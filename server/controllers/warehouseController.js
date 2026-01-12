@@ -1,4 +1,11 @@
-const { Order, Warehouse, SellerUser } = require("../models/models");
+const {
+  Order,
+  Warehouse,
+  SellerUser,
+  Chat,
+  ChatParticipant,
+} = require("../models/models");
+
 const { Op } = require("sequelize");
 const { sendOrderAssignedPush } = require("../services/pushService");
 const { scheduleCourierSearch } = require("../services/courierSearchScheduler");
@@ -190,20 +197,20 @@ class WarehouseController {
       order.status = "Waiting for courier";
       await order.save();
 
-      const [restaurantChat] = await Chat.findOrCreate({
-        where: { type: "restaurant", orderId: order.id },
-        defaults: { type: "restaurant", orderId: order.id },
+      const [sellerChat] = await Chat.findOrCreate({
+        where: { type: "seller", orderId: order.id },
+        defaults: { type: "seller", orderId: order.id },
       });
 
-      if (!order.restaurantChatId) {
-        order.restaurantChatId = restaurantChat.id;
+      if (!order.sellerChatId) {
+        order.sellerChatId = sellerChat.id;
         await order.save();
       }
 
       await ChatParticipant.findOrCreate({
-        where: { chatId: restaurantChat.id, userId: req.user.id },
+        where: { chatId: sellerChat.id, userId: req.user.id },
         defaults: {
-          chatId: restaurantChat.id,
+          chatId: sellerChat.id,
           userId: req.user.id,
           role: "warehouse",
         },
