@@ -35,7 +35,7 @@ const ChatBox = ({
     if (!showHistory) return;
 
     const loadChats = () => {
-      fetch(`http://localhost:5000/api/chat/user/${userId}`)
+      fetch(`https://dlyq-backend-staging.onrender.com/chat/user/${userId}`)
         .then((res) => res.json())
         .then((data) => {
           setChats(data);
@@ -69,7 +69,7 @@ const ChatBox = ({
       if (!chatExists) {
         try {
           const res = await fetch(
-            `http://localhost:5000/api/chat/${msg.chatId}`
+            `https://dlyq-backend-staging.onrender.com/chat/${msg.chatId}`
           );
           const newChat = await res.json();
           setChats((prev) => [newChat, ...prev]);
@@ -101,7 +101,7 @@ const ChatBox = ({
 
     socket.on("receiveMessage", handleMessage);
 
-    fetch(`http://localhost:5000/api/chat/${activeChatId}/messages`)
+    fetch(`https://dlyq-backend-staging.onrender.com/chat/${activeChatId}/messages`)
       .then((res) => res.json())
       .then(setMessages)
       .catch(console.error);
@@ -122,7 +122,7 @@ const ChatBox = ({
       if (!exists) {
         try {
           const res = await fetch(
-            `http://localhost:5000/api/chat/${msg.chatId}`
+            `https://dlyq-backend-staging.onrender.com/chat/${msg.chatId}`
           );
           const newChat = await res.json();
 
@@ -174,7 +174,7 @@ const ChatBox = ({
     });
     setView("chat");
 
-    await fetch(`http://localhost:5000/api/chat/${id}/mark-read`, {
+    await fetch(`https://dlyq-backend-staging.onrender.com/chat/${id}/mark-read`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId }),
@@ -194,7 +194,7 @@ const ChatBox = ({
       : "client";
 
     if (!chatId) {
-      const res = await fetch(`http://localhost:5000/api/chat`, {
+      const res = await fetch(`https://dlyq-backend-staging.onrender.com/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
