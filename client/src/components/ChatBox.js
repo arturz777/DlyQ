@@ -5,6 +5,8 @@ import { socket } from "../socket";
 import { useTranslation } from "react-i18next";
 import styles from "./ChatBox.module.css";
 
+const API = process.env.REACT_APP_API_URL;
+
 const ChatBox = ({
   userId,
   userRole,
@@ -12,13 +14,13 @@ const ChatBox = ({
   forceOpenChatId = null,
   onUnreadChange,
   showHistory = true,
+  onClose,
 }) => {
   const [activeChatId, setActiveChatId] = useState(chatId || forceOpenChatId);
   const [chats, setChats] = useState([]);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [view, setView] = useState("chat");
-  const { closeSupportChat } = useContext(ChatContext);
   const [unreadChats, setUnreadChats] = useState(new Set());
   const messagesEndRef = useRef(null);
   const { t, i18n } = useTranslation();
@@ -35,7 +37,7 @@ const ChatBox = ({
     if (!showHistory) return;
 
     const loadChats = () => {
-      fetch(`https://dlyq-backend-staging.onrender.com/chat/user/${userId}`)
+      fetch(`${API}/api/chat/user/${userId}`)
         .then((res) => res.json())
         .then((data) => {
           setChats(data);
@@ -69,7 +71,7 @@ const ChatBox = ({
       if (!chatExists) {
         try {
           const res = await fetch(
-            `https://dlyq-backend-staging.onrender.com/chat/${msg.chatId}`
+            `${API}/chat/${msg.chatId}`
           );
           const newChat = await res.json();
           setChats((prev) => [newChat, ...prev]);
@@ -101,7 +103,7 @@ const ChatBox = ({
 
     socket.on("receiveMessage", handleMessage);
 
-    fetch(`https://dlyq-backend-staging.onrender.com/chat/${activeChatId}/messages`)
+    fetch(`${API}/chat/${activeChatId}/messages`)
       .then((res) => res.json())
       .then(setMessages)
       .catch(console.error);
@@ -122,7 +124,7 @@ const ChatBox = ({
       if (!exists) {
         try {
           const res = await fetch(
-            `https://dlyq-backend-staging.onrender.com/chat/${msg.chatId}`
+            `${API}/chat/${msg.chatId}`
           );
           const newChat = await res.json();
 
@@ -174,7 +176,7 @@ const ChatBox = ({
     });
     setView("chat");
 
-    await fetch(`https://dlyq-backend-staging.onrender.com/chat/${id}/mark-read`, {
+    await fetch(`${API}/chat/${id}/mark-read`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId }),
@@ -194,25 +196,11 @@ const ChatBox = ({
       : "client";
 
     if (!chatId) {
-      const res = await fetch(`https://dlyq-backend-staging.onrender.com/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "support",
-          participants: [
-            {
-              userId,
-              role: normalizeChatRole(userRole),
-            },
-            { userId: 1, role: "admin" },
-          ],
-        }),
-      });
-      const chat = await res.json();
-      chatId = chat.id;
-      setChats((prev) => [chat, ...prev]);
+      const res = await $authHost.get("/chat/support");
+      chatId = res.data.chatId;
       setActiveChatId(chatId);
     }
+    socket.emit("sendMessage", { chatId, text });
 
     const newMessage = {
       chatId,
