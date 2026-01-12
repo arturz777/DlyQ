@@ -599,7 +599,7 @@ User.hasMany(ChatParticipant, { foreignKey: "userId" });
 ChatParticipant.belongsTo(User, { foreignKey: "userId", as: "user" });
 
 Order.belongsTo(Chat, { as: "deliveryChat", foreignKey: "deliveryChatId" });
-Order.belongsTo(Chat, { as: "restaurantChat", foreignKey: "restaurantChatId" });
+Order.belongsTo(Chat, { as: "sellerChat", foreignKey: "sellerChatId" });
 
 User.belongsToMany(Seller, {
   through: SellerUser,
