@@ -597,9 +597,9 @@ const createOrder = async (req, res) => {
       });
 
       await ChatParticipant.findOrCreate({
-        where: { chatId: restaurantChat.id, userId: order.userId },
+        where: { chatId: sellerChat.id, userId: order.userId },
         defaults: {
-          chatId: restaurantChat.id,
+          chatId: sellerChat.id,
           userId: order.userId,
           role: "client",
         },
@@ -1092,7 +1092,7 @@ const adminUpdateOrderStatus = async (req, res) => {
     {
       where: {
         orderId: order.id,
-        type: { [Op.in]: ["delivery", "restaurant"] },
+        type: { [Op.in]: ["delivery", "seller"] },
         closedAt: { [Op.is]: null },
       },
     }
