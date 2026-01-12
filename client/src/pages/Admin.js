@@ -482,7 +482,7 @@ const Admin = () => {
   useEffect(() => {
     if (!user?.user?.id) return;
 
-    fetch(`https://api.dlyq.ee/api/chat/user/${user.user.id}`)
+    fetch(`https://api.dlyq.ee/chat/user/${user.user.id}`)
       .then((res) => res.json())
       .then((data) => {
         const unread = new Set();
@@ -720,7 +720,7 @@ const Admin = () => {
       alert("Заполните все поля!");
       return;
     }
-    const response = await fetch(`https://api.dlyq.ee/api/translations`, {
+    const response = await fetch(`https://api.dlyq.ee/translations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: newKey, lang: newLang, text: newText }),
