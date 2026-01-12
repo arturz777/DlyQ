@@ -27,18 +27,18 @@ const AppLayout = observer(() => {
   const location = useLocation();
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
-    useEffect(() => {
-  const open = () => setSidebarOpen(true);
-  const close = () => setSidebarOpen(false);
+  useEffect(() => {
+    const open = () => setSidebarOpen(true);
+    const close = () => setSidebarOpen(false);
 
-  window.addEventListener("openOrderSidebar", open);
-  window.addEventListener("closeOrderSidebar", close);
+    window.addEventListener("openOrderSidebar", open);
+    window.addEventListener("closeOrderSidebar", close);
 
-  return () => {
-    window.removeEventListener("openOrderSidebar", open);
-    window.removeEventListener("closeOrderSidebar", close);
-  };
-}, []);
+    return () => {
+      window.removeEventListener("openOrderSidebar", open);
+      window.removeEventListener("closeOrderSidebar", close);
+    };
+  }, []);
 
   function useMediaQuery(query) {
     const getMatch = () =>
@@ -78,7 +78,7 @@ const AppLayout = observer(() => {
     <>
       {appStore.isLoading && <LoadingBar />}
 
-       <Elements stripe={stripePromise}>
+      <Elements stripe={stripePromise}>
         {!hideDesktopNavBar && <NavBar />}
         <AppRouter />
         {!hideLayout && (
@@ -116,6 +116,27 @@ const App = observer(() => {
   const [loading, setLoading] = useState(true);
   const [supportChatVisible, setSupportChatVisible] = useState(false);
   const [supportChatId, setSupportChatId] = useState(1);
+   const [chatVisible, setChatVisible] = useState(false);
+  const [chatId, setChatId] = useState(null);
+  const [chatMode, setChatMode] = useState(null);
+
+   const openChat = (id, mode) => {
+    setChatId(id);
+    setChatMode(mode);
+    setChatVisible(true);
+  };
+
+  const closeChat = () => {
+    setChatVisible(false);
+    setChatId(null);
+    setChatMode(null);
+  };
+
+  const openSupportChat = () => {
+    setChatId(null);
+    setChatMode("support");
+    setChatVisible(true);
+  };
 
   const isAdmin =
     user.isAuth && (user.user?.role === "ADMIN" || user.user?.role === "admin");
@@ -125,7 +146,7 @@ const App = observer(() => {
 
   const fetchSupportChat = async (userId) => {
     const res = await fetch(
-      `${process.env.REACT_APP_API_URL}api/chat/support-chat`,
+      `${process.env.REACT_APP_API_URL}/chat/support-chat`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -133,11 +154,6 @@ const App = observer(() => {
       }
     );
     return await res.json();
-  };
-
-  const openSupportChat = () => {
-    setSupportChatId(null);
-    setSupportChatVisible(true);
   };
 
   const closeSupportChat = () => setSupportChatVisible(false);
@@ -183,10 +199,15 @@ const App = observer(() => {
   return (
     <ChatContext.Provider
       value={{
-        supportChatVisible,
-        supportChatId,
+        chatVisible,
+        chatId,
+        chatMode,
+        openChat,
+        closeChat,
+        supportChatVisible: chatVisible,
+        supportChatId: chatId,
         openSupportChat,
-        closeSupportChat,
+        closeSupportChat: closeChat,
       }}
     >
       <BrowserRouter>
