@@ -285,7 +285,7 @@ const Order = sequelize.define(
     deliveryLng: { type: DataTypes.FLOAT, allowNull: true },
     deliveryAddress: { type: DataTypes.STRING, allowNull: false },
     deliveryChatId: { type: DataTypes.BIGINT, allowNull: true },
-    restaurantChatId: { type: DataTypes.BIGINT, allowNull: true },
+    sellerChatId: { type: DataTypes.INTEGER, allowNull: true },
     orderType: {
       type: DataTypes.STRING,
       allowNull: false,
