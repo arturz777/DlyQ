@@ -575,14 +575,14 @@ const createOrder = async (req, res) => {
       defaults: { type: "delivery", orderId: order.id },
     });
 
-    const [restaurantChat] = await Chat.findOrCreate({
-      where: { type: "restaurant", orderId: order.id },
-      defaults: { type: "restaurant", orderId: order.id },
+    const [sellerChat] = await Chat.findOrCreate({
+      where: { type: "seller", orderId: order.id },
+      defaults: { type: "seller", orderId: order.id },
     });
 
     await order.update({
       deliveryChatId: deliveryChat.id,
-      restaurantChatId: restaurantChat.id,
+      restaurantChatId: sellerChat.id,
     });
 
     if (order.userId) {
@@ -878,7 +878,7 @@ const updateOrderStatus = async (req, res) => {
         {
           where: {
             orderId: order.id,
-            type: { [Op.in]: ["delivery", "restaurant"] },
+            type: { [Op.in]: ["delivery", "seller"] },
             closedAt: { [Op.is]: null },
           },
         }
