@@ -637,7 +637,7 @@ class CourierController {
             o.orderType === "parcel"
               ? "parcel"
               : seller
-              ? "restaurant"
+              ? "seller"
               : "market";
 
           return {
