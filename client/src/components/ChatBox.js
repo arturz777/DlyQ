@@ -33,9 +33,9 @@ const ChatBox = ({
 
   useEffect(() => {
     if (!showHistory) return;
-    
+
     const loadChats = () => {
-      fetch(`https://dlyq-backend-staging.onrender.com/api/chat/user/${userId}`)
+      fetch(`http://localhost:5000/api/chat/user/${userId}`)
         .then((res) => res.json())
         .then((data) => {
           setChats(data);
@@ -61,7 +61,7 @@ const ChatBox = ({
   useEffect(() => {
     if (!activeChatId) return;
 
-   socket.emit("joinChat", { chatId: activeChatId, userId });
+    socket.emit("joinChat", { chatId: activeChatId, userId });
 
     const handleMessage = async (msg) => {
       const chatExists = chats.some((chat) => chat.id === msg.chatId);
@@ -69,7 +69,7 @@ const ChatBox = ({
       if (!chatExists) {
         try {
           const res = await fetch(
-            `https://dlyq-backend-staging.onrender.com/api/chat/${msg.chatId}`
+            `http://localhost:5000/api/chat/${msg.chatId}`
           );
           const newChat = await res.json();
           setChats((prev) => [newChat, ...prev]);
@@ -101,7 +101,7 @@ const ChatBox = ({
 
     socket.on("receiveMessage", handleMessage);
 
-    fetch(`https://dlyq-backend-staging.onrender.com/api/chat/${activeChatId}/messages`)
+    fetch(`http://localhost:5000/api/chat/${activeChatId}/messages`)
       .then((res) => res.json())
       .then(setMessages)
       .catch(console.error);
@@ -122,13 +122,13 @@ const ChatBox = ({
       if (!exists) {
         try {
           const res = await fetch(
-            `https://dlyq-backend-staging.onrender.com/api/chat/${msg.chatId}`
+            `http://localhost:5000/api/chat/${msg.chatId}`
           );
           const newChat = await res.json();
 
           setChats((prev) => [newChat, ...prev]);
         } catch (error) {
-           console.error(t("errorLoadNewChat", { ns: "chatBox" }), error);
+          console.error(t("errorLoadNewChat", { ns: "chatBox" }), error);
         }
       } else {
         setChats((prevChats) =>
@@ -155,8 +155,8 @@ const ChatBox = ({
   }, [userRole]);
 
   const getSenderName = (msg) => {
-     if (msg.senderId === userId) return t("you", { ns: "chatBox" });
-  if (msg.senderRole === "admin") return "Support";
+    if (msg.senderId === userId) return t("you", { ns: "chatBox" });
+    if (msg.senderRole === "admin") return "Support";
 
     const chat = chats.find((c) => c.id === msg.chatId);
     const participant = chat?.participants?.find(
@@ -174,14 +174,14 @@ const ChatBox = ({
     });
     setView("chat");
 
-    await fetch(`https://dlyq-backend-staging.onrender.com/api/chat/${id}/mark-read`, {
+    await fetch(`http://localhost:5000/api/chat/${id}/mark-read`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId }),
     });
     socket.emit("readMessages", { chatId: id, userId });
   };
-  
+
   const handleSend = async () => {
     if (!text.trim()) return;
 
@@ -194,7 +194,7 @@ const ChatBox = ({
       : "client";
 
     if (!chatId) {
-      const res = await fetch(`https://dlyq-backend-staging.onrender.com/api/chat`, {
+      const res = await fetch(`http://localhost:5000/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -228,13 +228,13 @@ const ChatBox = ({
   };
 
   useEffect(() => {
-  messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-}, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
- return (
+  return (
     <div className={styles.chatWrapper}>
       <div className={styles.chatHeader}>
-        <button className={styles.closeButton} onClick={closeSupportChat}>
+        <button className={styles.closeButton} onClick={onClose}>
           ✖
         </button>
       </div>
