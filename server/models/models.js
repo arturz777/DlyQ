@@ -401,7 +401,6 @@ const Chat = sequelize.define(
       type: DataTypes.ENUM(
         "support",
         "delivery",
-        "restaurant",
         "seller",
         "warehouse"
       ),
