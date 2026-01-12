@@ -398,7 +398,13 @@ const Chat = sequelize.define(
   {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     type: {
-      type: DataTypes.ENUM("support", "delivery", "restaurant"),
+      type: DataTypes.ENUM(
+        "support",
+        "delivery",
+        "restaurant",
+        "seller",
+        "warehouse"
+      ),
       allowNull: false,
     },
     orderId: { type: DataTypes.INTEGER, allowNull: true },
