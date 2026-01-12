@@ -6,6 +6,7 @@ const {
   Translation,
   Courier,
   Chat,
+  ChatParticipant,
 } = require("../models/models");
 const { Op } = require("sequelize");
 const fs = require("fs");
