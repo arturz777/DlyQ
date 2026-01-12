@@ -56,68 +56,61 @@ class ChatController {
   }
 
   async getOrCreateSellerChat(req, res) {
-    try {
-      const orderId = Number(req.params.orderId);
-      const requesterId = req.user?.id;
+    const orderId = Number(req.params.orderId);
+    const requesterId = req.user?.id;
+    if (!requesterId) return res.status(401).json({ message: "Unauthorized" });
+    if (!orderId) return res.status(400).json({ message: "Bad orderId" });
 
-      if (!requesterId)
-        return res.status(401).json({ message: "Unauthorized" });
-      if (!orderId) return res.status(400).json({ message: "Bad orderId" });
+    const order = await Order.findByPk(orderId, {
+      attributes: ["id", "userId", "sellerId", "warehouseId", "status"],
+      raw: true,
+    });
+    if (!order) return res.status(404).json({ message: "Order not found" });
 
-      const order = await Order.findByPk(orderId, {
-        attributes: ["id", "userId", "sellerId", "status"],
+    const roleUp = String(req.user?.role || "").toUpperCase();
+    const isClient = String(order.userId) === String(requesterId);
+
+    let isWarehouseSide = false;
+    if (roleUp === "ADMIN") isWarehouseSide = true;
+    if (roleUp === "WAREHOUSE" || roleUp === "SELLER") {
+      const link = await SellerUser.findOne({
+        where: { userId: requesterId },
         raw: true,
       });
+      const mySellerId = link?.sellerId ?? null;
 
-      if (!order) return res.status(404).json({ message: "Order not found" });
-
-      const isParticipant =
-        String(order.userId) === String(requesterId) ||
-        (order.sellerId != null &&
-          String(order.sellerId) === String(requesterId));
-
-      if (!isParticipant) {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-
-      if (!order.sellerId) {
-        return res.status(409).json({ message: "Restaurant not assigned yet" });
-      }
-
-      let chat = await Chat.findOne({ where: { type: "restaurant", orderId } });
-      if (!chat) chat = await Chat.create({ type: "restaurant", orderId });
-
-      const want = [
-        { userId: order.userId, role: "client" },
-        { userId: order.sellerId, role: "restaurant" },
-      ];
-
-      const existing = await ChatParticipant.findAll({
-        where: {
-          chatId: chat.id,
-          userId: { [Op.in]: want.map((x) => x.userId) },
-        },
-        attributes: ["userId"],
-        raw: true,
-      });
-
-      const haveSet = new Set(existing.map((x) => String(x.userId)));
-
-      for (const p of want) {
-        if (!haveSet.has(String(p.userId))) {
-          await ChatParticipant.create({
-            chatId: chat.id,
-            userId: p.userId,
-            role: p.role,
-          });
-        }
-      }
-
-      return res.json({ chatId: chat.id, orderId });
-    } catch (e) {
-      console.error("getOrCreateSellerChat error:", e);
-      return res.status(500).json({ message: "Server error" });
+      if (order.sellerId == null) isWarehouseSide = mySellerId == null;
+      else isWarehouseSide = String(order.sellerId) === String(mySellerId);
     }
+
+    if (!isClient && !isWarehouseSide)
+      return res.status(403).json({ message: "Forbidden" });
+
+    const chat = await Chat.findOrCreate({
+      where: { type: "restaurant", orderId },
+      defaults: { type: "restaurant", orderId },
+    }).then(([c]) => c);
+
+    if (chat.closedAt)
+      return res.status(410).json({ message: "Chat is closed" });
+
+    if (order.userId) {
+      await ChatParticipant.findOrCreate({
+        where: { chatId: chat.id, userId: order.userId },
+        defaults: { chatId: chat.id, userId: order.userId, role: "client" },
+      });
+    }
+
+    await ChatParticipant.findOrCreate({
+      where: { chatId: chat.id, userId: requesterId },
+      defaults: {
+        chatId: chat.id,
+        userId: requesterId,
+        role: normalizeChatRole(req.user?.role),
+      },
+    });
+
+    return res.json({ chatId: chat.id, orderId });
   }
 
   async getOrCreateSupportChat(req, res) {
@@ -361,7 +354,6 @@ class ChatController {
       return res.status(400).json({ message: "Недостаточно данных" });
     }
 
-    // ✅ проверяем участника
     const ok = await ChatParticipant.findOne({
       where: { chatId, userId: senderId },
     });
