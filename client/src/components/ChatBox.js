@@ -37,7 +37,7 @@ const ChatBox = ({
     if (!showHistory) return;
 
     const loadChats = () => {
-      fetch(`${API}/api/chat/user/${userId}`)
+      fetch(`${API}/chat/user/${userId}`)
         .then((res) => res.json())
         .then((data) => {
           setChats(data);
@@ -70,9 +70,7 @@ const ChatBox = ({
 
       if (!chatExists) {
         try {
-          const res = await fetch(
-            `${API}/chat/${msg.chatId}`
-          );
+          const res = await fetch(`${API}/chat/${msg.chatId}`);
           const newChat = await res.json();
           setChats((prev) => [newChat, ...prev]);
         } catch (err) {
@@ -123,9 +121,7 @@ const ChatBox = ({
 
       if (!exists) {
         try {
-          const res = await fetch(
-            `${API}/chat/${msg.chatId}`
-          );
+          const res = await fetch(`${API}/chat/${msg.chatId}`);
           const newChat = await res.json();
 
           setChats((prev) => [newChat, ...prev]);
@@ -187,31 +183,21 @@ const ChatBox = ({
   const handleSend = async () => {
     if (!text.trim()) return;
 
-    let chatId = activeChatId;
+    let id = activeChatId;
 
-    const normalizedRole = ["client", "courier", "warehouse", "admin"].includes(
-      userRole?.toLowerCase?.()
-    )
-      ? userRole.toLowerCase()
-      : "client";
-
-    if (!chatId) {
+    if (!id) {
       const res = await $authHost.get("/chat/support");
-      chatId = res.data.chatId;
-      setActiveChatId(chatId);
+      id = res.data.chatId;
+      setActiveChatId(id);
     }
-    socket.emit("sendMessage", { chatId, text });
 
-    const newMessage = {
-      chatId,
+    socket.emit("sendMessage", {
+      chatId: id,
       senderId: userId,
       senderRole: normalizeChatRole(userRole),
-      text,
-      createdAt: new Date().toISOString(),
-      isRead: false,
-    };
+      text: text.trim(),
+    });
 
-    socket.emit("sendMessage", newMessage);
     setText("");
   };
 
