@@ -5,6 +5,8 @@ const {
   MenuItem,
   Translation,
   Courier,
+  Chat,
+  ChatParticipant,
 } = require("../models/models");
 const { Op } = require("sequelize");
 const fs = require("fs");
@@ -569,6 +571,41 @@ const createOrder = async (req, res) => {
 
     const order = await Order.create(orderData);
 
+     const [deliveryChat] = await Chat.findOrCreate({
+      where: { type: "delivery", orderId: order.id },
+      defaults: { type: "delivery", orderId: order.id },
+    });
+
+    const [sellerChat] = await Chat.findOrCreate({
+      where: { type: "seller", orderId: order.id },
+      defaults: { type: "seller", orderId: order.id },
+    });
+
+    await order.update({
+      deliveryChatId: deliveryChat.id,
+      sellerChatId: sellerChat.id,
+    });
+
+    if (order.userId) {
+      await ChatParticipant.findOrCreate({
+        where: { chatId: deliveryChat.id, userId: order.userId },
+        defaults: {
+          chatId: deliveryChat.id,
+          userId: order.userId,
+          role: "client",
+        },
+      });
+
+      await ChatParticipant.findOrCreate({
+        where: { chatId: sellerChat.id, userId: order.userId },
+        defaults: {
+          chatId: sellerChat.id,
+          userId: order.userId,
+          role: "client",
+        },
+      });
+    }
+
      const io = req.app.get("io");
 
     const whRoom = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
@@ -836,6 +873,19 @@ const updateOrderStatus = async (req, res) => {
     order.status = newStatus;
     await order.save();
 
+    if (["Completed", "Cancelled"].includes(newStatus)) {
+      await Chat.update(
+        { closedAt: new Date() },
+        {
+          where: {
+            orderId: order.id,
+            type: { [Op.in]: ["delivery", "seller"] },
+            closedAt: { [Op.is]: null },
+          },
+        }
+      );
+    }
+
     const io = req.app.get("io");
     io.to(`order:${order.id}`).emit("orderStatusUpdate", {
       id: order.id,
@@ -1035,6 +1085,19 @@ const adminUpdateOrderStatus = async (req, res) => {
   }
 
  await order.save();
+
+  if (["Completed", "Cancelled"].includes(order.status)) {
+    await Chat.update(
+      { closedAt: new Date() },
+      {
+        where: {
+          orderId: order.id,
+          type: { [Op.in]: ["delivery", "seller"] },
+          closedAt: { [Op.is]: null },
+        },
+      }
+    );
+  }
 
   const io = req.app.get("io");
 
