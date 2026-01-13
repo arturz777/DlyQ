@@ -1,8 +1,6 @@
 const { ChatMessage, ChatParticipant } = require("../models/models");
 
 module.exports = function chatSocket(io, socket) {
-  console.log("💬 chat socket init:", socket.id);
-
   socket.on("joinChat", async ({ chatId, userId }) => {
     if (!chatId || !userId) return;
 
@@ -26,20 +24,27 @@ module.exports = function chatSocket(io, socket) {
     const { chatId, text } = data;
 
     try {
-      const senderId = socket.data.userId;
-      const senderRole = socket.data.chatRoles?.[chatId];
+      const senderId = socket.data.userId || data.senderId;
+      if (!chatId || !senderId) {
+        return socket.emit("sendMessageError", { message: "No sender/chatId" });
+      }
 
-      if (!senderId || !senderRole) {
+      socket.data.userId = senderId; // запоминаем
+
+      socket.data.chatRoles = socket.data.chatRoles || {};
+      let senderRole = socket.data.chatRoles[chatId];
+
+      if (!senderRole) {
         const p = await ChatParticipant.findOne({
           where: { chatId, userId: senderId },
         });
         if (!p) {
           return socket.emit("sendMessageError", {
-            message: "Not participant / no sender",
+            message: "Not participant",
           });
         }
-        socket.data.chatRoles = socket.data.chatRoles || {};
-        socket.data.chatRoles[chatId] = p.role;
+        senderRole = p.role;
+        socket.data.chatRoles[chatId] = senderRole;
       }
 
       const cleanText = String(text || "").trim();
@@ -47,8 +52,8 @@ module.exports = function chatSocket(io, socket) {
 
       const newMessage = await ChatMessage.create({
         chatId,
-        senderId: socket.data.userId,
-        senderRole: socket.data.chatRoles[chatId],
+        senderId,
+        senderRole,
         text: cleanText,
         isRead: false,
       });
