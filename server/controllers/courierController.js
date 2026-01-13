@@ -634,11 +634,7 @@ class CourierController {
           const u = o.userId ? userMap.get(Number(o.userId)) : null;
 
           const kind =
-            o.orderType === "parcel"
-              ? "parcel"
-              : seller
-              ? "seller"
-              : "market";
+            o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
 
           return {
             id: o.id,
@@ -1312,6 +1308,12 @@ class CourierController {
       await courier.save();
 
       const io = req.app.get("io");
+
+      io.to("admin_notifications").emit("courierLocationUpdate", {
+        courierId,
+        lat,
+        lng,
+      });
 
       const activeOrders = await Order.findAll({
         where: {
