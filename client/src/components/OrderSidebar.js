@@ -79,8 +79,7 @@ const OrderSidebar = ({
   const canShowSellerChat = (o) => {
     if (!o) return false;
     if (o.orderType === "parcel") return false;
-    if (!o.sellerId) return false;
-    return true;
+    return Boolean(o.sellerChatId || sellerChatId);
   };
 
   useEffect(() => {
@@ -622,7 +621,7 @@ const OrderSidebar = ({
                 onClick={() => requestOpenChat(sellerChatId, "seller")}
                 type="button"
               >
-                🍔{" "}
+                💬{" "}
                 {t("chatWithRestaurant", {
                   ns: "orderSidebar",
                   defaultValue: "Чат с рестораном",
