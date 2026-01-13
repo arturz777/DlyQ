@@ -284,6 +284,8 @@ const Order = sequelize.define(
     deliveryLat: { type: DataTypes.FLOAT, allowNull: true },
     deliveryLng: { type: DataTypes.FLOAT, allowNull: true },
     deliveryAddress: { type: DataTypes.STRING, allowNull: false },
+    deliveryChatId: { type: DataTypes.BIGINT, allowNull: true },
+    sellerChatId: { type: DataTypes.INTEGER, allowNull: true },
     orderType: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -391,39 +393,67 @@ const Translation = sequelize.define(
   }
 );
 
-const Chat = sequelize.define("chat", {
-  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  type: {
-    type: DataTypes.ENUM("support", "delivery"),
-    allowNull: false,
+const Chat = sequelize.define(
+  "chat",
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    type: {
+      type: DataTypes.ENUM(
+        "support",
+        "delivery",
+        "seller",
+        "warehouse"
+      ),
+      allowNull: false,
+    },
+    orderId: { type: DataTypes.INTEGER, allowNull: true },
+    closedAt: { type: DataTypes.DATE, allowNull: true },
+    supportKey: { type: DataTypes.STRING, allowNull: true },
   },
-  orderId: { type: DataTypes.INTEGER, allowNull: true },
-});
+  {
+    indexes: [
+      { unique: true, fields: ["type", "orderId"] },
+      { unique: true, fields: ["type", "supportKey"] },
+    ],
+  }
+);
 
-const ChatParticipant = sequelize.define("chatParticipant", {
-  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  userId: { type: DataTypes.INTEGER, allowNull: false },
-  role: {
-    type: DataTypes.ENUM("client", "courier", "admin", "warehouse"),
-    allowNull: false,
+const ChatParticipant = sequelize.define(
+  "chatParticipant",
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    chatId: { type: DataTypes.INTEGER, allowNull: false },
+    userId: { type: DataTypes.INTEGER, allowNull: false },
+    role: {
+      type: DataTypes.ENUM("client", "courier", "admin", "warehouse"),
+      allowNull: false,
+    },
   },
-});
+  {
+    indexes: [
+      { unique: true, fields: ["chatId", "userId"] },
+      { fields: ["userId"] },
+    ],
+  }
+);
 
-const ChatMessage = sequelize.define("chatMessage", {
-  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  chatId: { type: DataTypes.INTEGER, allowNull: false },
-  senderId: { type: DataTypes.INTEGER, allowNull: false },
-  senderRole: {
-    type: DataTypes.ENUM("client", "courier", "admin", "warehouse"),
-    allowNull: false,
+const ChatMessage = sequelize.define(
+  "chatMessage",
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    chatId: { type: DataTypes.INTEGER, allowNull: false },
+    senderId: { type: DataTypes.INTEGER, allowNull: false },
+    senderRole: {
+      type: DataTypes.ENUM("client", "courier", "admin", "warehouse"),
+      allowNull: false,
+    },
+    text: { type: DataTypes.TEXT, allowNull: false },
+    isRead: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   },
-  text: { type: DataTypes.TEXT, allowNull: false },
-  isRead: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: false,
-  },
-});
+  {
+    indexes: [{ fields: ["chatId"] }, { fields: ["chatId", "createdAt"] }],
+  }
+);
 
 const Setting = sequelize.define("setting", {
   key: { type: DataTypes.STRING, primaryKey: true },
@@ -550,14 +580,25 @@ MenuItem.belongsTo(MenuCategory, {
   as: "category",
 });
 
-Chat.hasMany(ChatParticipant, { as: "participants" });
-ChatParticipant.belongsTo(Chat);
+Chat.hasMany(ChatParticipant, {
+  as: "participants",
+  foreignKey: "chatId",
+  onDelete: "CASCADE",
+});
+ChatParticipant.belongsTo(Chat, { foreignKey: "chatId" });
 
-Chat.hasMany(ChatMessage, { as: "messages" });
-ChatMessage.belongsTo(Chat);
+Chat.hasMany(ChatMessage, {
+  as: "messages",
+  foreignKey: "chatId",
+  onDelete: "CASCADE",
+});
+ChatMessage.belongsTo(Chat, { foreignKey: "chatId" });
 
 User.hasMany(ChatParticipant, { foreignKey: "userId" });
 ChatParticipant.belongsTo(User, { foreignKey: "userId", as: "user" });
+
+Order.belongsTo(Chat, { as: "deliveryChat", foreignKey: "deliveryChatId" });
+Order.belongsTo(Chat, { as: "sellerChat", foreignKey: "sellerChatId" });
 
 User.belongsToMany(Seller, {
   through: SellerUser,
