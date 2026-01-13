@@ -79,6 +79,7 @@ const OrderSidebar = ({
   const canShowSellerChat = (o) => {
     if (!o) return false;
     if (o.orderType === "parcel") return false;
+    if (["Delivered", "Completed"].includes(o.status)) return false;
     return Boolean(o.sellerChatId || sellerChatId);
   };
 
