@@ -57,7 +57,7 @@ import { fetchMaintenance, updateMaintenance } from "../http/configAPI";
 import appStore from "../store/appStore";
 import StockQuickAdjustModal from "../components/modals/StockQuickAdjustModal";
 import SlideModal from "../components/modals/SlideModal";
-import { io } from "socket.io-client";
+import { socket } from "../socket";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
 import "react-tabs/style/react-tabs.css";
 import Image from "react-bootstrap/Image";
@@ -215,24 +215,28 @@ const Admin = () => {
   }, [sortedMenuCategories, menuItemsByCategory, menuSearch]);
 
   useEffect(() => {
-     const socket = io(`https://dlyq-backend-staging.onrender.com`);
+  const onLoc = ({ courierId, lat, lng }) => {
+    setCouriers((prev) =>
+      prev.map((c) =>
+        c.id === courierId ? { ...c, currentLat: lat, currentLng: lng } : c
+      )
+    );
+  };
 
-    socket.on("courierLocationUpdate", ({ courierId, lat, lng }) => {
-      setCouriers((prev) =>
-        prev.map((c) =>
-          c.id === courierId ? { ...c, currentLat: lat, currentLng: lng } : c
-        )
-      );
-    });
+  const onStatus = ({ courierId, status }) => {
+    setCouriers((prev) =>
+      prev.map((c) => (c.id === courierId ? { ...c, status } : c))
+    );
+  };
 
-    socket.on("courierStatusUpdate", ({ courierId, status }) => {
-      setCouriers((prev) =>
-        prev.map((c) => (c.id === courierId ? { ...c, status } : c))
-      );
-    });
+  socket.on("courierLocationUpdate", onLoc);
+  socket.on("courierStatusUpdate", onStatus);
 
-    return () => socket.disconnect();
-  }, []);
+  return () => {
+    socket.off("courierLocationUpdate", onLoc);
+    socket.off("courierStatusUpdate", onStatus);
+  };
+}, []);
 
   useEffect(() => {
     fetchMaintenance()
@@ -332,6 +336,13 @@ const Admin = () => {
   useEffect(() => {
     fetchAllCouriers().then(setCouriers).catch(console.error);
   }, []);
+
+  useEffect(() => {
+  if (!couriers?.length) return;
+  couriers.forEach((c) => {
+    socket.emit("joinCourierRoom", { courierId: c.id });
+  });
+}, [couriers]);
 
   const filteredDevices = React.useMemo(() => {
     return devices
@@ -499,17 +510,21 @@ const Admin = () => {
   }, [user?.user?.id]);
 
   useEffect(() => {
-    const socket = io(`https://dlyq-backend-staging.onrender.com`);
+  const role = String(user?.user?.role || "").toUpperCase();
+  if (role !== "ADMIN") return;
 
-    if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
-      socket.emit("joinAdminNotifications");
-      console.log("🔔 Админ подключен к admin_notifications");
-    }
+  const join = () => {
+    socket.emit("joinAdminNotifications");
+    console.log("🔔 Админ подключен к admin_notifications");
+  };
 
-    return () => {
-      socket.disconnect();
-    };
-  }, [user]);
+  join();
+  socket.on("connect", join);
+
+  return () => {
+    socket.off("connect", join);
+  };
+}, [user?.user?.role]);
 
   const reloadMakes = async () => {
     const m = await fetchMakes();
