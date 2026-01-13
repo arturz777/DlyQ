@@ -42,6 +42,8 @@ const ChatBox = ({
   const messagesEndRef = useRef(null);
   const { t, i18n } = useTranslation();
 
+  const isAdmin = String(userRole || "").toLowerCase() === "admin";
+
   useEffect(() => {
     if (chatId) {
       setActiveChatId(chatId);
@@ -259,6 +261,7 @@ const ChatBox = ({
       const data = await res.json();
       id = data.chatId;
       setActiveChatId(id);
+      socket.emit("joinChat", { chatId: id, userId });
     }
 
     socket.emit("sendMessage", {
@@ -276,21 +279,29 @@ const ChatBox = ({
   }, [messages]);
 
   const visibleHistoryChats = useMemo(() => {
+    const mode = isAdmin ? historyMode : "support";
+
     const base = chats
       .filter((c) => c.messages && c.messages.length > 0)
       .filter((c) =>
-        historyMode === "support" ? isSupportChat(c) : !isSupportChat(c)
+        mode === "support" ? isSupportChat(c) : !isSupportChat(c)
       );
 
     return base.sort((a, b) => {
-      if (historyMode === "support") {
+      if (mode === "support") {
         const au = unreadChats.has(a.id) ? 1 : 0;
         const bu = unreadChats.has(b.id) ? 1 : 0;
         if (au !== bu) return bu - au;
       }
       return getLastTs(b) - getLastTs(a);
     });
-  }, [chats, historyMode, unreadChats]);
+  }, [chats, historyMode, unreadChats, isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin && historyMode !== "support") setHistoryMode("support");
+  }, [isAdmin, historyMode]);
+
+  const mode = isAdmin ? historyMode : "support";
 
   return (
     <div className={styles.chatWrapper}>
@@ -332,30 +343,29 @@ const ChatBox = ({
           <div className={styles.sidebarHeader}>
             <h4 className={styles.sidebarTitle}>
               {t("chatHistoryTitle", { ns: "chatBox" })}
+              {mode === "support" && unreadChats.size > 0 && (
+                <span className={styles.unreadDotButton} />
+              )}
             </h4>
 
-            <div className={styles.segmented}>
+            {isAdmin && (
               <button
                 type="button"
-                className={`${styles.segment} ${
-                  historyMode === "support" ? styles.segmentActive : ""
+                className={`${styles.headerAction} ${
+                  mode === "archive" ? styles.segmentActive : ""
                 }`}
-                onClick={() => setHistoryMode("support")}
-              >
-                Поддержка
-                {unreadChats.size > 0 && <span className={styles.segmentDot} />}
-              </button>
-
-              <button
-                type="button"
-                className={`${styles.segment} ${
-                  historyMode === "archive" ? styles.segmentActive : ""
-                }`}
-                onClick={() => setHistoryMode("archive")}
+                onClick={() =>
+                  setHistoryMode((prev) =>
+                    prev === "archive" ? "support" : "archive"
+                  )
+                }
+                title={
+                  mode === "archive" ? "Вернуться к поддержке" : "Открыть архив"
+                }
               >
                 Архив
               </button>
-            </div>
+            )}
           </div>
 
           <div className={styles.historyList}>
