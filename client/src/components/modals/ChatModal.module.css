@@ -32,3 +32,48 @@
   font-size: 20px;
   cursor: pointer;
 }
+
+.guestBox{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding: 18px 8px;
+}
+
+.guestTitle{
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.guestText{
+  font-size: 14px;
+  opacity: .75;
+  line-height: 1.35;
+}
+
+.guestActions{
+  display:flex;
+  gap:10px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.guestBtnPrimary{
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.guestBtn{
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(15,23,42,.18);
+  background: #fff;
+  color: #0f172a;
+  text-decoration: none;
+  font-weight: 700;
+  cursor: pointer;
+}
