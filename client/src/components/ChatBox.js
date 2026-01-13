@@ -94,6 +94,7 @@ const ChatBox = ({
             headers: { ...getAuthHeaders() },
           });
           const newChat = await res.json();
+
           if (
             isSupportChat(newChat) &&
             (msg.chatId !== activeChatId || msg.senderId !== userId)
@@ -101,12 +102,13 @@ const ChatBox = ({
             setUnreadChats((prev) => {
               const updated = new Set(prev);
               updated.add(msg.chatId);
-              if (onUnreadChange) onUnreadChange(updated);
+              onUnreadChange?.(updated);
               return updated;
             });
           }
 
           setChats((prev) => [newChat, ...prev]);
+          return;
         } catch (err) {
           console.error(t("errorLoadChat", { ns: "chatBox" }), err);
         }
@@ -161,6 +163,8 @@ const ChatBox = ({
 
       const addUnreadIfSupport = (chatObj) => {
         if (!isSupportChat(chatObj)) return;
+        if (msg.senderId === userId && msg.chatId === activeChatId) return;
+
         setUnreadChats((prev) => {
           const updated = new Set(prev);
           updated.add(msg.chatId);
@@ -291,71 +295,96 @@ const ChatBox = ({
   return (
     <div className={styles.chatWrapper}>
       <div className={styles.chatHeader}>
-        <button className={styles.closeButton} onClick={onClose}>
-          ✖
-        </button>
+        <div className={styles.headerLeft}>
+          {showHistory && (
+            <button
+              type="button"
+              className={styles.headerAction}
+              onClick={() => setView(view === "chat" ? "history" : "chat")}
+            >
+              {view === "chat" ? (
+                <>
+                  {t("historyLabel", { ns: "chatBox" })}
+                  {unreadChats.size > 0 && (
+                    <span className={styles.unreadDotButton} />
+                  )}
+                </>
+              ) : (
+                t("back", { ns: "chatBox" })
+              )}
+            </button>
+          )}
+        </div>
+
+        <div className={styles.headerRight}>
+          <button
+            className={styles.closeButton}
+            onClick={onClose}
+            type="button"
+          >
+            ✖
+          </button>
+        </div>
       </div>
 
-      {showHistory && (
-        <button onClick={() => setView(view === "chat" ? "history" : "chat")}>
-          {view === "chat" ? (
-            <>
-              {t("historyLabel", { ns: "chatBox" })}{" "}
-              {unreadChats.size > 0 && (
-                <span className={styles.unreadDotButton} />
-              )}
-            </>
-          ) : (
-            t("back", { ns: "chatBox" })
-          )}
-        </button>
-      )}
       {showHistory && view === "history" ? (
         <div className={styles.sidebar}>
-          <h4>{t("chatHistoryTitle", { ns: "chatBox" })}</h4>
-          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            <button
-              type="button"
-              onClick={() => setHistoryMode("support")}
-              style={{ fontWeight: historyMode === "support" ? 700 : 400 }}
-            >
-              Поддержка{" "}
-              {unreadChats.size > 0 && (
-                <span className={styles.unreadDotButton} />
-              )}
-            </button>
+          <div className={styles.sidebarHeader}>
+            <h4 className={styles.sidebarTitle}>
+              {t("chatHistoryTitle", { ns: "chatBox" })}
+            </h4>
 
-            <button
-              type="button"
-              onClick={() => setHistoryMode("archive")}
-              style={{ fontWeight: historyMode === "archive" ? 700 : 400 }}
-            >
-              Архив
-            </button>
+            <div className={styles.segmented}>
+              <button
+                type="button"
+                className={`${styles.segment} ${
+                  historyMode === "support" ? styles.segmentActive : ""
+                }`}
+                onClick={() => setHistoryMode("support")}
+              >
+                Поддержка
+                {unreadChats.size > 0 && <span className={styles.segmentDot} />}
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.segment} ${
+                  historyMode === "archive" ? styles.segmentActive : ""
+                }`}
+                onClick={() => setHistoryMode("archive")}
+              >
+                Архив
+              </button>
+            </div>
           </div>
 
-          {visibleHistoryChats.map((chat) => (
-            <div
-              key={chat.id}
-              className={`${styles.chatItem} ${
-                chat.id === activeChatId ? styles.active : ""
-              }`}
-              onClick={() => {
-                handleSelectChat(chat.id);
-                setView("chat");
-              }}
-            >
-              <div className={styles.chatPreviewWrapper}>
-                <span className={styles.chatPreviewText}>
-                  {chat.messages.length > 0 &&
-                    chat.messages[chat.messages.length - 1].text}
-                </span>
-                {unreadChats.has(chat.id) && (
-                  <span className={styles.unreadDot} />
-                )}
+          <div className={styles.historyList}>
+            {visibleHistoryChats.map((chat) => (
+              <div
+                key={chat.id}
+                className={`${styles.chatItem} ${
+                  chat.id === activeChatId ? styles.active : ""
+                }`}
+                onClick={() => {
+                  handleSelectChat(chat.id);
+                  setView("chat");
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                <div className={styles.chatPreviewWrapper}>
+                  <span className={styles.chatPreviewText}>
+                    {chat.messages?.length
+                      ? chat.messages[chat.messages.length - 1].text
+                      : ""}
+                  </span>
+                  {unreadChats.has(chat.id) && (
+                    <span className={styles.unreadDot} />
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       ) : (
         <div className={styles.chatContainer}>
@@ -375,6 +404,7 @@ const ChatBox = ({
             ))}
             <div ref={messagesEndRef} />
           </div>
+
           <div className={styles.inputArea}>
             <input
               type="text"
@@ -388,7 +418,9 @@ const ChatBox = ({
                 }
               }}
             />
-            <button onClick={handleSend}>📨</button>
+            <button onClick={handleSend} type="button">
+              📨
+            </button>
           </div>
         </div>
       )}
