@@ -57,7 +57,7 @@ import { fetchMaintenance, updateMaintenance } from "../http/configAPI";
 import appStore from "../store/appStore";
 import StockQuickAdjustModal from "../components/modals/StockQuickAdjustModal";
 import SlideModal from "../components/modals/SlideModal";
-import { io } from "socket.io-client";
+import { socket } from "../socket";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
 import "react-tabs/style/react-tabs.css";
 import Image from "react-bootstrap/Image";
@@ -215,24 +215,28 @@ const Admin = () => {
   }, [sortedMenuCategories, menuItemsByCategory, menuSearch]);
 
   useEffect(() => {
-     const socket = io(`api.dlyq.ee`);
+  const onLoc = ({ courierId, lat, lng }) => {
+    setCouriers((prev) =>
+      prev.map((c) =>
+        c.id === courierId ? { ...c, currentLat: lat, currentLng: lng } : c
+      )
+    );
+  };
 
-    socket.on("courierLocationUpdate", ({ courierId, lat, lng }) => {
-      setCouriers((prev) =>
-        prev.map((c) =>
-          c.id === courierId ? { ...c, currentLat: lat, currentLng: lng } : c
-        )
-      );
-    });
+  const onStatus = ({ courierId, status }) => {
+    setCouriers((prev) =>
+      prev.map((c) => (c.id === courierId ? { ...c, status } : c))
+    );
+  };
 
-    socket.on("courierStatusUpdate", ({ courierId, status }) => {
-      setCouriers((prev) =>
-        prev.map((c) => (c.id === courierId ? { ...c, status } : c))
-      );
-    });
+  socket.on("courierLocationUpdate", onLoc);
+  socket.on("courierStatusUpdate", onStatus);
 
-    return () => socket.disconnect();
-  }, []);
+  return () => {
+    socket.off("courierLocationUpdate", onLoc);
+    socket.off("courierStatusUpdate", onStatus);
+  };
+}, []);
 
   useEffect(() => {
     fetchMaintenance()
@@ -332,6 +336,13 @@ const Admin = () => {
   useEffect(() => {
     fetchAllCouriers().then(setCouriers).catch(console.error);
   }, []);
+
+  useEffect(() => {
+  if (!couriers?.length) return;
+  couriers.forEach((c) => {
+    socket.emit("joinCourierRoom", { courierId: c.id });
+  });
+}, [couriers]);
 
   const filteredDevices = React.useMemo(() => {
     return devices
@@ -479,37 +490,55 @@ const Admin = () => {
     }
   };
 
-  useEffect(() => {
+ useEffect(() => {
     if (!user?.user?.id) return;
 
-    fetch(`https://api.dlyq.ee/chat/user/${user.user.id}`)
-      .then((res) => res.json())
+    const base = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
+    const url = `${base}/chat/user/${user.user.id}`;
+
+    fetch(url, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(
+            `fetch chats failed ${res.status}: ${text.slice(0, 120)}`
+          );
+        }
+        return res.json();
+      })
       .then((data) => {
         const unread = new Set();
-        data.forEach((chat) => {
+        (data || []).forEach((chat) => {
           const hasUnread = chat.messages?.some(
             (msg) => !msg.isRead && msg.senderId !== user.user.id
           );
           if (hasUnread) unread.add(chat.id);
         });
-
         setUnreadChats(unread);
       })
-      .catch(console.error);
+      .catch((e) => console.error("fetch chats error:", e));
   }, [user?.user?.id]);
 
   useEffect(() => {
-    const socket = io(`https://api.dlyq.ee`);
+  const role = String(user?.user?.role || "").toUpperCase();
+  if (role !== "ADMIN") return;
 
-    if (user?.user?.role === "ADMIN" || user?.user?.role === "admin") {
-      socket.emit("joinAdminNotifications");
-      console.log("🔔 Админ подключен к admin_notifications");
-    }
+  const join = () => {
+    socket.emit("joinAdminNotifications");
+    console.log("🔔 Админ подключен к admin_notifications");
+  };
 
-    return () => {
-      socket.disconnect();
-    };
-  }, [user]);
+  join();
+  socket.on("connect", join);
+
+  return () => {
+    socket.off("connect", join);
+  };
+}, [user?.user?.role]);
 
   const reloadMakes = async () => {
     const m = await fetchMakes();
@@ -715,14 +744,21 @@ const Admin = () => {
     setEditKey(null);
   };
 
-  const handleAddTranslation = async () => {
+ const handleAddTranslation = async () => {
     if (!newKey || !newLang || !newText) {
       alert("Заполните все поля!");
       return;
     }
-    const response = await fetch(`https://api.dlyq.ee/translations`, {
+
+    const base = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
+    const url = `${base}/translations`;
+
+    const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
       body: JSON.stringify({ key: newKey, lang: newLang, text: newText }),
     });
 
@@ -734,6 +770,8 @@ const Admin = () => {
       setNewLang("en");
       setNewText("");
     } else {
+      const text = await response.text().catch(() => "");
+      console.error("addTranslation failed:", response.status, text);
       alert("Ошибка добавления перевода");
     }
   };
