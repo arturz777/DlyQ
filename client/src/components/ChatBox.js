@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
+import React, { useState, useEffect, useContext, useRef, useMemo } from "react";
 import { ChatContext } from "../context/ChatContext";
 import { normalizeChatRole } from "../utils/chatRoles";
 import { socket } from "../socket";
@@ -10,6 +10,17 @@ const API = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
   return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const isSupportChat = (chat) => {
+  return chat?.type === "support";
+};
+
+const getLastTs = (chat) => {
+  const msgs = Array.isArray(chat?.messages) ? chat.messages : [];
+  const last = msgs[msgs.length - 1] || msgs[0];
+  const dt = last?.createdAt || chat?.updatedAt || chat?.createdAt;
+  return dt ? new Date(dt).getTime() : 0;
 };
 
 const ChatBox = ({
@@ -26,6 +37,7 @@ const ChatBox = ({
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [view, setView] = useState("chat");
+  const [historyMode, setHistoryMode] = useState("support");
   const [unreadChats, setUnreadChats] = useState(new Set());
   const messagesEndRef = useRef(null);
   const { t, i18n } = useTranslation();
@@ -51,6 +63,8 @@ const ChatBox = ({
 
           const unread = new Set();
           data.forEach((chat) => {
+            if (!isSupportChat(chat)) return;
+
             const hasUnread = chat.messages?.some(
               (msg) => !msg.isRead && msg.senderId !== userId
             );
@@ -58,7 +72,6 @@ const ChatBox = ({
           });
 
           setUnreadChats(unread);
-
           if (onUnreadChange) onUnreadChange(unread);
         })
         .catch(console.error);
@@ -81,6 +94,18 @@ const ChatBox = ({
             headers: { ...getAuthHeaders() },
           });
           const newChat = await res.json();
+          if (
+            isSupportChat(newChat) &&
+            (msg.chatId !== activeChatId || msg.senderId !== userId)
+          ) {
+            setUnreadChats((prev) => {
+              const updated = new Set(prev);
+              updated.add(msg.chatId);
+              if (onUnreadChange) onUnreadChange(updated);
+              return updated;
+            });
+          }
+
           setChats((prev) => [newChat, ...prev]);
         } catch (err) {
           console.error(t("errorLoadChat", { ns: "chatBox" }), err);
@@ -96,11 +121,15 @@ const ChatBox = ({
       );
 
       if (msg.chatId !== activeChatId || msg.senderId !== userId) {
-        setUnreadChats((prev) => {
-          const updated = new Set(prev);
-          updated.add(msg.chatId);
-          return updated;
-        });
+        const ch = chats.find((c) => c.id === msg.chatId);
+        if (isSupportChat(ch)) {
+          setUnreadChats((prev) => {
+            const updated = new Set(prev);
+            updated.add(msg.chatId);
+            if (onUnreadChange) onUnreadChange(updated);
+            return updated;
+          });
+        }
       }
 
       if (msg.chatId === activeChatId) {
@@ -130,6 +159,16 @@ const ChatBox = ({
     const handleNewChatMessage = async (msg) => {
       const exists = chats.some((chat) => chat.id === msg.chatId);
 
+      const addUnreadIfSupport = (chatObj) => {
+        if (!isSupportChat(chatObj)) return;
+        setUnreadChats((prev) => {
+          const updated = new Set(prev);
+          updated.add(msg.chatId);
+          onUnreadChange?.(updated);
+          return updated;
+        });
+      };
+
       if (!exists) {
         try {
           const res = await fetch(`${API}/chat/${msg.chatId}`, {
@@ -137,25 +176,24 @@ const ChatBox = ({
           });
           const newChat = await res.json();
 
+          addUnreadIfSupport(newChat);
           setChats((prev) => [newChat, ...prev]);
         } catch (error) {
           console.error(t("errorLoadNewChat", { ns: "chatBox" }), error);
         }
-      } else {
-        setChats((prevChats) =>
-          prevChats.map((chat) =>
-            chat.id === msg.chatId
-              ? { ...chat, messages: [...(chat.messages || []), msg] }
-              : chat
-          )
-        );
+        return;
       }
 
-      setUnreadChats((prev) => {
-        const updated = new Set(prev);
-        updated.add(msg.chatId);
-        return updated;
-      });
+      setChats((prevChats) =>
+        prevChats.map((chat) =>
+          chat.id === msg.chatId
+            ? { ...chat, messages: [...(chat.messages || []), msg] }
+            : chat
+        )
+      );
+
+      const existingChat = chats.find((c) => c.id === msg.chatId);
+      addUnreadIfSupport(existingChat);
     };
 
     socket.on("newChatMessage", handleNewChatMessage);
@@ -163,7 +201,7 @@ const ChatBox = ({
     return () => {
       socket.off("newChatMessage", handleNewChatMessage);
     };
-  }, [userRole]);
+  }, [userRole, chats]);
 
   const getSenderName = (msg) => {
     if (msg.senderId === userId) return t("you", { ns: "chatBox" });
@@ -233,6 +271,23 @@ const ChatBox = ({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const visibleHistoryChats = useMemo(() => {
+    const base = chats
+      .filter((c) => c.messages && c.messages.length > 0)
+      .filter((c) =>
+        historyMode === "support" ? isSupportChat(c) : !isSupportChat(c)
+      );
+
+    return base.sort((a, b) => {
+      if (historyMode === "support") {
+        const au = unreadChats.has(a.id) ? 1 : 0;
+        const bu = unreadChats.has(b.id) ? 1 : 0;
+        if (au !== bu) return bu - au;
+      }
+      return getLastTs(b) - getLastTs(a);
+    });
+  }, [chats, historyMode, unreadChats]);
+
   return (
     <div className={styles.chatWrapper}>
       <div className={styles.chatHeader}>
@@ -258,29 +313,49 @@ const ChatBox = ({
       {showHistory && view === "history" ? (
         <div className={styles.sidebar}>
           <h4>{t("chatHistoryTitle", { ns: "chatBox" })}</h4>
-          {chats
-            .filter((chat) => chat.messages && chat.messages.length > 0)
-            .map((chat) => (
-              <div
-                key={chat.id}
-                className={`${styles.chatItem} ${
-                  chat.id === activeChatId ? styles.active : ""
-                }`}
-                onClick={() => {
-                  handleSelectChat(chat.id);
-                  setView("chat");
-                }}
-              >
-                <div className={styles.chatPreviewWrapper}>
-                  <span className={styles.chatPreviewText}>
-                    {chat.messages.length > 0 && chat.messages[0].text}
-                  </span>
-                  {unreadChats.has(chat.id) && (
-                    <span className={styles.unreadDot} />
-                  )}
-                </div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+            <button
+              type="button"
+              onClick={() => setHistoryMode("support")}
+              style={{ fontWeight: historyMode === "support" ? 700 : 400 }}
+            >
+              Поддержка{" "}
+              {unreadChats.size > 0 && (
+                <span className={styles.unreadDotButton} />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setHistoryMode("archive")}
+              style={{ fontWeight: historyMode === "archive" ? 700 : 400 }}
+            >
+              Архив
+            </button>
+          </div>
+
+          {visibleHistoryChats.map((chat) => (
+            <div
+              key={chat.id}
+              className={`${styles.chatItem} ${
+                chat.id === activeChatId ? styles.active : ""
+              }`}
+              onClick={() => {
+                handleSelectChat(chat.id);
+                setView("chat");
+              }}
+            >
+              <div className={styles.chatPreviewWrapper}>
+                <span className={styles.chatPreviewText}>
+                  {chat.messages.length > 0 &&
+                    chat.messages[chat.messages.length - 1].text}
+                </span>
+                {unreadChats.has(chat.id) && (
+                  <span className={styles.unreadDot} />
+                )}
               </div>
-            ))}
+            </div>
+          ))}
         </div>
       ) : (
         <div className={styles.chatContainer}>
