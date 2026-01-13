@@ -494,7 +494,7 @@ const Admin = () => {
     if (!user?.user?.id) return;
 
     const base = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
-    const url = `${base}/api/chat/user/${user.user.id}`;
+    const url = `${base}/chat/user/${user.user.id}`;
 
     fetch(url, {
       headers: {
@@ -744,14 +744,21 @@ const Admin = () => {
     setEditKey(null);
   };
 
-  const handleAddTranslation = async () => {
+ const handleAddTranslation = async () => {
     if (!newKey || !newLang || !newText) {
       alert("Заполните все поля!");
       return;
     }
-    const response = await fetch(`https://dlyq-backend-staging.onrender.com/translations`, {
+
+    const base = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
+    const url = `${base}/translations`;
+
+    const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
       body: JSON.stringify({ key: newKey, lang: newLang, text: newText }),
     });
 
@@ -763,6 +770,8 @@ const Admin = () => {
       setNewLang("en");
       setNewText("");
     } else {
+      const text = await response.text().catch(() => "");
+      console.error("addTranslation failed:", response.status, text);
       alert("Ошибка добавления перевода");
     }
   };
