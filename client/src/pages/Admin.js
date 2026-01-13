@@ -490,23 +490,37 @@ const Admin = () => {
     }
   };
 
-  useEffect(() => {
+ useEffect(() => {
     if (!user?.user?.id) return;
 
-    fetch(`https://dlyq-backend-staging.onrender.com/chat/user/${user.user.id}`)
-      .then((res) => res.json())
+    const base = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
+    const url = `${base}/api/chat/user/${user.user.id}`;
+
+    fetch(url, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(
+            `fetch chats failed ${res.status}: ${text.slice(0, 120)}`
+          );
+        }
+        return res.json();
+      })
       .then((data) => {
         const unread = new Set();
-        data.forEach((chat) => {
+        (data || []).forEach((chat) => {
           const hasUnread = chat.messages?.some(
             (msg) => !msg.isRead && msg.senderId !== user.user.id
           );
           if (hasUnread) unread.add(chat.id);
         });
-
         setUnreadChats(unread);
       })
-      .catch(console.error);
+      .catch((e) => console.error("fetch chats error:", e));
   }, [user?.user?.id]);
 
   useEffect(() => {
