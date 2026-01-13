@@ -5,11 +5,10 @@ import { Context } from "../../index";
 import styles from "./ChatModal.module.css";
 
 const ChatModal = () => {
-  const { supportChatVisible, supportChatId, closeSupportChat } =
-    useContext(ChatContext);
+  const { chatVisible, chatId, chatMode, closeChat } = useContext(ChatContext);
   const { user } = useContext(Context);
 
-  if (!supportChatVisible) return null;
+  if (!chatVisible) return null;
 
   const fallbackUser = {
     id:
@@ -19,15 +18,14 @@ const ChatModal = () => {
   };
 
   return (
-    <div className={styles.modalWrapper} onClick={closeSupportChat}>
-      <div
-        className={styles.chatContainer}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className={styles.modalWrapper} onClick={closeChat}>
+      <div className={styles.chatContainer} onClick={(e) => e.stopPropagation()}>
         <ChatBox
           userId={fallbackUser.id}
           userRole={fallbackUser.role}
-          chatId={supportChatId}
+          chatId={chatId}
+          showHistory={chatMode === "support"}
+          onClose={closeChat}
         />
       </div>
     </div>
