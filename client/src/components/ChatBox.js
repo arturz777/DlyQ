@@ -5,19 +5,22 @@ import { socket } from "../socket";
 import { useTranslation } from "react-i18next";
 import styles from "./ChatBox.module.css";
 
+const API = process.env.REACT_APP_API_URL;
+
 const ChatBox = ({
   userId,
   userRole,
-  forceOpenChatId = null,
   chatId = null,
+  forceOpenChatId = null,
   onUnreadChange,
+  showHistory = true,
+  onClose,
 }) => {
   const [activeChatId, setActiveChatId] = useState(chatId || forceOpenChatId);
   const [chats, setChats] = useState([]);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [view, setView] = useState("chat");
-  const { closeSupportChat } = useContext(ChatContext);
   const [unreadChats, setUnreadChats] = useState(new Set());
   const messagesEndRef = useRef(null);
   const { t, i18n } = useTranslation();
@@ -31,8 +34,10 @@ const ChatBox = ({
   }, [chatId, forceOpenChatId]);
 
   useEffect(() => {
+    if (!showHistory) return;
+
     const loadChats = () => {
-      fetch(`https://api.dlyq.ee/api/chat/user/${userId}`)
+      fetch(`${API}/chat/user/${userId}`)
         .then((res) => res.json())
         .then((data) => {
           setChats(data);
@@ -53,25 +58,23 @@ const ChatBox = ({
     };
 
     loadChats();
-  }, [userId, forceOpenChatId, view]);
+  }, [userId, forceOpenChatId, view, showHistory]);
 
   useEffect(() => {
     if (!activeChatId) return;
 
-    socket.emit("joinChat", activeChatId);
+    socket.emit("joinChat", { chatId: activeChatId, userId });
 
     const handleMessage = async (msg) => {
       const chatExists = chats.some((chat) => chat.id === msg.chatId);
 
       if (!chatExists) {
         try {
-          const res = await fetch(
-            `https://api.dlyq.ee/api/chat/${msg.chatId}`
-          );
+          const res = await fetch(`${API}/chat/${msg.chatId}`);
           const newChat = await res.json();
           setChats((prev) => [newChat, ...prev]);
         } catch (err) {
-         console.error(t("errorLoadChat", { ns: "chatBox" }), err);
+          console.error(t("errorLoadChat", { ns: "chatBox" }), err);
         }
       }
 
@@ -98,7 +101,7 @@ const ChatBox = ({
 
     socket.on("receiveMessage", handleMessage);
 
-    fetch(`https://api.dlyq.ee/api/chat/${activeChatId}/messages`)
+    fetch(`${API}/chat/${activeChatId}/messages`)
       .then((res) => res.json())
       .then(setMessages)
       .catch(console.error);
@@ -118,14 +121,12 @@ const ChatBox = ({
 
       if (!exists) {
         try {
-          const res = await fetch(
-            `https://api.dlyq.ee/api/chat/${msg.chatId}`
-          );
+          const res = await fetch(`${API}/chat/${msg.chatId}`);
           const newChat = await res.json();
 
           setChats((prev) => [newChat, ...prev]);
         } catch (error) {
-        console.error(t("errorLoadNewChat", { ns: "chatBox" }), error);
+          console.error(t("errorLoadNewChat", { ns: "chatBox" }), error);
         }
       } else {
         setChats((prevChats) =>
@@ -152,8 +153,8 @@ const ChatBox = ({
   }, [userRole]);
 
   const getSenderName = (msg) => {
-   if (msg.senderId === userId) return t("you", { ns: "chatBox" });
-  if (msg.senderRole === "admin") return "Support";
+    if (msg.senderId === userId) return t("you", { ns: "chatBox" });
+    if (msg.senderRole === "admin") return "Support";
 
     const chat = chats.find((c) => c.id === msg.chatId);
     const participant = chat?.participants?.find(
@@ -171,85 +172,62 @@ const ChatBox = ({
     });
     setView("chat");
 
-    await fetch(`https://api.dlyq.ee/api/chat/${id}/mark-read`, {
+    await fetch(`${API}/chat/${id}/mark-read`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId }),
     });
     socket.emit("readMessages", { chatId: id, userId });
   };
-  
+
   const handleSend = async () => {
     if (!text.trim()) return;
 
-    let chatId = activeChatId;
+    let id = activeChatId;
 
-    const normalizedRole = ["client", "courier", "warehouse", "admin"].includes(
-      userRole?.toLowerCase?.()
-    )
-      ? userRole.toLowerCase()
-      : "client";
-
-    if (!chatId) {
-      const res = await fetch(`https://api.dlyq.ee/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "support",
-          participants: [
-            {
-              userId,
-              role: normalizeChatRole(userRole),
-            },
-            { userId: 1, role: "admin" },
-          ],
-        }),
-      });
-      const chat = await res.json();
-      chatId = chat.id;
-      setChats((prev) => [chat, ...prev]);
-      setActiveChatId(chatId);
+    if (!id) {
+      const res = await $authHost.get("/chat/support");
+      id = res.data.chatId;
+      setActiveChatId(id);
     }
 
-    const newMessage = {
-      chatId,
+    socket.emit("sendMessage", {
+      chatId: id,
       senderId: userId,
       senderRole: normalizeChatRole(userRole),
-      text,
-      createdAt: new Date().toISOString(),
-      isRead: false,
-    };
+      text: text.trim(),
+    });
 
-    socket.emit("sendMessage", newMessage);
     setText("");
   };
 
   useEffect(() => {
-  messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-}, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   return (
     <div className={styles.chatWrapper}>
       <div className={styles.chatHeader}>
-        <button className={styles.closeButton} onClick={closeSupportChat}>
+        <button className={styles.closeButton} onClick={onClose}>
           ✖
         </button>
       </div>
 
-      <button onClick={() => setView(view === "chat" ? "history" : "chat")}>
-        {view === "chat" ? (
-          <>
-            {t("historyLabel", { ns: "chatBox" })}{" "}
-            {unreadChats.size > 0 && (
-              <span className={styles.unreadDotButton} />
-            )}
-          </>
-        ) : (
-         t("back", { ns: "chatBox" })
-        )}
-      </button>
-
-      {view === "history" ? (
+      {showHistory && (
+        <button onClick={() => setView(view === "chat" ? "history" : "chat")}>
+          {view === "chat" ? (
+            <>
+              {t("historyLabel", { ns: "chatBox" })}{" "}
+              {unreadChats.size > 0 && (
+                <span className={styles.unreadDotButton} />
+              )}
+            </>
+          ) : (
+            t("back", { ns: "chatBox" })
+          )}
+        </button>
+      )}
+      {showHistory && view === "history" ? (
         <div className={styles.sidebar}>
           <h4>{t("chatHistoryTitle", { ns: "chatBox" })}</h4>
           {chats
