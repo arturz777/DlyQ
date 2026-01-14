@@ -79,6 +79,11 @@ const translations = {
     est: "Pole autoriseeritud.",
     ru: "Не авторизован.",
   },
+  chat_closed_thanks: {
+  en: "Chat is closed. Thank you!",
+  est: "Vestlus on suletud. Aitäh!",
+  ru: "Чат закрыт. Спасибо!",
+},
 };
 
 const normLang = (lang) => {
