@@ -444,7 +444,7 @@ const ChatMessage = sequelize.define(
     chatId: { type: DataTypes.INTEGER, allowNull: false },
     senderId: { type: DataTypes.INTEGER, allowNull: false },
     senderRole: {
-      type: DataTypes.ENUM("client", "courier", "admin", "warehouse"),
+      type: DataTypes.ENUM("client", "courier", "admin", "warehouse", "system"),
       allowNull: false,
     },
     text: { type: DataTypes.TEXT, allowNull: false },
