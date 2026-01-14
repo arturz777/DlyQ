@@ -7,6 +7,17 @@ import styles from "./ChatBox.module.css";
 
 const API = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 
+const isSameMsg = (a, b) => {
+  if (!a || !b) return false;
+  if (a.id && b.id) return String(a.id) === String(b.id);
+  return (
+    String(a.chatId) === String(b.chatId) &&
+    String(a.senderId) === String(b.senderId) &&
+    String(a.createdAt) === String(b.createdAt) &&
+    String(a.text) === String(b.text)
+  );
+};
+
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -40,9 +51,27 @@ const ChatBox = ({
   const [historyMode, setHistoryMode] = useState("support");
   const [unreadChats, setUnreadChats] = useState(new Set());
   const messagesEndRef = useRef(null);
+  const chatsRef = useRef([]);
+  const activeChatIdRef = useRef(activeChatId);
+  const didAutoSelectRef = useRef(false);
   const { t, i18n } = useTranslation();
 
+  useEffect(() => {
+    chatsRef.current = chats;
+  }, [chats]);
+
+  useEffect(() => {
+    activeChatIdRef.current = activeChatId;
+  }, [activeChatId]);
+
   const isAdmin = String(userRole || "").toLowerCase() === "admin";
+  const activeChat = useMemo(
+    () => chats.find((c) => c.id === activeChatId) || null,
+    [chats, activeChatId]
+  );
+
+  const isClosed = Boolean(activeChat?.closedAt);
+  const canClose = isAdmin && isSupportChat(activeChat) && !isClosed;
 
   useEffect(() => {
     if (chatId) {
@@ -62,6 +91,23 @@ const ChatBox = ({
         .then((res) => res.json())
         .then((data) => {
           setChats(data);
+
+          if (!didAutoSelectRef.current && !chatId && !forceOpenChatId) {
+            const currentActive = activeChatIdRef.current;
+
+            if (!currentActive && Array.isArray(data) && data.length > 0) {
+              const sorted = [...data].sort(
+                (a, b) => getLastTs(b) - getLastTs(a)
+              );
+              const lastChat = sorted[0];
+
+              if (lastChat?.id) {
+                didAutoSelectRef.current = true;
+                setActiveChatId(lastChat.id);
+                setView("chat");
+              }
+            }
+          }
 
           const unread = new Set();
           data.forEach((chat) => {
@@ -88,56 +134,55 @@ const ChatBox = ({
     socket.emit("joinChat", { chatId: activeChatId, userId });
 
     const handleMessage = async (msg) => {
-      const chatExists = chats.some((chat) => chat.id === msg.chatId);
+      const currentActiveChatId = activeChatIdRef.current;
 
-      if (!chatExists) {
+      const currentChats = chatsRef.current || [];
+      let chatObj = currentChats.find((c) => c.id === msg.chatId) || null;
+
+      if (!chatObj) {
         try {
           const res = await fetch(`${API}/chat/${msg.chatId}`, {
             headers: { ...getAuthHeaders() },
           });
           const newChat = await res.json();
+          chatObj = newChat;
 
-          if (
-            isSupportChat(newChat) &&
-            (msg.chatId !== activeChatId || msg.senderId !== userId)
-          ) {
-            setUnreadChats((prev) => {
-              const updated = new Set(prev);
-              updated.add(msg.chatId);
-              onUnreadChange?.(updated);
-              return updated;
-            });
-          }
-
-          setChats((prev) => [newChat, ...prev]);
-          return;
+          setChats((prev) =>
+            prev.some((c) => c.id === newChat.id) ? prev : [newChat, ...prev]
+          );
         } catch (err) {
           console.error(t("errorLoadChat", { ns: "chatBox" }), err);
         }
+      } else {
+        setChats((prevChats) =>
+          prevChats.map((chat) => {
+            if (chat.id !== msg.chatId) return chat;
+
+            const prevMsgs = chat.messages || [];
+            if (prevMsgs.some((m) => isSameMsg(m, msg))) return chat;
+
+            return { ...chat, messages: [...prevMsgs, msg] };
+          })
+        );
       }
 
-      setChats((prevChats) =>
-        prevChats.map((chat) =>
-          chat.id === msg.chatId
-            ? { ...chat, messages: [...(chat.messages || []), msg] }
-            : chat
-        )
-      );
-
-      if (msg.chatId !== activeChatId || msg.senderId !== userId) {
-        const ch = chats.find((c) => c.id === msg.chatId);
-        if (isSupportChat(ch)) {
-          setUnreadChats((prev) => {
-            const updated = new Set(prev);
-            updated.add(msg.chatId);
-            if (onUnreadChange) onUnreadChange(updated);
-            return updated;
-          });
-        }
+      if (
+        chatObj &&
+        isSupportChat(chatObj) &&
+        (msg.chatId !== currentActiveChatId || msg.senderId !== userId)
+      ) {
+        setUnreadChats((prev) => {
+          const updated = new Set(prev);
+          updated.add(msg.chatId);
+          onUnreadChange?.(updated);
+          return updated;
+        });
       }
 
-      if (msg.chatId === activeChatId) {
-        setMessages((prev) => [...prev, msg]);
+      if (msg.chatId === currentActiveChatId) {
+        setMessages((prev) =>
+          prev.some((m) => isSameMsg(m, msg)) ? prev : [...prev, msg]
+        );
       }
     };
 
@@ -153,7 +198,7 @@ const ChatBox = ({
     return () => {
       socket.off("receiveMessage", handleMessage);
     };
-  }, [activeChatId]);
+  }, [activeChatId, userId]);
 
   useEffect(() => {
     if (userRole?.toLowerCase?.() !== "admin") return;
@@ -209,6 +254,21 @@ const ChatBox = ({
     };
   }, [userRole, chats]);
 
+  useEffect(() => {
+    const onChatClosed = ({ chatId, closedAt }) => {
+      const ts = closedAt
+        ? new Date(closedAt).toISOString()
+        : new Date().toISOString();
+
+      setChats((prev) =>
+        prev.map((c) => (c.id === chatId ? { ...c, closedAt: ts } : c))
+      );
+    };
+
+    socket.on("chatClosed", onChatClosed);
+    return () => socket.off("chatClosed", onChatClosed);
+  }, [activeChatId]);
+
   const getSenderName = (msg) => {
     if (msg.senderId === userId) return t("you", { ns: "chatBox" });
     if (msg.senderRole === "admin") return "Support";
@@ -241,6 +301,7 @@ const ChatBox = ({
   };
 
   const handleSend = async () => {
+    if (isClosed) return;
     if (!text.trim()) return;
 
     let id = activeChatId;
@@ -272,6 +333,11 @@ const ChatBox = ({
     });
 
     setText("");
+  };
+
+  const handleCloseChat = () => {
+    if (!activeChatId) return;
+    socket.emit("closeChat", { chatId: activeChatId, senderId: userId });
   };
 
   useEffect(() => {
@@ -328,6 +394,17 @@ const ChatBox = ({
         </div>
 
         <div className={styles.headerRight}>
+          {canClose && (
+            <button
+              type="button"
+              className={styles.headerAction}
+              onClick={handleCloseChat}
+              title="Закрыть чат"
+            >
+              Закрыть чат
+            </button>
+          )}
+
           <button
             className={styles.closeButton}
             onClick={onClose}
@@ -399,39 +476,70 @@ const ChatBox = ({
       ) : (
         <div className={styles.chatContainer}>
           <div className={styles.messages}>
-            {messages.map((msg) => (
-              <div
-                key={msg.id || `${msg.chatId}-${msg.createdAt}-${msg.senderId}`}
-                className={
-                  msg.senderId === userId
-                    ? styles.messageOutgoing
-                    : styles.messageIncoming
-                }
-              >
-                <div className={styles.sender}>{getSenderName(msg)}</div>
-                <div className={styles.text}>{msg.text}</div>
-              </div>
-            ))}
+            {messages.map((msg) => {
+              const isSystem = msg.senderRole === "system";
+
+              return (
+                <div
+                  key={
+                    msg.id || `${msg.chatId}-${msg.createdAt}-${msg.senderId}`
+                  }
+                  className={
+                    isSystem
+                      ? styles.messageSystem
+                      : msg.senderId === userId
+                      ? styles.messageOutgoing
+                      : styles.messageIncoming
+                  }
+                >
+                  {!isSystem && (
+                    <div className={styles.sender}>{getSenderName(msg)}</div>
+                  )}
+                  <div className={styles.text}>{msg.text}</div>
+                </div>
+              );
+            })}
+
             <div ref={messagesEndRef} />
           </div>
 
-          <div className={styles.inputArea}>
-            <input
-              type="text"
-              value={text}
-              placeholder={t("messagePlaceholder", { ns: "chatBox" })}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
-            <button onClick={handleSend} type="button">
-              📨
-            </button>
-          </div>
+          {isClosed ? (
+            <div className={styles.closedNotice}>
+              Этот чат поддержки закрыт.
+              {!isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveChatId(null);
+                    setMessages([]);
+                    setText("");
+                    setView("chat");
+                  }}
+                  className={styles.newChatButton}
+                >
+                  Новый чат
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className={styles.inputArea}>
+              <input
+                type="text"
+                value={text}
+                placeholder={t("messagePlaceholder", { ns: "chatBox" })}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+              />
+              <button onClick={handleSend} type="button">
+                📨
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
