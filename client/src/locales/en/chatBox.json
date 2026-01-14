@@ -4,7 +4,7 @@
   "errorLoadNewChat": "❌ Error loading new chat:",
   "senderIsYou": "You",
   "chatHistoryTitle": "Chat history",
-  "historyLabel": "📂 History",
+  "historyLabel": "🗃️ History",
   "back": "⬅️ Back",
   "messagePlaceholder": "Enter a message..."
 }
