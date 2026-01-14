@@ -113,18 +113,36 @@ class ChatController {
     return res.json({ chatId: chat.id, orderId });
   }
 
+  // ChatController.getOrCreateSupportChat
   async getOrCreateSupportChat(req, res) {
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
       const role = normalizeChatRole(req.user?.role);
-      const supportKey = `support:${role}:${userId}`;
+      const baseKey = `support:${role}:${userId}`;
 
-      const [chat] = await Chat.findOrCreate({
-        where: { type: "support", supportKey },
-        defaults: { type: "support", supportKey, orderId: null },
+      let chat = await Chat.findOne({
+        where: { type: "support", supportKey: baseKey, closedAt: null },
       });
+
+      if (!chat) {
+        const existingSameKey = await Chat.findOne({
+          where: { type: "support", supportKey: baseKey },
+        });
+
+        if (existingSameKey && existingSameKey.closedAt) {
+          await existingSameKey.update({
+            supportKey: `${baseKey}:closed:${existingSameKey.id}`,
+          });
+        }
+
+        chat = await Chat.create({
+          type: "support",
+          supportKey: baseKey,
+          orderId: null,
+        });
+      }
 
       await ChatParticipant.findOrCreate({
         where: { chatId: chat.id, userId },
@@ -132,7 +150,6 @@ class ChatController {
       });
 
       const ADMIN_ID = 1;
-
       await ChatParticipant.findOrCreate({
         where: { chatId: chat.id, userId: ADMIN_ID },
         defaults: { chatId: chat.id, userId: ADMIN_ID, role: "admin" },
