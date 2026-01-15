@@ -608,11 +608,14 @@ const OrderSidebar = ({
                 onClick={() => requestOpenChat(deliveryChatId, "delivery")}
                 type="button"
               >
-                💬{" "}
-                {t("chatWithCourier", {
-                  ns: "orderSidebar",
-                  defaultValue: "Чат с курьером",
-                })}
+                <span className={styles.chatIcon} aria-hidden>
+                  💬
+                </span>
+                <span>
+                  {t("chat with the courier", {
+                    ns: "orderSidebar"
+                  })}
+                </span>
               </button>
             )}
 
@@ -622,11 +625,10 @@ const OrderSidebar = ({
                 onClick={() => requestOpenChat(sellerChatId, "seller")}
                 type="button"
               >
-                💬{" "}
-                {t("chatWithRestaurant", {
-                  ns: "orderSidebar",
-                  defaultValue: "Чат с рестораном",
-                })}
+                <span className={styles.chatIcon} aria-hidden>
+                  💬
+                </span>
+                <span>{t("chat with the restaurant", { ns: "orderSidebar" })}</span>
               </button>
             )}
 
@@ -717,7 +719,9 @@ const OrderSidebar = ({
 
                   {!isParcel &&
                     order?.status === "Picked up" &&
-                   t("the courier is on the way to you", { ns: "orderSidebar" })}
+                    t("the courier is on the way to you", {
+                      ns: "orderSidebar",
+                    })}
 
                   {!isParcel &&
                     order?.status === "Arrived at destination" &&
@@ -847,7 +851,7 @@ const OrderSidebar = ({
             </button>
           </div>
         ) : (
-         <p className={styles.noActiveOrders}>
+          <p className={styles.noActiveOrders}>
             {t("no active orders", { ns: "orderSidebar" })}
           </p>
         )}
