@@ -18,6 +18,8 @@ import CookieConsent from "./components/modals/CookieConsent";
 import LoadingBar from "./components/LoadingBar";
 import ChatModal from "./components/modals/ChatModal";
 import { ChatContext } from "./context/ChatContext";
+import ChatFab from "./components/ChatFab";
+import ChatNotifier from "./components//ChatNotifier";
 import "./locales/i18n";
 import "./App.css";
 
@@ -93,6 +95,8 @@ const AppLayout = observer(() => {
         <>
           <MobileNavBar maintenanceMode={appStore.maintenance.enabled} />
           <CookieConsent />
+          <ChatNotifier />
+          <ChatFab />
           <ChatModal />
           <Footer maintenanceMode={appStore.maintenance.enabled} />
         </>
@@ -116,11 +120,12 @@ const App = observer(() => {
   const [loading, setLoading] = useState(true);
   const [supportChatVisible, setSupportChatVisible] = useState(false);
   const [supportChatId, setSupportChatId] = useState(1);
-   const [chatVisible, setChatVisible] = useState(false);
+  const [chatVisible, setChatVisible] = useState(false);
   const [chatId, setChatId] = useState(null);
   const [chatMode, setChatMode] = useState(null);
+  const [unreadSupportMsgCount, setUnreadSupportMsgCount] = useState(0);
 
-   const openChat = (id, mode) => {
+  const openChat = (id, mode) => {
     setChatId(id);
     setChatMode(mode);
     setChatVisible(true);
@@ -133,10 +138,10 @@ const App = observer(() => {
   };
 
   const openSupportChat = () => {
-    setChatId(null);
-    setChatMode("support");
-    setChatVisible(true);
-  };
+  setChatId(null);
+  setChatMode("support");
+  setChatVisible(true);
+};
 
   const isAdmin =
     user.isAuth && (user.user?.role === "ADMIN" || user.user?.role === "admin");
@@ -208,6 +213,8 @@ const App = observer(() => {
         supportChatId: chatId,
         openSupportChat,
         closeSupportChat: closeChat,
+        unreadSupportMsgCount,
+        setUnreadSupportMsgCount,
       }}
     >
       <BrowserRouter>
