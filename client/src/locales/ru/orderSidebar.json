@@ -32,5 +32,7 @@
 	"parcel delivered": "Заказ доставлен",
 	"courier picked up the order": "Курьер забрал заказ",
 	"courier": "Курьер",
-	"warehouse": "Склад"
+	"warehouse": "Склад",
+	"chat with the courier": "Чат с курьером",
+	"chat with the restaurant": "Чат с рестораном"
 }
