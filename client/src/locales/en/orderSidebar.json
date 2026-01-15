@@ -32,5 +32,6 @@
 	"parcel delivered": "Order delivered",
 	"courier picked up the order": "Courier picked up the order",
 	"courier": "Courier",
-	"warehouse": "Warehouse"
+	"chat with the courier": "Chat with the courier",
+	"chat with the restaurant": "Chat with the restaurant"
 }
