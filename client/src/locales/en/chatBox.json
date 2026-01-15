@@ -6,5 +6,16 @@
   "chatHistoryTitle": "Chat history",
   "historyLabel": "🗃️ History",
   "back": "⬅️ Back",
-  "messagePlaceholder": "Enter a message..."
+  "messagePlaceholder": "Enter a message...",
+  "closeChat": "Close chat",
+  "archive": "Archive",
+  "openArchive": "Open archive",
+  "backToSupport": "Back to support",
+  "chatClosedNotice": "This support chat is closed.",
+  "newChat": "New chat",
+  "closedStatus": "closed",
+  "supportName": "Support",
+  "yesterday": "yesterday",
+  "chatNumber": "Chat #{{id}}",
+  "supportChatError": "Support chat error: {{status}}"
 }
