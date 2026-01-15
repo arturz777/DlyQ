@@ -4,7 +4,18 @@
   "errorLoadNewChat": "❌ Viga uue vestluse laadimisel:",
   "senderIsYou": "Teie",
   "chatHistoryTitle": "Vestluste ajalugu",
-  "historyLabel": "📂 Ajalugu",
+  "historyLabel": "🗃️ Ajalugu",
   "back": "⬅️ Tagasi",
-  "messagePlaceholder": "Sisestage sõnum..."
+  "messagePlaceholder": "Sisestage sõnum...",
+  "closeChat": "Sulge vestlus",
+  "archive": "Arhiiv",
+  "openArchive": "Ava arhiiv",
+  "backToSupport": "Tagasi toe juurde",
+  "chatClosedNotice": "See tugivestlus on suletud.",
+  "newChat": "Uus vestlus",
+  "closedStatus": "suletud",
+  "supportName": "Tugi",
+  "yesterday": "eile",
+  "chatNumber": "Vestlus #{{id}}",
+  "supportChatError": "Tugivestluse viga: {{status}}"
 }
