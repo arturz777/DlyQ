@@ -133,6 +133,9 @@ const ChatBox = ({
   const readDebounceRef = useRef({});
   const didAutoSelectRef = useRef(false);
   const { setUnreadSupportMsgCount } = useContext(ChatContext);
+  const messagesWrapRef = useRef(null);
+  const shouldAutoScrollRef = useRef(true);
+  const didInitialScrollRef = useRef(false);
   const { t, i18n } = useTranslation();
 
   const markChatRead = (id) => {
@@ -471,9 +474,28 @@ const ChatBox = ({
     socket.emit("closeChat", { chatId: activeChatId, senderId: userId });
   };
 
+  const scrollToBottom = (smooth = false) => {
+    const el = messagesWrapRef.current;
+    if (!el) return;
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior: smooth ? "smooth" : "auto",
+    });
+  };
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (!messages.length) return;
+
+    if (!didInitialScrollRef.current) {
+      didInitialScrollRef.current = true;
+      scrollToBottom(false);
+      return;
+    }
+
+    if (shouldAutoScrollRef.current) {
+      scrollToBottom(true);
+    }
+  }, [messages.length, activeChatId]);
 
   const visibleHistoryChats = useMemo(() => {
     const mode = isAdmin ? historyMode : "support";
@@ -658,7 +680,18 @@ const ChatBox = ({
         </div>
       ) : (
         <div className={styles.chatContainer}>
-          <div className={styles.messages}>
+          <div
+            className={styles.messages}
+            ref={messagesWrapRef}
+            onScroll={() => {
+              const el = messagesWrapRef.current;
+              if (!el) return;
+              const padding = 60;
+              const atBottom =
+                el.scrollTop + el.clientHeight >= el.scrollHeight - padding;
+              shouldAutoScrollRef.current = atBottom;
+            }}
+          >
             {groupedMessages.map((item) => {
               if (item.type === "divider") {
                 const label = new Intl.DateTimeFormat(i18n.language, {
