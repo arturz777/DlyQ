@@ -242,7 +242,7 @@
   top: auto;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 7px;
   padding: 10px 12px;
   border-radius: 999px;
   background: var(--brand);
