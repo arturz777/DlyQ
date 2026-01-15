@@ -2,7 +2,7 @@
 	"waiting for order confirmation": "🕒 Ожидаем подтверждение заказа...",
 	"order accepted": "✅ Заказ принят!",
 	"order is ready waiting for the courier": "👨‍🍳 Заказ готов, ждем курьера",
-	"courier is on the way": "🚗 Курьер в пути",
+	"the courier is on the way to you": "🚗 Курьер в пути к вам",
 	"courier has arrived": "🏠 Курьер прибыл",
 	"order delivered": "✅ Заказ доставлен",
 	"no active orders": "У вас нет активных заказов.",
@@ -32,5 +32,7 @@
 	"parcel delivered": "Заказ доставлен",
 	"courier picked up the order": "Курьер забрал заказ",
 	"courier": "Курьер",
-	"warehouse": "Склад"
+	"warehouse": "Склад",
+	"chat with the courier": "Чат с курьером",
+	"chat with the restaurant": "Чат с рестораном"
 }
