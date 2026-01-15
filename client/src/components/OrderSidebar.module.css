@@ -2,24 +2,18 @@
   --bg: #ffffff;
   --text: #0f172a;
   --muted: #64748b;
-
   --brand: #2563eb;
   --brand-700: #1d4ed8;
-
   --success: #22c55e;
   --success-700: #16a34a;
-
   --danger: #ef4444;
   --border: rgba(15, 23, 42, 0.08);
-
   --shadow-lg: 0 20px 60px rgba(2, 6, 23, 0.24);
   --shadow-md: 0 10px 30px rgba(2, 6, 23, 0.16);
   --shadow-sm: 0 6px 18px rgba(2, 6, 23, 0.12);
-
   --radius-xl: 20px;
   --radius-lg: 16px;
   --radius-md: 12px;
-
   --z-fab: 2147483000;
   --z-overlay: 2147482000;
   --z-sheet: 2147482500;
@@ -69,7 +63,6 @@
   background: rgba(2, 6, 23, 0.42);
   backdrop-filter: blur(4px);
   z-index: var(--z-overlay);
-
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms ease;
@@ -87,22 +80,23 @@
   color: var(--text);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
-
   left: 12px;
   right: 12px;
   bottom: 12px;
   top: auto;
   height: min(78vh, 760px);
-
   border-radius: var(--radius-xl);
   overflow: hidden;
-
   transform: translateY(120%);
   transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .open {
   transform: translateY(0);
+}
+
+.noActiveOrders {
+  margin-left: 5px;
 }
 
 @media (min-width: 900px) {
@@ -125,11 +119,9 @@
   position: sticky;
   top: 0;
   z-index: 2;
-
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   padding: 14px 14px 10px;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(10px);
@@ -152,11 +144,9 @@
   height: 36px;
   border-radius: 12px;
   cursor: pointer;
-
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
@@ -197,13 +187,10 @@
   width: 100%;
   padding: 12px 14px;
   margin-top: 12px;
-
   border: none;
   border-radius: 14px;
-
   font-size: 15px;
   font-weight: 800;
-
   cursor: pointer;
   transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease;
   box-shadow: var(--shadow-sm);
@@ -249,26 +236,20 @@
   gap: 10px;
 }
 
-/* Кнопка теперь НЕ fixed */
 .chatButton {
   position: static;
   right: auto;
   top: auto;
-
   display: inline-flex;
   align-items: center;
   gap: 10px;
-
   padding: 10px 12px;
   border-radius: 999px;
-
   background: var(--brand);
   color: #fff;
   border: none;
-
   box-shadow: var(--shadow-sm);
   cursor: pointer;
-
   transition: transform 160ms ease, filter 160ms ease;
 }
 
