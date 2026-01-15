@@ -847,7 +847,9 @@ const OrderSidebar = ({
             </button>
           </div>
         ) : (
-          <p>{t("no active orders", { ns: "orderSidebar" })}</p>
+         <p className={styles.noActiveOrders}>
+            {t("no active orders", { ns: "orderSidebar" })}
+          </p>
         )}
       </div>
     </>
