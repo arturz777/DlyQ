@@ -2,7 +2,7 @@
 	"waiting for order confirmation": "🕒 Ootame tellimuse kinnitust...",
 	"order accepted": "✅ Tellimus on vastu võetud!",
 	"order is ready waiting for the courier": "👨‍🍳 Tellimus on valmis, ootame kullerit",
-	"courier is on the way": "🚗 Kuller on teel",
+	"the courier is on the way to you": "🚗 Kuller on teel teie juurde",
 	"courier has arrived": "🏠 Kuller on saabunud",
 	"order delivered": "✅ Tellimus on kohale toimetatud",
 	"no active orders": "Teil pole aktiivseid tellimusi.",
@@ -32,5 +32,7 @@
 	"parcel delivered": "Tellimus on kohale toimetatud",
 	"courier picked up the order": "Kuller võttis tellimuse peale",
 	"courier": "Kuller",
-	"warehouse": "Ladu"
+	"warehouse": "Ladu",
+	"chat with the courier": "Vestlus kulleriga",
+	"chat with the restaurant": "Vestlus restoraniga"
 }
