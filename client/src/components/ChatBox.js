@@ -401,22 +401,15 @@ const ChatBox = ({
     return () => socket.off("chatClosed", onChatClosed);
   }, [activeChatId]);
 
- const getSenderName = (msg) => {
-    if (String(msg.senderId) === String(userId))
-      return t("you", { ns: "chatBox" });
+const getSenderName = (msg) => {
+    if (msg.senderId === userId) return t("you", { ns: "chatBox" });
     if (msg.senderRole === "admin") return t("supportName", { ns: "chatBox" });
 
-    if (msg.senderName) return msg.senderName;
-
-    const chat = chatsRef.current?.find((c) => c.id === msg.chatId);
+    const chat = chats.find((c) => c.id === msg.chatId);
     const participant = chat?.participants?.find(
-      (p) => String(p.userId) === String(msg.senderId)
+      (p) => p.userId === msg.senderId
     );
-
-    return (
-      participant?.user?.firstName ||
-      participant?.user?.email
-    );
+    return participant?.user?.firstName || msg.senderRole;
   };
 
   const handleSelectChat = async (id) => {
