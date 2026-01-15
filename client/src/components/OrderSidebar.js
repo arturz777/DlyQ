@@ -599,7 +599,7 @@ const OrderSidebar = ({
       )}
       <div className={`${styles.sidebar} ${isSidebarOpen ? styles.open : ""}`}>
         <div className={styles.header}>
-          <h3>{t("delivery status", { ns: "orderSidebar" })}</h3>
+          <h3></h3>
 
           <div className={styles.headerActions}>
             {isSidebarOpen && canShowChat(order) && deliveryChatId && (
