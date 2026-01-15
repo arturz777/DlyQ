@@ -415,8 +415,7 @@ const ChatBox = ({
 
     return (
       participant?.user?.firstName ||
-      participant?.user?.email ||
-      t("courierLabel", { ns: "chatBox" })
+      participant?.user?.email
     );
   };
 
