@@ -401,7 +401,7 @@ const ChatBox = ({
     return () => socket.off("chatClosed", onChatClosed);
   }, [activeChatId]);
 
- onst getSenderName = (msg) => {
+ const getSenderName = (msg) => {
     if (String(msg.senderId) === String(userId))
       return t("you", { ns: "chatBox" });
     if (msg.senderRole === "admin") return t("supportName", { ns: "chatBox" });
