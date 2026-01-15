@@ -4,7 +4,18 @@
   "errorLoadNewChat": "❌ Ошибка при загрузке нового чата:",
   "senderIsYou": "Вы",
   "chatHistoryTitle": "История чатов",
-  "historyLabel": "📂 История",
+  "historyLabel": "🗃️ История",
   "back": "⬅️ Назад",
-  "messagePlaceholder": "Введите сообщение..."
+  "messagePlaceholder": "Введите сообщение...",
+  "closeChat": "Закрыть чат",
+  "archive": "Архив",
+  "openArchive": "Открыть архив",
+  "backToSupport": "Вернуться к поддержке",
+  "chatClosedNotice": "Этот чат поддержки закрыт.",
+  "newChat": "Новый чат",
+  "closedStatus": "закрыт",
+  "supportName": "Поддержка",
+  "yesterday": "вчера",
+  "chatNumber": "Чат #{{id}}",
+  "supportChatError": "Ошибка чата поддержки: {{status}}"
 }
