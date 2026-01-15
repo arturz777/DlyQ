@@ -32,5 +32,7 @@
 	"parcel delivered": "Tellimus on kohale toimetatud",
 	"courier picked up the order": "Kuller võttis tellimuse peale",
 	"courier": "Kuller",
-	"warehouse": "Ladu"
+	"warehouse": "Ladu",
+	"chat with the courier": "Vestlus kulleriga",
+	"chat with the restaurant": "Vestlus restoraniga"
 }
