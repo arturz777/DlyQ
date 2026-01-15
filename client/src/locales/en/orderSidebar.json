@@ -2,7 +2,7 @@
 	"waiting for order confirmation": "🕒 Waiting for order confirmation...",
 	"order accepted": "✅ Order accepted!",
 	"order is ready waiting for the courier": "👨‍🍳 Order is ready, waiting for the courier",
-	"courier is on the way": "🚗 Courier is on the way",
+	"the courier is on the way to you": "🚗 The courier is on the way to you",
 	"courier has arrived": "🏠 Courier has arrived",
 	"order delivered": "✅ Order delivered",
 	"no active orders": "You have no active orders.",
@@ -32,5 +32,6 @@
 	"parcel delivered": "Order delivered",
 	"courier picked up the order": "Courier picked up the order",
 	"courier": "Courier",
-	"warehouse": "Warehouse"
+	"chat with the courier": "Chat with the courier",
+	"chat with the restaurant": "Chat with the restaurant"
 }
