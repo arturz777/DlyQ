@@ -717,7 +717,7 @@ const OrderSidebar = ({
 
                   {!isParcel &&
                     order?.status === "Picked up" &&
-                    t("courier picked up the order", { ns: "orderSidebar" })}
+                    t("the courier is on the way to you", { ns: "orderSidebar" })}
 
                   {!isParcel &&
                     order?.status === "Arrived at destination" &&
