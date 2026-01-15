@@ -34,6 +34,82 @@ const getLastTs = (chat) => {
   return dt ? new Date(dt).getTime() : 0;
 };
 
+const formatTime = (dt, locale = "ru") => {
+  if (!dt) return "";
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(dt));
+  } catch {
+    const d = new Date(dt);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(
+      d.getMinutes()
+    ).padStart(2, "0")}`;
+  }
+};
+
+const formatDateShort = (dt, locale, t) => {
+  if (!dt) return "";
+  const d = new Date(dt);
+  const now = new Date();
+
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+
+  if (sameDay) return formatTime(dt, locale);
+
+  const y = new Date(now);
+  y.setDate(now.getDate() - 1);
+
+  const isYesterday =
+    d.getFullYear() === y.getFullYear() &&
+    d.getMonth() === y.getMonth() &&
+    d.getDate() === y.getDate();
+
+  if (isYesterday) return t("yesterday", { ns: "chatBox" });
+
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      day: "2-digit",
+      month: "2-digit",
+    }).format(d);
+  } catch {
+    return `${String(d.getDate()).padStart(2, "0")}.${String(
+      d.getMonth() + 1
+    ).padStart(2, "0")}`;
+  }
+};
+
+const getLastMsg = (chat) => {
+  const msgs = Array.isArray(chat?.messages) ? chat.messages : [];
+  return msgs.length ? msgs[msgs.length - 1] : null;
+};
+
+const getChatTitle = (chat, currentUserId, isAdmin, t) => {
+  if (isAdmin) {
+    const p = chat?.participants?.find(
+      (x) => String(x?.userId) !== String(currentUserId) && x?.role !== "admin"
+    );
+    const u = p?.user;
+    return (
+      u?.firstName ||
+      u?.email ||
+      t("chatNumber", { ns: "chatBox", id: chat?.id })
+    );
+  }
+  return t("supportName", { ns: "chatBox" });
+};
+
+const countUnreadInChat = (chat, currentUserId) => {
+  const msgs = Array.isArray(chat?.messages) ? chat.messages : [];
+  return msgs.filter(
+    (m) => !m.isRead && String(m.senderId) !== String(currentUserId)
+  ).length;
+};
+
 const ChatBox = ({
   userId,
   userRole,
@@ -53,8 +129,47 @@ const ChatBox = ({
   const messagesEndRef = useRef(null);
   const chatsRef = useRef([]);
   const activeChatIdRef = useRef(activeChatId);
+  const viewRef = useRef(view);
+  const readDebounceRef = useRef({});
   const didAutoSelectRef = useRef(false);
+  const { setUnreadSupportMsgCount } = useContext(ChatContext);
   const { t, i18n } = useTranslation();
+
+  const markChatRead = (id) => {
+    if (!id) return;
+
+    setUnreadChats((prev) => {
+      const updated = new Set(prev);
+      updated.delete(id);
+      onUnreadChange?.(updated);
+      return updated;
+    });
+
+    clearTimeout(readDebounceRef.current[id]);
+    readDebounceRef.current[id] = setTimeout(async () => {
+      try {
+        await fetch(`${API}/chat/${id}/mark-read`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify({ userId }),
+        });
+
+        socket.emit("readMessages", { chatId: id, userId });
+        if (String(userRole || "").toLowerCase() !== "admin") {
+          setUnreadSupportMsgCount?.(0);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }, 200);
+  };
+
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
 
   useEffect(() => {
     chatsRef.current = chats;
@@ -166,17 +281,20 @@ const ChatBox = ({
         );
       }
 
-      if (
-        chatObj &&
-        isSupportChat(chatObj) &&
-        (msg.chatId !== currentActiveChatId || msg.senderId !== userId)
-      ) {
-        setUnreadChats((prev) => {
-          const updated = new Set(prev);
-          updated.add(msg.chatId);
-          onUnreadChange?.(updated);
-          return updated;
-        });
+      if (chatObj && isSupportChat(chatObj) && msg.senderId !== userId) {
+        const isActiveAndOpen =
+          msg.chatId === currentActiveChatId && viewRef.current === "chat";
+
+        if (isActiveAndOpen) {
+          markChatRead(msg.chatId);
+        } else {
+          setUnreadChats((prev) => {
+            const updated = new Set(prev);
+            updated.add(msg.chatId);
+            onUnreadChange?.(updated);
+            return updated;
+          });
+        }
       }
 
       if (msg.chatId === currentActiveChatId) {
@@ -192,7 +310,10 @@ const ChatBox = ({
       headers: { ...getAuthHeaders() },
     })
       .then((res) => res.json())
-      .then(setMessages)
+      .then((msgs) => {
+        setMessages(msgs);
+        markChatRead(activeChatId);
+      })
       .catch(console.error);
 
     return () => {
@@ -210,7 +331,15 @@ const ChatBox = ({
 
       const addUnreadIfSupport = (chatObj) => {
         if (!isSupportChat(chatObj)) return;
-        if (msg.senderId === userId && msg.chatId === activeChatId) return;
+        const isActiveAndOpen =
+          msg.chatId === activeChatIdRef.current && viewRef.current === "chat";
+
+        if (msg.senderId === userId) return;
+
+        if (isActiveAndOpen) {
+          markChatRead(msg.chatId);
+          return;
+        }
 
         setUnreadChats((prev) => {
           const updated = new Set(prev);
@@ -271,7 +400,7 @@ const ChatBox = ({
 
   const getSenderName = (msg) => {
     if (msg.senderId === userId) return t("you", { ns: "chatBox" });
-    if (msg.senderRole === "admin") return "Support";
+    if (msg.senderRole === "admin") return t("supportName", { ns: "chatBox" });
 
     const chat = chats.find((c) => c.id === msg.chatId);
     const participant = chat?.participants?.find(
@@ -316,7 +445,9 @@ const ChatBox = ({
       });
 
       if (!res.ok) {
-        throw new Error(`support chat error: ${res.status}`);
+        throw new Error(
+          t("supportChatError", { ns: "chatBox", status: res.status })
+        );
       }
 
       const data = await res.json();
@@ -369,6 +500,27 @@ const ChatBox = ({
 
   const mode = isAdmin ? historyMode : "support";
 
+  const groupedMessages = useMemo(() => {
+    const groups = [];
+    let lastKey = null;
+
+    const keyOf = (dt) => {
+      const d = new Date(dt);
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    };
+
+    for (const m of messages) {
+      const dt = m?.createdAt || new Date().toISOString();
+      const k = keyOf(dt);
+      if (k !== lastKey) {
+        groups.push({ type: "divider", key: k, dt });
+        lastKey = k;
+      }
+      groups.push({ type: "msg", msg: m });
+    }
+    return groups;
+  }, [messages]);
+
   return (
     <div className={styles.chatWrapper}>
       <div className={styles.chatHeader}>
@@ -399,9 +551,9 @@ const ChatBox = ({
               type="button"
               className={styles.headerAction}
               onClick={handleCloseChat}
-              title="Закрыть чат"
+              title={t("closeChat", { ns: "chatBox" })}
             >
-              Закрыть чат
+              {t("closeChat", { ns: "chatBox" })}
             </button>
           )}
 
@@ -437,10 +589,12 @@ const ChatBox = ({
                   )
                 }
                 title={
-                  mode === "archive" ? "Вернуться к поддержке" : "Открыть архив"
+                  mode === "archive"
+                    ? t("backToSupport", { ns: "chatBox" })
+                    : t("openArchive", { ns: "chatBox" })
                 }
               >
-                Архив
+                {t("archive", { ns: "chatBox" })}
               </button>
             )}
           </div>
@@ -459,16 +613,45 @@ const ChatBox = ({
                 role="button"
                 tabIndex={0}
               >
-                <div className={styles.chatPreviewWrapper}>
-                  <span className={styles.chatPreviewText}>
-                    {chat.messages?.length
-                      ? chat.messages[chat.messages.length - 1].text
-                      : ""}
-                  </span>
-                  {unreadChats.has(chat.id) && (
-                    <span className={styles.unreadDot} />
-                  )}
-                </div>
+                {(() => {
+                  const last = getLastMsg(chat);
+                  const title = getChatTitle(chat, userId, isAdmin, t);
+                  const ts =
+                    last?.createdAt || chat?.updatedAt || chat?.createdAt;
+                  const unreadCount = countUnreadInChat(chat, userId);
+
+                  return (
+                    <div className={styles.chatRow}>
+                      <div className={styles.chatRowTop}>
+                        <div className={styles.chatTitle}>
+                          {title}
+                          {chat.closedAt && (
+                            <span className={styles.chatStatus}>
+                              • {t("closedStatus", { ns: "chatBox" })}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className={styles.chatMeta}>
+                          <span className={styles.chatDate}>
+                            {formatDateShort(ts, i18n.language, t)}
+                          </span>
+                          {unreadCount > 0 && (
+                            <span className={styles.unreadBadge}>
+                              {unreadCount > 9 ? "9+" : unreadCount}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className={styles.chatRowBottom}>
+                        <span className={styles.chatPreviewText}>
+                          {last?.text || ""}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>
@@ -476,7 +659,21 @@ const ChatBox = ({
       ) : (
         <div className={styles.chatContainer}>
           <div className={styles.messages}>
-            {messages.map((msg) => {
+            {groupedMessages.map((item) => {
+              if (item.type === "divider") {
+                const label = new Intl.DateTimeFormat(i18n.language, {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                }).format(new Date(item.dt));
+                return (
+                  <div key={`d-${item.key}`} className={styles.dateDivider}>
+                    <span>{label}</span>
+                  </div>
+                );
+              }
+
+              const msg = item.msg;
               const isSystem = msg.senderRole === "system";
 
               return (
@@ -495,7 +692,14 @@ const ChatBox = ({
                   {!isSystem && (
                     <div className={styles.sender}>{getSenderName(msg)}</div>
                   )}
+
                   <div className={styles.text}>{msg.text}</div>
+
+                  {!isSystem && (
+                    <div className={styles.msgTimeBubble}>
+                      {formatTime(msg.createdAt, i18n.language)}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -505,7 +709,7 @@ const ChatBox = ({
 
           {isClosed ? (
             <div className={styles.closedNotice}>
-              Этот чат поддержки закрыт.
+              {t("chatClosedNotice", { ns: "chatBox" })}
               {!isAdmin && (
                 <button
                   type="button"
@@ -517,7 +721,7 @@ const ChatBox = ({
                   }}
                   className={styles.newChatButton}
                 >
-                  Новый чат
+                  {t("newChat", { ns: "chatBox" })}
                 </button>
               )}
             </div>
