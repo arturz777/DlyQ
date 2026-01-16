@@ -247,15 +247,39 @@ const ChatBox = ({
   }, [userId, forceOpenChatId, view, showHistory]);
 
   useEffect(() => {
-    if (!activeChatId) return;
+    if (!activeChatId || !userId) return;
 
     socket.emit("joinChat", { chatId: activeChatId, userId });
+
+    (async () => {
+      try {
+        const res = await fetch(`${API}/chat/${activeChatId}`, {
+          headers: { ...getAuthHeaders() },
+        });
+        const fullChat = await res.json();
+
+        if (!fullChat?.id) return;
+
+        setChats((prev) => {
+          const exists = prev.some((c) => String(c.id) === String(fullChat.id));
+          if (exists) {
+            return prev.map((c) =>
+              String(c.id) === String(fullChat.id) ? { ...c, ...fullChat } : c
+            );
+          }
+          return [fullChat, ...prev];
+        });
+      } catch (e) {
+        console.error("load chat details error:", e);
+      }
+    })();
 
     const handleMessage = async (msg) => {
       const currentActiveChatId = activeChatIdRef.current;
 
       const currentChats = chatsRef.current || [];
-      let chatObj = currentChats.find((c) => c.id === msg.chatId) || null;
+      let chatObj =
+        currentChats.find((c) => String(c.id) === String(msg.chatId)) || null;
 
       if (!chatObj) {
         try {
@@ -266,7 +290,9 @@ const ChatBox = ({
           chatObj = newChat;
 
           setChats((prev) =>
-            prev.some((c) => c.id === newChat.id) ? prev : [newChat, ...prev]
+            prev.some((c) => String(c.id) === String(newChat.id))
+              ? prev
+              : [newChat, ...prev]
           );
         } catch (err) {
           console.error(t("errorLoadChat", { ns: "chatBox" }), err);
@@ -274,7 +300,7 @@ const ChatBox = ({
       } else {
         setChats((prevChats) =>
           prevChats.map((chat) => {
-            if (chat.id !== msg.chatId) return chat;
+            if (String(chat.id) !== String(msg.chatId)) return chat;
 
             const prevMsgs = chat.messages || [];
             if (prevMsgs.some((m) => isSameMsg(m, msg))) return chat;
@@ -286,7 +312,8 @@ const ChatBox = ({
 
       if (chatObj && isSupportChat(chatObj) && msg.senderId !== userId) {
         const isActiveAndOpen =
-          msg.chatId === currentActiveChatId && viewRef.current === "chat";
+          String(msg.chatId) === String(currentActiveChatId) &&
+          viewRef.current === "chat";
 
         if (isActiveAndOpen) {
           markChatRead(msg.chatId);
@@ -300,7 +327,7 @@ const ChatBox = ({
         }
       }
 
-      if (msg.chatId === currentActiveChatId) {
+      if (String(msg.chatId) === String(currentActiveChatId)) {
         setMessages((prev) =>
           prev.some((m) => isSameMsg(m, msg)) ? prev : [...prev, msg]
         );
@@ -401,7 +428,7 @@ const ChatBox = ({
     return () => socket.off("chatClosed", onChatClosed);
   }, [activeChatId]);
 
-const getSenderName = (msg) => {
+  const getSenderName = (msg) => {
     if (msg.senderId === userId) return t("you", { ns: "chatBox" });
     if (msg.senderRole === "admin") return t("supportName", { ns: "chatBox" });
 
@@ -409,7 +436,7 @@ const getSenderName = (msg) => {
     const participant = chat?.participants?.find(
       (p) => p.userId === msg.senderId
     );
-    return participant?.user?.firstName || msg.senderRole;
+   return participant?.user?.firstName || "";
   };
 
   const handleSelectChat = async (id) => {
