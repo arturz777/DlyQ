@@ -2,10 +2,15 @@ import React, { useState, useEffect, useContext, useRef, useMemo } from "react";
 import { ChatContext } from "../context/ChatContext";
 import { normalizeChatRole } from "../utils/chatRoles";
 import { socket } from "../socket";
+import {
+  fetchUserChats,
+  fetchChatById,
+  fetchChatMessages,
+  markChatRead as markChatReadApi,
+  openSupportChat,
+} from "../http/chatAPI";
 import { useTranslation } from "react-i18next";
 import styles from "./ChatBox.module.css";
-
-const API = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 
 const isSameMsg = (a, b) => {
   if (!a || !b) return false;
@@ -16,11 +21,6 @@ const isSameMsg = (a, b) => {
     String(a.createdAt) === String(b.createdAt) &&
     String(a.text) === String(b.text)
   );
-};
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
 const isSupportChat = (chat) => {
@@ -151,14 +151,7 @@ const ChatBox = ({
     clearTimeout(readDebounceRef.current[id]);
     readDebounceRef.current[id] = setTimeout(async () => {
       try {
-        await fetch(`${API}/chat/${id}/mark-read`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...getAuthHeaders(),
-          },
-          body: JSON.stringify({ userId }),
-        });
+        await markChatReadApi(id, userId);
 
         socket.emit("readMessages", { chatId: id, userId });
         if (String(userRole || "").toLowerCase() !== "admin") {
@@ -203,10 +196,9 @@ const ChatBox = ({
     if (!showHistory) return;
 
     const loadChats = () => {
-      fetch(`${API}/chat/user/${userId}`, {
-        headers: { ...getAuthHeaders() },
-      })
-        .then((res) => res.json())
+      if (!userId) return;
+
+      fetchUserChats(userId)
         .then((data) => {
           setChats(data);
 
@@ -259,10 +251,7 @@ const ChatBox = ({
 
     (async () => {
       try {
-        const res = await fetch(`${API}/chat/${activeChatId}`, {
-          headers: { ...getAuthHeaders() },
-        });
-        const fullChat = await res.json();
+        const fullChat = await fetchChatById(activeChatId);
 
         if (!fullChat?.id) return;
 
@@ -289,11 +278,14 @@ const ChatBox = ({
 
       if (!chatObj) {
         try {
-          const res = await fetch(`${API}/chat/${msg.chatId}`, {
-            headers: { ...getAuthHeaders() },
-          });
-          const newChat = await res.json();
+          const newChat = await fetchChatById(msg.chatId);
           chatObj = newChat;
+
+          setChats((prev) =>
+            prev.some((c) => String(c.id) === String(newChat.id))
+              ? prev
+              : [newChat, ...prev]
+          );
 
           setChats((prev) =>
             prev.some((c) => String(c.id) === String(newChat.id))
@@ -342,10 +334,7 @@ const ChatBox = ({
 
     socket.on("receiveMessage", handleMessage);
 
-    fetch(`${API}/chat/${activeChatId}/messages`, {
-      headers: { ...getAuthHeaders() },
-    })
-      .then((res) => res.json())
+    fetchChatMessages(activeChatId)
       .then((msgs) => {
         setMessages(msgs);
         markChatRead(activeChatId);
@@ -388,10 +377,7 @@ const ChatBox = ({
 
       if (!exists) {
         try {
-          const res = await fetch(`${API}/chat/${msg.chatId}`, {
-            headers: { ...getAuthHeaders() },
-          });
-          const newChat = await res.json();
+          const newChat = await fetchChatById(msg.chatId);
 
           addUnreadIfSupport(newChat);
           setChats((prev) => [newChat, ...prev]);
@@ -455,14 +441,8 @@ const ChatBox = ({
     });
     setView("chat");
 
-    await fetch(`${API}/chat/${id}/mark-read`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders(),
-      },
-      body: JSON.stringify({ userId }),
-    });
+    await markChatReadApi(id, userId);
+
     socket.emit("readMessages", { chatId: id, userId });
   };
 
@@ -473,22 +453,13 @@ const ChatBox = ({
     let id = activeChatId;
 
     if (!id) {
-      const res = await fetch(`${API}/chat/support`, {
-        method: "GET",
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-      });
+      const data = await openSupportChat();
+      id = data?.chatId ?? data?.id;
 
-      if (!res.ok) {
-        throw new Error(
-          t("supportChatError", { ns: "chatBox", status: res.status })
-        );
+      if (!id) {
+        throw new Error(t("supportChatError", { ns: "chatBox" }));
       }
 
-      const data = await res.json();
-      id = data.chatId;
       setActiveChatId(id);
       socket.emit("joinChat", { chatId: id, userId });
     }
