@@ -251,6 +251,12 @@ const ChatBox = ({
 
     socket.emit("joinChat", { chatId: activeChatId, userId });
 
+    const rejoin = () => {
+      socket.emit("joinChat", { chatId: activeChatId, userId });
+    };
+
+    socket.on("connect", rejoin);
+
     (async () => {
       try {
         const res = await fetch(`${API}/chat/${activeChatId}`, {
@@ -347,6 +353,7 @@ const ChatBox = ({
       .catch(console.error);
 
     return () => {
+      socket.off("connect", rejoin);
       socket.off("receiveMessage", handleMessage);
     };
   }, [activeChatId, userId]);
@@ -436,7 +443,7 @@ const ChatBox = ({
     const participant = chat?.participants?.find(
       (p) => p.userId === msg.senderId
     );
-   return participant?.user?.firstName || "";
+    return participant?.user?.firstName || "";
   };
 
   const handleSelectChat = async (id) => {
