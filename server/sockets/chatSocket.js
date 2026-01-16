@@ -162,6 +162,15 @@ module.exports = function chatSocket(io, socket) {
         chat.supportKey = `${chat.supportKey}:closed:${chat.id}`;
       }
 
+      const room = `chat_${chatId}`;
+    const socketsInRoom = await io.in(room).allSockets();
+    console.log("closeChat:", {
+      chatId,
+      room,
+      socketsInRoom: socketsInRoom.size,
+      instance: process.pid,
+    });
+
       await chat.save();
 
       const CLOSED_TEXT = t("chat_closed_thanks", lang);
