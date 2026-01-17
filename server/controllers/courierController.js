@@ -778,9 +778,25 @@ class CourierController {
         });
       }
 
+      const user = await User.findByPk(courierId, {
+        attributes: ["id", "firstName", "lastName", "phone", "email"],
+        raw: true,
+      });
+
+      const fullName = [user?.firstName, user?.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
       return res.json({
         id: courier.id,
-        name: courier.name,
+        name: courier.name || fullName || buildCourierName(req.user),
+
+        firstName: user?.firstName || null,
+        lastName: user?.lastName || null,
+        phone: user?.phone || null,
+        email: user?.email || null,
+
         status: courier.status,
         currentLat: courier.currentLat,
         currentLng: courier.currentLng,
