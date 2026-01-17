@@ -86,6 +86,45 @@ function buildWarehouseName(user) {
 }
 
 class WarehouseController {
+
+  async getWarehouseHistory(req, res) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: "Вы не авторизованы." });
+
+    const warehouse = await getOrCreateWarehouseForUser(req.user);
+    if (!warehouse) return res.status(403).json({ message: "Нет доступа к складу" });
+
+    const where = {
+      orderType: { [Op.ne]: "parcel" },
+      warehouseStatus: { [Op.notIn]: ["pending", "processing"] },
+    };
+
+    if (warehouse.sellerId) {
+      where.sellerId = warehouse.sellerId;
+    } else {
+      where[Op.or] = [{ sellerId: null }, { sellerId: 0 }];
+    }
+
+    const orders = await Order.findAll({
+      where,
+      order: [["createdAt", "DESC"]],
+      limit: 300,
+    });
+
+    const formatted = orders.map((order) => ({
+      ...order.toJSON(),
+      orderDetails: safeParse(order.orderDetails),
+      preorderDate: order.desiredDeliveryDate || null,
+    }));
+
+    return res.json(formatted);
+  } catch (error) {
+    console.error("❌ Ошибка получения истории заказов склада:", error);
+    return res.status(500).json({ message: "Ошибка сервера" });
+  }
+}
+
   async getMe(req, res) {
     const warehouse = await getOrCreateWarehouseForUser(req.user);
     if (!warehouse) {
