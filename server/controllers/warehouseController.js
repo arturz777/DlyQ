@@ -2,10 +2,10 @@ const {
   Order,
   Warehouse,
   SellerUser,
+  Seller,
   Chat,
   ChatParticipant,
 } = require("../models/models");
-
 const { Op } = require("sequelize");
 const { sendOrderAssignedPush } = require("../services/pushService");
 const { scheduleCourierSearch } = require("../services/courierSearchScheduler");
@@ -97,19 +97,18 @@ class WarehouseController {
         return res.status(403).json({ message: "Нет доступа к складу" });
 
       const where = {
-  orderType: { [Op.ne]: "parcel" },
-  status: {
-    [Op.in]: [
-      "Ready for pickup",
-      "Picked up",
-      "Arrived at destination",
-      "Delivered",
-      "Completed",
-    ],
-  },
-  [Op.or]: [{ warehouseId: warehouse.id }, { warehouseId: null }],
-};
-
+        orderType: { [Op.ne]: "parcel" },
+        status: {
+          [Op.in]: [
+            "Ready for pickup",
+            "Picked up",
+            "Arrived at destination",
+            "Delivered",
+            "Completed",
+          ],
+        },
+        [Op.or]: [{ warehouseId: warehouse.id }, { warehouseId: null }],
+      };
 
       if (warehouse.sellerId) {
         where.sellerId = warehouse.sellerId;
@@ -142,10 +141,21 @@ class WarehouseController {
       return res.status(403).json({ message: "Нет доступа к складу" });
     }
 
+    let sellerName = "DlyQ Market";
+
+    if (warehouse.sellerId) {
+      const seller = await Seller.findByPk(warehouse.sellerId);
+      sellerName = seller?.name || seller?.title || sellerName;
+    }
+
     return res.json({
       warehouseId: warehouse.id,
       sellerId: warehouse.sellerId || null,
       role: req.user.role,
+      warehouseName: warehouse.name,
+      warehouseStatus: warehouse.status,
+      sellerName,
+      hasPushToken: !!warehouse.expoPushToken,
     });
   }
 
