@@ -8,35 +8,42 @@ router.get(
   "/orders",
   authMiddleware,
   roleMiddleware("WAREHOUSE", "SELLER", "ADMIN"),
-  warehouseController.getWarehouseOrders
+  warehouseController.getWarehouseOrders,
 );
 
 router.post(
   "/orders/:id/accept",
   authMiddleware,
   roleMiddleware("WAREHOUSE", "SELLER", "ADMIN"),
-  warehouseController.acceptOrder
+  warehouseController.acceptOrder,
 );
 
 router.post(
   "/orders/:id/complete",
   authMiddleware,
   roleMiddleware("WAREHOUSE", "SELLER", "ADMIN"),
-  warehouseController.completeOrder
+  warehouseController.completeOrder,
 );
 
 router.post(
   "/push-token",
   authMiddleware,
   roleMiddleware("WAREHOUSE", "SELLER", "ADMIN"),
-  warehouseController.savePushToken
+  warehouseController.savePushToken,
 );
 
 router.get(
   "/me",
   authMiddleware,
   roleMiddleware("WAREHOUSE", "SELLER", "ADMIN"),
-  warehouseController.getMe
+  warehouseController.getMe,
+);
+
+router.get(
+  "/history",
+  authMiddleware,
+  roleMiddleware("WAREHOUSE", "SELLER", "ADMIN"),
+  warehouseController.getWarehouseHistory,
 );
 
 module.exports = router;
