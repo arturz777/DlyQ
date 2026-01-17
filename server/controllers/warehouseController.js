@@ -135,7 +135,7 @@ class WarehouseController {
     }
   }
 
- async getMe(req, res) {
+  async getMe(req, res) {
     const warehouse = await getOrCreateWarehouseForUser(req.user);
     if (!warehouse) {
       return res.status(403).json({ message: "Нет доступа к складу" });
