@@ -135,26 +135,28 @@ class WarehouseController {
     }
   }
 
-  async getMe(req, res) {
+ async getMe(req, res) {
     const warehouse = await getOrCreateWarehouseForUser(req.user);
     if (!warehouse) {
       return res.status(403).json({ message: "Нет доступа к складу" });
     }
 
     let sellerName = "DlyQ Market";
+    let sellerId = warehouse.sellerId || null;
 
-    if (warehouse.sellerId) {
-      const seller = await Seller.findByPk(warehouse.sellerId);
-      sellerName = seller?.name || seller?.title || sellerName;
+    if (sellerId) {
+      const seller = await Seller.findByPk(sellerId);
+      if (seller?.name) sellerName = seller.name;
     }
 
     return res.json({
       warehouseId: warehouse.id,
-      sellerId: warehouse.sellerId || null,
+      sellerId,
       role: req.user.role,
+
+      sellerName,
       warehouseName: warehouse.name,
       warehouseStatus: warehouse.status,
-      sellerName,
       hasPushToken: !!warehouse.expoPushToken,
     });
   }
