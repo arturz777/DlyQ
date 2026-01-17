@@ -97,7 +97,7 @@ class WarehouseController {
 
     const where = {
       orderType: { [Op.ne]: "parcel" },
-      warehouseStatus: { [Op.notIn]: ["pending", "processing"] },
+      where.warehouseStatus = { [Op.in]: ["ready", "completed"] };
     };
 
     if (warehouse.sellerId) {
