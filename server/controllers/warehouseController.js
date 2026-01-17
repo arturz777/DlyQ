@@ -96,9 +96,9 @@ class WarehouseController {
     if (!warehouse) return res.status(403).json({ message: "Нет доступа к складу" });
 
     const where = {
-      orderType: { [Op.ne]: "parcel" },
-      where.warehouseStatus = { [Op.in]: ["ready", "completed"] };
-    };
+  orderType: { [Op.ne]: "parcel" },
+  warehouseStatus: { [Op.in]: ["ready", "completed"] },
+};
 
     if (warehouse.sellerId) {
       where.sellerId = warehouse.sellerId;
