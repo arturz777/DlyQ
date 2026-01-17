@@ -634,11 +634,7 @@ class CourierController {
           const u = o.userId ? userMap.get(Number(o.userId)) : null;
 
           const kind =
-            o.orderType === "parcel"
-              ? "parcel"
-              : seller
-              ? "seller"
-              : "market";
+            o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
 
           return {
             id: o.id,
@@ -782,9 +778,25 @@ class CourierController {
         });
       }
 
+      const user = await User.findByPk(courierId, {
+        attributes: ["id", "firstName", "lastName", "phone", "email"],
+        raw: true,
+      });
+
+      const fullName = [user?.firstName, user?.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
       return res.json({
         id: courier.id,
-        name: courier.name,
+        name: courier.name || fullName || buildCourierName(req.user),
+
+        firstName: user?.firstName || null,
+        lastName: user?.lastName || null,
+        phone: user?.phone || null,
+        email: user?.email || null,
+
         status: courier.status,
         currentLat: courier.currentLat,
         currentLng: courier.currentLng,
@@ -1312,6 +1324,12 @@ class CourierController {
       await courier.save();
 
       const io = req.app.get("io");
+
+      io.to("admin_notifications").emit("courierLocationUpdate", {
+        courierId,
+        lat,
+        lng,
+      });
 
       const activeOrders = await Order.findAll({
         where: {
