@@ -99,14 +99,14 @@ class WarehouseController {
       const where = {
         orderType: { [Op.ne]: "parcel" },
         status: {
-          [Op.in]: [
-            "Ready for pickup",
-            "Picked up",
-            "Arrived at destination",
-            "Delivered",
-            "Completed",
-          ],
-        },
+         [Op.in]: [
+           "Ready for pickup",
+           "Picked up",
+           "Arrived at destination",
+           "Delivered",
+           "Completed",
+         ],
+       },
       };
 
       if (warehouse.sellerId) {
