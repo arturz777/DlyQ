@@ -113,7 +113,6 @@ class ChatController {
     return res.json({ chatId: chat.id, orderId });
   }
 
-  // ChatController.getOrCreateSupportChat
   async getOrCreateSupportChat(req, res) {
     try {
       const userId = req.user?.id;
@@ -149,11 +148,20 @@ class ChatController {
         defaults: { chatId: chat.id, userId, role },
       });
 
-      const ADMIN_ID = 1;
-      await ChatParticipant.findOrCreate({
-        where: { chatId: chat.id, userId: ADMIN_ID },
-        defaults: { chatId: chat.id, userId: ADMIN_ID, role: "admin" },
+      const admin = await User.findOne({
+        where: { role: { [Op.iLike]: "admin" } },
+        attributes: ["id"],
+        raw: true,
       });
+
+      if (admin?.id) {
+        await ChatParticipant.findOrCreate({
+          where: { chatId: chat.id, userId: admin.id },
+          defaults: { chatId: chat.id, userId: admin.id, role: "admin" },
+        });
+      } else {
+        console.warn("Support chat: admin user not found, chat without admin");
+      }
 
       return res.json({ chatId: chat.id });
     } catch (e) {
@@ -240,7 +248,7 @@ class ChatController {
             isRead: false,
             senderId: { [Op.ne]: userId },
           },
-        }
+        },
       );
 
       return res.json({ success: true });
