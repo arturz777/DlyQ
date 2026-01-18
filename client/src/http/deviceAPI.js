@@ -193,6 +193,15 @@ export const createType = async (type) => {
   return data;
 };
 
+export const checkStock = async (deviceId, quantity, selectedOptions) => {
+  const { data } = await $host.post("/device/check-stock", {
+    deviceId,
+    quantity,
+    selectedOptions,
+  });
+  return data;
+};
+
 export const fetchTypes = async () => {
   const { data } = await $host.get("/type");
   return data;
