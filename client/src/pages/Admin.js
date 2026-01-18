@@ -8,7 +8,11 @@ import Button from "react-bootstrap/Button";
 import { updateDeviceVisibility } from "../http/deviceAPI";
 import { fetchAllCouriers } from "../http/courierAPI";
 import { assignCourierToOrder } from "../http/orderAPI";
-import { fetchTranslations, updateTranslation } from "../http/translationAPI";
+import {
+  fetchTranslations,
+  updateTranslation,
+  createTranslation,
+} from "../http/translationAPI";
 import {
   fetchTypes,
   fetchSubtypes,
@@ -40,6 +44,13 @@ import {
   deactivateMenuItem,
   toggleMenuItemAvailability,
 } from "../http/menuAPI";
+import {
+  fetchMaintenance,
+  updateMaintenance,
+  fetchShopConfig,
+  updateShopConfig,
+} from "../http/configAPI";
+import { fetchUserChats } from "../http/chatAPI";
 import { createReceipt, createWriteoff } from "../http/inventoryAPI";
 import CreateMenuCategory from "../components/modals/CreateMenuCategory";
 import CreateMenuItem from "../components/modals/CreateMenuItem";
@@ -53,7 +64,6 @@ import CreateModel from "../components/modals/CreateModel";
 import CourierMap from "../components/CourierMap";
 import ChatBox from "../components/ChatBox";
 import AdminAccounting from "../components/AdminAccounting";
-import { fetchMaintenance, updateMaintenance } from "../http/configAPI";
 import appStore from "../store/appStore";
 import StockQuickAdjustModal from "../components/modals/StockQuickAdjustModal";
 import SlideModal from "../components/modals/SlideModal";
@@ -134,13 +144,19 @@ const Admin = () => {
   const [outOfOpen, setOutOfOpen] = useState(false);
   const [expireOpen, setExpireOpen] = useState(false);
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(
-    appStore.maintenance.enabled
+    appStore.maintenance.enabled,
   );
   const [maintMessage, setMaintMessage] = useState(
-    appStore.maintenance.message
+    appStore.maintenance.message,
   );
   const [menuSearch, setMenuSearch] = useState("");
   const [prefillMenuCategoryId, setPrefillMenuCategoryId] = useState(null);
+  const [shopForceClosed, setShopForceClosed] = useState(false);
+  const [shopHours, setShopHours] = useState({
+    weekdays: { start: "10:00", end: "22:00" },
+    saturday: { start: "10:00", end: "22:00" },
+    sunday: { start: "10:00", end: "14:00" },
+  });
 
   const upsertBrand = (list, saved) => {
     if (!saved) return list;
@@ -171,7 +187,7 @@ const Admin = () => {
     return [...(menuCategories || [])].sort(
       (a, b) =>
         (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
-        (a.id ?? 0) - (b.id ?? 0)
+        (a.id ?? 0) - (b.id ?? 0),
     );
   }, [menuCategories]);
 
@@ -198,8 +214,9 @@ const Admin = () => {
       map.set(
         k,
         [...arr].sort(
-          (a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0) || a.id - b.id
-        )
+          (a, b) =>
+            (a.displayOrder ?? 0) - (b.displayOrder ?? 0) || a.id - b.id,
+        ),
       );
     }
 
@@ -210,33 +227,33 @@ const Admin = () => {
     const q = menuSearch.trim();
     if (!q) return sortedMenuCategories;
     return sortedMenuCategories.filter(
-      (c) => (menuItemsByCategory.get(c.id) || []).length > 0
+      (c) => (menuItemsByCategory.get(c.id) || []).length > 0,
     );
   }, [sortedMenuCategories, menuItemsByCategory, menuSearch]);
 
   useEffect(() => {
-  const onLoc = ({ courierId, lat, lng }) => {
-    setCouriers((prev) =>
-      prev.map((c) =>
-        c.id === courierId ? { ...c, currentLat: lat, currentLng: lng } : c
-      )
-    );
-  };
+    const onLoc = ({ courierId, lat, lng }) => {
+      setCouriers((prev) =>
+        prev.map((c) =>
+          c.id === courierId ? { ...c, currentLat: lat, currentLng: lng } : c,
+        ),
+      );
+    };
 
-  const onStatus = ({ courierId, status }) => {
-    setCouriers((prev) =>
-      prev.map((c) => (c.id === courierId ? { ...c, status } : c))
-    );
-  };
+    const onStatus = ({ courierId, status }) => {
+      setCouriers((prev) =>
+        prev.map((c) => (c.id === courierId ? { ...c, status } : c)),
+      );
+    };
 
-  socket.on("courierLocationUpdate", onLoc);
-  socket.on("courierStatusUpdate", onStatus);
+    socket.on("courierLocationUpdate", onLoc);
+    socket.on("courierStatusUpdate", onStatus);
 
-  return () => {
-    socket.off("courierLocationUpdate", onLoc);
-    socket.off("courierStatusUpdate", onStatus);
-  };
-}, []);
+    return () => {
+      socket.off("courierLocationUpdate", onLoc);
+      socket.off("courierStatusUpdate", onStatus);
+    };
+  }, []);
 
   useEffect(() => {
     fetchMaintenance()
@@ -246,6 +263,35 @@ const Admin = () => {
       })
       .catch(console.error);
   }, []);
+
+  useEffect(() => {
+    fetchShopConfig()
+      .then((v) => {
+        setShopForceClosed(!!v.forceClosed);
+        if (v.workHours) setShopHours(v.workHours);
+      })
+      .catch(console.error);
+  }, []);
+
+  const setHour = (dayKey, field, val) => {
+    setShopHours((prev) => ({
+      ...prev,
+      [dayKey]: { ...(prev[dayKey] || {}), [field]: val },
+    }));
+  };
+
+  const saveShop = async () => {
+    try {
+      await updateShopConfig({
+        forceClosed: shopForceClosed,
+        workHours: shopHours,
+      });
+      alert("Сохранено");
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка сохранения настроек магазина");
+    }
+  };
 
   const toggleMaintenance = async (next) => {
     try {
@@ -263,7 +309,7 @@ const Admin = () => {
     fetchSubtypes().then(setSubtypes);
     fetchBrands().then(setBrands);
     fetchDevices(undefined, undefined, undefined, 1, 1000).then((data) =>
-      setDevices(data.rows || data)
+      setDevices(data.rows || data),
     );
     fetchTranslations().then(setTranslations);
     fetchSellers(false).then(setSellers).catch(console.error);
@@ -319,14 +365,14 @@ const Admin = () => {
     orderId,
     status,
     processingTime,
-    estimatedTime
+    estimatedTime,
   ) => {
     try {
       await adminUpdateOrderStatus(
         orderId,
         status,
         processingTime,
-        estimatedTime
+        estimatedTime,
       );
     } catch (err) {
       console.error("Ошибка при обновлении:", err);
@@ -338,11 +384,11 @@ const Admin = () => {
   }, []);
 
   useEffect(() => {
-  if (!couriers?.length) return;
-  couriers.forEach((c) => {
-    socket.emit("joinCourierRoom", { courierId: c.id });
-  });
-}, [couriers]);
+    if (!couriers?.length) return;
+    couriers.forEach((c) => {
+      socket.emit("joinCourierRoom", { courierId: c.id });
+    });
+  }, [couriers]);
 
   const filteredDevices = React.useMemo(() => {
     return devices
@@ -374,7 +420,7 @@ const Admin = () => {
       if (!modelsByMake[makeId]) {
         fetchModelsByMake(makeId)
           .then((list) =>
-            setModelsByMake((prev) => ({ ...prev, [makeId]: list }))
+            setModelsByMake((prev) => ({ ...prev, [makeId]: list })),
           )
           .catch(console.error);
       }
@@ -397,7 +443,7 @@ const Admin = () => {
         undefined,
         undefined,
         1,
-        1000
+        1000,
       );
       setDevices(devicesData.rows || devicesData);
     };
@@ -423,12 +469,12 @@ const Admin = () => {
       await toggleMenuItemAvailability(
         item.id,
         activeSellerId,
-        !item.isAvailable
+        !item.isAvailable,
       );
       setMenuItems((prev) =>
         prev.map((x) =>
-          x.id === item.id ? { ...x, isAvailable: !item.isAvailable } : x
-        )
+          x.id === item.id ? { ...x, isAvailable: !item.isAvailable } : x,
+        ),
       );
     } catch (e) {
       console.error(e);
@@ -461,7 +507,7 @@ const Admin = () => {
   const handleToggleVisibility = async (id, next) => {
     const prev = devices;
     setDevices((p) =>
-      p.map((d) => (d.id === id ? { ...d, isVisible: next } : d))
+      p.map((d) => (d.id === id ? { ...d, isVisible: next } : d)),
     );
     try {
       await updateDeviceVisibility(id, next);
@@ -475,7 +521,7 @@ const Admin = () => {
   const handleAssignCourier = async (orderId, courierId) => {
     if (!courierId) {
       setAllOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, courierId: null } : o))
+        prev.map((o) => (o.id === orderId ? { ...o, courierId: null } : o)),
       );
       return;
     }
@@ -483,38 +529,22 @@ const Admin = () => {
     try {
       await assignCourierToOrder(orderId, courierId);
       setAllOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, courierId } : o))
+        prev.map((o) => (o.id === orderId ? { ...o, courierId } : o)),
       );
     } catch (err) {
       console.error("Ошибка при назначении курьера:", err);
     }
   };
 
- useEffect(() => {
+  useEffect(() => {
     if (!user?.user?.id) return;
 
-    const base = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
-    const url = `${base}/chat/user/${user.user.id}`;
-
-    fetch(url, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(
-            `fetch chats failed ${res.status}: ${text.slice(0, 120)}`
-          );
-        }
-        return res.json();
-      })
+    fetchUserChats(user.user.id)
       .then((data) => {
         const unread = new Set();
         (data || []).forEach((chat) => {
           const hasUnread = chat.messages?.some(
-            (msg) => !msg.isRead && msg.senderId !== user.user.id
+            (msg) => !msg.isRead && msg.senderId !== user.user.id,
           );
           if (hasUnread) unread.add(chat.id);
         });
@@ -524,21 +554,21 @@ const Admin = () => {
   }, [user?.user?.id]);
 
   useEffect(() => {
-  const role = String(user?.user?.role || "").toUpperCase();
-  if (role !== "ADMIN") return;
+    const role = String(user?.user?.role || "").toUpperCase();
+    if (role !== "ADMIN") return;
 
-  const join = () => {
-    socket.emit("joinAdminNotifications");
-    console.log("🔔 Админ подключен к admin_notifications");
-  };
+    const join = () => {
+      socket.emit("joinAdminNotifications");
+      console.log("🔔 Админ подключен к admin_notifications");
+    };
 
-  join();
-  socket.on("connect", join);
+    join();
+    socket.on("connect", join);
 
-  return () => {
-    socket.off("connect", join);
-  };
-}, [user?.user?.role]);
+    return () => {
+      socket.off("connect", join);
+    };
+  }, [user?.user?.role]);
 
   const reloadMakes = async () => {
     const m = await fetchMakes();
@@ -592,7 +622,7 @@ const Admin = () => {
     setOpenMakeIds((prev) =>
       prev.includes(makeId)
         ? prev.filter((id) => id !== makeId)
-        : [...prev, makeId]
+        : [...prev, makeId],
     );
 
     if (!modelsByMake[makeId]) {
@@ -668,7 +698,7 @@ const Admin = () => {
     setOpenDeviceTypeIds((prev) =>
       prev.includes(typeId)
         ? prev.filter((id) => id !== typeId)
-        : [...prev, typeId]
+        : [...prev, typeId],
     );
   };
 
@@ -676,7 +706,7 @@ const Admin = () => {
     setOpenTypeIds((prev) =>
       prev.includes(typeId)
         ? prev.filter((id) => id !== typeId)
-        : [...prev, typeId]
+        : [...prev, typeId],
     );
   };
 
@@ -738,40 +768,32 @@ const Admin = () => {
     await updateTranslation(editKey, editLang, editText);
     setTranslations((prev) =>
       prev.map((t) =>
-        t.key === editKey && t.lang === editLang ? { ...t, text: editText } : t
-      )
+        t.key === editKey && t.lang === editLang ? { ...t, text: editText } : t,
+      ),
     );
     setEditKey(null);
   };
 
- const handleAddTranslation = async () => {
+  const handleAddTranslation = async () => {
     if (!newKey || !newLang || !newText) {
       alert("Заполните все поля!");
       return;
     }
 
-    const base = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
-    const url = `${base}/translations`;
+    try {
+      const newTranslation = await createTranslation({
+        key: newKey,
+        lang: newLang,
+        text: newText,
+      });
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify({ key: newKey, lang: newLang, text: newText }),
-    });
-
-    if (response.ok) {
-      const newTranslation = await response.json();
       setTranslations([...translations, newTranslation]);
       setShowAddForm(false);
       setNewKey("");
       setNewLang("en");
       setNewText("");
-    } else {
-      const text = await response.text().catch(() => "");
-      console.error("addTranslation failed:", response.status, text);
+    } catch (e) {
+      console.error("addTranslation failed:", e);
       alert("Ошибка добавления перевода");
     }
   };
@@ -836,34 +858,34 @@ const Admin = () => {
 
   const attentionDevices = filteredDevices
     .filter(
-      (d) => !isSnoozed(d) && (isExpired(d) || isExpiringWithin2Months(d))
+      (d) => !isSnoozed(d) && (isExpired(d) || isExpiringWithin2Months(d)),
     )
     .sort((a, b) => (daysToExpire(a) ?? 9e9) - (daysToExpire(b) ?? 9e9));
 
   const outOfStockDevices = filteredDevices
-  .map((d) => {
-    const zeros = getZeroVariants(d);
+    .map((d) => {
+      const zeros = getZeroVariants(d);
 
-    const rawVariants = Array.isArray(d.variants)
-      ? d.variants
-      : parseMaybeJSON(d.variants) || [];
+      const rawVariants = Array.isArray(d.variants)
+        ? d.variants
+        : parseMaybeJSON(d.variants) || [];
 
-    const activeVariants = rawVariants.filter((v) => v?.isActive ?? true);
+      const activeVariants = rawVariants.filter((v) => v?.isActive ?? true);
 
-    let completelyOut = false;
-    if (activeVariants.length) {
-      completelyOut = activeVariants.every(
-        (v) => (Number(v?.quantity) || 0) <= 0
-      );
-    } else {
-      completelyOut = (Number(d.quantity) || 0) <= 0;
-    }
+      let completelyOut = false;
+      if (activeVariants.length) {
+        completelyOut = activeVariants.every(
+          (v) => (Number(v?.quantity) || 0) <= 0,
+        );
+      } else {
+        completelyOut = (Number(d.quantity) || 0) <= 0;
+      }
 
-    const show = !isSnoozed(d) && (completelyOut || zeros.length > 0);
-    return show ? { device: d, zeros } : null;
-  })
-  .filter(Boolean)
-  .sort((a, b) => a.device.name.localeCompare(b.device.name));
+      const show = !isSnoozed(d) && (completelyOut || zeros.length > 0);
+      return show ? { device: d, zeros } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.device.name.localeCompare(b.device.name));
 
   const getCompatList = (d) => {
     if (!d) return [];
@@ -1026,7 +1048,7 @@ const Admin = () => {
                           <span style={{ color: "#666", marginRight: 12 }}>
                             до{" "}
                             {new Date(device.expiryDate).toLocaleDateString(
-                              "ru-RU"
+                              "ru-RU",
                             )}
                           </span>
                         )}
@@ -1167,7 +1189,7 @@ const Admin = () => {
                             onChange={(e) =>
                               handleToggleVisibility(
                                 device.id,
-                                e.target.checked
+                                e.target.checked,
                               )
                             }
                           />
@@ -1222,10 +1244,10 @@ const Admin = () => {
 
           {types.map((type) => {
             const subtypesForType = subtypes.filter(
-              (s) => s.typeId === type.id
+              (s) => s.typeId === type.id,
             );
             const subtypeIdsOfType = new Set(
-              subtypesForType.map((s) => Number(s.id))
+              subtypesForType.map((s) => Number(s.id)),
             );
 
             const typeDevices = filteredDevices.filter((d) => {
@@ -1233,7 +1255,7 @@ const Admin = () => {
               const sIds = getDeviceSubtypeIds(d);
               const viaType = tIds.has(Number(type.id));
               const viaSubtype = [...sIds].some((id) =>
-                subtypeIdsOfType.has(id)
+                subtypeIdsOfType.has(id),
               );
               return viaType || viaSubtype;
             });
@@ -1245,10 +1267,10 @@ const Admin = () => {
               ? typeDevices.filter((d) => {
                   const sIds = getDeviceSubtypeIds(d);
                   const hasSubtypeOfThisType = [...sIds].some((id) =>
-                    subtypeIdsOfType.has(id)
+                    subtypeIdsOfType.has(id),
                   );
                   const belongsViaType = getDeviceTypeIds(d).has(
-                    Number(type.id)
+                    Number(type.id),
                   );
                   return belongsViaType && !hasSubtypeOfThisType;
                 })
@@ -1330,7 +1352,7 @@ const Admin = () => {
               for (const d of uniqueById(list)) {
                 const sIds = getDeviceSubtypeIds(d);
                 const idsOfThisType = [...sIds].filter((id) =>
-                  subtypeIdsOfType.has(Number(id))
+                  subtypeIdsOfType.has(Number(id)),
                 );
                 if (idsOfThisType.length === 0) {
                   if (!m.has("__none__")) m.set("__none__", []);
@@ -1464,7 +1486,7 @@ const Admin = () => {
 
                         {subtypesForType.map((subtype) => {
                           const subtypeDevices = typeDevices.filter((d) =>
-                            getDeviceSubtypeIds(d).has(Number(subtype.id))
+                            getDeviceSubtypeIds(d).has(Number(subtype.id)),
                           );
                           if (!subtypeDevices.length) return null;
                           return (
@@ -1517,14 +1539,14 @@ const Admin = () => {
                             </h5>
                             {[
                               ...groupBySubtypeWithinType(
-                                uniqueById(universalWithSubtype)
+                                uniqueById(universalWithSubtype),
                               ),
                             ]
                               .filter(([key]) => key !== "__none__")
                               .map(([key, list]) => {
                                 const title =
                                   subtypesForType.find(
-                                    (s) => s.id === Number(key)
+                                    (s) => s.id === Number(key),
                                   )?.name || `Подтип ${key}`;
                                 return (
                                   <div
@@ -1587,7 +1609,7 @@ const Admin = () => {
                                       const mdOpen = isModelOpen(
                                         type.id,
                                         makeId,
-                                        modelId
+                                        modelId,
                                       );
                                       const modelName =
                                         modelId == null
@@ -1605,7 +1627,7 @@ const Admin = () => {
                                               toggleModelInMakeType(
                                                 type.id,
                                                 makeId,
-                                                modelId
+                                                modelId,
                                               )
                                             }
                                             style={{
@@ -1630,7 +1652,7 @@ const Admin = () => {
                                             <div style={{ marginTop: 6 }}>
                                               {[
                                                 ...groupBySubtypeWithinType(
-                                                  list
+                                                  list,
                                                 ),
                                               ].map(([key, items]) => {
                                                 const title =
@@ -1638,13 +1660,13 @@ const Admin = () => {
                                                     ? "Без подтипа"
                                                     : subtypesForType.find(
                                                         (s) =>
-                                                          s.id === Number(key)
+                                                          s.id === Number(key),
                                                       )?.name ||
                                                       `Подтип ${key}`;
                                                 return (
                                                   <div
                                                     key={`sg-${modelKeyId}-${String(
-                                                      key
+                                                      key,
                                                     )}`}
                                                     style={{ marginBottom: 6 }}
                                                   >
@@ -1675,7 +1697,7 @@ const Admin = () => {
                                           )}
                                         </div>
                                       );
-                                    }
+                                    },
                                   )}
                                 </>
                               )}
@@ -1724,7 +1746,7 @@ const Admin = () => {
                     className={styles.deleteButton}
                     onClick={() => {
                       const confirmed = window.confirm(
-                        "Вы уверены, что хотите удалить этот тип?"
+                        "Вы уверены, что хотите удалить этот тип?",
                       );
                       if (confirmed) {
                         handleDeleteType(type.id);
@@ -1771,7 +1793,7 @@ const Admin = () => {
                 .sort((a, b) =>
                   (a.displayOrder ?? 0) === (b.displayOrder ?? 0)
                     ? a.id - b.id
-                    : (a.displayOrder ?? 0) - (b.displayOrder ?? 0)
+                    : (a.displayOrder ?? 0) - (b.displayOrder ?? 0),
                 )
                 .map((make) => {
                   const isOpen = openMakeIds.includes(make.id);
@@ -1882,7 +1904,7 @@ const Admin = () => {
 
           {types.map((type) => {
             const subtypesForType = subtypes.filter(
-              (s) => s.typeId === type.id
+              (s) => s.typeId === type.id,
             );
             if (subtypesForType.length === 0) return null;
 
@@ -1922,7 +1944,7 @@ const Admin = () => {
                             className={styles.deleteButton}
                             onClick={() => {
                               const confirmed = window.confirm(
-                                "Вы уверены, что хотите удалить этот подтип?"
+                                "Вы уверены, что хотите удалить этот подтип?",
                               );
                               if (confirmed) {
                                 handleDeleteSubtype(subtype.id);
@@ -1967,7 +1989,7 @@ const Admin = () => {
                     className={styles.deleteButton}
                     onClick={() => {
                       const confirmed = window.confirm(
-                        "Вы уверены, что хотите удалить этот бренд?"
+                        "Вы уверены, что хотите удалить этот бренд?",
                       );
                       if (confirmed) {
                         handleDeleteBrand(brand.id);
@@ -2131,8 +2153,8 @@ const Admin = () => {
                               prev.map((o) =>
                                 o.id === order.id
                                   ? { ...o, status: e.target.value }
-                                  : o
-                              )
+                                  : o,
+                              ),
                             )
                           }
                         >
@@ -2141,7 +2163,7 @@ const Admin = () => {
                               <option key={value} value={value}>
                                 {label}
                               </option>
-                            )
+                            ),
                           )}
                         </select>
                       </td>
@@ -2155,8 +2177,8 @@ const Admin = () => {
                                 prev.map((o) =>
                                   o.id === order.id
                                     ? { ...o, processingTime: e.target.value }
-                                    : o
-                                )
+                                    : o,
+                                ),
                               )
                             }
                             style={{ width: "120px" }}
@@ -2184,11 +2206,11 @@ const Admin = () => {
                                         ...o,
                                         estimatedTime: parseInt(
                                           e.target.value,
-                                          10
+                                          10,
                                         ),
                                       }
-                                    : o
-                                )
+                                    : o,
+                                ),
                               )
                             }
                             style={{ width: "120px" }}
@@ -2216,7 +2238,7 @@ const Admin = () => {
                               order.id,
                               order.status,
                               order.processingTime,
-                              order.estimatedTime
+                              order.estimatedTime,
                             )
                           }
                         >
@@ -2260,6 +2282,73 @@ const Admin = () => {
             <span className={styles.toggleSlider} />
             <span className={styles.toggleLabel}>Режим обслуживания</span>
           </label>
+
+          <h4 style={{ marginTop: 16 }}>DlyQ Market</h4>
+
+          <label
+            className={styles.toggleWrap}
+            style={{ gap: 12, marginTop: 6, marginBottom: 12 }}
+          >
+            <input
+              type="checkbox"
+              className={styles.toggleInput}
+              checked={shopForceClosed}
+              onChange={(e) => setShopForceClosed(e.target.checked)}
+            />
+            <span className={styles.toggleSlider} />
+            <span className={styles.toggleLabel}>Принудительно закрыт</span>
+          </label>
+
+          <div style={{ display: "grid", gap: 10, maxWidth: 420 }}>
+            <div>
+              <b>Будни</b>{" "}
+              <input
+                type="time"
+                value={shopHours.weekdays?.start || "10:00"}
+                onChange={(e) => setHour("weekdays", "start", e.target.value)}
+              />
+              {" — "}
+              <input
+                type="time"
+                value={shopHours.weekdays?.end || "22:00"}
+                onChange={(e) => setHour("weekdays", "end", e.target.value)}
+              />
+            </div>
+
+            <div>
+              <b>Суббота</b>{" "}
+              <input
+                type="time"
+                value={shopHours.saturday?.start || "10:00"}
+                onChange={(e) => setHour("saturday", "start", e.target.value)}
+              />
+              {" — "}
+              <input
+                type="time"
+                value={shopHours.saturday?.end || "22:00"}
+                onChange={(e) => setHour("saturday", "end", e.target.value)}
+              />
+            </div>
+
+            <div>
+              <b>Воскресенье</b>{" "}
+              <input
+                type="time"
+                value={shopHours.sunday?.start || "10:00"}
+                onChange={(e) => setHour("sunday", "start", e.target.value)}
+              />
+              {" — "}
+              <input
+                type="time"
+                value={shopHours.sunday?.end || "14:00"}
+                onChange={(e) => setHour("sunday", "end", e.target.value)}
+              />
+            </div>
+
+            <button className={styles.actionButton} onClick={saveShop}>
+              Сохранить расписание
+            </button>
+          </div>
         </TabPanel>
 
         <TabPanel>
@@ -2692,7 +2781,7 @@ const Admin = () => {
         onHide={() => {
           setDeviceVisible(false);
           fetchDevices(undefined, undefined, undefined, 1, 1000).then((data) =>
-            setDevices(data.rows || data)
+            setDevices(data.rows || data),
           );
         }}
         editableDevice={editableDevice}
@@ -2807,7 +2896,7 @@ const Admin = () => {
         devices={devices}
         onUpdated={(updated) => {
           setDevices((prev) =>
-            prev.map((d) => (d.id === updated.id ? updated : d))
+            prev.map((d) => (d.id === updated.id ? updated : d)),
           );
         }}
       />
@@ -2823,7 +2912,3 @@ const Admin = () => {
 };
 
 export default Admin;
-
-
-
-
