@@ -8,6 +8,10 @@ import { useConfirm } from "../components/modals/ConfirmProvider";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom";
+import { checkStock } from "../http/deviceAPI";
+import { fetchSellerById } from "../http/sellerAPI";
+import { fetchShopStatus } from "../http/shopAPI";
+import { createOrder } from "../http/orderAPI";
 import SlideModal from "../components/modals/SlideModal";
 import DevicePage from "../pages/DevicePage";
 import { useTranslation } from "react-i18next";
@@ -90,6 +94,19 @@ const Basket = observer(() => {
 
   const [busyAction, setBusyAction] = useState({});
 
+  const getSelectedSellerId = (basket) => {
+    const list = basket.selectedItems || [];
+    if (!list.length) return null;
+
+    const ids = new Set(
+      list
+        .map((it) => Number(it?.sellerId ?? it?.device?.sellerId ?? null))
+        .filter((x) => Number.isFinite(x) && x > 0),
+    );
+
+    return ids.size === 1 ? [...ids][0] : null;
+  };
+
   const setBusy = (key, action) =>
     setBusyAction((prev) => ({ ...prev, [key]: action }));
 
@@ -105,9 +122,9 @@ const Basket = observer(() => {
     isRestaurantItem(item)
       ? false
       : typeof basket.isOOS === "function"
-      ? basket.isOOS(item)
-      : Number(item.stockQuantity ?? item.quantity ?? 0) <
-        Number(item.count || 1);
+        ? basket.isOOS(item)
+        : Number(item.stockQuantity ?? item.quantity ?? 0) <
+          Number(item.count || 1);
 
   const isOutOfStockItem = isOOS;
 
@@ -139,16 +156,8 @@ const Basket = observer(() => {
 
   const fetchStockInfo = async (deviceId, quantity, selectedOptions) => {
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/device/check-stock`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deviceId, quantity, selectedOptions }),
-        }
-      );
+      const data = await checkStock(deviceId, quantity, selectedOptions);
 
-      const data = await response.json();
       if (data.status === "error") {
         return { isEnough: false, quantity: 0 };
       }
@@ -169,25 +178,34 @@ const Basket = observer(() => {
   useEffect(() => {
     let cancelled = false;
 
-    fetch(`${process.env.REACT_APP_API_URL}/shop/status`)
-      .then((res) => res.json())
-      .then((data) => {
+    (async () => {
+      try {
+        const sellerId = getSelectedSellerId(basket);
+
+        if (sellerId) {
+          const s = await fetchSellerById(sellerId);
+          if (!cancelled) setStoreClosed(!s?.isOpenNow);
+          return;
+        }
+
+        const data = await fetchShopStatus();
         if (!cancelled) {
           setStoreClosed(
             typeof data.isStoreClosed === "boolean"
               ? data.isStoreClosed
-              : !data.isOpen
+              : !data.isOpen,
           );
         }
-      })
-      .catch((err) =>
-        console.error("Error fetching store status (Basket):", err)
-      );
+      } catch (e) {
+        console.error(e);
+        if (!cancelled) setStoreClosed(false);
+      }
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [selectedItems.length, basket.selectedSellerId]);
 
   useEffect(() => {
     const fetchQuantities = async () => {
@@ -200,30 +218,15 @@ const Basket = observer(() => {
         }
 
         try {
-          const response = await fetch(
-            `${process.env.REACT_APP_API_URL}/device/check-stock`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                deviceId: item.id,
-                selectedOptions: Object.fromEntries(
-                  Object.entries(item.selectedOptions || {}).map(([k, v]) => [
-                    k,
-                    getVal(v),
-                  ])
-                ),
-              }),
-            }
+          const normalizedOptions = Object.fromEntries(
+            Object.entries(item.selectedOptions || {}).map(([k, v]) => [
+              k,
+              getVal(v),
+            ]),
           );
 
-          const data = await response.json();
-
-          if (response.ok) {
-            newQuantities[item.uniqueKey] = Number(data.quantity);
-          } else {
-            newQuantities[item.uniqueKey] = 0;
-          }
+          const data = await checkStock(item.id, item.count, normalizedOptions);
+          newQuantities[item.uniqueKey] = Number(data.quantity ?? 0);
         } catch (error) {
           console.error("Error checking stock:", error);
           newQuantities[item.uniqueKey] = 0;
@@ -267,7 +270,7 @@ const Basket = observer(() => {
         Object.entries(item.selectedOptions || {}).map(([k, v]) => [
           k,
           getVal(v),
-        ])
+        ]),
       );
 
       const info = await fetchStockInfo(item.id, newCount, normalizedOptions);
@@ -308,7 +311,7 @@ const Basket = observer(() => {
         Object.entries(item.selectedOptions || {}).map(([k, v]) => [
           k,
           getVal(v),
-        ])
+        ]),
       );
 
       const info = await fetchStockInfo(item.id, newCount, normalizedOptions);
@@ -342,7 +345,7 @@ const Basket = observer(() => {
       toast.error(
         t("you cannot place an order with items from different sellers", {
           ns: "basket",
-        })
+        }),
       );
       return;
     }
@@ -353,8 +356,8 @@ const Basket = observer(() => {
         Object.values(item.selectedOptions).some(
           (opt) =>
             opt.value === "__UNSELECTED__" ||
-            opt.value === t("select an option", { ns: "basket" })
-        )
+            opt.value === t("select an option", { ns: "basket" }),
+        ),
     );
 
     if (hasUnselectedOptions) {
@@ -392,40 +395,26 @@ const Basket = observer(() => {
     };
 
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/order/create`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-          },
-          body: JSON.stringify(dataToSend),
-        }
-      );
+      await createOrder(dataToSend);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success(t("order placed successfully", { ns: "basket" }));
-        window.dispatchEvent(new Event("orderUpdated"));
-        basket.removeSelectedItems();
-        navigate("/");
-      } else {
-        toast.error(
-          data.message || t("order placement error", { ns: "basket" })
-        );
-      }
+      toast.success(t("order placed successfully", { ns: "basket" }));
+      window.dispatchEvent(new Event("orderUpdated"));
+      basket.removeSelectedItems();
+      navigate("/");
     } catch (error) {
-      console.error(t("error creating order", { ns: "basket" }), error);
-      toast.error(t("error creating order", { ns: "basket" }));
+      const msg =
+        error?.response?.data?.message ||
+        t("error creating order", { ns: "basket" });
+
+      console.error("createOrder error:", error);
+      toast.error(msg);
     }
   };
 
   const handleOptionChange = async (
     itemUniqueKey,
     optionName,
-    selectedValue
+    selectedValue,
   ) => {
     if (busyAction[itemUniqueKey]) return;
     const item = basket.items.find((i) => i.uniqueKey === itemUniqueKey);
@@ -450,7 +439,7 @@ const Basket = observer(() => {
     };
 
     const normalizedOptions = Object.fromEntries(
-      Object.entries(newOptions || {}).map(([k, v]) => [k, getVal(v)])
+      Object.entries(newOptions || {}).map(([k, v]) => [k, getVal(v)]),
     );
 
     const info = await fetchStockInfo(item.id, item.count, normalizedOptions);
@@ -491,14 +480,14 @@ const Basket = observer(() => {
         Object.entries(item.selectedOptions || {}).map(([k, v]) => [
           k,
           getVal(v),
-        ])
+        ]),
       );
       partial[optName] = getVal(valueObj);
 
       return variantsActive.some((v) =>
         Object.entries(partial).every(
-          ([k, val]) => (v.selected || {})[k] === val
-        )
+          ([k, val]) => (v.selected || {})[k] === val,
+        ),
       );
     };
 
@@ -510,7 +499,7 @@ const Basket = observer(() => {
         Object.entries(item.selectedOptions || {}).map(([k, v]) => [
           k,
           getVal(v),
-        ])
+        ]),
       );
       partial[optName] = getVal(valueObj);
 
@@ -520,8 +509,8 @@ const Basket = observer(() => {
       const anyInStock = variantsActive.some(
         (v) =>
           Object.entries(partial).every(
-            ([k, val]) => (v.selected || {})[k] === val
-          ) && (Number(v.quantity) || 0) > 0
+            ([k, val]) => (v.selected || {})[k] === val,
+          ) && (Number(v.quantity) || 0) > 0,
       );
       return !anyInStock;
     };
@@ -557,8 +546,8 @@ const Basket = observer(() => {
                     !exists
                       ? styles.OptionBtnDisabled
                       : oos
-                      ? styles.OptionBtnOut
-                      : "",
+                        ? styles.OptionBtnOut
+                        : "",
                   ].join(" ")}
                   onClick={() => exists && pick(valObj)}
                   disabled={!exists}
@@ -596,8 +585,8 @@ const Basket = observer(() => {
                   !exists
                     ? styles.OptionBtnDisabled
                     : oos
-                    ? styles.OptionBtnOut
-                    : "",
+                      ? styles.OptionBtnOut
+                      : "",
                 ].join(" ")}
                 onClick={() => exists && pick(valObj)}
                 disabled={!exists}
@@ -620,13 +609,13 @@ const Basket = observer(() => {
         Object.entries(item.selectedOptions || {}).map(([k, v]) => [
           k,
           getVal(v),
-        ])
-      )
+        ]),
+      ),
     );
 
     const selectedVariant =
       variants.find(
-        (v) => (v.key || makeVariantKey(v.selected || {})) === selectedKey
+        (v) => (v.key || makeVariantKey(v.selected || {})) === selectedKey,
       ) || null;
 
     const displayImg = selectedVariant?.image || item.img;
@@ -723,10 +712,10 @@ const Basket = observer(() => {
                 onClick={() => handleIncrement(item.uniqueKey)}
                 aria-busy={action === "dec"}
                 disabled={
-                  (!item.isPreorder &&
-                    availableQuantities[item.uniqueKey] != null &&
-                    basket.getItemCount(item.uniqueKey) >=
-                      availableQuantities[item.uniqueKey])
+                  !item.isPreorder &&
+                  availableQuantities[item.uniqueKey] != null &&
+                  basket.getItemCount(item.uniqueKey) >=
+                    availableQuantities[item.uniqueKey]
                 }
               >
                 {action === "inc" ? (
@@ -743,7 +732,7 @@ const Basket = observer(() => {
                 (item.price +
                   Object.values(item.selectedOptions || {}).reduce(
                     (sum, opt) => sum + (opt?.price || 0),
-                    0
+                    0,
                   )) *
                 item.count
               ).toFixed(2)}
@@ -800,7 +789,7 @@ const Basket = observer(() => {
               </div>
 
               {stockItems.map((item, index) =>
-                renderItem(item, index, index === 0)
+                renderItem(item, index, index === 0),
               )}
             </>
           )}
@@ -831,7 +820,7 @@ const Basket = observer(() => {
               </div>
 
               {preorderItems.map((item, index) =>
-                renderItem(item, index, stockItems.length === 0 && index === 0)
+                renderItem(item, index, stockItems.length === 0 && index === 0),
               )}
             </>
           )}
@@ -854,7 +843,7 @@ const Basket = observer(() => {
         <div className={styles.sectionSubCenter}>
           {t(
             "you cannot select items from different sellers. please place separate orders",
-            { ns: "basket" }
+            { ns: "basket" },
           )}
         </div>
       )}
