@@ -7,6 +7,7 @@ const {
   Courier,
   Chat,
   ChatParticipant,
+  Seller,
 } = require("../models/models");
 const { Op } = require("sequelize");
 const fs = require("fs");
@@ -15,6 +16,7 @@ const path = require("path");
 const { t } = require("../utils/translations");
 const getDistanceFromWarehouse = require("../utils/distance");
 const { isShopOpenNow } = require("../utils/shopSchedule");
+const { isSellerOpenNow } = require("../utils/sellerSchedule");
 const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");  // Proda (PDFShift)
 const { supabase } = require("../config/supabaseClient");
 const {
@@ -295,7 +297,6 @@ const createOrder = async (req, res) => {
    const distance = getDistanceFromWarehouse(latitude, longitude);
     const deliveryPrice = calculateDeliveryCost(totalPrice, distance);
     const courierFee = calculateDeliveryBase(distance);
-    const isStoreClosedNow = !isShopOpenNow();
 
     let isPreorder = false;
     const devicesToUpdate = [];
@@ -345,6 +346,15 @@ const createOrder = async (req, res) => {
     }
 
     const sellerId = sellerIds.size === 1 ? Array.from(sellerIds)[0] : null;
+
+    let isStoreClosedNow = false;
+
+    if (sellerId) {
+      const seller = await Seller.findByPk(sellerId);
+      isStoreClosedNow = seller ? !isSellerOpenNow(seller) : true;
+    } else {
+      isStoreClosedNow = !isShopOpenNow();
+    }
 
     const deliveryDateFromFirstItem = orderDetails[0]?.deliveryDate || null;
     const preferredTimeFromFirstItem = orderDetails[0]?.preferredTime || null;
