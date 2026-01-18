@@ -18,6 +18,8 @@ const Seller = sequelize.define("seller", {
   address: { type: DataTypes.STRING, allowNull: true },
   pickupLat: { type: DataTypes.DOUBLE, allowNull: true },
   pickupLng: { type: DataTypes.DOUBLE, allowNull: true },
+  workHours: { type: DataTypes.JSONB, allowNull: true, defaultValue: null },
+  forceClosed: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
 });
 
 const MenuCategory = sequelize.define("menu_category", {
