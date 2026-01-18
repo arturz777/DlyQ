@@ -9,19 +9,18 @@ import {
   deactivateMenuItem,
   toggleMenuItemAvailability,
 } from "../http/menuAPI";
-import { checkSellerCanManage } from "../http/sellerAPI";
+import { checkSellerCanManage, fetchSeller } from "../http/sellerAPI";
 import { login } from "../http/userAPI";
 import { useTranslation } from "react-i18next";
-
 import Image from "react-bootstrap/Image";
 import Accordion from "react-bootstrap/Accordion";
 import Badge from "react-bootstrap/Badge";
 import InputGroup from "react-bootstrap/InputGroup";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
-
 import CreateMenuCategory from "../components/modals/CreateMenuCategory";
 import CreateMenuItem from "../components/modals/CreateMenuItem";
+import SellerWorkingHoursModal from "../components/modals/SellerWorkingHoursModal";
 import styles from "./SellerAdminPage.module.css";
 
 const API_BASE = process.env.REACT_APP_API_URL;
@@ -38,32 +37,27 @@ const getMenuImgSrc = (img) => {
 const SellerAdminPage = () => {
   const { sellerId } = useParams();
   const sid = Number(sellerId);
-
   const { user } = useContext(Context);
   const { t } = useTranslation();
-
   const [menuCategories, setMenuCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(false);
-
   const [menuCategoryVisible, setMenuCategoryVisible] = useState(false);
   const [menuItemVisible, setMenuItemVisible] = useState(false);
   const [editableMenuCategory, setEditableMenuCategory] = useState(null);
   const [editableMenuItem, setEditableMenuItem] = useState(null);
-
   const [prefillCategoryId, setPrefillCategoryId] = useState(null);
   const [search, setSearch] = useState("");
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
-
   const [accessChecked, setAccessChecked] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [accessError, setAccessError] = useState("");
-
   const [menuOpen, setMenuOpen] = useState(false);
+  const [seller, setSeller] = useState(null);
+  const [hoursVisible, setHoursVisible] = useState(false);
 
   const reload = async () => {
     if (!sid) return;
@@ -82,6 +76,15 @@ const SellerAdminPage = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!sid || !user.isAuth || !hasAccess) return;
+
+    (async () => {
+      const s = await fetchSeller(sid);
+      setSeller(s);
+    })().catch(console.error);
+  }, [sid, user.isAuth, hasAccess]);
 
   useEffect(() => {
     if (!sid || !user.isAuth) {
@@ -105,7 +108,7 @@ const SellerAdminPage = () => {
         setHasAccess(false);
         setAccessError(
           e?.response?.data?.message ||
-            t("no access to this store", { ns: "sellerAdminPage" })
+            t("no access to this store", { ns: "sellerAdminPage" }),
         );
       } finally {
         if (!cancelled) setAccessChecked(true);
@@ -126,7 +129,7 @@ const SellerAdminPage = () => {
     return [...(menuCategories || [])].sort(
       (a, b) =>
         (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
-        (a.id ?? 0) - (b.id ?? 0)
+        (a.id ?? 0) - (b.id ?? 0),
     );
   }, [menuCategories]);
 
@@ -154,8 +157,9 @@ const SellerAdminPage = () => {
       map.set(
         k,
         [...arr].sort(
-          (a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0) || a.id - b.id
-        )
+          (a, b) =>
+            (a.displayOrder ?? 0) - (b.displayOrder ?? 0) || a.id - b.id,
+        ),
       );
     }
 
@@ -173,8 +177,8 @@ const SellerAdminPage = () => {
       await toggleMenuItemAvailability(it.id, sid, !it.isAvailable);
       setMenuItems((prev) =>
         prev.map((x) =>
-          x.id === it.id ? { ...x, isAvailable: !it.isAvailable } : x
-        )
+          x.id === it.id ? { ...x, isAvailable: !it.isAvailable } : x,
+        ),
       );
     } catch (e) {
       console.error(e);
@@ -188,7 +192,7 @@ const SellerAdminPage = () => {
         t('deactivate dish "{{name}}"?', {
           ns: "sellerAdminPage",
           name: it.name,
-        })
+        }),
       )
     )
       return;
@@ -207,7 +211,7 @@ const SellerAdminPage = () => {
         t('deactivate category "{{name}}"?', {
           ns: "sellerAdminPage",
           name: cat.name,
-        })
+        }),
       )
     )
       return;
@@ -240,7 +244,7 @@ const SellerAdminPage = () => {
         err?.response?.data?.message ||
           t("login error. please check your details.", {
             ns: "sellerAdminPage",
-          })
+          }),
       );
     } finally {
       setAuthLoading(false);
@@ -471,12 +475,12 @@ const SellerAdminPage = () => {
               <button
                 type="button"
                 className={styles.menuItemButton}
-                onClick={() => setMenuOpen(false)}
+                onClick={() => {
+                  setMenuOpen(false);
+                  setHoursVisible(true);
+                }}
               >
                 {t("working hours", { ns: "sellerAdminPage" })}
-                <span className={styles.menuItemSoon}>
-                  {t("soon", { ns: "sellerAdminPage" })}
-                </span>
               </button>
 
               <button
@@ -681,7 +685,7 @@ const SellerAdminPage = () => {
               ) : (
                 <div className={styles.itemList}>
                   {(filteredItemsByCategory.get("no") || []).map((it) =>
-                    renderItemRow(it)
+                    renderItemRow(it),
                   )}
                 </div>
               )}
@@ -689,6 +693,13 @@ const SellerAdminPage = () => {
           </Accordion.Item>
         </Accordion>
       </div>
+
+      <SellerWorkingHoursModal
+        show={hoursVisible}
+        seller={seller}
+        onHide={() => setHoursVisible(false)}
+        onSaved={(updated) => setSeller(updated)}
+      />
 
       <CreateMenuCategory
         show={menuCategoryVisible}
