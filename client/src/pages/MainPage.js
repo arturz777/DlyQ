@@ -133,7 +133,18 @@ const MainPage = () => {
 
                 <div className={styles.bannerContent}>
                   <div className={styles.bannerTitle}>{s.name}</div>
-                  {s.kind && <div className={styles.badge}>{s.kind}</div>}
+
+                  <div className={styles.badgeRow}>
+                    {s.kind && <div className={styles.badge}>{s.kind}</div>}
+
+                    <div
+                      className={
+                        s.isOpenNow ? styles.openBadge : styles.closedBadge
+                      }
+                    >
+                      {s.isOpenNow ? "Открыто" : "Закрыто"}
+                    </div>
+                  </div>
                 </div>
               </button>
             );
