@@ -1,28 +1,18 @@
-export async function fetchTranslations() {
-	const response = await fetch(`${process.env.REACT_APP_API_URL}/translations`);
-	const text = await response.text();
-  
-	if (!text) {
-	  console.error("API вернул пустой ответ!");
-	  return []; // Возвращаем пустой массив, чтобы избежать ошибки
-	}
-  
-	try {
-	  const data = JSON.parse(text);
-	  return data;
-	} catch (error) {
-	  console.error("Ошибка парсинга JSON:", error);
-	  return [];
-	}
-  }
-  
-  
-  
-  export async function updateTranslation(key, lang, text) {
-	await fetch(`${process.env.REACT_APP_API_URL}/translations`, {
-	  method: "PUT",
-	  headers: { "Content-Type": "application/json" },
-	  body: JSON.stringify({ key, lang, text }),
-	});
-  }
+import { $authHost, $host } from "./index";
+
+export const fetchTranslations = async () => {
+  const { data } = await $host.get("/translations");
+  return data;
+};
+
+export const updateTranslation = async (key, lang, text) => {
+  const { data } = await $authHost.put("/translations", { key, lang, text });
+  return data;
+};
+
+export const createTranslation = async (payload) => {
+  const { data } = await $authHost.post("/translations", payload);
+  return data;
+};
+
   
