@@ -1,15 +1,21 @@
-export async function fetchMaintenance() {
-  const res = await fetch(`https://api.dlyq.ee/api/config/maintenance`);
-  if (!res.ok) throw new Error("Failed to fetch maintenance");
-  return res.json();
-}
+import { $authHost, $host } from "./index";
 
-export async function updateMaintenance(enabled) {
-  const res = await fetch(`https://api.dlyq.ee/api/config/maintenance`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ enabled }),
-  });
-  if (!res.ok) throw new Error("Failed to update maintenance");
-  return res.json();
-}
+export const fetchMaintenance = async () => {
+  const { data } = await $host.get("/config/maintenance");
+  return data;
+};
+
+export const updateMaintenance = async (enabled) => {
+  const { data } = await $authHost.post("/config/maintenance", { enabled });
+  return data;
+};
+
+export const fetchShopConfig = async () => {
+  const { data } = await $host.get("/config/shop");
+  return data;
+};
+
+export const updateShopConfig = async (payload) => {
+  const { data } = await $authHost.post("/config/shop", payload);
+  return data;
+};
