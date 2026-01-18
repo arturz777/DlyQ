@@ -10,6 +10,7 @@ const { Op } = require("sequelize");
 const sequelize = require("../db");
 const { supabase } = require("../config/supabaseClient");
 const uuid = require("uuid");
+const { isSellerOpenNow } = require("../utils/sellerSchedule");
 
 const makeSlug = (name = "") =>
   String(name)
@@ -135,17 +136,18 @@ class SellerController {
       });
 
       const ownerBySellerId = new Map(
-        owners.map((o) => [Number(o.sellerId), Number(o.userId)])
+        owners.map((o) => [Number(o.sellerId), Number(o.userId)]),
       );
 
       return res.json(
         sellers.map((s) => ({
           ...s.toJSON(),
           ownerUserId: ownerBySellerId.get(Number(s.id)) || null,
+          isOpenNow: isSellerOpenNow(s),
           translations: {
             kind: tmap[`seller_${s.id}.kind`] || {},
           },
-        }))
+        })),
       );
     } catch (e) {
       next(e);
@@ -173,6 +175,7 @@ class SellerController {
       return res.json({
         ...seller.toJSON(),
         ownerUserId: owner?.userId || null,
+        isOpenNow: isSellerOpenNow(seller),
         translations: { kind: tmap[key] || {} },
       });
     } catch (e) {
@@ -227,25 +230,24 @@ class SellerController {
 
       if ((latNum == null) !== (lngNum == null)) {
         throw ApiError.badRequest(
-          "Нужно указать и pickupLat, и pickupLng (или оставить оба пустыми)"
+          "Нужно указать и pickupLat, и pickupLng (или оставить оба пустыми)",
         );
       }
 
       let imgUrl = img ? String(img).trim() : null;
 
-if (req.files && req.files.img) {
-  const file = req.files.img;
-  const fileName = `${uuid.v4()}${file.name.substring(file.name.lastIndexOf("."))}`;
+      if (req.files && req.files.img) {
+        const file = req.files.img;
+        const fileName = `${uuid.v4()}${file.name.substring(file.name.lastIndexOf("."))}`;
 
-  const { error } = await supabase.storage
-    .from("images")
-    .upload(fileName, file.data, { contentType: file.mimetype });
+        const { error } = await supabase.storage
+          .from("images")
+          .upload(fileName, file.data, { contentType: file.mimetype });
 
-  if (error) throw new Error("Ошибка загрузки изображения в Supabase");
+        if (error) throw new Error("Ошибка загрузки изображения в Supabase");
 
-  imgUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
-}
-
+        imgUrl = `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${fileName}`;
+      }
 
       const seller = await Seller.create(
         {
@@ -258,7 +260,7 @@ if (req.files && req.files.img) {
           pickupLat: latNum,
           pickupLng: lngNum,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       const parsed = parseTranslations(req.body.translations);
@@ -267,7 +269,7 @@ if (req.files && req.files.img) {
         await syncTranslationsForKey(
           `seller_${seller.id}.kind`,
           parsed.kind,
-          t
+          t,
         );
       }
 
@@ -313,177 +315,202 @@ if (req.files && req.files.img) {
     }
   }
 
-async update(req, res, next) {
-  const t = await sequelize.transaction();
-  try {
-    const { id } = req.params;
-    const {
-      name,
-      slug,
-      isActive,
-      kind,
-      img,
-      ownerUserId,
-      address,
-      pickupLat,
-      pickupLng,
-    } = req.body;
+  async update(req, res, next) {
+    const t = await sequelize.transaction();
+    try {
+      const { id } = req.params;
+      const {
+        name,
+        slug,
+        isActive,
+        kind,
+        img,
+        ownerUserId,
+        address,
+        pickupLat,
+        pickupLng,
+        workHours,
+        forceClosed,
+      } = req.body;
 
-    const seller = await Seller.findByPk(Number(id), { transaction: t });
-    if (!seller) throw ApiError.notFound("Магазин не найден");
+      const seller = await Seller.findByPk(Number(id), { transaction: t });
+      if (!seller) throw ApiError.notFound("Магазин не найден");
 
-    // lat/lng
-    if (pickupLat !== undefined || pickupLng !== undefined) {
-      let nextLat =
-        pickupLat === undefined
-          ? seller.pickupLat
-          : pickupLat == null || pickupLat === ""
-          ? null
-          : Number(pickupLat);
-
-      let nextLng =
-        pickupLng === undefined
-          ? seller.pickupLng
-          : pickupLng == null || pickupLng === ""
-          ? null
-          : Number(pickupLng);
-
-      if (nextLat !== null && !Number.isFinite(nextLat))
-        throw ApiError.badRequest("pickupLat должен быть числом");
-      if (nextLng !== null && !Number.isFinite(nextLng))
-        throw ApiError.badRequest("pickupLng должен быть числом");
-
-      if ((nextLat == null) !== (nextLng == null))
-        throw ApiError.badRequest(
-          "Нужно указать и pickupLat, и pickupLng (или оставить оба пустыми)"
-        );
-
-      seller.pickupLat = nextLat;
-      seller.pickupLng = nextLng;
-    }
-
-    if (name !== undefined) seller.name = String(name).trim();
-
-    if (slug !== undefined) {
-      const finalSlug = slug ? String(slug).trim() : null;
-
-      if (finalSlug) {
-        const exists = await Seller.findOne({
-          where: { slug: finalSlug },
-          transaction: t,
-        });
-        if (exists && exists.id !== seller.id) {
-          throw ApiError.badRequest("Такой slug уже занят");
+      if (workHours !== undefined) {
+        let v = workHours;
+        if (typeof v === "string") {
+          try {
+            v = JSON.parse(v);
+          } catch {
+            v = null;
+          }
         }
+        seller.workHours = v && typeof v === "object" ? v : null;
       }
 
-      seller.slug = finalSlug;
-    }
+      const fc = parseBool(forceClosed, null);
+      if (fc !== null) seller.forceClosed = fc;
 
-    const activeNorm = parseBool(isActive, null);
-    if (activeNorm !== null) seller.isActive = activeNorm;
+      if (pickupLat !== undefined || pickupLng !== undefined) {
+        let nextLat =
+          pickupLat === undefined
+            ? seller.pickupLat
+            : pickupLat == null || pickupLat === ""
+              ? null
+              : Number(pickupLat);
 
-    if (kind !== undefined) seller.kind = kind ? String(kind).trim() : null;
+        let nextLng =
+          pickupLng === undefined
+            ? seller.pickupLng
+            : pickupLng == null || pickupLng === ""
+              ? null
+              : Number(pickupLng);
 
-    if (address !== undefined)
-      seller.address = address ? String(address).trim() : null;
+        if (nextLat !== null && !Number.isFinite(nextLat))
+          throw ApiError.badRequest("pickupLat должен быть числом");
+        if (nextLng !== null && !Number.isFinite(nextLng))
+          throw ApiError.badRequest("pickupLng должен быть числом");
 
-    // --- IMG обработка ДО save ---
-    let imgUrl = seller.img;
+        if ((nextLat == null) !== (nextLng == null))
+          throw ApiError.badRequest(
+            "Нужно указать и pickupLat, и pickupLng (или оставить оба пустыми)",
+          );
 
-    // 1) если пришёл файл — заменяем
-    if (req.files && req.files.img) {
-      if (seller.img && seller.img.includes("/storage/v1/object/public/images/")) {
-        const oldFileName = seller.img.split("/").pop();
-        await supabase.storage.from("images").remove([oldFileName]);
+        seller.pickupLat = nextLat;
+        seller.pickupLng = nextLng;
       }
 
-      const file = req.files.img;
-      const ext = file.name.includes(".")
-        ? file.name.substring(file.name.lastIndexOf("."))
-        : "";
-      const newFileName = `${uuid.v4()}${ext}`;
+      if (name !== undefined) seller.name = String(name).trim();
 
-      const { error } = await supabase.storage
-        .from("images")
-        .upload(newFileName, file.data, { contentType: file.mimetype });
+      if (slug !== undefined) {
+        const finalSlug = slug ? String(slug).trim() : null;
 
-      if (error) throw new Error("Ошибка загрузки нового изображения в Supabase");
+        if (finalSlug) {
+          const exists = await Seller.findOne({
+            where: { slug: finalSlug },
+            transaction: t,
+          });
+          if (exists && exists.id !== seller.id) {
+            throw ApiError.badRequest("Такой slug уже занят");
+          }
+        }
 
-      imgUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${newFileName}`;
-    }
+        seller.slug = finalSlug;
+      }
 
-    if ((!req.files || !req.files.img) && img !== undefined) {
-      const v = String(img || "").trim();
-      imgUrl = v ? v : null;
-    }
+      const activeNorm = parseBool(isActive, null);
+      if (activeNorm !== null) seller.isActive = activeNorm;
 
-    seller.img = imgUrl;
+      if (kind !== undefined) seller.kind = kind ? String(kind).trim() : null;
 
-    await seller.save({ transaction: t });
+      if (address !== undefined)
+        seller.address = address ? String(address).trim() : null;
 
-    const parsed = parseTranslations(req.body.translations);
-    if (parsed?.kind) {
-      await syncTranslationsForKey(`seller_${seller.id}.kind`, parsed.kind, t);
-    }
+      // --- IMG обработка ДО save ---
+      let imgUrl = seller.img;
 
-    const [wh] = await Warehouse.findOrCreate({
-      where: { sellerId: seller.id },
-      defaults: {
-        name: `Склад: ${seller.name}`,
-        status: "active",
-        sellerId: seller.id,
-      },
-      transaction: t,
-    });
+      // 1) если пришёл файл — заменяем
+      if (req.files && req.files.img) {
+        if (
+          seller.img &&
+          seller.img.includes("/storage/v1/object/public/images/")
+        ) {
+          const oldFileName = seller.img.split("/").pop();
+          await supabase.storage.from("images").remove([oldFileName]);
+        }
 
-    const nextName = `Склад: ${seller.name}`;
-    if (wh.name !== nextName) {
-      wh.name = nextName;
-      await wh.save({ transaction: t });
-    }
+        const file = req.files.img;
+        const ext = file.name.includes(".")
+          ? file.name.substring(file.name.lastIndexOf("."))
+          : "";
+        const newFileName = `${uuid.v4()}${ext}`;
 
-    if (ownerUserId) {
-      const uid = Number(ownerUserId);
-      if (!uid) throw ApiError.badRequest("ownerUserId должен быть числом");
+        const { error } = await supabase.storage
+          .from("images")
+          .upload(newFileName, file.data, { contentType: file.mimetype });
 
-      const user = await User.findByPk(uid, { transaction: t });
-      if (!user) throw ApiError.badRequest("ownerUserId: пользователь не найден");
+        if (error)
+          throw new Error("Ошибка загрузки нового изображения в Supabase");
 
-      await SellerUser.destroy({
-        where: {
+        imgUrl = `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${newFileName}`;
+      }
+
+      if ((!req.files || !req.files.img) && img !== undefined) {
+        const v = String(img || "").trim();
+        imgUrl = v ? v : null;
+      }
+
+      seller.img = imgUrl;
+
+      await seller.save({ transaction: t });
+
+      const parsed = parseTranslations(req.body.translations);
+      if (parsed?.kind) {
+        await syncTranslationsForKey(
+          `seller_${seller.id}.kind`,
+          parsed.kind,
+          t,
+        );
+      }
+
+      const [wh] = await Warehouse.findOrCreate({
+        where: { sellerId: seller.id },
+        defaults: {
+          name: `Склад: ${seller.name}`,
+          status: "active",
           sellerId: seller.id,
-          roleInSeller: "owner",
-          userId: { [Op.ne]: uid },
         },
         transaction: t,
       });
 
-      const [link] = await SellerUser.findOrCreate({
-        where: { sellerId: seller.id, userId: uid },
-        defaults: { roleInSeller: "owner" },
-        transaction: t,
-      });
-
-      if (link.roleInSeller !== "owner") {
-        link.roleInSeller = "owner";
-        await link.save({ transaction: t });
+      const nextName = `Склад: ${seller.name}`;
+      if (wh.name !== nextName) {
+        wh.name = nextName;
+        await wh.save({ transaction: t });
       }
 
-      const roleUpper = String(user.role || "").toUpperCase();
-      if (roleUpper !== "ADMIN" && roleUpper !== "SELLER") {
-        user.role = "SELLER";
-        await user.save({ transaction: t });
+      if (ownerUserId) {
+        const uid = Number(ownerUserId);
+        if (!uid) throw ApiError.badRequest("ownerUserId должен быть числом");
+
+        const user = await User.findByPk(uid, { transaction: t });
+        if (!user)
+          throw ApiError.badRequest("ownerUserId: пользователь не найден");
+
+        await SellerUser.destroy({
+          where: {
+            sellerId: seller.id,
+            roleInSeller: "owner",
+            userId: { [Op.ne]: uid },
+          },
+          transaction: t,
+        });
+
+        const [link] = await SellerUser.findOrCreate({
+          where: { sellerId: seller.id, userId: uid },
+          defaults: { roleInSeller: "owner" },
+          transaction: t,
+        });
+
+        if (link.roleInSeller !== "owner") {
+          link.roleInSeller = "owner";
+          await link.save({ transaction: t });
+        }
+
+        const roleUpper = String(user.role || "").toUpperCase();
+        if (roleUpper !== "ADMIN" && roleUpper !== "SELLER") {
+          user.role = "SELLER";
+          await user.save({ transaction: t });
+        }
       }
+
+      await t.commit();
+      return res.json(seller);
+    } catch (e) {
+      await t.rollback();
+      return next(e);
     }
-
-    await t.commit();
-    return res.json(seller);
-  } catch (e) {
-    await t.rollback();
-    return next(e);
   }
-}
 
   async deactivate(req, res, next) {
     const t = await sequelize.transaction();
