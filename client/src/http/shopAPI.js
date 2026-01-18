@@ -1,6 +1,6 @@
 import { $host } from "./index";
 
 export const fetchShopStatus = async () => {
-  const { data } = await $host.get("api/shop/status");
+  const { data } = await $host.get("/shop/status");
   return data;
 };
