@@ -12,6 +12,11 @@ export const fetchOneSeller = async (idOrSlug) => {
   return data;
 };
 
+export const fetchSeller = async (idOrSlug) => {
+  const { data } = await $host.get(`/seller/${idOrSlug}`);
+  return data;
+};
+
 export const createSeller = async (body) => {
   const { data } = await $authHost.post("/seller", body, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -33,5 +38,15 @@ export const deactivateSeller = async (id) => {
 
 export const checkSellerCanManage = async (sellerId) => {
   const { data } = await $authHost.get(`/seller/${sellerId}/can-manage`);
+  return data;
+};
+
+export const updateSellerHours = async (sellerId, payload) => {
+  const { data } = await $authHost.put(`/seller/${sellerId}`, payload);
+  return data;
+};
+
+export const fetchSellerById = async (sellerId) => {
+  const { data } = await $host.get(`/seller/${sellerId}`);
   return data;
 };
