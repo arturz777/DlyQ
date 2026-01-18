@@ -1,0 +1,42 @@
+.block {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.label {
+  width: 110px;
+  font-weight: 600;
+}
+
+.inputs {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sep {
+  opacity: 0.6;
+  user-select: none;
+}
+
+.preview {
+  margin-top: 12px;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.error {
+  margin-top: 12px;
+  color: #b00020;
+  font-size: 13px;
+}
