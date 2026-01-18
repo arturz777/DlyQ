@@ -149,6 +149,8 @@ const Admin = () => {
   const [maintMessage, setMaintMessage] = useState(
     appStore.maintenance.message,
   );
+  const [shopSaving, setShopSaving] = useState(false);
+  const [shopSaveState, setShopSaveState] = useState(null);
   const [menuSearch, setMenuSearch] = useState("");
   const [prefillMenuCategoryId, setPrefillMenuCategoryId] = useState(null);
   const [shopForceClosed, setShopForceClosed] = useState(false);
@@ -282,14 +284,22 @@ const Admin = () => {
 
   const saveShop = async () => {
     try {
+      setShopSaving(true);
+      setShopSaveState(null);
+
       await updateShopConfig({
         forceClosed: shopForceClosed,
         workHours: shopHours,
       });
-      alert("Сохранено");
+
+      setShopSaveState("ok");
+      setTimeout(() => setShopSaveState(null), 1800);
     } catch (e) {
       console.error(e);
-      alert("Ошибка сохранения настроек магазина");
+      setShopSaveState("error");
+      setTimeout(() => setShopSaveState(null), 2500);
+    } finally {
+      setShopSaving(false);
     }
   };
 
@@ -2267,87 +2277,118 @@ const Admin = () => {
         </TabPanel>
 
         <TabPanel>
-          <h3>Настройки</h3>
-          <label
-            className={styles.toggleWrap}
-            title="Режим обслуживания"
-            style={{ gap: 12, marginTop: 6, marginBottom: 12 }}
-          >
-            <input
-              type="checkbox"
-              className={styles.toggleInput}
-              checked={maintenanceEnabled}
-              onChange={(e) => toggleMaintenance(e.target.checked)}
-            />
-            <span className={styles.toggleSlider} />
-            <span className={styles.toggleLabel}>Режим обслуживания</span>
-          </label>
+          <h3 className={styles.settingsTitle}>Настройки</h3>
 
-          <h4 style={{ marginTop: 16 }}>DlyQ Market</h4>
-
-          <label
-            className={styles.toggleWrap}
-            style={{ gap: 12, marginTop: 6, marginBottom: 12 }}
-          >
-            <input
-              type="checkbox"
-              className={styles.toggleInput}
-              checked={shopForceClosed}
-              onChange={(e) => setShopForceClosed(e.target.checked)}
-            />
-            <span className={styles.toggleSlider} />
-            <span className={styles.toggleLabel}>Принудительно закрыт</span>
-          </label>
-
-          <div style={{ display: "grid", gap: 10, maxWidth: 420 }}>
-            <div>
-              <b>Будни</b>{" "}
-              <input
-                type="time"
-                value={shopHours.weekdays?.start || "10:00"}
-                onChange={(e) => setHour("weekdays", "start", e.target.value)}
-              />
-              {" — "}
-              <input
-                type="time"
-                value={shopHours.weekdays?.end || "22:00"}
-                onChange={(e) => setHour("weekdays", "end", e.target.value)}
-              />
+          <div className={styles.settingsPanel}>
+            <div className={styles.settingsCard}>
+              <label className={styles.toggleWrap} title="Режим обслуживания">
+                <input
+                  type="checkbox"
+                  className={styles.toggleInput}
+                  checked={maintenanceEnabled}
+                  onChange={(e) => toggleMaintenance(e.target.checked)}
+                />
+                <span className={styles.toggleLabel}>Режим обслуживания</span>
+              </label>
             </div>
 
-            <div>
-              <b>Суббота</b>{" "}
-              <input
-                type="time"
-                value={shopHours.saturday?.start || "10:00"}
-                onChange={(e) => setHour("saturday", "start", e.target.value)}
-              />
-              {" — "}
-              <input
-                type="time"
-                value={shopHours.saturday?.end || "22:00"}
-                onChange={(e) => setHour("saturday", "end", e.target.value)}
-              />
-            </div>
+            <div className={styles.settingsCard}>
+              <div className={styles.settingsTitle}>DlyQ Market</div>
 
-            <div>
-              <b>Воскресенье</b>{" "}
-              <input
-                type="time"
-                value={shopHours.sunday?.start || "10:00"}
-                onChange={(e) => setHour("sunday", "start", e.target.value)}
-              />
-              {" — "}
-              <input
-                type="time"
-                value={shopHours.sunday?.end || "14:00"}
-                onChange={(e) => setHour("sunday", "end", e.target.value)}
-              />
-            </div>
+              <div className={styles.settingsRow}>
+                <label className={styles.toggleWrap}>
+                  <input
+                    type="checkbox"
+                    className={styles.toggleInput}
+                    checked={shopForceClosed}
+                    onChange={(e) => setShopForceClosed(e.target.checked)}
+                  />
+                  <span className={styles.toggleLabel}>
+                    Принудительно закрыт
+                  </span>
+                </label>
+                <div className={styles.saveHint}>
+                  {shopForceClosed
+                    ? "Заказы будут недоступны"
+                    : "Работает по расписанию"}
+                </div>
+              </div>
 
-            <button className={styles.actionButton} onClick={saveShop}>
-              Сохранить расписание
-            </button>
+              <div className={styles.hoursGrid}>
+                <div className={styles.hoursRow}>
+                  <div className={styles.dayLabel}>Будни</div>
+                  <input
+                    className={styles.timeInput}
+                    type="time"
+                    value={shopHours.weekdays?.start || "10:00"}
+                    onChange={(e) =>
+                      setHour("weekdays", "start", e.target.value)
+                    }
+                  />
+                  <div className={styles.dash}>—</div>
+                  <input
+                    className={styles.timeInput}
+                    type="time"
+                    value={shopHours.weekdays?.end || "22:00"}
+                    onChange={(e) => setHour("weekdays", "end", e.target.value)}
+                  />
+                </div>
+
+                <div className={styles.hoursRow}>
+                  <div className={styles.dayLabel}>Суббота</div>
+                  <input
+                    className={styles.timeInput}
+                    type="time"
+                    value={shopHours.saturday?.start || "10:00"}
+                    onChange={(e) =>
+                      setHour("saturday", "start", e.target.value)
+                    }
+                  />
+                  <div className={styles.dash}>—</div>
+                  <input
+                    className={styles.timeInput}
+                    type="time"
+                    value={shopHours.saturday?.end || "22:00"}
+                    onChange={(e) => setHour("saturday", "end", e.target.value)}
+                  />
+                </div>
+
+                <div className={styles.hoursRow}>
+                  <div className={styles.dayLabel}>Воскресенье</div>
+                  <input
+                    className={styles.timeInput}
+                    type="time"
+                    value={shopHours.sunday?.start || "10:00"}
+                    onChange={(e) => setHour("sunday", "start", e.target.value)}
+                  />
+                  <div className={styles.dash}>—</div>
+                  <input
+                    className={styles.timeInput}
+                    type="time"
+                    value={shopHours.sunday?.end || "14:00"}
+                    onChange={(e) => setHour("sunday", "end", e.target.value)}
+                  />
+                </div>
+
+                <div className={styles.saveRow}>
+                  <button
+                    className={styles.btnPrimary}
+                    onClick={saveShop}
+                    disabled={shopSaving}
+                  >
+                    {shopSaving && <span className={styles.spinner} />}
+                    {shopSaving ? "Сохранение..." : "Сохранить расписание"}
+                  </button>
+
+                  {shopSaveState === "ok" && (
+                    <span className={styles.saveOk}>Сохранено</span>
+                  )}
+                  {shopSaveState === "error" && (
+                    <span className={styles.saveErr}>Ошибка сохранения</span>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </TabPanel>
 
