@@ -53,7 +53,9 @@
   text-align: left;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
   transform: translateY(0);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .banner:focus-visible {
@@ -77,6 +79,7 @@
 .bannerOverlay {
   position: absolute;
   inset: 0;
+  z-index: 1;
   background: linear-gradient(
     180deg,
     rgba(0, 0, 0, 0.05) 0%,
@@ -87,6 +90,7 @@
 
 .bannerContent {
   position: absolute;
+  z-index: 2;
   left: 14px;
   right: 14px;
   bottom: 12px;
@@ -186,5 +190,54 @@
   }
   .bannerTitle {
     font-size: 18px;
+  }
+}
+
+.closedOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.52);
+  z-index: 2;
+}
+
+.closedBanner .bannerImg {
+  filter: brightness(0.62) contrast(1.05);
+}
+
+.closedFull {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #fff;
+  text-align: center;
+  padding: 16px;
+}
+
+.closedFullTitle {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  text-shadow: 0 6px 18px rgba(0, 0, 0, 0.65);
+}
+
+.closedFullSub {
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0.95;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+}
+
+@media (max-width: 520px) {
+  .closedFullTitle {
+    font-size: 30px;
+  }
+  .closedFullSub {
+    font-size: 13px;
   }
 }
