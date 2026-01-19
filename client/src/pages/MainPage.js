@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchSellers } from "../http/sellerAPI";
+import { fetchShopStatus } from "../http/shopAPI";
 import mainStoreImg from "../assets/main-store.png";
 import parcelDeliveryImg from "../assets/parcel-delivery.png";
 import { useTranslation } from "react-i18next";
@@ -13,13 +14,18 @@ const MainPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const [shopStatus, setShopStatus] = useState(null);
   const { t } = useTranslation();
 
   useEffect(() => {
     const load = async () => {
       try {
-        const list = await fetchSellers();
+        const [list, shop] = await Promise.all([
+          fetchSellers(),
+          fetchShopStatus(),
+        ]);
         setSellers(list || []);
+        setShopStatus(shop || null);
       } catch (e) {
         console.error(e);
         setError(t("failed to load restaurants", { ns: "mainPage" }));
@@ -63,6 +69,43 @@ const MainPage = () => {
     </div>
   );
 
+  const formatHours = (h) => {
+    if (!h) return "";
+    const start = h?.start || "";
+    const end = h?.end || "";
+    if (!start || !end) return "";
+    return `${start}–${end}`;
+  };
+
+  const pickDayKey = () => {
+    const now = new Date();
+    const talStr = now.toLocaleString("en-US", { timeZone: "Europe/Tallinn" });
+    const tal = new Date(talStr);
+    const day = tal.getDay();
+    if (day === 0) return "sunday";
+    if (day === 6) return "saturday";
+    return "weekdays";
+  };
+
+  const getTodayHoursText = (workHours) => {
+    if (!workHours) return "";
+    const key = pickDayKey();
+    return formatHours(workHours[key]);
+  };
+
+  const formatSellerHours = (s) => {
+    const wh = s?.workHours;
+    if (!wh) return null;
+
+    const now = new Date();
+    const day = now.getDay();
+
+    const sched = day === 0 ? wh.sunday : day === 6 ? wh.saturday : wh.weekdays;
+
+    if (!sched?.start || !sched?.end) return null;
+    return `${sched.start}–${sched.end}`;
+  };
+
   return (
     <div className={styles.wrapper}>
       <button
@@ -85,7 +128,9 @@ const MainPage = () => {
       </button>
 
       <button
-        className={`${styles.banner} ${styles.mainStore}`}
+        className={`${styles.banner} ${styles.mainStore} ${
+          shopStatus && !shopStatus.isOpen ? styles.closedBanner : ""
+        }`}
         onClick={handleOpenMainShop}
         type="button"
       >
@@ -94,11 +139,25 @@ const MainPage = () => {
           alt="DlyQ Market"
           className={styles.bannerImg}
         />
-        <div className={styles.bannerOverlay} />
+
+        <div
+          className={`${styles.bannerOverlay} ${
+            shopStatus && !shopStatus.isOpen ? styles.closedOverlay : ""
+          }`}
+        />
 
         <div className={styles.bannerContent}>
           <div className={styles.bannerTitle}>DlyQ Market</div>
         </div>
+
+        {shopStatus && !shopStatus.isOpen && (
+          <div className={styles.closedFull}>
+            <div className={styles.closedFullTitle}>Закрыто</div>
+            <div className={styles.closedFullSub}>
+              Рабочее время: {getTodayHoursText(shopStatus.workHours) || "—"}
+            </div>
+          </div>
+        )}
       </button>
 
       <div className={styles.sectionHeader} style={{ marginTop: 18 }}></div>
@@ -119,7 +178,7 @@ const MainPage = () => {
             return (
               <button
                 key={s.id}
-                className={styles.banner}
+                className={`${styles.banner} ${!s.isOpenNow ? styles.closedBanner : ""}`}
                 onClick={() => handleOpenSeller(s)}
                 type="button"
               >
@@ -133,19 +192,22 @@ const MainPage = () => {
 
                 <div className={styles.bannerContent}>
                   <div className={styles.bannerTitle}>{s.name}</div>
-
                   <div className={styles.badgeRow}>
-                    {s.kind && <div className={styles.badge}>{s.kind}</div>}
-
-                    <div
-                      className={
-                        s.isOpenNow ? styles.openBadge : styles.closedBadge
-                      }
-                    >
-                      {s.isOpenNow ? "Открыто" : "Закрыто"}
-                    </div>
+                    {s.kind && <div className={styles.badge}></div>}
                   </div>
                 </div>
+
+                {!s.isOpenNow && (
+                  <>
+                    <div className={styles.closedOverlay} />
+                    <div className={styles.closedFull}>
+                      <div className={styles.closedFullTitle}>ЗАКРЫТО</div>
+                      <div className={styles.closedFullSub}>
+                        Рабочее время: {getTodayHoursText(s.workHours) || "—"}
+                      </div>
+                    </div>
+                  </>
+                )}
               </button>
             );
           })}
