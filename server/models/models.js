@@ -19,7 +19,11 @@ const Seller = sequelize.define("seller", {
   pickupLat: { type: DataTypes.DOUBLE, allowNull: true },
   pickupLng: { type: DataTypes.DOUBLE, allowNull: true },
   workHours: { type: DataTypes.JSONB, allowNull: true, defaultValue: null },
-  forceClosed: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+  forceClosed: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
 });
 
 const MenuCategory = sequelize.define("menu_category", {
@@ -44,6 +48,41 @@ const MenuItem = sequelize.define("menu_item", {
   isAvailable: { type: DataTypes.BOOLEAN, defaultValue: true },
   displayOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+});
+
+const MenuOptionGroup = sequelize.define("menu_option_group", {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  menuItemId: { type: DataTypes.INTEGER, allowNull: false },
+
+  title: { type: DataTypes.STRING, allowNull: false },
+  type: {
+    type: DataTypes.ENUM("single", "multi"),
+    allowNull: false,
+    defaultValue: "single",
+  },
+
+  isRequired: { type: DataTypes.BOOLEAN, defaultValue: false },
+  minSelect: { type: DataTypes.INTEGER, allowNull: true },
+  maxSelect: { type: DataTypes.INTEGER, allowNull: true },
+
+  displayOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
+  isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+});
+
+const MenuOption = sequelize.define("menu_option", {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  groupId: { type: DataTypes.INTEGER, allowNull: false },
+
+  title: { type: DataTypes.STRING, allowNull: false },
+  priceDelta: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0,
+  },
+
+  displayOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
+  isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+  isDefault: { type: DataTypes.BOOLEAN, defaultValue: false },
 });
 
 const User = sequelize.define("user", {
@@ -117,7 +156,7 @@ const DeviceVariant = sequelize.define(
       { fields: ["deviceId"] },
       { unique: true, fields: ["deviceId", "key"] },
     ],
-  }
+  },
 );
 
 const DeviceSubType = sequelize.define(
@@ -139,7 +178,7 @@ const DeviceSubType = sequelize.define(
       { unique: true, fields: ["deviceId", "subtypeId"] },
       { fields: ["isPrimary"] },
     ],
-  }
+  },
 );
 
 const DeviceType = sequelize.define(
@@ -154,7 +193,7 @@ const DeviceType = sequelize.define(
       { fields: ["typeId"] },
       { unique: true, fields: ["deviceId", "typeId"] },
     ],
-  }
+  },
 );
 
 const Type = sequelize.define("type", {
@@ -177,7 +216,7 @@ const VehicleMake = sequelize.define(
   },
   {
     indexes: [{ fields: ["displayOrder"] }, { unique: true, fields: ["name"] }],
-  }
+  },
 );
 
 const VehicleModel = sequelize.define(
@@ -188,7 +227,7 @@ const VehicleModel = sequelize.define(
   },
   {
     indexes: [{ unique: true, fields: ["makeId", "name"] }],
-  }
+  },
 );
 
 const DeviceCompatibility = sequelize.define(
@@ -209,7 +248,7 @@ const DeviceCompatibility = sequelize.define(
       { fields: ["makeId", "modelId"] },
       { fields: ["isUniversal"] },
     ],
-  }
+  },
 );
 
 const SubType = sequelize.define("subtype", {
@@ -325,7 +364,7 @@ const Order = sequelize.define(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const Courier = sequelize.define("courier", {
@@ -379,7 +418,7 @@ const OrderDecline = sequelize.define(
         fields: ["orderId", "courierId"],
       },
     ],
-  }
+  },
 );
 
 const Translation = sequelize.define(
@@ -392,7 +431,7 @@ const Translation = sequelize.define(
   },
   {
     indexes: [{ unique: true, fields: ["key", "lang"] }],
-  }
+  },
 );
 
 const Chat = sequelize.define(
@@ -400,12 +439,7 @@ const Chat = sequelize.define(
   {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     type: {
-      type: DataTypes.ENUM(
-        "support",
-        "delivery",
-        "seller",
-        "warehouse"
-      ),
+      type: DataTypes.ENUM("support", "delivery", "seller", "warehouse"),
       allowNull: false,
     },
     orderId: { type: DataTypes.INTEGER, allowNull: true },
@@ -417,7 +451,7 @@ const Chat = sequelize.define(
       { unique: true, fields: ["type", "orderId"] },
       { unique: true, fields: ["type", "supportKey"] },
     ],
-  }
+  },
 );
 
 const ChatParticipant = sequelize.define(
@@ -436,7 +470,7 @@ const ChatParticipant = sequelize.define(
       { unique: true, fields: ["chatId", "userId"] },
       { fields: ["userId"] },
     ],
-  }
+  },
 );
 
 const ChatMessage = sequelize.define(
@@ -454,7 +488,7 @@ const ChatMessage = sequelize.define(
   },
   {
     indexes: [{ fields: ["chatId"] }, { fields: ["chatId", "createdAt"] }],
-  }
+  },
 );
 
 const Setting = sequelize.define("setting", {
@@ -496,7 +530,7 @@ const InventoryReceipt = sequelize.define(
     tableName: "inventory_receipts",
     timestamps: false,
     indexes: [{ fields: ["receipt_at"] }],
-  }
+  },
 );
 
 const InventoryReceiptItem = sequelize.define(
@@ -539,7 +573,7 @@ const InventoryReceiptItem = sequelize.define(
       { fields: ["device_id"] },
       { fields: ["variant_id"] },
     ],
-  }
+  },
 );
 
 InventoryReceipt.hasMany(InventoryReceiptItem, {
@@ -581,6 +615,15 @@ MenuItem.belongsTo(MenuCategory, {
   foreignKey: "categoryId",
   as: "category",
 });
+
+MenuItem.hasMany(MenuOptionGroup, {
+  foreignKey: "menuItemId",
+  as: "optionGroups",
+});
+MenuOptionGroup.belongsTo(MenuItem, { foreignKey: "menuItemId" });
+
+MenuOptionGroup.hasMany(MenuOption, { foreignKey: "groupId", as: "options" });
+MenuOption.belongsTo(MenuOptionGroup, { foreignKey: "groupId" });
 
 Chat.hasMany(ChatParticipant, {
   as: "participants",
@@ -791,4 +834,6 @@ module.exports = {
   SellerUser,
   InventoryReceipt,
   InventoryReceiptItem,
+  MenuOptionGroup,
+  MenuOption,
 };
