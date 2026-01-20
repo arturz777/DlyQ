@@ -45,7 +45,7 @@ async function syncTranslationsForKey(key, map, transaction = undefined) {
         Translation.destroy({
           where: { key, lang },
           transaction,
-        })
+        }),
       );
     } else {
       ops.push(Translation.upsert({ key, lang, text }, { transaction }));
@@ -79,7 +79,7 @@ async function uploadImageIfAny(req, prevUrl = null) {
 
   const { img } = req.files;
   const fileName = `${uuid.v4()}${img.name.substring(
-    img.name.lastIndexOf(".")
+    img.name.lastIndexOf("."),
   )}`;
 
   const { error } = await supabase.storage
