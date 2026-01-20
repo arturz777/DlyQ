@@ -479,6 +479,21 @@ const createOrder = async (req, res) => {
       const lang = langNorm;
       const translatedName = item.translations?.name?.[lang] || item.name;
 
+      const localizedSelectedOptionsMeta = Array.isArray(
+        item.selectedOptionsMeta,
+      )
+        ? item.selectedOptionsMeta.map((g) => ({
+            ...g,
+            groupTitle: g.groupTranslations?.[lang] || g.groupTitle,
+            chosen: Array.isArray(g.chosen)
+              ? g.chosen.map((o) => ({
+                  ...o,
+                  title: o.translations?.[lang] || o.title,
+                }))
+              : [],
+          }))
+        : item.selectedOptionsMeta;
+
       const localizedOptions = {};
       if (item.selectedOptions && Array.isArray(item.translations?.options)) {
         for (const [rawOptionKey, val] of Object.entries(
@@ -538,6 +553,7 @@ const createOrder = async (req, res) => {
         ...item,
         name: translatedName,
         selectedOptions: localizedOptions,
+        selectedOptionsMeta: localizedSelectedOptionsMeta,
 
         sellPriceAtSale,
         purchasePriceAtSale,
