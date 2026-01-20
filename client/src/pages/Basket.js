@@ -40,6 +40,31 @@ const parseMaybeJSON = (v) => {
   return v;
 };
 
+const formatSelectedOptionsMeta = (item) => {
+  const meta =
+    item?.selectedOptionsMeta || item?.optionsMeta || item?.selectedOptionsMeta;
+
+  if (!Array.isArray(meta) || meta.length === 0) return [];
+
+  return meta
+    .map((g) => {
+      const title = g?.groupTitle || g?.title || "";
+      const chosenArr = Array.isArray(g?.chosen) ? g.chosen : [];
+      const chosen = chosenArr
+        .map((c) => {
+          const t = c?.title || "";
+          const d = Number(c?.priceDelta || 0);
+          return d ? `${t} ` : t;
+        })
+        .filter(Boolean)
+        .join(", ");
+
+      if (!chosen) return null;
+      return title ? `${title}: ${chosen}` : chosen;
+    })
+    .filter(Boolean);
+};
+
 const normalizeVariants = (item) => {
   const arr = parseMaybeJSON(item.variants) || [];
   return (arr || []).map((v) => {
@@ -682,6 +707,16 @@ const Basket = observer(() => {
 
             <div className={styles.topInfo}>
               <div className={styles.title}>{title}</div>
+
+              {formatSelectedOptionsMeta(item).length > 0 && (
+                <div className={styles.selectedMeta}>
+                  {formatSelectedOptionsMeta(item).map((line, i) => (
+                    <div key={i} className={styles.selectedMetaLine}>
+                      • {line}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {optionsArr.map((opt, optIndex) => (
                 <OptionPicker
