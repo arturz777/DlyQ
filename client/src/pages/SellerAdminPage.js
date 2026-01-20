@@ -20,6 +20,7 @@ import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import CreateMenuCategory from "../components/modals/CreateMenuCategory";
 import CreateMenuItem from "../components/modals/CreateMenuItem";
+import MenuItemOptionsModal from "../components/modals/MenuItemOptionsModal";
 import SellerWorkingHoursModal from "../components/modals/SellerWorkingHoursModal";
 import styles from "./SellerAdminPage.module.css";
 
@@ -58,6 +59,8 @@ const SellerAdminPage = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [seller, setSeller] = useState(null);
   const [hoursVisible, setHoursVisible] = useState(false);
+  const [optionsVisible, setOptionsVisible] = useState(false);
+  const [optionsItem, setOptionsItem] = useState(null);
 
   const reload = async () => {
     if (!sid) return;
@@ -75,6 +78,16 @@ const SellerAdminPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const closeOptions = () => {
+    setOptionsVisible(false);
+    setOptionsItem(null);
+  };
+
+  const handleOptionsSaved = async () => {
+    setOptionsVisible(false);
+    setOptionsItem(null);
   };
 
   useEffect(() => {
@@ -410,6 +423,18 @@ const SellerAdminPage = () => {
               className={styles.editButton}
               type="button"
               onClick={() => {
+                setOptionsItem(it);
+                setOptionsVisible(true);
+              }}
+            >
+              {t("Дополнение", { ns: "sellerAdminPage" })}
+              {/* Перевести !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */}
+            </button>
+
+            <button
+              className={styles.editButton}
+              type="button"
+              onClick={() => {
                 setEditableMenuItem(it);
                 setMenuItemVisible(true);
               }}
@@ -603,43 +628,43 @@ const SellerAdminPage = () => {
                         {count}
                       </Badge>
                     </div>
-
-                    <div
-                      className={styles.catActions}
-                      onClick={(e) => e.stopPropagation()}
-                      onMouseDown={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        className={styles.smallButton}
-                        onClick={() => openCreateDish(cat.id)}
-                      >
-                        + {t("dish", { ns: "sellerAdminPage" })}
-                      </button>
-
-                      <button
-                        type="button"
-                        className={styles.smallButton}
-                        onClick={() => {
-                          setEditableMenuCategory(cat);
-                          setMenuCategoryVisible(true);
-                        }}
-                      >
-                        {t("edit", { ns: "sellerAdminPage" })}
-                      </button>
-
-                      <button
-                        type="button"
-                        className={styles.smallDanger}
-                        onClick={() => handleDeactivateCategory(cat)}
-                      >
-                        {t("deactivate", { ns: "sellerAdminPage" })}
-                      </button>
-                    </div>
                   </div>
                 </Accordion.Header>
 
                 <Accordion.Body>
+                  <div
+                    className={styles.catActions}
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      className={styles.smallButton}
+                      onClick={() => openCreateDish(cat.id)}
+                    >
+                      + {t("dish", { ns: "sellerAdminPage" })}
+                    </button>
+
+                    <button
+                      type="button"
+                      className={styles.smallButton}
+                      onClick={() => {
+                        setEditableMenuCategory(cat);
+                        setMenuCategoryVisible(true);
+                      }}
+                    >
+                      {t("edit", { ns: "sellerAdminPage" })}
+                    </button>
+
+                    <button
+                      type="button"
+                      className={styles.smallDanger}
+                      onClick={() => handleDeactivateCategory(cat)}
+                    >
+                      {t("deactivate", { ns: "sellerAdminPage" })}
+                    </button>
+                  </div>
+
                   {count === 0 ? (
                     <div className={styles.emptyBlock}>
                       <div className={styles.emptyText}>
@@ -730,6 +755,14 @@ const SellerAdminPage = () => {
           const items = await fetchMenuItems(sid);
           setMenuItems(items || []);
         }}
+      />
+
+      <MenuItemOptionsModal
+        show={optionsVisible}
+        item={optionsItem}
+        sellerId={sid}
+        onHide={closeOptions}
+        onSaved={handleOptionsSaved}
       />
     </div>
   );
