@@ -240,9 +240,6 @@ const DishModal = ({ item, seller, getImgSrc, onAdd }) => {
 
             <div className={styles.extrasSection}>
               <div className={styles.extrasHeader}>
-                <div className={styles.extrasTitle}>
-                  {t("extras", { ns: "dishModal", defaultValue: "Дополнения" })}
-                </div>
               </div>
 
               {optLoading ? (
