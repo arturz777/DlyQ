@@ -43,7 +43,7 @@ async function syncTranslationsForKey(key, map, transaction = undefined) {
         Translation.destroy({
           where: { key, lang },
           transaction,
-        })
+        }),
       );
     } else {
       ops.push(Translation.upsert({ key, lang, text }, { transaction }));
@@ -85,7 +85,7 @@ class MenuCategoryController {
 
       const parsed = parseTranslations(translations) || {};
 
-      await syncTranslationsForKey(`menu_category_${id}.name`, {
+      await syncTranslationsForKey(`menu_category_${category.id}.name`, {
         ...(parsed.name || {}),
         ru: category.name.trim(),
       });
