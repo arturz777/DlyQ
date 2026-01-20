@@ -52,7 +52,7 @@ const SellerPage = () => {
 
   const selectedItem = useMemo(
     () => items.find((x) => String(x.id) === String(selectedItemId)) || null,
-    [items, selectedItemId]
+    [items, selectedItemId],
   );
 
   const selectedTitle = useMemo(() => {
@@ -85,7 +85,7 @@ const SellerPage = () => {
             all.find(
               (s) =>
                 String(s.id) === String(idOrSlug) ||
-                (s.slug && s.slug === idOrSlug)
+                (s.slug && s.slug === idOrSlug),
             ) || null;
 
           if (!currentSeller) {
@@ -132,7 +132,7 @@ const SellerPage = () => {
     const sellerIds = basket.items.map((it) =>
       typeof basket.getItemSellerId === "function"
         ? basket.getItemSellerId(it)
-        : normalizeSellerId(it.sellerId)
+        : normalizeSellerId(it.sellerId),
     );
 
     if (sellerIds.length === 0) return true;
@@ -146,8 +146,8 @@ const SellerPage = () => {
     const ok = window.confirm(
       t(
         "cart contains items from another seller. clear cart and add this item?",
-        { ns: "sellerPage" }
-      )
+        { ns: "sellerPage" },
+      ),
     );
 
     if (!ok) return false;
@@ -165,46 +165,58 @@ const SellerPage = () => {
     return true;
   };
 
-  const addToBasket = (item, qty = 1) => {
-    if (!item?.isAvailable) {
-      toast.error(t("dish is currently unavailable", { ns: "sellerPage" }));
-      return;
-    }
+  const buildVariantKey = (sel) => {
+    const keys = Object.keys(sel || {}).sort((a, b) => Number(a) - Number(b));
+    return keys
+      .map((k) => {
+        const v = sel[k];
+        if (Array.isArray(v)) return `${k}=${v.slice().sort().join(",")}`;
+        return `${k}=${String(v)}`;
+      })
+      .join("|");
+  };
 
+  const addToBasketConfigured = (
+    item,
+    unitPrice,
+    selectedOptions,
+    selectedOptionsMeta,
+  ) => {
     const itemName = pickTr(item.name, item.translations?.name, uiLang);
 
     const newSellerId = seller?.id ? Number(seller.id) : null;
     if (!ensureSingleSeller(newSellerId)) return;
 
-    for (let i = 0; i < qty; i++) {
-      const basketItem = {
-        id: item.id,
-        name: item.name,
-        translations: item.translations,
-        price: Number(item.price) || 0,
-        img: item.img || null,
-        sellerId: newSellerId,
-        isRestaurantItem: true,
-        isPreorder: false,
-        defaultSelected: true,
-        selectedOptions: {},
-        variantKey: null,
-        stockQuantity:
-          typeof item.stockQuantity === "number"
-            ? item.stockQuantity
-            : typeof item.quantity === "number"
+    const basketItem = {
+      id: item.id,
+      name: item.name,
+      translations: item.translations,
+      price: Number(unitPrice) || Number(item.price) || 0, // ВАЖНО: финальная цена за 1 шт
+      img: item.img || null,
+      sellerId: newSellerId,
+      isRestaurantItem: true,
+      isPreorder: false,
+      defaultSelected: true,
+
+      selectedOptions: selectedOptions || {},
+      selectedOptionsMeta: selectedOptionsMeta || [],
+      variantKey: buildVariantKey(selectedOptions),
+
+      stockQuantity:
+        typeof item.stockQuantity === "number"
+          ? item.stockQuantity
+          : typeof item.quantity === "number"
             ? item.quantity
             : 999999,
-      };
+    };
 
-      basket.addItem(basketItem);
-    }
+    basket.addItem(basketItem);
 
     toast.success(
       <>
         <strong>{itemName}</strong>
         <div>{t("added to cart", { ns: "sellerPage" })}</div>
-      </>
+      </>,
     );
   };
 
@@ -229,27 +241,24 @@ const SellerPage = () => {
   return (
     <div className={styles.pageWrapper}>
       {seller && (
-        <header className={styles.header}>
-          <div className={styles.headerInfo}>
+        <header className={styles.hero}>
+          <div className={styles.heroMedia}>
             {seller.img ? (
               <img
                 src={getMenuImgSrc(seller.img)}
                 alt={seller.name}
-                className={styles.headerImg}
+                className={styles.heroImg}
                 onError={(e) => (e.currentTarget.style.display = "none")}
               />
             ) : (
-              <div className={styles.headerStub} />
+              <div className={styles.heroStub} />
             )}
 
-            <div className={styles.headerText}>
-              <h1 className={styles.sellerName}>{seller.name}</h1>
-              {seller.kind && (
-                <div className={styles.sellerKind}>{seller.kind}</div>
-              )}
-            </div>
+            <div className={styles.heroOverlay} />
 
-            <div className={styles.headerStub} aria-hidden="true" />
+            <div className={styles.heroTitleWrap}>
+              <h1 className={styles.heroTitle}>{seller.name}</h1>
+            </div>
           </div>
         </header>
       )}
@@ -268,7 +277,7 @@ const SellerPage = () => {
                 const catName = pickTr(
                   cat.name,
                   cat.translations?.name,
-                  uiLang
+                  uiLang,
                 );
 
                 return (
@@ -327,12 +336,12 @@ const SellerPage = () => {
                       const itemName = pickTr(
                         item.name,
                         item.translations?.name,
-                        uiLang
+                        uiLang,
                       );
                       const itemDesc = pickTr(
                         item.description,
                         item.translations?.description,
-                        uiLang
+                        uiLang,
                       );
 
                       return (
@@ -385,7 +394,7 @@ const SellerPage = () => {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  addToBasket(item, 1);
+                                  setSelectedItemId(item.id);
                                 }}
                               >
                                 {t("add", { ns: "sellerPage" })}
@@ -420,17 +429,32 @@ const SellerPage = () => {
               name: pickTr(
                 selectedItem.name,
                 selectedItem.translations?.name,
-                uiLang
+                uiLang,
               ),
               description: pickTr(
                 selectedItem.description,
                 selectedItem.translations?.description,
-                uiLang
+                uiLang,
               ),
             }}
             seller={seller}
             getImgSrc={getMenuImgSrc}
-            onAdd={(qty) => addToBasket(selectedItem, qty)}
+            onAdd={({
+              qty,
+              unitPrice,
+              selectedOptions,
+              selectedOptionsMeta,
+            }) => {
+              for (let i = 0; i < qty; i++) {
+                addToBasketConfigured(
+                  selectedItem,
+                  unitPrice,
+                  selectedOptions,
+                  selectedOptionsMeta,
+                );
+              }
+              setSelectedItemId(null);
+            }}
           />
         </SlideModal>
       )}
