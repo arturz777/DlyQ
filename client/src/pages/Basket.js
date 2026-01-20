@@ -379,6 +379,7 @@ const Basket = observer(() => {
           count: item.count,
           image: item.img,
           selectedOptions: item.selectedOptions || {},
+          selectedOptionsMeta: item.selectedOptionsMeta || [],
           isPreorder: item.isPreorder || isPreorder,
           isRestaurantItem: isRest,
           ...(isRest ? { menuItemId: item.id } : { deviceId: item.id }),
