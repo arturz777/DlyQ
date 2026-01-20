@@ -1,0 +1,188 @@
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.primaryBtnCompact {
+  padding: 2px 8px;
+}
+
+.box {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.boxMb14 {
+  margin-bottom: 14px;
+}
+
+.boxMb12 {
+  margin-bottom: 12px;
+}
+
+.langRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.langRowTight {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.inputTopGap {
+  margin-top: 8px;
+}
+
+.rowWrap12 {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rowWrap10 {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rowWrap10Center {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.rowWrap10Mb12 {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.rowBetween10 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.footerRow {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.footerRowTop10 {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.fieldMin200 {
+  min-width: 200px;
+}
+
+.fieldMin140 {
+  min-width: 140px;
+}
+
+.fieldMax220 {
+  max-width: 220px;
+}
+.fieldMax110 {
+  max-width: 110px;
+}
+
+.fieldW140 {
+  width: 140px;
+}
+.fieldW120 {
+  width: 120px;
+}
+
+.switchAlign {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 30px;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.stack10 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.loading {
+  padding: 12px;
+}
+
+.muted {
+  color: #6b7280;
+}
+
+.labelGhost {
+  visibility: hidden;
+}
+
+.editGrid {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  align-items: flex-end;
+}
+
+.optGrid {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.colTitle {
+  flex: 1 1 360px;
+  min-width: 320px;
+}
+
+.colType {
+  flex: 0 0 220px;
+  max-width: 220px;
+}
+
+.colMin,
+.colMax,
+.colOrder,
+.colPrice {
+  flex: 0 0 140px;
+  max-width: 140px;
+}
+
+.colRequired {
+  flex: 0 0 auto;
+}
+
+.colActions {
+  flex: 0 0 auto;
+}
