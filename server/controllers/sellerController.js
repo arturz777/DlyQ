@@ -196,6 +196,10 @@ class SellerController {
         address,
         pickupLat,
         pickupLng,
+        companyName,
+        registrationNumber,
+        phone,
+        website,
       } = req.body;
 
       if (!name) {
@@ -259,6 +263,12 @@ class SellerController {
           address: address ? String(address).trim() : null,
           pickupLat: latNum,
           pickupLng: lngNum,
+          companyName: companyName ? String(companyName).trim() : null,
+          registrationNumber: registrationNumber
+            ? String(registrationNumber).trim()
+            : null,
+          phone: phone ? String(phone).trim() : null,
+          website: website ? String(website).trim() : null,
         },
         { transaction: t },
       );
@@ -331,6 +341,10 @@ class SellerController {
         pickupLng,
         workHours,
         forceClosed,
+        companyName,
+        registrationNumber,
+        phone,
+        website,
       } = req.body;
 
       const seller = await Seller.findByPk(Number(id), { transaction: t });
@@ -406,10 +420,22 @@ class SellerController {
       if (address !== undefined)
         seller.address = address ? String(address).trim() : null;
 
-      // --- IMG обработка ДО save ---
+      if (companyName !== undefined)
+        seller.companyName = companyName ? String(companyName).trim() : null;
+
+      if (registrationNumber !== undefined)
+        seller.registrationNumber = registrationNumber
+          ? String(registrationNumber).trim()
+          : null;
+
+      if (phone !== undefined)
+        seller.phone = phone ? String(phone).trim() : null;
+
+      if (website !== undefined)
+        seller.website = website ? String(website).trim() : null;
+
       let imgUrl = seller.img;
 
-      // 1) если пришёл файл — заменяем
       if (req.files && req.files.img) {
         if (
           seller.img &&
