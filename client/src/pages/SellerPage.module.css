@@ -2,7 +2,6 @@
   max-width: 960px;
   margin: 0 auto;
   padding: 16px;
-  margin-top: 80px;
 }
 
 .center {
@@ -253,4 +252,291 @@
 .addButton:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.metaRow {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  text-align: center;
+}
+
+.open {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 200, 0, 0.18);
+  font-weight: 600;
+}
+
+.closed {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 0, 0, 0.18);
+  font-weight: 600;
+}
+
+.contactsModal {
+  padding: 14px 14px 20px;
+}
+
+.modalTitle {
+  margin: 0 0 12px;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.label {
+  opacity: 0.7;
+  min-width: 120px;
+}
+
+.value {
+  text-align: right;
+  word-break: break-word;
+}
+
+.scheduleBlock {
+  padding-top: 12px;
+}
+
+.metaHours {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #111;
+}
+
+.dot {
+  opacity: 0.9;
+}
+
+.moreLink {
+  color: #0072ce;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.moreLink:hover {
+  text-decoration: underline;
+}
+
+.schedulePre {
+  margin: 8px 0 0;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: auto;
+  font-size: 12px;
+}
+
+.moreModalRoot {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 18px 16px 26px;
+}
+
+.moreCard {
+  width: min(460px, 100%);
+}
+
+.moreTitle {
+  margin: 0 0 16px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.stackList {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stackItem {
+  font-size: 15px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.02);
+  text-align: center;
+}
+
+.stackLabel {
+  font-size: 13px;
+  opacity: 0.6;
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.stackValue {
+  font-size: 15px;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.stackSection {
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.sectionTitle {
+  font-size: 18px;
+  opacity: 0.7;
+  margin: 0 0 10px;
+  text-align: center;
+}
+
+.linkPill {
+  display: inline-block;
+  transition: background 0.15s ease;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0, 114, 206, 0.1);
+  text-decoration: none;
+}
+
+.linkPill:hover {
+  background: rgba(0, 114, 206, 0.18);
+}
+
+.menuContent {
+  width: 100%;
+}
+
+.catsAnchor {
+  height: 1px;
+}
+
+@media (min-width: 769px) {
+  .mobileCatsNav {
+    position: sticky;
+    top: 70px;
+    z-index: 50;
+    background: #fff;
+    padding: 8px 0;
+    margin-bottom: 16px;
+  }
+
+  .mobileCatsRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 0;
+  }
+
+  .catPill,
+  .catPillActive {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 8px 12px;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    background: #fff;
+    white-space: nowrap;
+    max-width: 75vw;
+    scroll-snap-align: start;
+    cursor: pointer;
+  }
+
+  .catPillActive {
+    border-color: rgba(10, 89, 181, 0.35);
+    background: rgba(24, 129, 255, 0.1);
+    box-shadow: none;
+  }
+
+  .catPillText {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .withFixedCatsNav {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobileCatsNav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: #fff;
+    padding: 0;
+    margin-bottom: 10px;
+  }
+
+  .mobileCatsNavFixed {
+    position: fixed;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: #fff;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    padding: 0;
+  }
+
+  .withFixedCatsNav {
+    margin-top: 70px;
+  }
+
+  .mobileCatsRow {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 10px 8px;
+    scroll-snap-type: x mandatory;
+  }
+
+  .mobileCatsRow::-webkit-scrollbar {
+    display: none;
+  }
+
+  .catPill,
+  .catPillActive {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 8px 12px;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    background: #fff;
+    white-space: nowrap;
+    max-width: 75vw;
+    scroll-snap-align: start;
+    cursor: pointer;
+  }
+
+  .catPillActive {
+    border-color: rgba(10, 89, 181, 0.35);
+    background: rgba(24, 129, 255, 0.1);
+    box-shadow: none;
+  }
+
+  .catPillText {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
