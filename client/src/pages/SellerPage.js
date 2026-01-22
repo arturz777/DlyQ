@@ -1,4 +1,11 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Context } from "../index";
@@ -34,6 +41,62 @@ const pickTr = (base, map, lang) => {
   return typeof v === "string" && v.trim() ? v : base;
 };
 
+const getTodayHoursText = (workHours) => {
+  if (!workHours || typeof workHours !== "object") return null;
+
+  const day = new Date().getDay();
+  const key = day === 0 ? "sunday" : day === 6 ? "saturday" : "weekdays";
+
+  const v = workHours[key];
+  if (!v) return null;
+
+  if (v.closed) return "Закрыто";
+
+  if (v.start && v.end) return `${v.start}–${v.end}`;
+
+  return null;
+};
+
+const formatWorkHours = (workHours, t) => {
+  if (!workHours || typeof workHours !== "object") return [];
+
+  const rows = [];
+
+  const map = [
+    {
+      key: "weekdays",
+      label: t("weekdays", { ns: "sellerPage" }) || "Пн–Пт",
+    },
+    {
+      key: "saturday",
+      label: t("saturday", { ns: "sellerPage" }) || "Сб",
+    },
+    {
+      key: "sunday",
+      label: t("sunday", { ns: "sellerPage" }) || "Вс",
+    },
+  ];
+
+  for (const { key, label } of map) {
+    const v = workHours[key];
+    if (!v) continue;
+
+    if (v.closed) {
+      rows.push({
+        label,
+        value: t("closed", { ns: "sellerPage" }) || "Закрыто",
+      });
+      continue;
+    }
+
+    if (v.start && v.end) {
+      rows.push({ label, value: `${v.start} – ${v.end}` });
+    }
+  }
+
+  return rows;
+};
+
 const SellerPage = () => {
   const { idOrSlug } = useParams();
   const location = useLocation();
@@ -46,6 +109,13 @@ const SellerPage = () => {
   const [menuLoading, setMenuLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedItemId, setSelectedItemId] = useState(null);
+  const [showContacts, setShowContacts] = useState(false);
+  const mobileCatsNavRef = useRef(null);
+  const catsAnchorRef = useRef(null);
+  const [catsSticky, setCatsSticky] = useState(false);
+  const catsStickYRef = useRef(0);
+  const [activeCatId, setActiveCatId] = useState(null);
+  const catsRowRef = useRef(null);
 
   const { t, i18n } = useTranslation();
   const uiLang = normUiLang(i18n.language);
@@ -54,6 +124,18 @@ const SellerPage = () => {
     () => items.find((x) => String(x.id) === String(selectedItemId)) || null,
     [items, selectedItemId],
   );
+
+  const measureStickY = () => {
+    const mql = window.matchMedia("(max-width: 768px)");
+    if (!mql.matches) {
+      catsStickYRef.current = 0;
+      return;
+    }
+    const anchor = catsAnchorRef.current;
+    if (!anchor) return;
+
+    catsStickYRef.current = anchor.getBoundingClientRect().top + window.scrollY;
+  };
 
   const selectedTitle = useMemo(() => {
     if (!selectedItem) return "";
@@ -116,10 +198,142 @@ const SellerPage = () => {
         setLoading(false);
         setMenuLoading(false);
       }
+      const refreshed = await fetchSellers();
+      const freshSeller =
+        refreshed.find(
+          (s) =>
+            String(s.id) === String(idOrSlug) ||
+            (s.slug && s.slug === idOrSlug),
+        ) || null;
+
+      if (freshSeller) setSeller(freshSeller);
     };
 
     loadSellerAndMenu();
   }, [idOrSlug]);
+
+  useLayoutEffect(() => {
+    if (!categories.length) return;
+    measureStickY();
+  }, [categories.length]);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 768px)");
+
+    let raf = 0;
+
+    const onScroll = () => {
+      if (!mql.matches) {
+        if (catsSticky) setCatsSticky(false);
+        return;
+      }
+
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const y = window.scrollY;
+        let stickY = catsStickYRef.current || 0;
+
+        if (!stickY) {
+          measureStickY();
+          stickY = catsStickYRef.current || 0;
+        }
+
+        if (!stickY) {
+          setCatsSticky(false);
+          return;
+        }
+
+        setCatsSticky(y >= stickY - 1);
+      });
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
+    window.addEventListener("resize", () => {
+      measureStickY();
+      onScroll();
+    });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [catsSticky]);
+
+  useEffect(() => {
+    if (!categories.length) return;
+
+    const mql = window.matchMedia("(max-width: 768px)");
+    const getTopOffset = () => {
+      const isMobile = mql.matches;
+      const navH = mobileCatsNavRef.current?.offsetHeight || 0;
+      return isMobile ? navH + 10 : 90;
+    };
+
+    const elements = categories
+      .map((c) => document.getElementById(`cat-${c.id}`))
+      .filter(Boolean);
+
+    if (!elements.length) return;
+
+    let raf = 0;
+
+    const updateActive = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const offset = getTopOffset();
+
+        let current = elements[0];
+
+        for (const el of elements) {
+          const top = el.getBoundingClientRect().top;
+          if (top - offset <= 2) current = el;
+          else break;
+        }
+
+        const id = current.id.replace("cat-", "");
+        setActiveCatId(id);
+      });
+    };
+
+    window.addEventListener("scroll", updateActive, { passive: true });
+    window.addEventListener("resize", updateActive);
+    if (mql.addEventListener) mql.addEventListener("change", updateActive);
+    else mql.addListener(updateActive);
+
+    updateActive();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", updateActive);
+      window.removeEventListener("resize", updateActive);
+      if (mql.removeEventListener)
+        mql.removeEventListener("change", updateActive);
+      else mql.removeListener(updateActive);
+    };
+  }, [categories]);
+
+  useEffect(() => {
+    const row = catsRowRef.current;
+    if (!row || !activeCatId) return;
+
+    const pill = row.querySelector(`[data-cat-pill="${activeCatId}"]`);
+    if (!pill) return;
+
+    const targetLeft =
+      pill.offsetLeft - (row.clientWidth / 2 - pill.clientWidth / 2);
+    const maxLeft = row.scrollWidth - row.clientWidth;
+    const clamped = Math.max(0, Math.min(targetLeft, maxLeft));
+
+    row.scrollTo({ left: clamped, behavior: "smooth" });
+  }, [activeCatId]);
+
+  useEffect(() => {
+    if (!categories.length) return;
+    setActiveCatId((prev) => prev ?? categories[0].id);
+  }, [categories.length]);
 
   const ensureSingleSeller = (rawNewSellerId) => {
     const normalizeSellerId = (sid) => {
@@ -191,7 +405,7 @@ const SellerPage = () => {
       id: item.id,
       name: item.name,
       translations: item.translations,
-      price: Number(unitPrice) || Number(item.price) || 0, // ВАЖНО: финальная цена за 1 шт
+      price: Number(unitPrice) || Number(item.price) || 0,
       img: item.img || null,
       sellerId: newSellerId,
       isRestaurantItem: true,
@@ -263,6 +477,32 @@ const SellerPage = () => {
         </header>
       )}
 
+      <div className={styles.metaRow}>
+        <span className={seller.isOpenNow ? styles.open : styles.closed}>
+          {seller.isOpenNow
+            ? t("open", { ns: "sellerPage" })
+            : t("closed", { ns: "sellerPage" })}
+        </span>
+
+        {seller.workHours && (
+          <span className={styles.metaHours}>
+            <span className={styles.dot}>• Работает с</span>
+            {getTodayHoursText(seller.workHours) || "—"} •{" "}
+            <span
+              className={styles.moreLink}
+              role="button"
+              tabIndex={0}
+              onClick={() => setShowContacts(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") setShowContacts(true);
+              }}
+            >
+              {t("more", { ns: "sellerPage" })}…
+            </span>
+          </span>
+        )}
+      </div>
+
       {error && seller && <div className={styles.error}>{error}</div>}
 
       {menuLoading ? (
@@ -271,151 +511,275 @@ const SellerPage = () => {
         </div>
       ) : (
         <div className={styles.menuWrapper}>
+          <div ref={catsAnchorRef} className={styles.catsAnchor} />
           {categories.length > 0 && (
-            <nav className={styles.categoriesNav}>
-              {categories.map((cat) => {
-                const catName = pickTr(
-                  cat.name,
-                  cat.translations?.name,
-                  uiLang,
-                );
+            <nav
+              ref={mobileCatsNavRef}
+              className={`${styles.mobileCatsNav} ${
+                catsSticky ? styles.mobileCatsNavFixed : ""
+              }`}
+              style={
+                catsSticky ? { top: "env(safe-area-inset-top)" } : undefined
+              }
+            >
+              <div ref={catsRowRef} className={styles.mobileCatsRow}>
+                {categories.map((cat) => {
+                  const catName = pickTr(
+                    cat.name,
+                    cat.translations?.name,
+                    uiLang,
+                  );
+                  const isActive = String(activeCatId) === String(cat.id);
 
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    className={styles.categoryChip}
-                    onClick={() => {
-                      const el = document.getElementById(`cat-${cat.id}`);
-                      if (el)
-                        el.scrollIntoView({
-                          behavior: "smooth",
-                          block: "start",
-                        });
-                    }}
-                  >
-                    {catName}
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={cat.id}
+                      data-cat-pill={cat.id}
+                      type="button"
+                      className={
+                        isActive ? styles.catPillActive : styles.catPill
+                      }
+                      onClick={() => {
+                        setActiveCatId(cat.id);
+
+                        const el = document.getElementById(`cat-${cat.id}`);
+                        const navH =
+                          mobileCatsNavRef.current?.offsetHeight || 0;
+                        const isMobile =
+                          window.matchMedia("(max-width: 768px)").matches;
+                        const offset = isMobile ? navH + 10 : 10 + 10;
+
+                        if (el) {
+                          const top =
+                            el.getBoundingClientRect().top + window.scrollY;
+                          const y = Math.max(0, top - offset);
+                          window.scrollTo({ top: y, behavior: "smooth" });
+                        }
+                      }}
+                    >
+                      <span className={styles.catPillText}>{catName}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </nav>
           )}
 
-          {categories.map((cat) => {
-            const catTitle = pickTr(cat.name, cat.translations?.name, uiLang);
-            const catItems = itemsByCategory[cat.id] || [];
+          <div
+            className={`${styles.menuContent} ${
+              categories.length > 0 && catsSticky ? styles.withFixedCatsNav : ""
+            }`}
+          >
+            {categories.map((cat) => {
+              const catTitle = pickTr(cat.name, cat.translations?.name, uiLang);
+              const catItems = itemsByCategory[cat.id] || [];
 
-            return (
-              <section
-                key={cat.id}
-                id={`cat-${cat.id}`}
-                className={styles.categorySection}
-              >
-                <div className={styles.categoryHeader}>
-                  {cat.img && (
-                    <img
-                      src={getMenuImgSrc(cat.img)}
-                      alt={catTitle}
-                      className={styles.categoryImg}
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  )}
-                  <h2 className={styles.categoryTitle}>{catTitle}</h2>
-                </div>
-
-                {catItems.length === 0 ? (
-                  <div className={styles.emptyCategory}>
-                    {t("no dishes yet", { ns: "sellerPage" })}
+              return (
+                <section
+                  key={cat.id}
+                  id={`cat-${cat.id}`}
+                  className={styles.categorySection}
+                >
+                  <div className={styles.categoryHeader}>
+                    {cat.img && (
+                      <img
+                        src={getMenuImgSrc(cat.img)}
+                        alt={catTitle}
+                        className={styles.categoryImg}
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    )}
+                    <h2 className={styles.categoryTitle}>{catTitle}</h2>
                   </div>
-                ) : (
-                  <div className={styles.itemsList}>
-                    {catItems.map((item) => {
-                      const imgSrc = getMenuImgSrc(item.img);
-                      const itemName = pickTr(
-                        item.name,
-                        item.translations?.name,
-                        uiLang,
-                      );
-                      const itemDesc = pickTr(
-                        item.description,
-                        item.translations?.description,
-                        uiLang,
-                      );
 
-                      return (
-                        <div
-                          key={item.id}
-                          className={styles.itemCard}
-                          onClick={() => setSelectedItemId(item.id)}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ")
-                              setSelectedItemId(item.id);
-                          }}
-                        >
-                          {imgSrc && (
-                            <img
-                              src={imgSrc}
-                              alt={itemName}
-                              className={styles.itemImg}
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                            />
-                          )}
+                  {catItems.length === 0 ? (
+                    <div className={styles.emptyCategory}>
+                      {t("no dishes yet", { ns: "sellerPage" })}
+                    </div>
+                  ) : (
+                    <div className={styles.itemsList}>
+                      {catItems.map((item) => {
+                        const imgSrc = getMenuImgSrc(item.img);
+                        const itemName = pickTr(
+                          item.name,
+                          item.translations?.name,
+                          uiLang,
+                        );
+                        const itemDesc = pickTr(
+                          item.description,
+                          item.translations?.description,
+                          uiLang,
+                        );
 
-                          <div className={styles.itemContent}>
-                            <div className={styles.itemTopRow}>
-                              <div>
-                                <div className={styles.itemName}>
-                                  {itemName}
-                                </div>
-                                {itemDesc && (
-                                  <div className={styles.itemDesc}>
-                                    {itemDesc}
-                                  </div>
-                                )}
-                              </div>
-                              <div className={styles.itemPrice}>
-                                {Number(item.price || 0).toFixed(2)} €
-                              </div>
-                            </div>
-
-                            <div className={styles.itemBottomRow}>
-                              <span></span>
-
-                              <button
-                                type="button"
-                                className={styles.addButton}
-                                disabled={!item.isAvailable}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setSelectedItemId(item.id);
+                        return (
+                          <div
+                            key={item.id}
+                            className={styles.itemCard}
+                            onClick={() => setSelectedItemId(item.id)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ")
+                                setSelectedItemId(item.id);
+                            }}
+                          >
+                            {imgSrc && (
+                              <img
+                                src={imgSrc}
+                                alt={itemName}
+                                className={styles.itemImg}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
                                 }}
-                              >
-                                {t("add", { ns: "sellerPage" })}
-                              </button>
+                              />
+                            )}
+
+                            <div className={styles.itemContent}>
+                              <div className={styles.itemTopRow}>
+                                <div>
+                                  <div className={styles.itemName}>
+                                    {itemName}
+                                  </div>
+                                  {itemDesc && (
+                                    <div className={styles.itemDesc}>
+                                      {itemDesc}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className={styles.itemPrice}>
+                                  {Number(item.price || 0).toFixed(2)} €
+                                </div>
+                              </div>
+
+                              <div className={styles.itemBottomRow}>
+                                <span></span>
+
+                                <button
+                                  type="button"
+                                  className={styles.addButton}
+                                  disabled={!item.isAvailable}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setSelectedItemId(item.id);
+                                  }}
+                                >
+                                  {t("add", { ns: "sellerPage" })}
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </section>
-            );
-          })}
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
 
-          {!categories.length && !error && (
-            <div className={styles.emptyMenu}>
-              {t("menu is empty for now", { ns: "sellerPage" })}
-            </div>
-          )}
+            {!categories.length && !error && (
+              <div className={styles.emptyMenu}>
+                {t("menu is empty for now", { ns: "sellerPage" })}
+              </div>
+            )}
+          </div>
         </div>
+      )}
+
+      {seller && showContacts && (
+        <SlideModal title="Больше" onClose={() => setShowContacts(false)}>
+          <div className={styles.moreModalRoot}>
+            <div className={styles.moreCard}>
+              <h3 className={styles.moreTitle}>{seller.name}</h3>
+
+              <div className={styles.stackList}>
+                <div className={styles.stackLabel}>
+                  Если у вас есть аллергия или диетические ограничения,
+                  пожалуйста свяжитесь с рестораном для белее точной информацией
+                  о блюдах.
+                </div>
+                <div className={styles.stackLabel}>
+                  Партнер обязуеться предлогать только продукты или услуги
+                  соответствующие действующиму законодательству.
+                </div>
+                <div className={styles.sectionTitle}>Контакты</div>
+                <div className={styles.stackItem}>
+                  <div className={styles.stackLabel}>Юр. название</div>
+                  <div className={styles.stackValue}>
+                    {seller.companyName || "—"}
+                  </div>
+                </div>
+
+                <div className={styles.stackItem}>
+                  <div className={styles.stackLabel}>Рег. номер</div>
+                  <div className={styles.stackValue}>
+                    {seller.registrationNumber || "—"}
+                  </div>
+                </div>
+
+                <div className={styles.stackItem}>
+                  <div className={styles.stackLabel}>Адрес</div>
+                  <div className={styles.stackValue}>
+                    {seller.address || "—"}
+                  </div>
+                </div>
+
+                <div className={styles.stackItem}>
+                  <div className={styles.stackLabel}>Телефон</div>
+                  <div className={styles.stackValue}>
+                    {seller.phone ? (
+                      <a
+                        href={`tel:${seller.phone}`}
+                        className={styles.linkPill}
+                      >
+                        {seller.phone}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </div>
+                </div>
+
+                <div className={styles.stackItem}>
+                  <div className={styles.stackLabel}>Сайт</div>
+                  <div className={styles.stackValue}>
+                    {seller.website ? (
+                      <a
+                        href={
+                          seller.website.startsWith("http")
+                            ? seller.website
+                            : `https://${seller.website}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className={styles.linkPill}
+                      >
+                        {seller.website}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.stackSection}>
+                <div className={styles.sectionTitle}>Время работы</div>
+
+                <div className={styles.stackList}>
+                  {formatWorkHours(seller.workHours, t).map((row) => (
+                    <div key={row.label} className={styles.stackItem}>
+                      <div className={styles.stackLabel}>{row.label}</div>
+                      <div className={styles.stackValue}>{row.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </SlideModal>
       )}
 
       {selectedItem && (
