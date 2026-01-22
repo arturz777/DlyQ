@@ -17,10 +17,12 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
   const [kindRu, setKindRu] = useState("");
   const [kindEn, setKindEn] = useState("");
   const [kindEst, setKindEst] = useState("");
-
   const [ownerUserId, setOwnerUserId] = useState("");
-
   const [loading, setLoading] = useState(false);
+  const [companyName, setCompanyName] = useState("");
+  const [registrationNumber, setRegistrationNumber] = useState("");
+  const [phone, setPhone] = useState("");
+  const [website, setWebsite] = useState("");
 
   useEffect(() => {
     if (!show) return;
@@ -34,19 +36,23 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
       setPickupLat(editableSeller?.pickupLat ?? "");
       setPickupLng(editableSeller?.pickupLng ?? "");
       setKindRu(
-        editableSeller?.translations?.kind?.ru || editableSeller?.kind || ""
+        editableSeller?.translations?.kind?.ru || editableSeller?.kind || "",
       );
       setKindEn(editableSeller?.translations?.kind?.en || "");
       setKindEst(editableSeller?.translations?.kind?.est || "");
+      setCompanyName(editableSeller?.companyName || "");
+      setRegistrationNumber(editableSeller?.registrationNumber || "");
+      setPhone(editableSeller?.phone || "");
+      setWebsite(editableSeller?.website || "");
 
       setIsActive(
         editableSeller?.isActive === undefined
           ? true
-          : !!editableSeller.isActive
+          : !!editableSeller.isActive,
       );
 
       setOwnerUserId(
-        editableSeller?.ownerUserId ? String(editableSeller.ownerUserId) : ""
+        editableSeller?.ownerUserId ? String(editableSeller.ownerUserId) : "",
       );
     } else {
       setName("");
@@ -61,6 +67,10 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
       setKindRu("");
       setKindEn("");
       setKindEst("");
+      setCompanyName("");
+      setRegistrationNumber("");
+      setPhone("");
+      setWebsite("");
     }
   }, [show, isEdit, editableSeller]);
 
@@ -88,7 +98,7 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
 
     if ((latNum == null) !== (lngNum == null)) {
       alert(
-        "Нужно указать и pickupLat, и pickupLng (или оставить оба пустыми)"
+        "Нужно указать и pickupLat, и pickupLng (или оставить оба пустыми)",
       );
       return;
     }
@@ -113,7 +123,7 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
       "translations",
       JSON.stringify({
         kind: { ru: kindRuVal, en: kindEnVal, est: kindEstVal },
-      })
+      }),
     );
 
     fd.append("isActive", String(isActive));
@@ -121,6 +131,11 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
     if (address.trim()) fd.append("address", address.trim());
     if (latNum != null) fd.append("pickupLat", String(latNum));
     if (lngNum != null) fd.append("pickupLng", String(lngNum));
+    if (companyName.trim()) fd.append("companyName", companyName.trim());
+    if (registrationNumber.trim())
+      fd.append("registrationNumber", registrationNumber.trim());
+    if (phone.trim()) fd.append("phone", phone.trim());
+    if (website.trim()) fd.append("website", website.trim());
     if (ownerIdNum) fd.append("ownerUserId", String(ownerIdNum));
     if (imgFile) fd.append("img", imgFile);
     else if (img.trim()) fd.append("img", img.trim());
@@ -211,6 +226,42 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Город, улица, дом..."
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Юридическое название (название фирмы)</Form.Label>
+            <Form.Control
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              placeholder="Например: OÜ Pizza Boom"
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Регистрационный номер</Form.Label>
+            <Form.Control
+              value={registrationNumber}
+              onChange={(e) => setRegistrationNumber(e.target.value)}
+              placeholder="Например: 12345678"
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Телефон ресторана</Form.Label>
+            <Form.Control
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+372 ..."
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Сайт (необязательно)</Form.Label>
+            <Form.Control
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              placeholder="https://..."
             />
           </Form.Group>
 
