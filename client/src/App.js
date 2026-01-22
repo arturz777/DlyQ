@@ -73,8 +73,10 @@ const AppLayout = observer(() => {
     location.pathname === "/warehouse";
 
   const isCatalog = location.pathname.startsWith("/catalog");
+  const isSellerPage = location.pathname.startsWith("/seller");
   const isDesktop = useMediaQuery("(min-width: 769px)");
-  const hideDesktopNavBar = hideLayout || (isCatalog && !isDesktop);
+  const hideDesktopNavBar =
+    hideLayout || ((isCatalog || isSellerPage) && !isDesktop);
 
   return (
     <>
@@ -138,10 +140,10 @@ const App = observer(() => {
   };
 
   const openSupportChat = () => {
-  setChatId(null);
-  setChatMode("support");
-  setChatVisible(true);
-};
+    setChatId(null);
+    setChatMode("support");
+    setChatVisible(true);
+  };
 
   const isAdmin =
     user.isAuth && (user.user?.role === "ADMIN" || user.user?.role === "admin");
@@ -151,12 +153,12 @@ const App = observer(() => {
 
   const fetchSupportChat = async (userId) => {
     const res = await fetch(
-      `${process.env.REACT_APP_API_URL}/chat/support-chat`,
+      `${process.env.REACT_APP_API_URL}api/chat/support-chat`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
-      }
+      },
     );
     return await res.json();
   };
