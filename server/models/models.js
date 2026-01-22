@@ -16,6 +16,18 @@ const Seller = sequelize.define("seller", {
   img: { type: DataTypes.STRING, allowNull: true },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
   address: { type: DataTypes.STRING, allowNull: true },
+  companyName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: "company_name",
+  },
+  registrationNumber: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: "registration_number",
+  },
+  phone: { type: DataTypes.STRING, allowNull: true },
+  website: { type: DataTypes.STRING, allowNull: true },
   pickupLat: { type: DataTypes.DOUBLE, allowNull: true },
   pickupLng: { type: DataTypes.DOUBLE, allowNull: true },
   workHours: { type: DataTypes.JSONB, allowNull: true, defaultValue: null },
