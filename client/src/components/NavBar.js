@@ -60,13 +60,13 @@ const NavBar = observer(() => {
   useEffect(() => {
     if (!user?.user?.id) return;
 
-    fetch(`${process.env.REACT_APP_API_URL}/chat/user/${user.user.id}`)
+    fetch(`${process.env.REACT_APP_API_URL}api/chat/user/${user.user.id}`)
       .then((res) => res.json())
       .then((data) => {
         const unread = new Set();
         data.forEach((chat) => {
           const hasUnread = chat.messages?.some(
-            (msg) => !msg.isRead && msg.senderId !== user.user.id
+            (msg) => !msg.isRead && msg.senderId !== user.user.id,
           );
           if (hasUnread) unread.add(chat.id);
         });
@@ -76,40 +76,40 @@ const NavBar = observer(() => {
       .catch(console.error);
   }, [user?.user?.id]);
 
-useEffect(() => {
-  if (!user?.user?.id) return;
+  useEffect(() => {
+    if (!user?.user?.id) return;
 
-  const isAdmin = String(user?.user?.role || "").toUpperCase() === "ADMIN";
-  if (!isAdmin) return;
+    const isAdmin = String(user?.user?.role || "").toUpperCase() === "ADMIN";
+    if (!isAdmin) return;
 
-  socket.emit("joinAdminNotifications");
+    socket.emit("joinAdminNotifications");
 
-  const onNewChatMessage = (msg) => {
-    setUnreadChats((prev) => {
-      const updated = new Set(prev);
-      updated.add(msg.chatId);
-      return updated;
-    });
-  };
-
-  const onReadMessages = ({ chatId, userId: readerId }) => {
-    if (readerId === user.user.id) {
+    const onNewChatMessage = (msg) => {
       setUnreadChats((prev) => {
         const updated = new Set(prev);
-        updated.delete(chatId);
+        updated.add(msg.chatId);
         return updated;
       });
-    }
-  };
+    };
 
-  socket.on("newChatMessage", onNewChatMessage);
-  socket.on("readMessages", onReadMessages);
+    const onReadMessages = ({ chatId, userId: readerId }) => {
+      if (readerId === user.user.id) {
+        setUnreadChats((prev) => {
+          const updated = new Set(prev);
+          updated.delete(chatId);
+          return updated;
+        });
+      }
+    };
 
-  return () => {
-    socket.off("newChatMessage", onNewChatMessage);
-    socket.off("readMessages", onReadMessages);
-  };
-}, [user?.user?.id, user?.user?.role]);
+    socket.on("newChatMessage", onNewChatMessage);
+    socket.on("readMessages", onReadMessages);
+
+    return () => {
+      socket.off("newChatMessage", onNewChatMessage);
+      socket.off("readMessages", onReadMessages);
+    };
+  }, [user?.user?.id, user?.user?.role]);
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -145,38 +145,39 @@ useEffect(() => {
   };
 
   const navMode = useMemo(() => {
-  const p = location.pathname;
+    const p = location.pathname;
 
-  // neutral (parcel)
-  if (p.startsWith("/parcel")) return "neutral";
-  if (p.startsWith("/main")) return "neutral";
+    if (p.startsWith("/parcel")) return "neutral";
+    if (p.startsWith("/main")) return "neutral";
 
-  // food
-  if (p === "/MainPage" || p.startsWith("/seller") || p.startsWith("/food")) {
-    return "food-catalog";
-  }
+    if (p === "/MainPage" || p.startsWith("/seller") || p.startsWith("/food")) {
+      return "food-catalog";
+    }
 
-  // market default
-  return "market";
-}, [location.pathname]);
+    return "market";
+  }, [location.pathname]);
 
   return (
     <div className={`${styles.navbar} NavBar`} style={navbarStyle}>
-      <div className={styles.navbarContainer}>
+      <div className={styles.navbarContainer} data-navbar-inner>
         <div className={styles.left}>
           <NavLink to="/" className={styles.navbarLogo}>
             DlyQ
           </NavLink>
 
-         {navMode !== "neutral" && (
-  <NavLink to={navMode === "food-catalog" ? "/food-catalog" : "/catalog"} className={styles.navItem}>
-    <List size={22} />
-    <span className={styles.navbarLinkTitle}>
-      {navMode === "food-catalog" ? t("search", { ns: "navbar" }) : t("catalog")}
-    </span>
-  </NavLink>
-)}
-
+          {navMode !== "neutral" && (
+            <NavLink
+              to={navMode === "food-catalog" ? "/food-catalog" : "/catalog"}
+              className={styles.navItem}
+            >
+              <List size={22} />
+              <span className={styles.navbarLinkTitle}>
+                {navMode === "food-catalog"
+                  ? t("search", { ns: "navbar" })
+                  : t("catalog")}
+              </span>
+            </NavLink>
+          )}
         </div>
 
         <div className={styles.center}>
