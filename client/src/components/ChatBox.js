@@ -130,14 +130,7 @@ const ChatBox = ({
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [view, setView] = useState("chat");
-  const [historyMode, setHistoryMode] = useState(
-    "clients" |
-      "courier_support" |
-      "restaurant_support" |
-      "courier_client" |
-      "restaurant_client" |
-      "closed",
-  );
+  const [historyMode, setHistoryMode] = useState("clients");
   const [unreadChats, setUnreadChats] = useState(new Set());
   const messagesEndRef = useRef(null);
   const chatsRef = useRef([]);
@@ -294,12 +287,6 @@ const ChatBox = ({
         try {
           const newChat = await fetchChatById(msg.chatId);
           chatObj = newChat;
-
-          setChats((prev) =>
-            prev.some((c) => String(c.id) === String(newChat.id))
-              ? prev
-              : [newChat, ...prev],
-          );
 
           setChats((prev) =>
             prev.some((c) => String(c.id) === String(newChat.id))
@@ -557,13 +544,9 @@ const ChatBox = ({
       }
       return getLastTs(b) - getLastTs(a);
     });
-  }, [chats, historyMode, unreadChats, isAdmin]);
+  }, [chats, historyMode, unreadChats, isAdmin, userId]);
 
-  useEffect(() => {
-    if (!isAdmin && historyMode !== "support") setHistoryMode("support");
-  }, [isAdmin, historyMode]);
-
-  const mode = isAdmin ? historyMode : "support";
+  const mode = isAdmin ? historyMode : "clients";
 
   const groupedMessages = useMemo(() => {
     const groups = [];
@@ -632,227 +615,229 @@ const ChatBox = ({
         </div>
       </div>
 
-      {showHistory && view === "history" ? (
-        <div className={styles.sidebar}>
-          <div className={styles.sidebarHeader}>
-            <h4 className={styles.sidebarTitle}>
-              {t("chatHistoryTitle", { ns: "chatBox" })}
-              {mode === "support" && unreadChats.size > 0 && (
-                <span className={styles.unreadDotButton} />
+      <div className={styles.chatContainer}>
+        {showHistory && view === "history" ? (
+          <div className={styles.sidebar}>
+            <div className={styles.sidebarHeader}>
+              <h4 className={styles.sidebarTitle}>
+                {t("chatHistoryTitle", { ns: "chatBox" })}
+                {mode === "support" && unreadChats.size > 0 && (
+                  <span className={styles.unreadDotButton} />
+                )}
+              </h4>
+
+              {isAdmin && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className={`${styles.headerAction} ${historyMode === "clients" ? styles.segmentActive : ""}`}
+                    onClick={() => setHistoryMode("clients")}
+                  >
+                    Клиенты
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`${styles.headerAction} ${historyMode === "courier_support" ? styles.segmentActive : ""}`}
+                    onClick={() => setHistoryMode("courier_support")}
+                  >
+                    Курьер
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`${styles.headerAction} ${historyMode === "restaurant_support" ? styles.segmentActive : ""}`}
+                    onClick={() => setHistoryMode("restaurant_support")}
+                  >
+                    Ресторан
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`${styles.headerAction} ${historyMode === "courier_client" ? styles.segmentActive : ""}`}
+                    onClick={() => setHistoryMode("courier_client")}
+                  >
+                    Курьер–клиент
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`${styles.headerAction} ${historyMode === "restaurant_client" ? styles.segmentActive : ""}`}
+                    onClick={() => setHistoryMode("restaurant_client")}
+                  >
+                    Ресторан–клиент
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`${styles.headerAction} ${historyMode === "closed" ? styles.segmentActive : ""}`}
+                    onClick={() => setHistoryMode("closed")}
+                  >
+                    Закрытые
+                  </button>
+                </div>
               )}
-            </h4>
+            </div>
 
-            {isAdmin && (
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  className={`${styles.headerAction} ${historyMode === "clients" ? styles.segmentActive : ""}`}
-                  onClick={() => setHistoryMode("clients")}
+            <div className={styles.historyList}>
+              {visibleHistoryChats.map((chat) => (
+                <div
+                  key={chat.id}
+                  className={`${styles.chatItem} ${
+                    chat.id === activeChatId ? styles.active : ""
+                  }`}
+                  onClick={() => {
+                    handleSelectChat(chat.id);
+                    setView("chat");
+                  }}
+                  role="button"
+                  tabIndex={0}
                 >
-                  Клиенты
-                </button>
+                  {(() => {
+                    const last = getLastMsg(chat);
+                    const title = getChatTitle(chat, userId, isAdmin, t);
+                    const ts =
+                      last?.createdAt || chat?.updatedAt || chat?.createdAt;
+                    const unreadCount = countUnreadInChat(chat, userId);
 
-                <button
-                  type="button"
-                  className={`${styles.headerAction} ${historyMode === "courier_support" ? styles.segmentActive : ""}`}
-                  onClick={() => setHistoryMode("courier_support")}
-                >
-                  Курьер
-                </button>
+                    return (
+                      <div className={styles.chatRow}>
+                        <div className={styles.chatRowTop}>
+                          <div className={styles.chatTitle}>
+                            {title}
+                            {chat.closedAt && (
+                              <span className={styles.chatStatus}>
+                                • {t("closedStatus", { ns: "chatBox" })}
+                              </span>
+                            )}
+                          </div>
 
-                <button
-                  type="button"
-                  className={`${styles.headerAction} ${historyMode === "restaurant_support" ? styles.segmentActive : ""}`}
-                  onClick={() => setHistoryMode("restaurant_support")}
-                >
-                  Ресторан
-                </button>
+                          <div className={styles.chatMeta}>
+                            <span className={styles.chatDate}>
+                              {formatDateShort(ts, i18n.language, t)}
+                            </span>
+                            {unreadCount > 0 && (
+                              <span className={styles.unreadBadge}>
+                                {unreadCount > 9 ? "9+" : unreadCount}
+                              </span>
+                            )}
+                          </div>
+                        </div>
 
-                <button
-                  type="button"
-                  className={`${styles.headerAction} ${historyMode === "courier_client" ? styles.segmentActive : ""}`}
-                  onClick={() => setHistoryMode("courier_client")}
-                >
-                  Курьер–клиент
-                </button>
+                        <div className={styles.chatRowBottom}>
+                          <span className={styles.chatPreviewText}>
+                            {last?.text || ""}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className={styles.chatMain}>
+            <div
+              className={styles.messages}
+              ref={messagesWrapRef}
+              onScroll={() => {
+                const el = messagesWrapRef.current;
+                if (!el) return;
+                const padding = 60;
+                const atBottom =
+                  el.scrollTop + el.clientHeight >= el.scrollHeight - padding;
+                shouldAutoScrollRef.current = atBottom;
+              }}
+            >
+              {groupedMessages.map((item) => {
+                if (item.type === "divider") {
+                  const label = new Intl.DateTimeFormat(i18n.language, {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  }).format(new Date(item.dt));
+                  return (
+                    <div key={`d-${item.key}`} className={styles.dateDivider}>
+                      <span>{label}</span>
+                    </div>
+                  );
+                }
 
-                <button
-                  type="button"
-                  className={`${styles.headerAction} ${historyMode === "restaurant_client" ? styles.segmentActive : ""}`}
-                  onClick={() => setHistoryMode("restaurant_client")}
-                >
-                  Ресторан–клиент
-                </button>
+                const msg = item.msg;
+                const isSystem = msg.senderRole === "system";
 
-                <button
-                  type="button"
-                  className={`${styles.headerAction} ${historyMode === "closed" ? styles.segmentActive : ""}`}
-                  onClick={() => setHistoryMode("closed")}
-                >
-                  Закрытые
+                return (
+                  <div
+                    key={
+                      msg.id || `${msg.chatId}-${msg.createdAt}-${msg.senderId}`
+                    }
+                    className={
+                      isSystem
+                        ? styles.messageSystem
+                        : msg.senderId === userId
+                          ? styles.messageOutgoing
+                          : styles.messageIncoming
+                    }
+                  >
+                    {!isSystem && (
+                      <div className={styles.sender}>{getSenderName(msg)}</div>
+                    )}
+
+                    <div className={styles.text}>{msg.text}</div>
+
+                    {!isSystem && (
+                      <div className={styles.msgTimeBubble}>
+                        {formatTime(msg.createdAt, i18n.language)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            {isClosed ? (
+              <div className={styles.closedNotice}>
+                {t("chatClosedNotice", { ns: "chatBox" })}
+                {!isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveChatId(null);
+                      setMessages([]);
+                      setText("");
+                      setView("chat");
+                    }}
+                    className={styles.newChatButton}
+                  >
+                    {t("newChat", { ns: "chatBox" })}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className={styles.inputArea}>
+                <input
+                  type="text"
+                  value={text}
+                  placeholder={t("messagePlaceholder", { ns: "chatBox" })}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                />
+                <button onClick={handleSend} type="button">
+                  📨
                 </button>
               </div>
             )}
           </div>
-
-          <div className={styles.historyList}>
-            {visibleHistoryChats.map((chat) => (
-              <div
-                key={chat.id}
-                className={`${styles.chatItem} ${
-                  chat.id === activeChatId ? styles.active : ""
-                }`}
-                onClick={() => {
-                  handleSelectChat(chat.id);
-                  setView("chat");
-                }}
-                role="button"
-                tabIndex={0}
-              >
-                {(() => {
-                  const last = getLastMsg(chat);
-                  const title = getChatTitle(chat, userId, isAdmin, t);
-                  const ts =
-                    last?.createdAt || chat?.updatedAt || chat?.createdAt;
-                  const unreadCount = countUnreadInChat(chat, userId);
-
-                  return (
-                    <div className={styles.chatRow}>
-                      <div className={styles.chatRowTop}>
-                        <div className={styles.chatTitle}>
-                          {title}
-                          {chat.closedAt && (
-                            <span className={styles.chatStatus}>
-                              • {t("closedStatus", { ns: "chatBox" })}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className={styles.chatMeta}>
-                          <span className={styles.chatDate}>
-                            {formatDateShort(ts, i18n.language, t)}
-                          </span>
-                          {unreadCount > 0 && (
-                            <span className={styles.unreadBadge}>
-                              {unreadCount > 9 ? "9+" : unreadCount}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className={styles.chatRowBottom}>
-                        <span className={styles.chatPreviewText}>
-                          {last?.text || ""}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className={styles.chatContainer}>
-          <div
-            className={styles.messages}
-            ref={messagesWrapRef}
-            onScroll={() => {
-              const el = messagesWrapRef.current;
-              if (!el) return;
-              const padding = 60;
-              const atBottom =
-                el.scrollTop + el.clientHeight >= el.scrollHeight - padding;
-              shouldAutoScrollRef.current = atBottom;
-            }}
-          >
-            {groupedMessages.map((item) => {
-              if (item.type === "divider") {
-                const label = new Intl.DateTimeFormat(i18n.language, {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                }).format(new Date(item.dt));
-                return (
-                  <div key={`d-${item.key}`} className={styles.dateDivider}>
-                    <span>{label}</span>
-                  </div>
-                );
-              }
-
-              const msg = item.msg;
-              const isSystem = msg.senderRole === "system";
-
-              return (
-                <div
-                  key={
-                    msg.id || `${msg.chatId}-${msg.createdAt}-${msg.senderId}`
-                  }
-                  className={
-                    isSystem
-                      ? styles.messageSystem
-                      : msg.senderId === userId
-                        ? styles.messageOutgoing
-                        : styles.messageIncoming
-                  }
-                >
-                  {!isSystem && (
-                    <div className={styles.sender}>{getSenderName(msg)}</div>
-                  )}
-
-                  <div className={styles.text}>{msg.text}</div>
-
-                  {!isSystem && (
-                    <div className={styles.msgTimeBubble}>
-                      {formatTime(msg.createdAt, i18n.language)}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            <div ref={messagesEndRef} />
-          </div>
-
-          {isClosed ? (
-            <div className={styles.closedNotice}>
-              {t("chatClosedNotice", { ns: "chatBox" })}
-              {!isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveChatId(null);
-                    setMessages([]);
-                    setText("");
-                    setView("chat");
-                  }}
-                  className={styles.newChatButton}
-                >
-                  {t("newChat", { ns: "chatBox" })}
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className={styles.inputArea}>
-              <input
-                type="text"
-                value={text}
-                placeholder={t("messagePlaceholder", { ns: "chatBox" })}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-              />
-              <button onClick={handleSend} type="button">
-                📨
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
