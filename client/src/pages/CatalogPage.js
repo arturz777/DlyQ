@@ -57,7 +57,9 @@ const CatalogPage = observer(() => {
   const subtypeAnchorRef = useRef(null);
   const [showStickySubtypes, setShowStickySubtypes] = useState(false);
   const ignoreNextIO = useRef(false);
-
+  const [activeSubtypeId, setActiveSubtypeId] = useState(null);
+  const programmaticSubtypeScrollRef = useRef(false);
+  const programmaticSubtypeTimerRef = useRef(null);
   const didAutoScrollRef = useRef(false);
 
   const orderedTypeIds = useMemo(() => {
@@ -145,8 +147,105 @@ const CatalogPage = observer(() => {
       device.selectedMake,
       device.selectedModel,
       currentLang,
-    ]
+    ],
   );
+
+  const onPickSubtype = useCallback(
+    (subtypeId) => {
+      if (!subtypeId) return;
+
+      setActiveSubtypeId(String(subtypeId));
+
+      programmaticSubtypeScrollRef.current = true;
+      if (programmaticSubtypeTimerRef.current) {
+        clearTimeout(programmaticSubtypeTimerRef.current);
+      }
+
+      scrollToSubtypeSection(subtypeId);
+
+      programmaticSubtypeTimerRef.current = setTimeout(() => {
+        programmaticSubtypeScrollRef.current = false;
+      }, 700);
+    },
+    [scrollToSubtypeSection],
+  );
+
+  useEffect(() => {
+    if (!isMobile) return;
+    if (!device.selectedType?.id) return;
+
+    const mql = window.matchMedia("(max-width: 768px)");
+
+    const getTopOffset = () => {
+      const fixed = mobileFixedNavRef.current;
+      const h = fixed ? fixed.offsetHeight : 0;
+      return (mql.matches ? h : 0) + 10;
+    };
+
+    const extractSubtypeIdFromElId = (id) => {
+      if (!id) return null;
+
+      if (id.startsWith("subtype-")) return id.replace("subtype-", "");
+
+      if (id.startsWith("mm-")) {
+        const last = id.split("-").pop();
+        if (!last) return null;
+        return /^\d+$/.test(last) ? last : null;
+      }
+
+      return null;
+    };
+
+    let raf = 0;
+
+    const updateActive = () => {
+      if (programmaticSubtypeScrollRef.current) return;
+
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const offset = getTopOffset();
+
+        const elements = Array.from(
+          document.querySelectorAll('[id^="subtype-"], [id^="mm-"]'),
+        ).sort(
+          (a, b) =>
+            a.getBoundingClientRect().top - b.getBoundingClientRect().top,
+        );
+
+        if (!elements.length) return;
+
+        let current = elements[0];
+        for (const el of elements) {
+          const top = el.getBoundingClientRect().top;
+          if (top - offset <= 2) current = el;
+          else break;
+        }
+
+        const sid = extractSubtypeIdFromElId(current.id);
+        if (sid) setActiveSubtypeId(String(sid));
+      });
+    };
+
+    window.addEventListener("scroll", updateActive, { passive: true });
+    window.addEventListener("resize", updateActive);
+    if (mql.addEventListener) mql.addEventListener("change", updateActive);
+    else mql.addListener(updateActive);
+
+    updateActive();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", updateActive);
+      window.removeEventListener("resize", updateActive);
+      if (mql.removeEventListener)
+        mql.removeEventListener("change", updateActive);
+      else mql.removeListener(updateActive);
+    };
+  }, [isMobile, device.selectedType?.id]);
+
+  useEffect(() => {
+    setActiveSubtypeId(null);
+  }, [device.selectedType?.id]);
 
   const resetDevicesFeed = useCallback(() => {
     device.setDevices?.([]);
@@ -156,8 +255,16 @@ const CatalogPage = observer(() => {
 
   const setType = useCallback(
     (id, { scrollTop = true } = {}) => {
+      const currentId = Number(device.selectedType?.id || 0);
+      const nextId = Number(id || 0);
+
+      if (currentId && currentId === nextId) {
+        requestAnimationFrame(() => ensureTypeVisible(nextId, "auto"));
+        return;
+      }
+
       const next = new URLSearchParams(searchParams);
-      next.set("typeId", String(id));
+      next.set("typeId", String(nextId));
       next.delete("scroll");
       setSearchParams(next);
 
@@ -165,15 +272,21 @@ const CatalogPage = observer(() => {
       device.setSelectedMake?.({});
       device.setSelectedModel?.({});
 
-      const found = device.types?.find((t) => Number(t.id) === Number(id));
+      const found = device.types?.find((t) => Number(t.id) === nextId);
       if (found) device.setSelectedType(found);
 
       resetDevicesFeed();
 
       if (scrollTop) window.scrollTo({ top: 0, behavior: "auto" });
-      requestAnimationFrame(() => ensureTypeVisible(id, "auto"));
+      requestAnimationFrame(() => ensureTypeVisible(nextId, "auto"));
     },
-    [searchParams, setSearchParams, device, ensureTypeVisible, resetDevicesFeed]
+    [
+      searchParams,
+      setSearchParams,
+      device,
+      ensureTypeVisible,
+      resetDevicesFeed,
+    ],
   );
 
   const onTouchStart = useCallback((e) => {
@@ -206,8 +319,16 @@ const CatalogPage = observer(() => {
 
       setType(ids[clamped], { scrollTop: false });
     },
-    [orderedTypeIds, device.selectedType?.id, setType]
+    [orderedTypeIds, device.selectedType?.id, setType],
   );
+
+  useEffect(() => {
+    return () => {
+      if (programmaticSubtypeTimerRef.current) {
+        clearTimeout(programmaticSubtypeTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth <= 768);
@@ -240,7 +361,7 @@ const CatalogPage = observer(() => {
           (typesData || []).map((type) => ({
             ...type,
             translations: type.translations || {},
-          }))
+          })),
         );
 
         device.setSubtypes(
@@ -253,7 +374,7 @@ const CatalogPage = observer(() => {
               const ao = Number(a.displayOrder ?? 0);
               const bo = Number(b.displayOrder ?? 0);
               return ao === bo ? a.id - b.id : ao - bo;
-            })
+            }),
         );
 
         device.setBrands(brandsData || []);
@@ -325,7 +446,7 @@ const CatalogPage = observer(() => {
       try {
         const modelId = device.selectedModel?.id ?? undefined;
         const makeId = !modelId
-          ? device.selectedMake?.id ?? undefined
+          ? (device.selectedMake?.id ?? undefined)
           : undefined;
 
         const data = await fetchFilter(
@@ -335,7 +456,7 @@ const CatalogPage = observer(() => {
           1,
           1,
           makeId,
-          modelId
+          modelId,
         );
 
         if (cancelled) return;
@@ -385,7 +506,7 @@ const CatalogPage = observer(() => {
               const ao = Number(a.displayOrder ?? 0);
               const bo = Number(b.displayOrder ?? 0);
               return ao === bo ? a.id - b.id : ao - bo;
-            })
+            }),
         );
       } catch (err) {
         if (reqId === subtypesReqId.current) {
@@ -465,16 +586,16 @@ const CatalogPage = observer(() => {
         const compatMode = mobile ? undefined : getCompatMode();
         const modelId = mobile
           ? undefined
-          : device.selectedModel?.id ?? undefined;
+          : (device.selectedModel?.id ?? undefined);
         const makeId = mobile
           ? undefined
           : modelId
-          ? undefined
-          : device.selectedMake?.id ?? undefined;
+            ? undefined
+            : (device.selectedMake?.id ?? undefined);
 
         const subtypeId = mobile
           ? undefined
-          : device.selectedSubType?.id ?? undefined;
+          : (device.selectedSubType?.id ?? undefined);
 
         const data = await fetchCatalogCursor({
           typeId: device.selectedType?.id ?? undefined,
@@ -597,7 +718,7 @@ const CatalogPage = observer(() => {
         const [entry] = entries;
         if (entry.isIntersecting) loadMore();
       },
-      { rootMargin: "600px 0px" }
+      { rootMargin: "600px 0px" },
     );
 
     io.observe(el);
@@ -651,7 +772,7 @@ const CatalogPage = observer(() => {
         if (top > TRIGGER_PX) setShowStickySubtypes(false);
         else setShowStickySubtypes(true);
       },
-      { threshold: 0 }
+      { threshold: 0 },
     );
 
     io.observe(el);
@@ -682,7 +803,7 @@ const CatalogPage = observer(() => {
       if (!el) return;
 
       const fixed = document.querySelector(
-        ".mobileFixedNav, .mobileStickyFilter"
+        ".mobileFixedNav, .mobileStickyFilter",
       );
       const offset = fixed ? fixed.offsetHeight + 10 : 10;
 
@@ -838,7 +959,8 @@ const CatalogPage = observer(() => {
                   <div className={catalogStyles.mobileFilterRow}>
                     <SubTypeBar
                       variant="universal"
-                      onPick={scrollToSubtypeSection}
+                      onPick={onPickSubtype}
+                      activeId={activeSubtypeId}
                     />
                   </div>
 
@@ -856,7 +978,8 @@ const CatalogPage = observer(() => {
                   {device.selectedModel?.id ? (
                     <div className={catalogStyles.mobileFilterRow}>
                       <SubTypeBar
-                        onPick={scrollToSubtypeSection}
+                        onPick={onPickSubtype}
+                        activeId={activeSubtypeId}
                         key={`mm-${device.selectedType?.id}-${
                           device.selectedMake?.id ?? "no-make"
                         }-${device.selectedModel.id}`}
@@ -867,7 +990,10 @@ const CatalogPage = observer(() => {
                 </>
               ) : (
                 <div className={catalogStyles.mobileFilterRow}>
-                  <SubTypeBar onPick={scrollToSubtypeSection} />
+                  <SubTypeBar
+                    onPick={onPickSubtype}
+                    activeId={activeSubtypeId}
+                  />
                 </div>
               )}
             </div>
