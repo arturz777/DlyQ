@@ -94,7 +94,9 @@ const SubTypeBar = observer(({ variant = "default", onPick, activeId }) => {
   if (device.loading?.subtypes) return null;
   if (!list || !list.length) return null;
 
-  const active = activeId ?? device.selectedSubType?.id;
+ const active = activeId ?? device.selectedSubType?.id;
+const isActive = (sid) => String(active) === String(sid);
+
 
   const handleSelect = (subtype) => {
     if (onPick) {
@@ -110,9 +112,7 @@ const SubTypeBar = observer(({ variant = "default", onPick, activeId }) => {
       <button
         key={subtype.id}
         type="button"
-        className={`${styles.chip} ${
-          active === subtype.id ? styles.chipActive : ""
-        }`}
+        className={`${styles.chip} ${isActive(subtype.id) ? styles.chipActive : ""}`}
         onClick={() => handleSelect(subtype)}
       >
         {subtype.translations?.name?.[currentLang] || subtype.name}
