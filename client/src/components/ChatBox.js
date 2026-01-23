@@ -23,6 +23,12 @@ const isSameMsg = (a, b) => {
   );
 };
 
+const getSupportRootRole = (chat) => {
+  const key = String(chat?.supportKey || "");
+  const m = key.match(/^support:([^:]+):/i);
+  return (m?.[1] || "").toLowerCase();
+};
+
 const isSupportChat = (chat) => {
   return chat?.type === "support";
 };
@@ -44,7 +50,7 @@ const formatTime = (dt, locale = "ru") => {
   } catch {
     const d = new Date(dt);
     return `${String(d.getHours()).padStart(2, "0")}:${String(
-      d.getMinutes()
+      d.getMinutes(),
     ).padStart(2, "0")}`;
   }
 };
@@ -78,7 +84,7 @@ const formatDateShort = (dt, locale, t) => {
     }).format(d);
   } catch {
     return `${String(d.getDate()).padStart(2, "0")}.${String(
-      d.getMonth() + 1
+      d.getMonth() + 1,
     ).padStart(2, "0")}`;
   }
 };
@@ -91,7 +97,7 @@ const getLastMsg = (chat) => {
 const getChatTitle = (chat, currentUserId, isAdmin, t) => {
   if (isAdmin) {
     const p = chat?.participants?.find(
-      (x) => String(x?.userId) !== String(currentUserId) && x?.role !== "admin"
+      (x) => String(x?.userId) !== String(currentUserId) && x?.role !== "admin",
     );
     const u = p?.user;
     return (
@@ -106,7 +112,7 @@ const getChatTitle = (chat, currentUserId, isAdmin, t) => {
 const countUnreadInChat = (chat, currentUserId) => {
   const msgs = Array.isArray(chat?.messages) ? chat.messages : [];
   return msgs.filter(
-    (m) => !m.isRead && String(m.senderId) !== String(currentUserId)
+    (m) => !m.isRead && String(m.senderId) !== String(currentUserId),
   ).length;
 };
 
@@ -124,7 +130,14 @@ const ChatBox = ({
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [view, setView] = useState("chat");
-  const [historyMode, setHistoryMode] = useState("support");
+  const [historyMode, setHistoryMode] = useState(
+    "clients" |
+      "courier_support" |
+      "restaurant_support" |
+      "courier_client" |
+      "restaurant_client" |
+      "closed",
+  );
   const [unreadChats, setUnreadChats] = useState(new Set());
   const messagesEndRef = useRef(null);
   const chatsRef = useRef([]);
@@ -136,6 +149,7 @@ const ChatBox = ({
   const messagesWrapRef = useRef(null);
   const shouldAutoScrollRef = useRef(true);
   const didInitialScrollRef = useRef(false);
+
   const { t, i18n } = useTranslation();
 
   const markChatRead = (id) => {
@@ -178,7 +192,7 @@ const ChatBox = ({
   const isAdmin = String(userRole || "").toLowerCase() === "admin";
   const activeChat = useMemo(
     () => chats.find((c) => c.id === activeChatId) || null,
-    [chats, activeChatId]
+    [chats, activeChatId],
   );
 
   const isClosed = Boolean(activeChat?.closedAt);
@@ -207,7 +221,7 @@ const ChatBox = ({
 
             if (!currentActive && Array.isArray(data) && data.length > 0) {
               const sorted = [...data].sort(
-                (a, b) => getLastTs(b) - getLastTs(a)
+                (a, b) => getLastTs(b) - getLastTs(a),
               );
               const lastChat = sorted[0];
 
@@ -224,7 +238,7 @@ const ChatBox = ({
             if (!isSupportChat(chat)) return;
 
             const hasUnread = chat.messages?.some(
-              (msg) => !msg.isRead && msg.senderId !== userId
+              (msg) => !msg.isRead && msg.senderId !== userId,
             );
             if (hasUnread) unread.add(chat.id);
           });
@@ -259,7 +273,7 @@ const ChatBox = ({
           const exists = prev.some((c) => String(c.id) === String(fullChat.id));
           if (exists) {
             return prev.map((c) =>
-              String(c.id) === String(fullChat.id) ? { ...c, ...fullChat } : c
+              String(c.id) === String(fullChat.id) ? { ...c, ...fullChat } : c,
             );
           }
           return [fullChat, ...prev];
@@ -284,13 +298,13 @@ const ChatBox = ({
           setChats((prev) =>
             prev.some((c) => String(c.id) === String(newChat.id))
               ? prev
-              : [newChat, ...prev]
+              : [newChat, ...prev],
           );
 
           setChats((prev) =>
             prev.some((c) => String(c.id) === String(newChat.id))
               ? prev
-              : [newChat, ...prev]
+              : [newChat, ...prev],
           );
         } catch (err) {
           console.error(t("errorLoadChat", { ns: "chatBox" }), err);
@@ -304,7 +318,7 @@ const ChatBox = ({
             if (prevMsgs.some((m) => isSameMsg(m, msg))) return chat;
 
             return { ...chat, messages: [...prevMsgs, msg] };
-          })
+          }),
         );
       }
 
@@ -327,7 +341,7 @@ const ChatBox = ({
 
       if (String(msg.chatId) === String(currentActiveChatId)) {
         setMessages((prev) =>
-          prev.some((m) => isSameMsg(m, msg)) ? prev : [...prev, msg]
+          prev.some((m) => isSameMsg(m, msg)) ? prev : [...prev, msg],
         );
       }
     };
@@ -391,8 +405,8 @@ const ChatBox = ({
         prevChats.map((chat) =>
           chat.id === msg.chatId
             ? { ...chat, messages: [...(chat.messages || []), msg] }
-            : chat
-        )
+            : chat,
+        ),
       );
 
       const existingChat = chats.find((c) => c.id === msg.chatId);
@@ -413,7 +427,7 @@ const ChatBox = ({
         : new Date().toISOString();
 
       setChats((prev) =>
-        prev.map((c) => (c.id === chatId ? { ...c, closedAt: ts } : c))
+        prev.map((c) => (c.id === chatId ? { ...c, closedAt: ts } : c)),
       );
     };
 
@@ -427,7 +441,7 @@ const ChatBox = ({
 
     const chat = chats.find((c) => c.id === msg.chatId);
     const participant = chat?.participants?.find(
-      (p) => p.userId === msg.senderId
+      (p) => p.userId === msg.senderId,
     );
     return participant?.user?.firstName || "";
   };
@@ -503,16 +517,40 @@ const ChatBox = ({
   }, [messages.length, activeChatId]);
 
   const visibleHistoryChats = useMemo(() => {
-    const mode = isAdmin ? historyMode : "support";
+    const mode = isAdmin ? historyMode : "clients";
 
-    const base = chats
-      .filter((c) => c.messages && c.messages.length > 0)
-      .filter((c) =>
-        mode === "support" ? isSupportChat(c) : !isSupportChat(c)
-      );
+    const base = chats.filter((c) => c.messages && c.messages.length > 0);
 
-    return base.sort((a, b) => {
-      if (mode === "support") {
+    const filtered = base.filter((c) => {
+      const closed = Boolean(c.closedAt);
+
+      if (mode === "closed") return closed;
+      if (closed) return false;
+
+      if (mode === "clients") {
+        if (!isSupportChat(c)) return false;
+        const r = getSupportRootRole(c);
+        return r === "client" || r === "user" || r === "";
+      }
+
+      if (mode === "courier_support") {
+        return isSupportChat(c) && getSupportRootRole(c) === "courier";
+      }
+
+      if (mode === "restaurant_support") {
+        if (!isSupportChat(c)) return false;
+        const r = getSupportRootRole(c);
+        return r === "warehouse" || r === "seller";
+      }
+
+      if (mode === "courier_client") return c.type === "delivery";
+      if (mode === "restaurant_client") return c.type === "seller";
+
+      return false;
+    });
+
+    return filtered.sort((a, b) => {
+      if (mode === "clients") {
         const au = unreadChats.has(a.id) ? 1 : 0;
         const bu = unreadChats.has(b.id) ? 1 : 0;
         if (au !== bu) return bu - au;
@@ -605,24 +643,55 @@ const ChatBox = ({
             </h4>
 
             {isAdmin && (
-              <button
-                type="button"
-                className={`${styles.headerAction} ${
-                  mode === "archive" ? styles.segmentActive : ""
-                }`}
-                onClick={() =>
-                  setHistoryMode((prev) =>
-                    prev === "archive" ? "support" : "archive"
-                  )
-                }
-                title={
-                  mode === "archive"
-                    ? t("backToSupport", { ns: "chatBox" })
-                    : t("openArchive", { ns: "chatBox" })
-                }
-              >
-                {t("archive", { ns: "chatBox" })}
-              </button>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className={`${styles.headerAction} ${historyMode === "clients" ? styles.segmentActive : ""}`}
+                  onClick={() => setHistoryMode("clients")}
+                >
+                  Клиенты
+                </button>
+
+                <button
+                  type="button"
+                  className={`${styles.headerAction} ${historyMode === "courier_support" ? styles.segmentActive : ""}`}
+                  onClick={() => setHistoryMode("courier_support")}
+                >
+                  Курьер
+                </button>
+
+                <button
+                  type="button"
+                  className={`${styles.headerAction} ${historyMode === "restaurant_support" ? styles.segmentActive : ""}`}
+                  onClick={() => setHistoryMode("restaurant_support")}
+                >
+                  Ресторан
+                </button>
+
+                <button
+                  type="button"
+                  className={`${styles.headerAction} ${historyMode === "courier_client" ? styles.segmentActive : ""}`}
+                  onClick={() => setHistoryMode("courier_client")}
+                >
+                  Курьер–клиент
+                </button>
+
+                <button
+                  type="button"
+                  className={`${styles.headerAction} ${historyMode === "restaurant_client" ? styles.segmentActive : ""}`}
+                  onClick={() => setHistoryMode("restaurant_client")}
+                >
+                  Ресторан–клиент
+                </button>
+
+                <button
+                  type="button"
+                  className={`${styles.headerAction} ${historyMode === "closed" ? styles.segmentActive : ""}`}
+                  onClick={() => setHistoryMode("closed")}
+                >
+                  Закрытые
+                </button>
+              </div>
             )}
           </div>
 
@@ -723,8 +792,8 @@ const ChatBox = ({
                     isSystem
                       ? styles.messageSystem
                       : msg.senderId === userId
-                      ? styles.messageOutgoing
-                      : styles.messageIncoming
+                        ? styles.messageOutgoing
+                        : styles.messageIncoming
                   }
                 >
                   {!isSystem && (
