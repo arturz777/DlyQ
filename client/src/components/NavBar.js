@@ -7,6 +7,7 @@ import { observer } from "mobx-react-lite";
 import { useNavigate } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import { socket } from "../socket";
+import { fetchUserChats } from "../http/chatAPI";
 import { useTranslation } from "react-i18next";
 import styles from "./NavBar.module.css";
 
@@ -60,11 +61,16 @@ const NavBar = observer(() => {
   useEffect(() => {
     if (!user?.user?.id) return;
 
-    fetch(`${process.env.REACT_APP_API_URL}api/chat/user/${user.user.id}`)
-      .then((res) => res.json())
-      .then((data) => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await fetchUserChats(user.user.id);
+
+        if (cancelled) return;
+
         const unread = new Set();
-        data.forEach((chat) => {
+        (data || []).forEach((chat) => {
           const hasUnread = chat.messages?.some(
             (msg) => !msg.isRead && msg.senderId !== user.user.id,
           );
@@ -72,8 +78,14 @@ const NavBar = observer(() => {
         });
 
         setUnreadChats(unread);
-      })
-      .catch(console.error);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user?.user?.id]);
 
   useEffect(() => {
