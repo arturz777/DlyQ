@@ -116,6 +116,10 @@ const SellerPage = () => {
   const catsStickYRef = useRef(0);
   const [activeCatId, setActiveCatId] = useState(null);
   const catsRowRef = useRef(null);
+  const [navOffset, setNavOffset] = useState(70);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const programmaticScrollRef = useRef(false);
+  const programmaticTimerRef = useRef(null);
 
   const { t, i18n } = useTranslation();
   const uiLang = normUiLang(i18n.language);
@@ -263,13 +267,94 @@ const SellerPage = () => {
   }, [catsSticky]);
 
   useEffect(() => {
+    const mql = window.matchMedia("(min-width: 769px)");
+    const set = () => setIsDesktop(mql.matches);
+
+    set();
+    if (mql.addEventListener) mql.addEventListener("change", set);
+    else mql.addListener(set);
+
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener("change", set);
+      else mql.removeListener(set);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (programmaticTimerRef.current) {
+        clearTimeout(programmaticTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktop) return;
+
+    let raf = 0;
+    let followRaf = 0;
+    let followUntil = 0;
+
+    const read = () => {
+      const navbar = document.querySelector("[data-navbar-inner]");
+      if (!navbar) {
+        setNavOffset(0);
+        return;
+      }
+      const r = navbar.getBoundingClientRect();
+      setNavOffset(Math.max(0, Math.round(r.bottom)));
+    };
+
+    const follow = (now) => {
+      read();
+      if (now < followUntil) {
+        followRaf = requestAnimationFrame(follow);
+      } else {
+        followRaf = 0;
+      }
+    };
+
+    const kickFollow = () => {
+      followUntil = performance.now() + 500;
+      if (!followRaf) followRaf = requestAnimationFrame(follow);
+    };
+
+    const update = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        read();
+        kickFollow();
+      });
+    };
+
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+
+    const navbar = document.querySelector("[data-navbar-inner]");
+    const onTransition = () => kickFollow();
+    navbar?.addEventListener("transitionrun", onTransition);
+    navbar?.addEventListener("transitionend", onTransition);
+
+    read();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      if (followRaf) cancelAnimationFrame(followRaf);
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      navbar?.removeEventListener("transitionrun", onTransition);
+      navbar?.removeEventListener("transitionend", onTransition);
+    };
+  }, [isDesktop]);
+
+  useEffect(() => {
     if (!categories.length) return;
 
     const mql = window.matchMedia("(max-width: 768px)");
     const getTopOffset = () => {
       const isMobile = mql.matches;
       const navH = mobileCatsNavRef.current?.offsetHeight || 0;
-      return isMobile ? navH + 10 : 90;
+      return isMobile ? navH + 10 : navOffset + navH + 10;
     };
 
     const elements = categories
@@ -281,12 +366,13 @@ const SellerPage = () => {
     let raf = 0;
 
     const updateActive = () => {
+      if (programmaticScrollRef.current) return;
+
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         const offset = getTopOffset();
 
         let current = elements[0];
-
         for (const el of elements) {
           const top = el.getBoundingClientRect().top;
           if (top - offset <= 2) current = el;
@@ -313,7 +399,7 @@ const SellerPage = () => {
         mql.removeEventListener("change", updateActive);
       else mql.removeListener(updateActive);
     };
-  }, [categories]);
+  }, [categories, navOffset]);
 
   useEffect(() => {
     const row = catsRowRef.current;
@@ -519,7 +605,11 @@ const SellerPage = () => {
                 catsSticky ? styles.mobileCatsNavFixed : ""
               }`}
               style={
-                catsSticky ? { top: "env(safe-area-inset-top)" } : undefined
+                isDesktop
+                  ? { top: `${navOffset}px` }
+                  : catsSticky
+                    ? { top: "env(safe-area-inset-top)" }
+                    : undefined
               }
             >
               <div ref={catsRowRef} className={styles.mobileCatsRow}>
@@ -540,21 +630,38 @@ const SellerPage = () => {
                         isActive ? styles.catPillActive : styles.catPill
                       }
                       onClick={() => {
+                        const el = document.getElementById(`cat-${cat.id}`);
+                        if (!el) return;
+
                         setActiveCatId(cat.id);
 
-                        const el = document.getElementById(`cat-${cat.id}`);
                         const navH =
                           mobileCatsNavRef.current?.offsetHeight || 0;
                         const isMobile =
                           window.matchMedia("(max-width: 768px)").matches;
-                        const offset = isMobile ? navH + 10 : 10 + 10;
 
-                        if (el) {
-                          const top =
-                            el.getBoundingClientRect().top + window.scrollY;
-                          const y = Math.max(0, top - offset);
-                          window.scrollTo({ top: y, behavior: "smooth" });
-                        }
+                        const offset = isMobile
+                          ? navH + 10
+                          : navOffset + navH + 10;
+
+                        const top =
+                          el.getBoundingClientRect().top + window.scrollY;
+                        const y = Math.max(0, top - offset);
+
+                        programmaticScrollRef.current = true;
+                        if (programmaticTimerRef.current)
+                          clearTimeout(programmaticTimerRef.current);
+
+                        window.scrollTo({ top: y, behavior: "smooth" });
+
+                        programmaticTimerRef.current = setTimeout(() => {
+                          programmaticScrollRef.current = false;
+
+                          window.scrollTo({
+                            top: Math.max(0, window.scrollY - 1),
+                            behavior: "auto",
+                          });
+                        }, 450);
                       }}
                     >
                       <span className={styles.catPillText}>{catName}</span>
