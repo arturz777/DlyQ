@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from "react";
+import React, { useContext, useMemo, useEffect, useRef, useCallback } from "react";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import { useTranslation } from "react-i18next";
@@ -8,6 +8,8 @@ const SubTypeBar = observer(({ variant = "default", onPick, activeId }) => {
   const { device } = useContext(Context);
   const { i18n } = useTranslation();
   const currentLang = i18n.language || "en";
+
+  const rowRef = useRef(null);
 
   const list = useMemo(() => {
     if (device.loading?.subtypes) return null;
@@ -91,12 +93,31 @@ const SubTypeBar = observer(({ variant = "default", onPick, activeId }) => {
     device.selectedModel?.id,
   ]);
 
+  const active = activeId ?? device.selectedSubType?.id;
+
+  const ensureActiveVisible = useCallback((id, behavior = "smooth") => {
+    const row = rowRef.current;
+    if (!row || !id) return;
+
+    const el = row.querySelector(`[data-subtype-pill="${id}"]`);
+    if (!el) return;
+
+    // центруем актив в карусели
+    const targetLeft = el.offsetLeft - (row.clientWidth / 2 - el.clientWidth / 2);
+    const maxLeft = row.scrollWidth - row.clientWidth;
+    const clamped = Math.max(0, Math.min(targetLeft, maxLeft));
+
+    row.scrollTo({ left: clamped, behavior });
+  }, []);
+
+  useEffect(() => {
+    // чтобы при ручном вертикальном скролле карусель "догоняла" актив
+    if (!active) return;
+    requestAnimationFrame(() => ensureActiveVisible(active, "smooth"));
+  }, [active, ensureActiveVisible]);
+
   if (device.loading?.subtypes) return null;
   if (!list || !list.length) return null;
-
- const active = activeId ?? device.selectedSubType?.id;
-const isActive = (sid) => String(active) === String(sid);
-
 
   const handleSelect = (subtype) => {
     if (onPick) {
@@ -107,20 +128,20 @@ const isActive = (sid) => String(active) === String(sid);
   };
 
   return (
-  <div className={styles.row}>
-    {list.map((subtype) => (
-      <button
-        key={subtype.id}
-        type="button"
-        className={`${styles.chip} ${isActive(subtype.id) ? styles.chipActive : ""}`}
-        onClick={() => handleSelect(subtype)}
-      >
-        {subtype.translations?.name?.[currentLang] || subtype.name}
-      </button>
-    ))}
-  </div>
-);
-
+    <div ref={rowRef} className={styles.row}>
+      {list.map((subtype) => (
+        <button
+          key={subtype.id}
+          data-subtype-pill={subtype.id}
+          type="button"
+          className={`${styles.chip} ${String(active) === String(subtype.id) ? styles.chipActive : ""}`}
+          onClick={() => handleSelect(subtype)}
+        >
+          {subtype.translations?.name?.[currentLang] || subtype.name}
+        </button>
+      ))}
+    </div>
+  );
 });
 
 export default SubTypeBar;
