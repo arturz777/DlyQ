@@ -124,6 +124,7 @@ const ChatBox = ({
   onUnreadChange,
   showHistory = true,
   onClose,
+  emptyHint,
 }) => {
   const [activeChatId, setActiveChatId] = useState(chatId || forceOpenChatId);
   const [chats, setChats] = useState([]);
@@ -142,8 +143,9 @@ const ChatBox = ({
   const messagesWrapRef = useRef(null);
   const shouldAutoScrollRef = useRef(true);
   const didInitialScrollRef = useRef(false);
-
   const { t, i18n } = useTranslation();
+
+  const emptyText = emptyHint || t("supportEmpty", { ns: "chatBox" });
 
   const markChatRead = (id) => {
     if (!id) return;
@@ -504,7 +506,7 @@ const ChatBox = ({
   }, [messages.length, activeChatId]);
 
   const visibleHistoryChats = useMemo(() => {
-    const mode = isAdmin ? historyMode : "clients";
+    const mode = isAdmin ? historyMode : historyMode;
 
     const base = chats.filter((c) => c.messages && c.messages.length > 0);
 
@@ -569,6 +571,12 @@ const ChatBox = ({
     return groups;
   }, [messages]);
 
+  useEffect(() => {
+    if (!isAdmin && historyMode !== "clients" && historyMode !== "closed") {
+      setHistoryMode("clients");
+    }
+  }, [isAdmin, historyMode]);
+
   return (
     <div className={styles.chatWrapper}>
       <div className={styles.chatHeader}>
@@ -626,57 +634,61 @@ const ChatBox = ({
                 )}
               </h4>
 
-              {isAdmin && (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    className={`${styles.headerAction} ${historyMode === "clients" ? styles.segmentActive : ""}`}
-                    onClick={() => setHistoryMode("clients")}
-                  >
-                    Клиенты
-                  </button>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {isAdmin && (
+                  <>
+                    <button
+                      type="button"
+                      className={`${styles.headerAction} ${historyMode === "clients" ? styles.segmentActive : ""}`}
+                      onClick={() => setHistoryMode("clients")}
+                    >
+                      {t("clients", { ns: "chatBox" })}
+                    </button>
 
-                  <button
-                    type="button"
-                    className={`${styles.headerAction} ${historyMode === "courier_support" ? styles.segmentActive : ""}`}
-                    onClick={() => setHistoryMode("courier_support")}
-                  >
-                    Курьер
-                  </button>
+                    <button
+                      type="button"
+                      className={`${styles.headerAction} ${historyMode === "courier_support" ? styles.segmentActive : ""}`}
+                      onClick={() => setHistoryMode("courier_support")}
+                    >
+                      {t("courierSupport", { ns: "chatBox" })}
+                    </button>
 
-                  <button
-                    type="button"
-                    className={`${styles.headerAction} ${historyMode === "restaurant_support" ? styles.segmentActive : ""}`}
-                    onClick={() => setHistoryMode("restaurant_support")}
-                  >
-                    Ресторан
-                  </button>
+                    <button
+                      type="button"
+                      className={`${styles.headerAction} ${historyMode === "restaurant_support" ? styles.segmentActive : ""}`}
+                      onClick={() => setHistoryMode("restaurant_support")}
+                    >
+                      {t("restaurantSupport", { ns: "chatBox" })}
+                    </button>
 
-                  <button
-                    type="button"
-                    className={`${styles.headerAction} ${historyMode === "courier_client" ? styles.segmentActive : ""}`}
-                    onClick={() => setHistoryMode("courier_client")}
-                  >
-                    Курьер–клиент
-                  </button>
+                    <button
+                      type="button"
+                      className={`${styles.headerAction} ${historyMode === "courier_client" ? styles.segmentActive : ""}`}
+                      onClick={() => setHistoryMode("courier_client")}
+                    >
+                      {t("courierClient", { ns: "chatBox" })}
+                    </button>
 
-                  <button
-                    type="button"
-                    className={`${styles.headerAction} ${historyMode === "restaurant_client" ? styles.segmentActive : ""}`}
-                    onClick={() => setHistoryMode("restaurant_client")}
-                  >
-                    Ресторан–клиент
-                  </button>
+                    <button
+                      type="button"
+                      className={`${styles.headerAction} ${historyMode === "restaurant_client" ? styles.segmentActive : ""}`}
+                      onClick={() => setHistoryMode("restaurant_client")}
+                    >
+                      {t("restaurantClient", { ns: "chatBox" })}
+                    </button>
+                  </>
+                )}
 
-                  <button
-                    type="button"
-                    className={`${styles.headerAction} ${historyMode === "closed" ? styles.segmentActive : ""}`}
-                    onClick={() => setHistoryMode("closed")}
-                  >
-                    Закрытые
-                  </button>
-                </div>
-              )}
+                <button
+                  type="button"
+                  className={`${styles.headerAction} ${
+                    historyMode === "closed" ? styles.segmentActive : ""
+                  }`}
+                  onClick={() => setHistoryMode("closed")}
+                >
+                  {t("closed", { ns: "chatBox" })}
+                </button>
+              </div>
             </div>
 
             <div className={styles.historyList}>
@@ -751,9 +763,7 @@ const ChatBox = ({
               }}
             >
               {messages.length === 0 && (
-                <div className={styles.messageSystem}>
-                  Чем мы можем вам помочь?
-                </div>
+                <div className={styles.messageSystem}>{emptyText}</div>
               )}
               {groupedMessages.map((item) => {
                 if (item.type === "divider") {
