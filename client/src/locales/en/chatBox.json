@@ -17,5 +17,13 @@
   "supportName": "Support",
   "yesterday": "yesterday",
   "chatNumber": "Chat #{{id}}",
-  "supportChatError": "Support chat error: {{status}}"
+  "supportChatError": "Support chat error: {{status}}",
+  "supportEmpty": "Millist toodet sooviksite meie poes näha?",
+  "clients": "Clients",
+  "courierSupport": "Courier",
+  "restaurantSupport": "Restaurant",
+  "courierClient": "Courier–Client",
+  "restaurantClient": "Restaurant–Client",
+  "closed": "Closed",
+  "catalogEmpty": "What product would you like to see in our store?"
 }
