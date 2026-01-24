@@ -359,6 +359,24 @@
   word-wrap: break-word;
 }
 
+.emptyHintWrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.emptyHintBubble {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  color: rgba(15, 23, 42, 0.75);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  max-width: 85%;
+}
+
 .sender {
   font-size: 12px;
   font-weight: 800;
