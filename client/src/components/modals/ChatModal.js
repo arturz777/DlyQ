@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import styles from "./ChatModal.module.css";
 
 const ChatModal = () => {
-  const { chatVisible, chatId, chatMode, closeChat } =
+  const { chatVisible, chatId, chatMode, chatHint, closeChat } =
     useContext(ChatContext);
   const { user } = useContext(Context);
   const { t, i18n } = useTranslation();
@@ -62,6 +62,7 @@ const ChatModal = () => {
             chatId={chatId}
             showHistory={chatMode === "support"}
             onClose={closeChat}
+            emptyHint={chatHint}
           />
         )}
       </div>
