@@ -4,6 +4,7 @@ export const ChatContext = createContext({
   chatVisible: false,
   chatId: null,
   chatMode: null,
-  openChat: (chatId, mode) => {},
+  chatHint: null,
+  openChat: (chatId, mode, hint) => {},
   closeChat: () => {},
 });
