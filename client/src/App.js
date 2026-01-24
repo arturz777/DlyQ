@@ -125,11 +125,13 @@ const App = observer(() => {
   const [chatVisible, setChatVisible] = useState(false);
   const [chatId, setChatId] = useState(null);
   const [chatMode, setChatMode] = useState(null);
+  const [chatHint, setChatHint] = useState(null);
   const [unreadSupportMsgCount, setUnreadSupportMsgCount] = useState(0);
 
-  const openChat = (id, mode) => {
+  const openChat = (id, mode, hint = null) => {
     setChatId(id);
     setChatMode(mode);
+    setChatHint(hint);
     setChatVisible(true);
   };
 
@@ -137,6 +139,7 @@ const App = observer(() => {
     setChatVisible(false);
     setChatId(null);
     setChatMode(null);
+    setChatHint(null);
   };
 
   const openSupportChat = () => {
@@ -209,6 +212,7 @@ const App = observer(() => {
         chatVisible,
         chatId,
         chatMode,
+        chatHint,
         openChat,
         closeChat,
         supportChatVisible: chatVisible,
