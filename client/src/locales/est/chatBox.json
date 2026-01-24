@@ -17,5 +17,13 @@
   "supportName": "Tugi",
   "yesterday": "eile",
   "chatNumber": "Vestlus #{{id}}",
-  "supportChatError": "Tugivestluse viga: {{status}}"
+  "supportChatError": "Tugivestluse viga: {{status}}",
+  "supportEmpty": "Kuidas saame aidata?",
+  "clients": "Kliendid",
+  "courierSupport": "Kuller",
+  "restaurantSupport": "Restoran",
+  "courierClient": "Kuller–klient",
+  "restaurantClient": "Restoran–klient",
+  "closed": "Suletud",
+  "catalogEmpty": "Millist toodet sooviksite meie poes näha?"
 }
