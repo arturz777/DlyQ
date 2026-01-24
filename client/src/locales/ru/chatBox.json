@@ -17,5 +17,13 @@
   "supportName": "Поддержка",
   "yesterday": "вчера",
   "chatNumber": "Чат #{{id}}",
-  "supportChatError": "Ошибка чата поддержки: {{status}}"
+  "supportChatError": "Ошибка чата поддержки: {{status}}",
+  "supportEmpty": "Чем мы можем помочь?",
+  "clients": "Клиенты",
+  "courierSupport": "Курьер",
+  "restaurantSupport": "Ресторан",
+  "courierClient": "Курьер–клиент",
+  "restaurantClient": "Ресторан–клиент",
+  "closed": "Закрытые",
+  "catalogEmpty": "Какой товар вы хотели бы увидеть в нашем магазине?"
 }
