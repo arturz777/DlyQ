@@ -750,6 +750,11 @@ const ChatBox = ({
                 shouldAutoScrollRef.current = atBottom;
               }}
             >
+              {messages.length === 0 && (
+                <div className={styles.messageSystem}>
+                  Чем мы можем вам помочь?
+                </div>
+              )}
               {groupedMessages.map((item) => {
                 if (item.type === "divider") {
                   const label = new Intl.DateTimeFormat(i18n.language, {
