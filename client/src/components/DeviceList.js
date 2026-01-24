@@ -1,13 +1,18 @@
-import React, { useContext, useMemo } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import DeviceItem from "./DeviceItem";
 import { useTranslation } from "react-i18next";
 import catalogSuggestImg from "../assets/catalog-suggest.png";
+import { ChatContext } from "../context/ChatContext";
+import ChatModal from "./modals/ChatModal";
+import ChatBox from "./ChatBox";
 import styles from "./DeviceList.module.css";
 
 const DeviceList = observer(({ onDeviceClick }) => {
-  const { device } = useContext(Context);
+  const { device, user } = useContext(Context);
+  const [chatOpen, setChatOpen] = useState(false);
+  const { openChat } = useContext(ChatContext);
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
   const selectedSubtypeId = Number(device.selectedSubType?.id) || null;
@@ -23,12 +28,12 @@ const DeviceList = observer(({ onDeviceClick }) => {
       bannerText: t("banner_text", { ns: "deviceList" }),
       suggestBtn: t("suggest_product", { ns: "deviceList" }),
     }),
-    [t, i18n.language]
+    [t, i18n.language],
   );
 
   const mmAllSet = useMemo(() => {
     return new Set(
-      (device.facets?.mmSubtypeIdsAll || []).map((x) => Number(x))
+      (device.facets?.mmSubtypeIdsAll || []).map((x) => Number(x)),
     );
   }, [device.facets?.mmSubtypeIdsAll]);
 
@@ -89,7 +94,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
         .filter(Boolean);
 
       const allTypeIds = new Set(
-        [primaryTypeId, ...m2mTypeIds, ...m2mSubtypeTypeIds].filter(Boolean)
+        [primaryTypeId, ...m2mTypeIds, ...m2mSubtypeTypeIds].filter(Boolean),
       );
 
       if (allTypeIds.size === 0) return;
@@ -111,7 +116,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
             ...m2mSubtypes
               .filter((st) => Number(st.typeId) === tid)
               .map((st) => Number(st.id)),
-          ].filter(Boolean)
+          ].filter(Boolean),
         );
 
         if (selectedSubtypeId) {
@@ -176,10 +181,10 @@ const DeviceList = observer(({ onDeviceClick }) => {
   const isLoading = !!device.loading?.devices;
   const hasActiveFilter = Boolean(
     device.selectedType?.id ||
-      device.selectedSubType?.id ||
-      device.selectedBrand?.id ||
-      device.selectedMake?.id ||
-      device.selectedModel?.id
+    device.selectedSubType?.id ||
+    device.selectedBrand?.id ||
+    device.selectedMake?.id ||
+    device.selectedModel?.id,
   );
 
   const orderedTypeIds = (device.types || [])
@@ -193,7 +198,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
     if (!g) return true;
     const hasNoSubtype = g.noSubtypeDevices?.length > 0;
     const hasAnySubtype = Object.values(g.subtypes || {}).some(
-      (s) => s.devices?.length > 0
+      (s) => s.devices?.length > 0,
     );
     return !hasNoSubtype && !hasAnySubtype;
   });
@@ -223,8 +228,8 @@ const DeviceList = observer(({ onDeviceClick }) => {
     const compat0 = Array.isArray(d?.compat)
       ? d.compat
       : d?.compat
-      ? [d.compat]
-      : [];
+        ? [d.compat]
+        : [];
     compat0.forEach((c) => {
       pushPair(c?.make?.name || c?.makeName, c?.model?.name || c?.modelName);
     });
@@ -243,7 +248,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
       arr.forEach((c) => {
         pushPair(
           c?.make?.name || c?.makeName || c?.brand?.name,
-          c?.model?.name || c?.modelName
+          c?.model?.name || c?.modelName,
         );
       });
     });
@@ -269,11 +274,11 @@ const DeviceList = observer(({ onDeviceClick }) => {
     const hasRealModel = arr.some((p) => p.model !== ui.noModel);
     if (hasRealModel) {
       const makesWithRealModel = new Set(
-        arr.filter((p) => p.model !== ui.noModel).map((p) => p.make)
+        arr.filter((p) => p.model !== ui.noModel).map((p) => p.make),
       );
 
       return arr.filter(
-        (p) => !(p.model === ui.noModel && makesWithRealModel.has(p.make))
+        (p) => !(p.model === ui.noModel && makesWithRealModel.has(p.make)),
       );
     }
 
@@ -310,7 +315,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
 
         const hasNoSubtype = group.noSubtypeDevices?.length > 0;
         const hasAnySubtype = Object.values(group.subtypes || {}).some(
-          (s) => s.devices?.length > 0
+          (s) => s.devices?.length > 0,
         );
 
         if (!hasNoSubtype && !hasAnySubtype) return null;
@@ -450,14 +455,14 @@ const DeviceList = observer(({ onDeviceClick }) => {
                     const mk = a.make.localeCompare(b.make, "ru");
                     if (mk !== 0) return mk;
                     return a.model.localeCompare(b.model, "ru");
-                  }
+                  },
                 );
 
                 orderedBuckets.forEach((bucket) => {
                   bucket.subtypes.forEach((st) => {
                     const seen = new Set();
                     st.items = st.items.filter(
-                      (x) => x?.id && !seen.has(x.id) && (seen.add(x.id), true)
+                      (x) => x?.id && !seen.has(x.id) && (seen.add(x.id), true),
                     );
                   });
                 });
@@ -472,7 +477,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
                       if (ao === bo)
                         return Number(a.subtypeId) - Number(b.subtypeId);
                       return ao - bo;
-                    }
+                    },
                   );
 
                   return (
@@ -481,7 +486,7 @@ const DeviceList = observer(({ onDeviceClick }) => {
                         <div
                           key={`mm-${bucket.make}-${bucket.model}-${st.subtypeId}`}
                           id={`mm-${safeId(bucket.make)}-${safeId(
-                            bucket.model
+                            bucket.model,
                           )}-${st.subtypeId}`}
                           className={styles.subtypeSection}
                         >
@@ -527,13 +532,27 @@ const DeviceList = observer(({ onDeviceClick }) => {
           <button
             type="button"
             className={styles.bannerBtn}
-            onClick={() => {}}
+            onClick={() =>
+              openChat(
+                null,
+                "catalog_suggest",
+                t("catalogEmpty", { ns: "chatBox" }),
+              )
+            }
             title={ui.suggestBtn}
           >
             {ui.suggestBtn}
           </button>
         </div>
       </div>
+      <ChatModal isOpen={chatOpen} onClose={() => setChatOpen(false)}>
+        <ChatBox
+          userId={user?.user?.id || user?.id}
+          userRole={user?.user?.role || user?.role}
+          showHistory={false}
+          onClose={() => setChatOpen(false)}
+        />
+      </ChatModal>
     </div>
   );
 });
