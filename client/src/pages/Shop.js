@@ -23,7 +23,7 @@ import { useTranslation } from "react-i18next";
 import DeviceItem from "../components/DeviceItem";
 import DeviceList from "../components/DeviceList";
 import SlideModal from "../components/modals/SlideModal";
-import heroImg from "../assets/catalog-suggest.png";
+import heroImg from "../assets/catalog-suggest.webp";
 import styles from "./Shop.module.css";
 import catalogStyles from "./CatalogPage.module.css";
 
