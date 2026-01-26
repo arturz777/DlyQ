@@ -347,6 +347,7 @@
 .section {
   max-width: 1200px;
   margin: 40px auto;
+  min-height: 260px;
 }
 
 .deviceCarousel {
