@@ -24,6 +24,7 @@
   position: relative;
   width: 100%;
   height: 260px;
+  aspect-ratio: 1200 / 260;
   border-radius: 18px;
   overflow: hidden;
   background: #f3f4f6;
@@ -231,7 +232,6 @@
   box-shadow:
     0 1px 2px rgba(17, 24, 39, 0.04),
     0 3px 10px rgba(17, 24, 39, 0.06);
-  font-size: 16px;
   cursor: pointer;
   transition: 0.3s;
   text-align: center;
@@ -352,6 +352,7 @@
 .deviceCarousel {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  min-height: 310px;
   gap: 18px;
   overflow: visible;
   padding-bottom: 0;
@@ -454,6 +455,7 @@
 @media (max-width: 768px) {
   .heroMedia {
     height: 210px;
+    aspect-ratio: 1200 / 210;
     border-radius: 16px;
   }
 
