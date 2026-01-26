@@ -82,6 +82,7 @@
 
 .metaRow {
   margin-top: 10px;
+  min-height: 56px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -347,7 +348,7 @@
 .section {
   max-width: 1200px;
   margin: 40px auto;
-  min-height: 260px;
+  min-height: 360px;
 }
 
 .deviceCarousel {
