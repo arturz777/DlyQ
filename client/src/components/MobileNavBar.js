@@ -54,17 +54,19 @@ const MobileNavBar = () => {
     return () => window.removeEventListener("scroll", closeOnScroll);
   }, []);
 
-   const isParcel = useMemo(() => {
-  const p = location.pathname;
-  return p.startsWith("/parcel") || p.startsWith("/main");
-}, [location.pathname]);
+  const isParcel = useMemo(() => {
+    const p = location.pathname;
+    return p.startsWith("/parcel") || p.startsWith("/main");
+  }, [location.pathname]);
 
-const isFoodContext = useMemo(() => {
-  const p = location.pathname;
-  return p === "/main" || p.startsWith("/seller") || p.startsWith("/food-catalog");
-}, [location.pathname]);
+  const isFoodContext = useMemo(() => {
+    const p = location.pathname;
+    return (
+      p === "/main" || p.startsWith("/seller") || p.startsWith("/food-catalog")
+    );
+  }, [location.pathname]);
 
-const searchTo = isFoodContext ? "/food-catalog" : "/catalog";
+  const searchTo = isFoodContext ? "/food-catalog" : "/catalog";
 
   const tabs = useMemo(
     () => [
@@ -95,7 +97,7 @@ const searchTo = isFoodContext ? "/food-catalog" : "/catalog";
         icon: User,
       },
     ],
-    [t, searchTo, isParcel, basket.totalItems, user.isAuth]
+    [t, searchTo, isParcel, basket.totalItems, user.isAuth],
   );
 
   const isActive = (to) =>
@@ -213,18 +215,6 @@ const searchTo = isFoodContext ? "/food-catalog" : "/catalog";
 
               <div className={styles.profileDivider} />
 
-              <div className={styles.profileSectionTitle}>
-                {t("contacts", { ns: "navbar" })}
-              </div>
-
-              <div className={styles.profileContacts}>
-                <div>
-                  {t("workingHours", { ns: "navbar" })}:{" "}
-                  {t("workingHoursValue", { ns: "navbar" })}
-                </div>
-                <div>{t("companyLine", { ns: "navbar" })}</div>
-              </div>
-
               <div className={styles.profileDivider} />
 
               <button
@@ -238,7 +228,7 @@ const searchTo = isFoodContext ? "/food-catalog" : "/catalog";
               </button>
             </div>
           </div>,
-          document.body
+          document.body,
         )
       : null;
 
@@ -249,36 +239,35 @@ const searchTo = isFoodContext ? "/food-catalog" : "/catalog";
         <div className={styles.dock}>
           <div className={styles.navItems}>
             {tabs.map(({ key, to, label, icon: Icon, badge, disabled }) => {
-  const active =
-    key === "profile"
-      ? isProfileOpen || isActive("/profile")
-      : isActive(to);
+              const active =
+                key === "profile"
+                  ? isProfileOpen || isActive("/profile")
+                  : isActive(to);
 
-  return (
-    <button
-      key={key}
-      type="button"
-      disabled={!!disabled}
-      className={`${styles.navBtn} ${active ? styles.navBtnActive : ""} ${
-        disabled ? styles.navBtnDisabled : ""
-      }`}
-      onClick={() => {
-        if (disabled) return;
-        handleNavClick(key, to);
-      }}
-      aria-label={label}
-      aria-current={active ? "page" : undefined}
-      aria-disabled={disabled ? "true" : undefined}
-    >
-      <Icon className={styles.icon} />
-      {badge > 0 && key === "basket" && (
-        <span className={styles.cartBadge}>{badge}</span>
-      )}
-      <span className={styles.navText}>{label}</span>
-    </button>
-  );
-})}
-
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  disabled={!!disabled}
+                  className={`${styles.navBtn} ${active ? styles.navBtnActive : ""} ${
+                    disabled ? styles.navBtnDisabled : ""
+                  }`}
+                  onClick={() => {
+                    if (disabled) return;
+                    handleNavClick(key, to);
+                  }}
+                  aria-label={label}
+                  aria-current={active ? "page" : undefined}
+                  aria-disabled={disabled ? "true" : undefined}
+                >
+                  <Icon className={styles.icon} />
+                  {badge > 0 && key === "basket" && (
+                    <span className={styles.cartBadge}>{badge}</span>
+                  )}
+                  <span className={styles.navText}>{label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </nav>
