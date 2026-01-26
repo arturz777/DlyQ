@@ -18,10 +18,12 @@ import {
   fetchSubtypes,
   fetchCatalogCursor,
 } from "../http/deviceAPI";
+import { fetchShopStatus } from "../http/shopAPI";
 import { useTranslation } from "react-i18next";
 import DeviceItem from "../components/DeviceItem";
 import DeviceList from "../components/DeviceList";
 import SlideModal from "../components/modals/SlideModal";
+import heroImg from "../assets/catalog-suggest.png";
 import styles from "./Shop.module.css";
 import catalogStyles from "./CatalogPage.module.css";
 
@@ -40,12 +42,46 @@ const Shop = () => {
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+  const [shopStatus, setShopStatus] = useState(null);
 
   const bottomRef = useRef(null);
 
   const [feedTypeIndex, setFeedTypeIndex] = useState(0);
   const [typeCursors, setTypeCursors] = useState({});
   const [typeHasMore, setTypeHasMore] = useState({});
+
+  const getTodayHoursText = (workHours) => {
+    if (!workHours || typeof workHours !== "object") return "—";
+
+    const day = new Date().getDay();
+    const key = day === 0 ? "sunday" : day === 6 ? "saturday" : "weekdays";
+
+    const v = workHours[key];
+    if (!v) return "—";
+    if (v.closed) return "Закрыто";
+    if (v.start && v.end) return `${v.start}–${v.end}`;
+    return "—";
+  };
+
+  const formatWorkHours = (workHours) => {
+    if (!workHours || typeof workHours !== "object") return [];
+    const rows = [];
+    const map = [
+      { key: "weekdays", label: "Пн–Пт" },
+      { key: "saturday", label: "Сб" },
+      { key: "sunday", label: "Вс" },
+    ];
+
+    for (const { key, label } of map) {
+      const v = workHours[key];
+      if (!v) continue;
+      if (v.closed) rows.push({ label, value: "Закрыто" });
+      else if (v.start && v.end)
+        rows.push({ label, value: `${v.start} – ${v.end}` });
+    }
+    return rows;
+  };
 
   const orderedTypeIds = useMemo(() => {
     const types = Array.isArray(device.types) ? device.types : [];
@@ -166,7 +202,7 @@ const Shop = () => {
           loadMore();
         }
       },
-      { rootMargin: "600px 0px" }
+      { rootMargin: "600px 0px" },
     );
 
     io.observe(el);
@@ -186,33 +222,37 @@ const Shop = () => {
           recommendedData,
           typesData,
           subtypesData,
+          shopStatusData,
         ] = await Promise.all([
           fetchNewDevices(LIMIT),
           fetchDiscountedDevices(LIMIT),
           fetchRecommendedDevices(undefined, LIMIT),
           fetchTypes(),
           fetchSubtypes(),
+          fetchShopStatus(),
         ]);
         if (cancelled) return;
 
         setNewDevices(
           Array.isArray(newDevicesData)
             ? newDevicesData
-            : newDevicesData?.devices ?? []
+            : (newDevicesData?.devices ?? []),
         );
         setDiscountedDevices(
           Array.isArray(discountedData)
             ? discountedData
-            : discountedData?.devices ?? []
+            : (discountedData?.devices ?? []),
         );
         setRecommendedDevices(
           Array.isArray(recommendedData)
             ? recommendedData
-            : recommendedData?.devices ?? []
+            : (recommendedData?.devices ?? []),
         );
 
+        setShopStatus(shopStatusData || null);
+
         const typesEnriched = (Array.isArray(typesData) ? typesData : []).map(
-          (t) => ({ ...t, translations: t.translations || {} })
+          (t) => ({ ...t, translations: t.translations || {} }),
         );
         setTypes(typesEnriched);
         device.setTypes(typesEnriched);
@@ -221,7 +261,7 @@ const Shop = () => {
           (Array.isArray(subtypesData) ? subtypesData : []).map((s) => ({
             ...s,
             translations: s.translations || {},
-          }))
+          })),
         );
       } catch (err) {
         console.error("❌ Error while loading data:", err);
@@ -265,62 +305,96 @@ const Shop = () => {
         </div>
       )}
 
-      <div className={styles.banner}>
-        <h1>{t("fast delivery", { ns: "homePage" })}</h1>
-        <p>{t("average delivery time: 15–30 minutes", { ns: "homePage" })}</p>
-      </div>
+      <div className={styles.pageInner}>
+        <header className={styles.hero}>
+          <div className={styles.heroMedia}>
+            {heroImg ? (
+              <img
+                src={heroImg}
+                alt="Shop hero"
+                className={styles.heroImg}
+                onError={(e) => (e.currentTarget.style.display = "none")}
+              />
+            ) : (
+              <div className={styles.heroStub} />
+            )}
 
-      <div className={styles.categories}>
-        {isDesktop && types.length > 6 ? (
-          <>
-            {types.slice(0, 5).map((type) => (
+            <div className={styles.heroOverlay} />
+
+            <div className={styles.heroTitleWrap}>
+              <div className={styles.heroSubtitle}>
+                {t("average delivery time: 15–30 minutes", { ns: "homePage" })}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className={styles.metaRow}>
+          <span className={shopStatus?.isOpen ? styles.open : styles.closed}>
+            {shopStatus?.isOpen ? "Открыто" : "Закрыто"}
+          </span>
+
+          <span className={styles.metaHours}>
+            <span className={styles.dot}>• Работает с</span>
+            {getTodayHoursText(shopStatus?.workHours)} •{" "}
+            <span
+              className={styles.moreLink}
+              role="button"
+              tabIndex={0}
+              onClick={() => setShowInfo(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") setShowInfo(true);
+              }}
+            >
+              больше…
+            </span>
+          </span>
+        </div>
+
+        <div className={styles.categoriesShell}>
+          <div className={styles.categories}>
+            {(isDesktop ? types.slice(0, 5) : types).map((type) => (
               <Link
                 key={type.id}
                 to={`/catalog?typeId=${type.id}&scroll=1`}
                 className={styles.category}
+                title={type.translations?.name?.[currentLang] || type.name}
               >
-                {type.translations?.name?.[currentLang] || type.name}
+                <span className={styles.categoryLabel}>
+                  {type.translations?.name?.[currentLang] || type.name}
+                </span>
               </Link>
             ))}
 
-            <div className={styles.dropdownContainer}>
-              <div
-                className={`${styles.category} ${styles.moreButton}`}
-                onClick={() => setShowAllTypes(!showAllTypes)}
-              >
-                {showAllTypes
-                  ? t("hide", { ns: "homePage" })
-                  : t("more", { ns: "homePage" })}
-              </div>
+            {isDesktop && types.length > 5 && (
+              <div className={styles.dropdownContainer}>
+                <button
+                  type="button"
+                  className={`${styles.category} ${styles.moreButton}`}
+                  onClick={() => setShowAllTypes((v) => !v)}
+                >
+                  <span className={styles.categoryLabel}>Ещё</span>
+                </button>
 
-              {showAllTypes && (
-                <div className={styles.dropdownMenu}>
-                  {types.slice(5).map((type) => (
-                    <Link
-                      key={type.id}
-                      to={`/catalog?typeId=${type.id}&scroll=1`}
-                      className={styles.dropdownItem}
-                    >
-                      <span className={styles.dropdownItemLabel}>
-                        {type.translations?.name?.[currentLang] || type.name}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          types.map((type) => (
-            <Link
-              key={type.id}
-              to={`/catalog?typeId=${type.id}&scroll=1`}
-              className={styles.category}
-            >
-              {type.translations?.name?.[currentLang] || type.name}
-            </Link>
-          ))
-        )}
+                {showAllTypes && (
+                  <div className={styles.dropdownMenu}>
+                    {types.slice(5).map((type) => (
+                      <Link
+                        key={type.id}
+                        to={`/catalog?typeId=${type.id}&scroll=1`}
+                        className={styles.dropdownItem}
+                      >
+                        <span className={styles.dropdownItemLabel}>
+                          {type.translations?.name?.[currentLang] || type.name}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <section className={styles.section}>
@@ -395,6 +469,45 @@ const Shop = () => {
         >
           ↑
         </button>
+      )}
+
+      {showInfo && (
+        <SlideModal title="Больше" onClose={() => setShowInfo(false)}>
+          <div className={styles.moreModalRoot}>
+            <div className={styles.moreCard}>
+              <h3 className={styles.moreTitle}>DlyQ Market</h3>
+
+              <div className={styles.stackList}>
+                <div className={styles.stackItem}>
+                  <div className={styles.stackValue}>
+                    DlyQ OÜ • Registrikood 17268052 • KMKR EE102873957
+                  </div>
+                </div>
+
+                <div className={styles.stackItem}>
+                  <div className={styles.stackLabel}>Email</div>
+                  <div className={styles.stackValue}>
+                    <a className={styles.linkPill} href="mailto:info@dlyq.ee">
+                      info@dlyq.ee
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.stackSection}>
+                <div className={styles.sectionTitle}>Время работы</div>
+                <div className={styles.stackList}>
+                  {formatWorkHours(shopStatus?.workHours).map((row) => (
+                    <div key={row.label} className={styles.stackItem}>
+                      <div className={styles.stackLabel}>{row.label}</div>
+                      <div className={styles.stackValue}>{row.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </SlideModal>
       )}
 
       {selectedDeviceId && (
