@@ -3,7 +3,7 @@ import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import DeviceItem from "./DeviceItem";
 import { useTranslation } from "react-i18next";
-import catalogSuggestImg from "../assets/catalog-suggest.png";
+import catalogSuggestImg from "../assets/catalog-suggest.webp";
 import { ChatContext } from "../context/ChatContext";
 import ChatModal from "./modals/ChatModal";
 import ChatBox from "./ChatBox";
