@@ -3,7 +3,8 @@ import { Card } from "react-bootstrap";
 import Image from "react-bootstrap/Image";
 import { useNavigate } from "react-router-dom";
 import { Context } from "../index";
-import { fetchOneDevice } from "../http/deviceAPI";
+import { fetchOneDevice, checkStock } from "../http/deviceAPI";
+import { fetchShopStatus } from "../http/shopAPI";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import LoadingIconButton from "../components/LoadingIconButton";
@@ -53,20 +54,20 @@ const DeviceItem = ({ device, onClick }) => {
   useEffect(() => {
     let cancelled = false;
 
-    fetch(`${process.env.REACT_APP_API_URL}/shop/status`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled) {
-          setIsStoreClosed(
-            typeof data.isStoreClosed === "boolean"
-              ? data.isStoreClosed
-              : !data.isOpen
-          );
-        }
-      })
-      .catch((err) => {
+    (async () => {
+      try {
+        const data = await fetchShopStatus();
+        if (cancelled) return;
+
+        setIsStoreClosed(
+          typeof data.isStoreClosed === "boolean"
+            ? data.isStoreClosed
+            : !data.isOpen,
+        );
+      } catch (err) {
         console.error("Error fetching store status:", err);
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
@@ -89,27 +90,10 @@ const DeviceItem = ({ device, onClick }) => {
     const itemsInBasket = basket.items.filter((item) => item.id === device.id);
     const totalInBasket = itemsInBasket.reduce(
       (sum, item) => sum + (item.count || 0),
-      0
+      0,
     );
     setAvailableQuantity(Math.max(0, device.quantity - totalInBasket));
   }, [basket.items, device.quantity]);
-
-  const checkStock = async (deviceId, quantity) => {
-    try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/device/check-stock`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deviceId, quantity }),
-        }
-      );
-      const data = await res.json();
-      return res.ok && Number(data.quantity) >= quantity;
-    } catch {
-      return false;
-    }
-  };
 
   const ensureSingleSeller = (rawNewSellerId) => {
     const normalizeSellerId = (sid) => {
@@ -122,7 +106,7 @@ const DeviceItem = ({ device, onClick }) => {
     const sellerIds = basket.items.map((it) =>
       typeof basket.getItemSellerId === "function"
         ? basket.getItemSellerId(it)
-        : normalizeSellerId(it.sellerId)
+        : normalizeSellerId(it.sellerId),
     );
 
     if (sellerIds.length === 0) return true;
@@ -133,10 +117,10 @@ const DeviceItem = ({ device, onClick }) => {
       return true;
     }
 
-     const ok = window.confirm(
+    const ok = window.confirm(
       t("cart has items from another seller. clear cart and add this item?", {
         ns: "deviceItem",
-      })
+      }),
     );
 
     if (!ok) {
@@ -193,15 +177,17 @@ const DeviceItem = ({ device, onClick }) => {
       }
 
       const itemsInBasket = basket.items.filter(
-        (item) => item.id === device.id
+        (item) => item.id === device.id,
       );
       const totalInBasket = itemsInBasket.reduce(
         (s, it) => s + (it.count || 0),
-        0
+        0,
       );
       const newCount = totalInBasket + 1;
 
-      const isAvailable = await checkStock(device.id, newCount);
+      const data = await checkStock(device.id, newCount, {});
+      const isAvailable = Number(data?.quantity) >= newCount;
+
       const isThisPreorder = !isAvailable;
 
       const itemForBasket = {
@@ -226,7 +212,7 @@ const DeviceItem = ({ device, onClick }) => {
             {t("Added to cart!", { ns: "devicePage" })}
           </span>
         </>,
-        { style: { maxWidth: "400px" } }
+        { style: { maxWidth: "400px" } },
       );
 
       setAvailableQuantity((prev) => Math.max(0, prev - 1));
@@ -241,11 +227,11 @@ const DeviceItem = ({ device, onClick }) => {
   return (
     <div ref={cardRef} onClick={goToDevicePage}>
       <Card className={styles.card}>
-        {discountPercentage !== null && (
-          <div className={styles.discountBadge}>-{discountPercentage}%</div>
-        )}
-
         <div className={styles.imageWrapper}>
+          {discountPercentage !== null && (
+            <div className={styles.discountBadge}>-{discountPercentage}%</div>
+          )}
+
           <Image
             className={styles.image}
             src={device.img}
@@ -280,7 +266,9 @@ const DeviceItem = ({ device, onClick }) => {
 
         {availableQuantity <= 0 && (
           <p className={styles.preorderText}>
-            {t("pre-order only", { ns: "deviceItem" })}
+            {availableQuantity <= 0
+              ? t("pre-order only", { ns: "deviceItem" })
+              : "\u00A0"}
           </p>
         )}
       </Card>
