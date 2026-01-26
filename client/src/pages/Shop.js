@@ -300,8 +300,14 @@ const Shop = () => {
   return (
     <div className={styles.homePage}>
       {loading && (
-        <div className={styles.loadingOverlay}>
-          {t("loading", { ns: "homePage" })}
+        <div
+          className={styles.loadingOverlay}
+          style={{
+            opacity: loading ? 1 : 0,
+            pointerEvents: loading ? "auto" : "none",
+          }}
+        >
+          {t("loading")}
         </div>
       )}
 
@@ -313,6 +319,10 @@ const Shop = () => {
                 src={heroImg}
                 alt="Shop hero"
                 className={styles.heroImg}
+                width="1200"
+                height="260"
+                loading="eager"
+                decoding="async"
                 onError={(e) => (e.currentTarget.style.display = "none")}
               />
             ) : (
