@@ -75,7 +75,7 @@ const ProfileSettings = ({ onBack }) => {
       } catch (error) {
         toast.error(
           error.response?.data?.message ||
-            t("updateError", { ns: "profileSettings" })
+            t("updateError", { ns: "profileSettings" }),
         );
       }
     }
@@ -116,7 +116,7 @@ const ProfileSettings = ({ onBack }) => {
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-          t("passwordUpdateError", { ns: "profileSettings" })
+          t("passwordUpdateError", { ns: "profileSettings" }),
       );
     }
   };
@@ -126,7 +126,7 @@ const ProfileSettings = ({ onBack }) => {
       const updatedPreferences = { ...prev, [type]: !prev[type] };
       localStorage.setItem(
         "cookiePreferences",
-        JSON.stringify(updatedPreferences)
+        JSON.stringify(updatedPreferences),
       );
       return updatedPreferences;
     });
@@ -134,7 +134,7 @@ const ProfileSettings = ({ onBack }) => {
 
   useEffect(() => {
     const savedPreferences = JSON.parse(
-      localStorage.getItem("cookiePreferences")
+      localStorage.getItem("cookiePreferences"),
     );
     if (savedPreferences) {
       setCookiePreferences(savedPreferences);
@@ -155,8 +155,8 @@ const ProfileSettings = ({ onBack }) => {
                 {field === "firstName"
                   ? t("firstName", { ns: "profileSettings" })
                   : field === "lastName"
-                  ? t("lastName", { ns: "profileSettings" })
-                  : t("phone", { ns: "profileSettings" })}
+                    ? t("lastName", { ns: "profileSettings" })
+                    : t("phone", { ns: "profileSettings" })}
                 :
               </span>
               {editField === field ? (
@@ -201,8 +201,10 @@ const ProfileSettings = ({ onBack }) => {
                             field === "currentPassword"
                               ? t("currentPassword", { ns: "profileSettings" })
                               : field === "newPassword"
-                              ? t("newPassword", { ns: "profileSettings" })
-                              : t("confirmPassword", { ns: "profileSettings" })
+                                ? t("newPassword", { ns: "profileSettings" })
+                                : t("confirmPassword", {
+                                    ns: "profileSettings",
+                                  })
                           }
                           value={passwordData[field]}
                           onChange={(e) =>
@@ -218,7 +220,7 @@ const ProfileSettings = ({ onBack }) => {
                           </span>
                         )}
                       </div>
-                    )
+                    ),
                   )}
                 </div>
               ) : (
@@ -288,11 +290,8 @@ const ProfileSettings = ({ onBack }) => {
             </label>
           </div>
 
-          <section
-            className={styles.mobileInfoBlock}
-          >
-            <div className={styles.sectionTitleRow}>
-            </div>
+          <section className={styles.mobileInfoBlock}>
+            <div className={styles.sectionTitleRow}></div>
 
             <button
               type="button"
@@ -301,27 +300,6 @@ const ProfileSettings = ({ onBack }) => {
             >
               {t("support chat", { ns: "footer" })}
             </button>
-
-            <div className={styles.mobileLinks}>
-              {helpLinks.map((l) => (
-                <Link key={l.to} to={l.to} className={styles.mobileLink}>
-                  {l.label || t(l.key, { ns: "footer" })}
-                </Link>
-              ))}
-            </div>
-
-           <div className={styles.mobileCompany}>
-              <span>
-                {t("workingHours", { ns: "navbar" })}:{" "}
-                {t("workingHoursValue", { ns: "navbar" })}
-              </span>
-              <br />
-              <span>DlyQ OÜ • Registrikood 17268052 • KMKR EE102873957</span>
-              <br />
-              <a className={styles.mobileEmail} href="mailto:info@dlyq.ee">
-                info@dlyq.ee
-              </a>
-            </div>
           </section>
         </div>
       </div>
