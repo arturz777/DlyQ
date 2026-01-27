@@ -5,5 +5,13 @@
 	"new": "New",
 	"discounts": "Discounts",
 	"recommended": "Recommended",
-	"average delivery time: 15–30 minutes": "Average delivery time: 15–30 minutes"
+	"average delivery time: 15–30 minutes": "Average delivery time: 15–30 minutes",
+	"open": "Open",
+	"closed": "Closed",
+	"works_from": "Working hours",
+	"more": "More...",
+	"working_hours": "Working hours",
+	"weekdays_short": "Mon–Fri",
+	"saturday_short": "Sat",
+	"sunday_short": "Sun"
 }
