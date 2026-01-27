@@ -933,7 +933,7 @@ const Basket = observer(() => {
                     navigate("/login", { state: { from: "/basket" } })
                   }
                 >
-                  {t("login", { ns: "basket", defaultValue: "Войти" })}
+                  {t("login", { ns: "auth" })}
                 </button>
 
                 <button
@@ -943,7 +943,7 @@ const Basket = observer(() => {
                     navigate("/registration", { state: { from: "/basket" } })
                   }
                 >
-                  {t("register", { ns: "basket", defaultValue: "Регистрация" })}
+                  {t("register", { ns: "auth" })}
                 </button>
               </div>
             </Card.Body>
