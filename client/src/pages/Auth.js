@@ -26,6 +26,8 @@ const Auth = observer(() => {
   const [loading, setLoading] = useState(false);
   const { t, i18n } = useTranslation();
 
+  const from = location.state?.from || SHOP_ROUTE;
+
   const languages = [
     { code: "ET", language: "est" },
     { code: "EN", language: "en" },
@@ -52,6 +54,9 @@ const Auth = observer(() => {
 
       if (!firstName.trim())
         e.firstName = t("first_name_required", { ns: "auth" });
+
+      if (!lastName.trim())
+        e.lastName = t("last_name_required", { ns: "auth" });
 
       if (!phone.trim()) e.phone = t("phone_required", { ns: "auth" });
 
@@ -81,7 +86,7 @@ const Auth = observer(() => {
       }
       user.setUser(data);
       user.setIsAuth(true);
-      navigate(SHOP_ROUTE);
+      navigate(from, { replace: true });
     } catch (e) {
       alert(e.response.data.message);
     }
@@ -168,6 +173,9 @@ const Auth = observer(() => {
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
               />
+              {submitted && fieldErrors.lastName && (
+                <div className={styles.fieldError}>{fieldErrors.lastName}</div>
+              )}
               <input
                 className={styles.inputField}
                 placeholder={t("enter your phone", { ns: "auth" })}
@@ -183,14 +191,22 @@ const Auth = observer(() => {
             {isLogin ? (
               <span>
                 {t("no account", { ns: "auth" })}{" "}
-                <NavLink to={REGISTRATION_ROUTE}>
+                <NavLink
+                  to={REGISTRATION_ROUTE}
+                  state={{ from: location.state?.from || "/basket" }}
+                >
                   {t("register", { ns: "auth" })}
                 </NavLink>
               </span>
             ) : (
               <span>
                 {t("already have an account", { ns: "auth" })}{" "}
-                <NavLink to={LOGIN_ROUTE}>{t("login", { ns: "auth" })}</NavLink>
+                <NavLink
+                  to={LOGIN_ROUTE}
+                  state={{ from: location.state?.from || "/basket" }}
+                >
+                  {t("login", { ns: "auth" })}
+                </NavLink>
               </span>
             )}
           </div>
@@ -224,6 +240,7 @@ const Auth = observer(() => {
           )}
           <LoadingButton
             className={styles.authButton}
+            type="button"
             onClick={click}
             loading={loading}
             loadingText={t("processing", { ns: "auth" })}
@@ -245,13 +262,13 @@ const Auth = observer(() => {
                   const userData = await googleLogin(credential);
                   user.setUser(userData);
                   user.setIsAuth(true);
-                  navigate(SHOP_ROUTE);
+                  navigate(from, { replace: true });
                 } catch (e) {
                   console.error(e);
                   alert(
                     t("an error occurred while signing in with Google", {
                       ns: "auth",
-                    })
+                    }),
                   );
                 }
               }}
