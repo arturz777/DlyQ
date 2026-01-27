@@ -5,5 +5,13 @@
 	"new": "Uus",
 	"discounts": "Allahindlused",
 	"recommended": "Soovitame",
-	"average delivery time: 15–30 minutes": "Keskmine kohaletoimetamise aeg: 15–30 minutit"
+	"average delivery time: 15–30 minutes": "Keskmine kohaletoimetamise aeg: 15–30 minutit",
+	"open": "Avatud",
+	"closed": "Suletud",
+	"works_from": "Avatud",
+	"more": "Rohkem...",
+	"working_hours": "Lahtiolekuajad",
+	"weekdays_short": "E–R",
+	"saturday_short": "L",
+	"sunday_short": "P"
 }
