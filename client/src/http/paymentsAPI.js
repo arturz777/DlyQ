@@ -19,3 +19,8 @@ export const createSetupIntent = async (payload) => {
   const { data } = await $authHost.post("/payments/setup-intent", payload);
   return data;
 };
+
+export const setDefaultPaymentMethod = async (pmId) => {
+  const { data } = await $authHost.post("/payments/set-default", { pmId });
+  return data;
+};
