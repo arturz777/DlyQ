@@ -51,6 +51,9 @@ const Shop = () => {
   const [typeCursors, setTypeCursors] = useState({});
   const [typeHasMore, setTypeHasMore] = useState({});
 
+  const isStoreClosed =
+  shopStatus ? (typeof shopStatus.isStoreClosed === "boolean" ? shopStatus.isStoreClosed : !shopStatus.isOpen) : false;
+
   const getTodayHoursText = (workHours) => {
     if (!workHours || typeof workHours !== "object") return "—";
 
@@ -416,6 +419,7 @@ const Shop = () => {
                 <DeviceItem
                   device={d}
                   onClick={(id) => setSelectedDeviceId(id)}
+                  isStoreClosed={isStoreClosed}
                 />
               </div>
             ))
@@ -434,6 +438,7 @@ const Shop = () => {
                 <DeviceItem
                   device={d}
                   onClick={(id) => setSelectedDeviceId(id)}
+                  isStoreClosed={isStoreClosed}
                 />
               </div>
             ))
@@ -453,6 +458,7 @@ const Shop = () => {
                 <DeviceItem
                   device={d}
                   onClick={(id) => setSelectedDeviceId(id)}
+                  isStoreClosed={isStoreClosed}
                 />
               </div>
             ))
