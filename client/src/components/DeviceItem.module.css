@@ -38,6 +38,7 @@
   height: 100%;
   object-fit: contain;
 }
+
 .info {
   flex-grow: 1;
   display: flex;
@@ -73,7 +74,7 @@
 .newPrice {
   font-weight: bold;
   font-size: 16px;
-  color: #ff3b30;
+  color: rgba(239, 68, 68, 0.95);
 }
 
 .regularPrice {
@@ -85,14 +86,29 @@
   position: absolute;
   top: 8px;
   left: 8px;
-  background-color: red;
-  color: white;
-  padding: 5px 8px;
-  font-weight: bold;
+  color: rgba(239, 68, 68, 0.95);
+  font-weight: 700;
+  opacity: 0.9;
   font-size: 12px;
-  border-radius: 5px;
-  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.2px;
   z-index: 2;
+}
+
+.statusBar {
+  position: absolute;
+  left: 10px;
+  right: 13px;
+  bottom: 6px;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 114, 206, 0.95);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  z-index: 2;
+  pointer-events: none;
 }
 
 .addButton {
