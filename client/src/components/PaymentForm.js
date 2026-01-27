@@ -18,15 +18,20 @@ import {
 import { useConfirm } from "./modals/ConfirmProvider";
 import { Button, Form, Row, Col, Modal } from "react-bootstrap";
 import { toast } from "react-toastify";
-import { fetchProfile, updateProfile } from "../http/userAPI";
+import { geoSearch, geoReverse } from "../http/geoAPI";
+import {
+  fetchPaymentMethods,
+  detachPaymentMethod,
+  createPaymentIntent,
+  createSetupIntent,
+  setDefaultPaymentMethod,
+} from "../http/paymentsAPI";
 import { Context } from "../index";
 import { fetchDeliveryCost } from "../utils/deliveryCost";
 import LoadingButton from "../components/LoadingButton";
 import LoadingIconButton from "../components/LoadingIconButton";
 import { useTranslation } from "react-i18next";
 import styles from "./PaymentForm.module.css";
-
-const API = (process.env.REACT_APP_API_URL || "").replace(/\/+$/, "");
 
 const customIcon = new L.Icon({
   iconUrl:
@@ -85,8 +90,7 @@ const LocationPicker = ({ setFormData }) => {
 
       const fallback = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
 
-      fetch(`${API}/geo/reverse?lat=${lat}&lon=${lon}`)
-        .then((res) => res.json())
+      geoReverse(lat, lon)
         .then((data) => {
           const addr = data.short_display_name || data.display_name;
           setFormData((prev) => ({
@@ -128,23 +132,22 @@ const PaymentForm = ({
     setPreferredTime,
     isStoreClosed,
   } = preorder || {};
-  const stripe = useStripe();
+   const stripe = useStripe();
   const elements = useElements();
-   const confirm = useConfirm();
+  const confirm = useConfirm();
   const [deliveryCost, setDeliveryCost] = useState(0);
   const { t } = useTranslation("paymentForm");
   const [suggestions, setSuggestions] = useState([]);
   const [addressFocused, setAddressFocused] = useState(false);
-  const [addrFetchTimer, setAddrFetchTimer] = useState(null);
   const [hydrated, setHydrated] = useState(false);
   const [savedCards, setSavedCards] = useState([]);
   const [selectedPmId, setSelectedPmId] = useState("new");
   const [showPmModal, setShowPmModal] = useState(false);
   const [tempPmId, setTempPmId] = useState("new");
   const [selectedCardMeta, setSelectedCardMeta] = useState(null);
-const [deletingId, setDeletingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [addressLoading, setAddressLoading] = useState(false);
-    const [pmSaving, setPmSaving] = useState(false);
+  const [pmSaving, setPmSaving] = useState(false);
 
   const applyPlace = (place) => {
     const short = place.short_display_name || place.display_name;
@@ -160,10 +163,6 @@ const [deletingId, setDeletingId] = useState(null);
   };
 
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
     address: "",
     apartment: "",
     floor: "",
@@ -187,10 +186,7 @@ const [deletingId, setDeletingId] = useState(null);
 
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `${API}/geo/search?q=${encodeURIComponent(q)}`
-        );
-        const data = await res.json();
+        const data = await geoSearch(q);
         setSuggestions(Array.isArray(data) ? data.slice(0, 5) : []);
       } catch {
         setSuggestions([]);
@@ -204,14 +200,7 @@ const [deletingId, setDeletingId] = useState(null);
     const loadSaved = async () => {
       if (!user.isAuth) return;
       try {
-        const res = await fetch(`${API}/payments/payment-methods`, {
-          credentials: "include",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-          },
-        });
-        if (!res.ok) return;
-        const { cards } = await res.json();
+        const { cards } = await fetchPaymentMethods();
         setSavedCards(Array.isArray(cards) ? cards : []);
         if (cards && cards.length > 0) {
           setSelectedPmId(cards[0].id);
@@ -236,8 +225,7 @@ const [deletingId, setDeletingId] = useState(null);
         longitude
       ).toFixed(6)}`;
 
-      fetch(`${API}/geo/reverse?lat=${latitude}&lon=${longitude}`)
-        .then((res) => res.json())
+      geoReverse(latitude, longitude)
         .then((data) => {
           const addr = data.short_display_name || data.display_name;
           setFormData((prev) => ({
@@ -306,28 +294,10 @@ const [deletingId, setDeletingId] = useState(null);
   }, [totalPrice, formData.latitude, formData.longitude, onDeliveryCostChange]);
 
   const handleDeleteCard = async (pmIdToDelete) => {
-    try {
+     try {
       setDeletingId(pmIdToDelete);
-      const r = await fetch(`${API}/payments/detach-pm`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-        body: JSON.stringify({ pmId: pmIdToDelete }),
-      });
-      if (!r.ok) {
-        const msg = await r.text().catch(() => "");
-        toast.error(msg || t("failed to remove card", { ns: "paymentForm" }));
-        return;
-      }
-
-      const res = await fetch(`${API}/payments/payment-methods`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-      });
-      const { cards } = await res.json();
+      await detachPaymentMethod(pmIdToDelete);
+      const { cards } = await fetchPaymentMethods();
       const list = Array.isArray(cards) ? cards : [];
       setSavedCards(list);
 
@@ -359,22 +329,18 @@ const [deletingId, setDeletingId] = useState(null);
 
   setAddressLoading(true);
   try {
-      const res = await fetch(
-        `${API}api/geo/search?q=${encodeURIComponent(q)}`
-      );
-    if (!res.ok) throw new Error("search failed");
-    const data = await res.json();
+      const data = await geoSearch(q);
 
-    if (Array.isArray(data) && data.length > 0) {
-      const place = data[0];
-      const short = place.short_display_name || place.display_name || q;
+      if (Array.isArray(data) && data.length > 0) {
+        const place = data[0];
+        const short = place.short_display_name || place.display_name || q;
 
-      setFormData((prev) => ({
-        ...prev,
-        address: short,
-        latitude: parseFloat(place.lat) || prev.latitude,
-        longitude: parseFloat(place.lon) || prev.longitude,
-      }));
+        setFormData((prev) => ({
+          ...prev,
+          address: short,
+          latitude: parseFloat(place.lat) || prev.latitude,
+          longitude: parseFloat(place.lon) || prev.longitude,
+        }));
 
       toast.success(t("address found", { ns: "paymentForm" }));
     } else {
@@ -395,14 +361,8 @@ const [deletingId, setDeletingId] = useState(null);
         const saved = localStorage.getItem("userFormData");
         if (saved) parsedData = JSON.parse(saved);
 
-        if (user.isAuth) {
-          const profile = await fetchProfile();
           setFormData((prev) => ({
             ...prev,
-            firstName: profile.firstName || "",
-            lastName: profile.lastName || "",
-            email: profile.email || "",
-            phone: profile.phone || "",
             apartment:
               parsedData.apartment != null
                 ? String(parsedData.apartment)
@@ -421,32 +381,6 @@ const [deletingId, setDeletingId] = useState(null);
             latitude: parsedData.latitude ?? prev.latitude,
             longitude: parsedData.longitude ?? prev.longitude,
           }));
-        } else {
-          setFormData((prev) => ({
-            ...prev,
-            firstName: parsedData.firstName ?? prev.firstName,
-            lastName: parsedData.lastName ?? prev.lastName,
-            email: parsedData.email ?? prev.email,
-            phone: parsedData.phone ?? prev.phone,
-            apartment:
-              parsedData.apartment != null
-                ? String(parsedData.apartment)
-                : prev.apartment,
-            floor:
-              parsedData.floor != null ? String(parsedData.floor) : prev.floor,
-            entrance:
-              parsedData.entrance != null
-                ? String(parsedData.entrance)
-                : prev.entrance,
-            comment:
-              parsedData.comment != null
-                ? String(parsedData.comment)
-                : prev.comment,
-            address: parsedData.address ?? prev.address,
-            latitude: parsedData.latitude ?? prev.latitude,
-            longitude: parsedData.longitude ?? prev.longitude,
-          }));
-        }
       } catch (e) {
         console.error(
           t("failed to load or parse userFormData", { ns: "paymentForm" }),
@@ -458,18 +392,14 @@ const [deletingId, setDeletingId] = useState(null);
     };
 
     loadUserData();
-  }, [user.isAuth]);
+   }, [user.isAuth, t]);
 
- useEffect(() => {
+useEffect(() => {
     if (!hydrated) return;
     try {
       localStorage.setItem(
         "userFormData",
         JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          phone: formData.phone,
           address: formData.address,
           apartment: String(formData.apartment ?? ""),
           floor: String(formData.floor ?? ""),
@@ -477,7 +407,7 @@ const [deletingId, setDeletingId] = useState(null);
           comment: String(formData.comment ?? ""),
           latitude: formData.latitude,
           longitude: formData.longitude,
-        })
+        }),
       );
     } catch (e) {
       console.warn(t("failed to save form", { ns: "paymentForm" }), e);
@@ -489,7 +419,7 @@ const [deletingId, setDeletingId] = useState(null);
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-const normalizePhone = (raw = "") => {
+  const normalizePhone = (raw = "") => {
     let p = String(raw)
       .replace(/\u00A0/g, " ")
       .replace(/[^\d+]/g, "");
@@ -498,28 +428,25 @@ const normalizePhone = (raw = "") => {
     return p.trim();
   };
 
-const handleSubmit = async (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const phoneNormalized = normalizePhone(formData.phone);
+    const phoneNormalized = normalizePhone(user?.user?.phone || "");
     if (!phoneNormalized) {
       toast.error(t("phone is required", { ns: "paymentForm" }));
       return;
     }
 
-    setFormData((prev) => ({ ...prev, phone: phoneNormalized }));
-
-    if (!formData.firstName?.trim()) {
-      toast.error(t("first name is required", { ns: "paymentForm" }));
-      return;
-    }
-
-    if (!formData.email?.trim()) {
+    const emailToUse = String(user?.user?.email || "").trim();
+    if (!emailToUse) {
       toast.error(t("email is required", { ns: "paymentForm" }));
       return;
     }
 
-  if (
+    const nameToUse =
+      `${user?.user?.firstName || ""} ${user?.user?.lastName || ""}`.trim();
+
+    if (
       preorder &&
       !preorder.hasMixedItems &&
       preorder.hasOnlyStockItems &&
@@ -527,7 +454,9 @@ const handleSubmit = async (event) => {
     ) {
       if (!preorder.deliveryDate) {
         toast.error(
-          t("specify the desired delivery date and time", { ns: "paymentForm" })
+          t("specify the desired delivery date and time", {
+            ns: "paymentForm",
+          }),
         );
         return;
       }
@@ -548,28 +477,12 @@ const handleSubmit = async (event) => {
     try {
       const amountCents = Math.round((totalPrice + deliveryCost) * 100);
 
-     const piRes = await fetch(`${API}/payments/create-intent`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-        body: JSON.stringify({
-          amount: amountCents,
-          currency: "eur",
-          receipt_email: formData.email,
-          metadata: {
-            phone: phoneNormalized,
-          },
-        }),
+      const { clientSecret } = await createPaymentIntent({
+        amount: amountCents,
+        currency: "eur",
+        receipt_email: emailToUse,
+        metadata: { phone: phoneNormalized },
       });
-      
-      if (!piRes.ok) {
-        toast.error(t("payment initialization error", { ns: "paymentForm" }));
-        return;
-      }
-
-      const { clientSecret } = await piRes.json();
 
       let confirmResult;
 
@@ -587,10 +500,8 @@ const handleSubmit = async (event) => {
           payment_method: {
             card: cardEl,
             billing_details: {
-              name: `${formData.firstName || ""} ${
-                formData.lastName || ""
-              }`.trim(),
-              email: formData.email,
+              name: nameToUse || undefined,
+              email: emailToUse,
               phone: phoneNormalized,
             },
           },
@@ -609,32 +520,20 @@ const handleSubmit = async (event) => {
           t("payment status", {
             ns: "paymentForm",
             status: paymentIntent?.status || "unknown",
-          })
+          }),
         );
         return;
       }
 
-      if (user.isAuth && !user.user?.phone?.trim()) {
-        try {
-          await updateProfile({ phone: phoneNormalized });
-          const updatedProfile = await fetchProfile();
-          user.setUser({
-            ...user.user,
-            phone: updatedProfile.phone,
-            firstName: updatedProfile.firstName,
-            lastName: updatedProfile.lastName,
-            email: updatedProfile.email,
-          });
-        } catch (err) {
-          console.warn(t("failed to save phone", { ns: "paymentForm" }), err);
-          toast.error(t("failed to save phone", { ns: "paymentForm" }));
-          return;
-        }
-      }
-
       await onPaymentSuccess(
         { paymentIntentId: paymentIntent.id },
-        { ...formData, phone: phoneNormalized }
+        {
+          ...formData,
+          phone: phoneNormalized,
+          email: emailToUse,
+          firstName: user?.user?.firstName || "",
+          lastName: user?.user?.lastName || "",
+        },
       );
     } catch (err) {
       console.error(err);
@@ -644,76 +543,13 @@ const handleSubmit = async (event) => {
     }
   };
 
-return (
+  return (
     <Form
       onSubmit={handleSubmit}
       className={styles.form}
       style={{ maxWidth: "600px" }}
     >
-      {(!user.isAuth || (user.isAuth && !user.user?.phone?.trim())) && (
-        <>
-          <Row className="mb-1">
-            <Col md={6}>
-              <Form.Group controlId="firstName">
-                <Form.Label>
-                  {t("first name", { ns: "paymentForm" })}
-                </Form.Label>
-                <Form.Control
-                  type="text"
-                  placeholder={t("enter first name", { ns: "paymentForm" })}
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  disabled={user.isAuth}
-                />
-              </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group controlId="lastName">
-                <Form.Label>{t("last name", { ns: "paymentForm" })}</Form.Label>
-                <Form.Control
-                  type="text"
-                  placeholder={t("enter last name", { ns: "paymentForm" })}
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  disabled={user.isAuth}
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-          <Row className="mb-1">
-            <Col md={6}>
-              <Form.Group controlId="email">
-                <Form.Label>{t("email", { ns: "paymentForm" })}</Form.Label>
-                <Form.Control
-                  type="email"
-                  placeholder={t("enter email", { ns: "paymentForm" })}
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  disabled={user.isAuth}
-                />
-              </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group controlId="phone">
-                <Form.Label>{t("phone", { ns: "paymentForm" })}</Form.Label>
-                <Form.Control
-                  type="text"
-                  placeholder={t("enter phone", { ns: "paymentForm" })}
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  disabled={user.isAuth && !!user.user?.phone?.trim()}
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-        </>
-      )}
-
-     <Row className="mb-1">
+      <Row className="mb-1">
         <Form.Group className="mb-1" controlId="address">
           <div className="d-flex position-relative">
             <Form.Control
@@ -744,7 +580,7 @@ return (
               }
               autoComplete="off"
             />
-                
+
             <LoadingIconButton
               className="ms-2 btn btn-primary"
               loading={addressLoading}
@@ -755,7 +591,7 @@ return (
               🔍
             </LoadingIconButton>
 
-           {addressFocused && suggestions.length > 0 && (
+            {addressFocused && suggestions.length > 0 && (
               <div
                 style={{
                   position: "absolute",
@@ -823,7 +659,7 @@ return (
           </MapContainer>
         </div>
 
-       <div className={styles.flatRow}>
+        <div className={styles.flatRow}>
           <Form.Group controlId="apartment" className={styles.flatGroup}>
             <Form.Control
               size="sm"
@@ -875,7 +711,7 @@ return (
         </div>
       </Row>
 
-     {preorder &&
+      {preorder &&
         (hasOnlyStockItems || hasOnlyPreorders) &&
         !hasMixedItems && (
           <Form.Group className={styles.preorderSection}>
@@ -884,8 +720,8 @@ return (
                 {isStoreClosed
                   ? t("preorder note store closed", { ns: "paymentForm" })
                   : hasOnlyPreorders
-                  ? t("preorder note out of stock", { ns: "paymentForm" })
-                  : t("preorder note scheduled", { ns: "paymentForm" })}
+                    ? t("preorder note out of stock", { ns: "paymentForm" })
+                    : t("preorder note scheduled", { ns: "paymentForm" })}
               </div>
             )}
 
@@ -898,7 +734,7 @@ return (
               disabled={preorder.disablePreorderCheckbox}
             />
 
-           {preorder.isPreorder && preorder.hasOnlyStockItems && (
+            {preorder.isPreorder && preorder.hasOnlyStockItems && (
               <>
                 <Form.Label>
                   {t("desired delivery datetime", { ns: "basket" })}
@@ -1021,7 +857,7 @@ return (
                       <span className="d-inline-flex align-items-center gap-2">
                         <img
                           src={getCardLogo(card.brand)}
-                           onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getCardLogo(""); }}
+                          //local
                           alt={card.brand || "card"}
                           className={styles.pmBrandIcon}
                         />
@@ -1115,7 +951,7 @@ return (
           >
             {t("cancel", { ns: "paymentForm" })}
           </Button>
-        <LoadingButton
+          <LoadingButton
             type="button"
             loading={pmSaving}
             loadingText={t("processing", { ns: "paymentForm" })}
@@ -1136,44 +972,34 @@ return (
                 const cardEl = elements.getElement(CardNumberElement);
                 if (!cardEl) {
                   toast.error(
-                    t("card element not found", { ns: "paymentForm" })
+                    t("card element not found", { ns: "paymentForm" }),
                   );
                   return;
                 }
 
-                const siRes = await fetch(
-                  `${process.env.REACT_APP_API_URL}/payments/setup-intent`,
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      Authorization: `Bearer ${
-                        localStorage.getItem("token") || ""
-                      }`,
-                    },
-                    body: JSON.stringify({ email: formData.email }),
-                  }
-                );
-                if (!siRes.ok) {
+                const emailToUse = String(user?.user?.email || "").trim();
+                const nameToUse =
+                  `${user?.user?.firstName || ""} ${user?.user?.lastName || ""}`.trim();
+
+                let clientSecret;
+                try {
+                  const r = await createSetupIntent({ email: emailToUse });
+                  clientSecret = r.clientSecret;
+                } catch (e) {
                   toast.error(
-                    t("could not create setupintent", { ns: "paymentForm" })
+                    t("could not create setupintent", { ns: "paymentForm" }),
                   );
                   return;
                 }
-                const { clientSecret } = await siRes.json();
-
-                const phoneNormalized = (formData.phone || "").trim();
 
                 const { error, setupIntent, paymentMethod } =
                   await stripe.confirmCardSetup(clientSecret, {
                     payment_method: {
                       card: cardEl,
                       billing_details: {
-                        name: `${formData.firstName || ""} ${
-                          formData.lastName || ""
-                        }`.trim(),
-                        email: formData.email,
-                        phone: (formData.phone || "").trim() || undefined,
+                        name: nameToUse || undefined,
+                        email: emailToUse,
+                        phone: phoneNormalized || undefined,
                       },
                     },
                   });
@@ -1184,40 +1010,23 @@ return (
 
                 const pmId = paymentMethod?.id || setupIntent?.payment_method;
 
-                const setDef = await fetch(
-                  `${process.env.REACT_APP_API_URL}/payments/set-default`,
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      Authorization: `Bearer ${
-                        localStorage.getItem("token") || ""
-                      }`,
-                    },
-                    body: JSON.stringify({ pmId }),
-                  }
-                );
-
-                if (!setDef.ok) {
-                  const msg = await setDef.text().catch(() => "");
-                  console.warn("set-default failed", msg);
+                try {
+                  await setDefaultPaymentMethod(pmId);
+                } catch (e) {
                   toast.error(
-                    t("failed to attach card", { ns: "paymentForm" })
+                    t("failed to attach card", { ns: "paymentForm" }),
                   );
                   return;
                 }
 
-                const res = await fetch(
-                  `${process.env.REACT_APP_API_URL}/payments/payment-methods`,
-                  {
-                    headers: {
-                      Authorization: `Bearer ${
-                        localStorage.getItem("token") || ""
-                      }`,
-                    },
-                  }
-                );
-                const { cards } = await res.json();
+                let cards = [];
+                try {
+                  const r = await fetchPaymentMethods();
+                  cards = r.cards || [];
+                } catch (e) {
+                  cards = [];
+                }
+
                 setSavedCards(Array.isArray(cards) ? cards : []);
                 const meta = (cards || []).find((x) => x.id === pmId) || null;
                 setSelectedPmId(pmId);
@@ -1243,4 +1052,5 @@ return (
 };
 
 export default PaymentForm;
+
 
