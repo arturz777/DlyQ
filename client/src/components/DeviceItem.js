@@ -199,6 +199,8 @@ const DeviceItem = ({ device, onClick, isStoreClosed = false }) => {
     }
   };
 
+  const outOfStock = availableQuantity <= 0;
+
   return (
     <div ref={cardRef} onClick={goToDevicePage}>
       <Card className={styles.card}>
@@ -208,12 +210,19 @@ const DeviceItem = ({ device, onClick, isStoreClosed = false }) => {
           )}
 
           <Image
-            className={styles.image}
+            className={`${styles.image} ${outOfStock ? styles.dimmed : ""}`}
             src={device.img}
             loading="lazy"
             decoding="async"
             alt={deviceName}
           />
+
+          {outOfStock && (
+            <div className={styles.statusBar}>
+              {t("preorder", { ns: "deviceItem", defaultValue: "Предзаказ" })}
+            </div>
+          )}
+
           <LoadingIconButton
             className={styles.addButton}
             loading={adding}
@@ -221,7 +230,7 @@ const DeviceItem = ({ device, onClick, isStoreClosed = false }) => {
             onClick={handleAddToBasket}
             aria-label="Add to cart"
           >
-            +
+            {outOfStock ? "↗" : "+"}
           </LoadingIconButton>
         </div>
 
@@ -238,14 +247,6 @@ const DeviceItem = ({ device, onClick, isStoreClosed = false }) => {
           </div>
           <p className={styles.name}>{deviceName}</p>
         </div>
-
-        {availableQuantity <= 0 && (
-          <p className={styles.preorderText}>
-            {availableQuantity <= 0
-              ? t("pre-order only", { ns: "deviceItem" })
-              : "\u00A0"}
-          </p>
-        )}
       </Card>
     </div>
   );
