@@ -4,18 +4,16 @@ import Image from "react-bootstrap/Image";
 import { useNavigate } from "react-router-dom";
 import { Context } from "../index";
 import { fetchOneDevice, checkStock } from "../http/deviceAPI";
-import { fetchShopStatus } from "../http/shopAPI";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import LoadingIconButton from "../components/LoadingIconButton";
 import styles from "./DeviceItem.module.css";
 
-const DeviceItem = ({ device, onClick }) => {
+const DeviceItem = ({ device, onClick, isStoreClosed = false }) => {
   const { basket } = useContext(Context);
   const navigate = useNavigate();
   const [availableQuantity, setAvailableQuantity] = useState(device.quantity);
   const [isPreorder, setIsPreorder] = useState(false);
-  const [isStoreClosed, setIsStoreClosed] = useState(false);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
   const addedTimerRef = useRef(null);
@@ -50,29 +48,6 @@ const DeviceItem = ({ device, onClick }) => {
     typeof onClick === "function"
       ? onClick(device.id)
       : navigate(`/device/${device.id}`);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const data = await fetchShopStatus();
-        if (cancelled) return;
-
-        setIsStoreClosed(
-          typeof data.isStoreClosed === "boolean"
-            ? data.isStoreClosed
-            : !data.isOpen,
-        );
-      } catch (err) {
-        console.error("Error fetching store status:", err);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const toNum = (v) => {
     const n = parseFloat(String(v ?? "").replace(",", "."));
