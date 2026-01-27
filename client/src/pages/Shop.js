@@ -51,8 +51,11 @@ const Shop = () => {
   const [typeCursors, setTypeCursors] = useState({});
   const [typeHasMore, setTypeHasMore] = useState({});
 
-  const isStoreClosed =
-  shopStatus ? (typeof shopStatus.isStoreClosed === "boolean" ? shopStatus.isStoreClosed : !shopStatus.isOpen) : false;
+  const isStoreClosed = shopStatus
+    ? typeof shopStatus.isStoreClosed === "boolean"
+      ? shopStatus.isStoreClosed
+      : !shopStatus.isOpen
+    : false;
 
   const getTodayHoursText = (workHours) => {
     if (!workHours || typeof workHours !== "object") return "—";
@@ -62,7 +65,7 @@ const Shop = () => {
 
     const v = workHours[key];
     if (!v) return "—";
-    if (v.closed) return "Закрыто";
+    if (v.closed) return t("closed", { ns: "homePage" });
     if (v.start && v.end) return `${v.start}–${v.end}`;
     return "—";
   };
@@ -71,15 +74,16 @@ const Shop = () => {
     if (!workHours || typeof workHours !== "object") return [];
     const rows = [];
     const map = [
-      { key: "weekdays", label: "Пн–Пт" },
-      { key: "saturday", label: "Сб" },
-      { key: "sunday", label: "Вс" },
+      { key: "weekdays", label: t("weekdays_short", { ns: "homePage" }) },
+      { key: "saturday", label: t("saturday_short", { ns: "homePage" }) },
+      { key: "sunday", label: t("sunday_short", { ns: "homePage" }) },
     ];
 
     for (const { key, label } of map) {
       const v = workHours[key];
       if (!v) continue;
-      if (v.closed) rows.push({ label, value: "Закрыто" });
+      if (v.closed)
+        rows.push({ label, value: t("closed", { ns: "homePage" }) });
       else if (v.start && v.end)
         rows.push({ label, value: `${v.start} – ${v.end}` });
     }
@@ -344,11 +348,15 @@ const Shop = () => {
 
         <div className={styles.metaRow}>
           <span className={shopStatus?.isOpen ? styles.open : styles.closed}>
-            {shopStatus?.isOpen ? "Открыто" : "Закрыто"}
+            {shopStatus?.isOpen
+              ? t("open", { ns: "homePage" })
+              : t("closed", { ns: "homePage" })}
           </span>
 
           <span className={styles.metaHours}>
-            <span className={styles.dot}>• Работает с</span>
+            <span className={styles.dot}>
+              • {t("works_from", { ns: "homePage" })}
+            </span>
             {getTodayHoursText(shopStatus?.workHours)} •{" "}
             <span
               className={styles.moreLink}
@@ -359,7 +367,7 @@ const Shop = () => {
                 if (e.key === "Enter" || e.key === " ") setShowInfo(true);
               }}
             >
-              больше…
+              {t("more", { ns: "homePage" })}
             </span>
           </span>
         </div>
@@ -386,7 +394,9 @@ const Shop = () => {
                   className={`${styles.category} ${styles.moreButton}`}
                   onClick={() => setShowAllTypes((v) => !v)}
                 >
-                  <span className={styles.categoryLabel}>Ещё</span>
+                  <span className={styles.categoryLabel}>
+                    {t("▼ More", { ns: "homePage" })}
+                  </span>
                 </button>
 
                 {showAllTypes && (
@@ -488,7 +498,10 @@ const Shop = () => {
       )}
 
       {showInfo && (
-        <SlideModal title="Больше" onClose={() => setShowInfo(false)}>
+        <SlideModal
+          title={t("more", { ns: "homePage" })}
+          onClose={() => setShowInfo(false)}
+        >
           <div className={styles.moreModalRoot}>
             <div className={styles.moreCard}>
               <h3 className={styles.moreTitle}>DlyQ Market</h3>
@@ -511,7 +524,9 @@ const Shop = () => {
               </div>
 
               <div className={styles.stackSection}>
-                <div className={styles.sectionTitle}>Время работы</div>
+                <div className={styles.sectionTitle}>
+                  {t("working_hours", { ns: "homePage" })}
+                </div>
                 <div className={styles.stackList}>
                   {formatWorkHours(shopStatus?.workHours).map((row) => (
                     <div key={row.label} className={styles.stackItem}>
