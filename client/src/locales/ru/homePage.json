@@ -5,5 +5,13 @@
 	"new": "Новое",
 	"discounts": "Скидки",
 	"recommended": "Рекомендуем",
-	"average delivery time: 15–30 minutes": "Среднее время доставки — от 15 до 30 минут"
+	"average delivery time: 15–30 minutes": "Среднее время доставки — от 15 до 30 минут",
+	"open": "Открыто",
+	"closed": "Закрыто",
+	"works_from": "Работает с",
+	"more": "Больше...",
+	"working_hours": "Время работы",
+	"weekdays_short": "Пн–Пт",
+	"saturday_short": "Сб",
+	"sunday_short": "Вс"
 }
