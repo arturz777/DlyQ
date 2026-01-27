@@ -6,4 +6,12 @@
 	"discounts": "Discounts",
 	"recommended": "Recommended",
 	"average delivery time: 15–30 minutes": "This site is in development (beta). Errors and temporary limitations are possible. Some sections and features are temporarily unavailable."
+	"open": "Open",
+	"closed": "Closed",
+	"works_from": "Working hours",
+	"more": "More...",
+	"working_hours": "Working hours",
+	"weekdays_short": "Mon–Fri",
+	"saturday_short": "Sat",
+	"sunday_short": "Sun"
 }
