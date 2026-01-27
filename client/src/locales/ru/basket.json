@@ -33,5 +33,7 @@
 	"select all": "Выбрать все",
 	"failed to get paymentIntentId": "Не удалось получить paymentIntentId",
 	"you cannot place an order with items from different sellers": "Нельзя оформить заказ с товарами разных продавцов",
-	"you cannot select items from different sellers. please place separate orders": "Нельзя выбрать товары разных продавцов. Пожалуйста, оформите отдельно."
+	"you cannot select items from different sellers. please place separate orders": "Нельзя выбрать товары разных продавцов. Пожалуйста, оформите отдельно.",
+	"you need to sign in to place an order": "Для оформления заказа нужно войти",
+	"sign in or register to proceed to payment and place your order": "Войдите или зарегистрируйтесь, чтобы перейти к оплате и оформить заказ."
 }
