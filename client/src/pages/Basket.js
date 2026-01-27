@@ -105,7 +105,7 @@ const pickItemName = (item, lang) => {
 };
 
 const Basket = observer(() => {
-  const { basket } = useContext(Context);
+  const { basket, user } = useContext(Context);
   const navigate = useNavigate();
   const confirm = useConfirm();
 
@@ -886,7 +886,8 @@ const Basket = observer(() => {
 
       {selectedItems.length > 0 &&
         !selectedHasMixedItems &&
-        !basket.hasSelectedDifferentSellers && (
+        !basket.hasSelectedDifferentSellers &&
+        (user?.isAuth ? (
           <Elements stripe={stripePromise}>
             <PaymentForm
               totalPrice={selectedTotal}
@@ -907,7 +908,47 @@ const Basket = observer(() => {
               }}
             />
           </Elements>
-        )}
+        ) : (
+          <Card className={styles.authGateCard}>
+            <Card.Body className={styles.authGateBody}>
+              <div className={styles.authGateTitle}>
+                {t("you need to sign in to place an order", {
+                  ns: "basket",
+                })}
+              </div>
+              <div className={styles.authGateText}>
+                {t(
+                  "sign in or register to proceed to payment and place your order",
+                  {
+                    ns: "basket",
+                  },
+                )}
+              </div>
+
+              <div className={styles.authGateBtns}>
+                <button
+                  type="button"
+                  className={styles.authGateBtnPrimary}
+                  onClick={() =>
+                    navigate("/login", { state: { from: "/basket" } })
+                  }
+                >
+                  {t("login", { ns: "basket", defaultValue: "Войти" })}
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.authGateBtnSecondary}
+                  onClick={() =>
+                    navigate("/registration", { state: { from: "/basket" } })
+                  }
+                >
+                  {t("register", { ns: "basket", defaultValue: "Регистрация" })}
+                </button>
+              </div>
+            </Card.Body>
+          </Card>
+        ))}
 
       {selectedDeviceId && (
         <SlideModal onClose={() => setSelectedDeviceId(null)}>
