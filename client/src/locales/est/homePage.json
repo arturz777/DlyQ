@@ -1,10 +1,11 @@
 {
 	"loading": "Laadimine...",
-	"more": "▼ Rohkem",
+	"▼ More": "▼ Rohkem",
 	"hide": "▲ Peida",
 	"new": "Uus",
 	"discounts": "Allahindlused",
 	"recommended": "Soovitame",
+	"fast delivery": "Kiire kohaletoimetamine",
 	"average delivery time: 15–30 minutes": "Veebileht on arendamisel (beeta). Võivad esineda vead ja ajutised piirangud. Mõned jaotised ja funktsioonid on ajutiselt kättesaamatud.",
 	"open": "Avatud",
 	"closed": "Suletud",
