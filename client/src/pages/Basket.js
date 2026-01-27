@@ -933,7 +933,7 @@ const Basket = observer(() => {
                     navigate("/login", { state: { from: "/basket" } })
                   }
                 >
-                  {t("login", { ns: "basket", defaultValue: "Войти" })}
+                  {t("login", { ns: "auth" })}
                 </button>
 
                 <button
