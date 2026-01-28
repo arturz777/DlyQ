@@ -36,16 +36,14 @@ const NavBar = observer(() => {
 
   useEffect(() => {
     const handleScroll = () => {
+      if (window.__lockNavbar) return;
+
       const currentScroll = window.pageYOffset;
-      if (currentScroll > lastScroll) {
-        setScrollDirection("down");
-      } else {
-        setScrollDirection("up");
-      }
+      setScrollDirection(currentScroll > lastScroll ? "down" : "up");
       setLastScroll(currentScroll);
     };
 
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScroll]);
 
