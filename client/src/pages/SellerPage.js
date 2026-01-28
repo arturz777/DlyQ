@@ -120,7 +120,7 @@ const SellerPage = () => {
   const [isDesktop, setIsDesktop] = useState(false);
   const programmaticScrollRef = useRef(false);
   const programmaticTimerRef = useRef(null);
-
+  const freezeActiveUntilRef = useRef(0);
   const { t, i18n } = useTranslation();
   const uiLang = normUiLang(i18n.language);
 
@@ -366,6 +366,7 @@ const SellerPage = () => {
     let raf = 0;
 
     const updateActive = () => {
+      if (performance.now() < freezeActiveUntilRef.current) return;
       if (programmaticScrollRef.current) return;
 
       cancelAnimationFrame(raf);
@@ -375,7 +376,7 @@ const SellerPage = () => {
         let current = elements[0];
         for (const el of elements) {
           const top = el.getBoundingClientRect().top;
-          if (top - offset <= 2) current = el;
+          if (top - offset <= 10) current = el;
           else break;
         }
 
@@ -383,7 +384,7 @@ const SellerPage = () => {
         setActiveCatId(id);
       });
     };
-
+    //    начало !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     window.addEventListener("scroll", updateActive, { passive: true });
     window.addEventListener("resize", updateActive);
     if (mql.addEventListener) mql.addEventListener("change", updateActive);
@@ -635,6 +636,8 @@ const SellerPage = () => {
 
                         setActiveCatId(cat.id);
 
+                        freezeActiveUntilRef.current = performance.now() + 800;
+
                         const navH =
                           mobileCatsNavRef.current?.offsetHeight || 0;
                         const isMobile =
@@ -648,20 +651,20 @@ const SellerPage = () => {
                           el.getBoundingClientRect().top + window.scrollY;
                         const y = Math.max(0, top - offset);
 
-                        programmaticScrollRef.current = true;
+                        programmaticScrollRef.current = false;
                         if (programmaticTimerRef.current)
                           clearTimeout(programmaticTimerRef.current);
 
+                        window.__lockNavbar = true;
+                        programmaticScrollRef.current = true;
+
                         window.scrollTo({ top: y, behavior: "smooth" });
 
+                        clearTimeout(programmaticTimerRef.current);
                         programmaticTimerRef.current = setTimeout(() => {
+                          window.__lockNavbar = false;
                           programmaticScrollRef.current = false;
-
-                          window.scrollTo({
-                            top: Math.max(0, window.scrollY - 1),
-                            behavior: "auto",
-                          });
-                        }, 450);
+                        }, 900);
                       }}
                     >
                       <span className={styles.catPillText}>{catName}</span>
