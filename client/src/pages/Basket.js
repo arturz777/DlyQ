@@ -17,7 +17,9 @@ import DevicePage from "../pages/DevicePage";
 import { useTranslation } from "react-i18next";
 import styles from "./Basket.module.css";
 
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY).catch(
+  () => null
+);
 
 const getVal = (x) =>
   x && typeof x === "object" && "value" in x ? x.value : x;
