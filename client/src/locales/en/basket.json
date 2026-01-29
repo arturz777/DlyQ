@@ -36,5 +36,6 @@
 	"you cannot place an order with items from different sellers": "You cannot place an order with items from different sellers",
 	"you cannot select items from different sellers. please place separate orders": "You cannot select items from different sellers. Please place separate orders",
 	"you need to sign in to place an order": "You need to sign in to place an order",
-	"sign in or register to proceed to payment and place your order": "Sign in or register to proceed to payment and place your order."
+	"sign in or register to proceed to payment and place your order": "Sign in or register to proceed to payment and place your order.",
+	"internet connection problem. Please check your connection": "Internet connection problem. Please check your connection."
 }
