@@ -25,7 +25,9 @@ import L from "leaflet";
 import { useTranslation } from "react-i18next";
 import styles from "./ParcelPage.module.css";
 
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY).catch(
+  () => null
+);
 
 const customIcon = new L.Icon({
   iconUrl:
