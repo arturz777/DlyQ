@@ -36,5 +36,6 @@
 	"you cannot place an order with items from different sellers": "Te ei saa esitada tellimust erinevate müüjate toodetega",
 	"you cannot select items from different sellers. please place separate orders": "Te ei saa valida erinevate müüjate tooteid. Palun vormistage eraldi tellimused",
 	"you need to sign in to place an order": "Tellimuse vormistamiseks tuleb sisse logida",
-	"sign in or register to proceed to payment and place your order": "Maksmiseks ja tellimuse vormistamiseks logi sisse või registreeru."
+	"sign in or register to proceed to payment and place your order": "Maksmiseks ja tellimuse vormistamiseks logi sisse või registreeru.",
+	"internet connection problem. Please check your connection": "Internetiprobleem. Kontrollige internetiühendust."
 }
