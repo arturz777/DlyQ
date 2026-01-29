@@ -14,7 +14,10 @@ const TypeBar = observer(() => {
     if (!el) return;
 
     const fixed = document.querySelector(".mobileStickyFilter");
-    const offset = fixed ? fixed.offsetHeight + 10 : 10;
+
+    const DESKTOP_OFFSET = 35;
+    const offset = fixed ? fixed.offsetHeight + 10 : DESKTOP_OFFSET;
+
     const y = el.getBoundingClientRect().top + window.scrollY - offset;
 
     window.scrollTo({
