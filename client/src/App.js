@@ -20,10 +20,13 @@ import ChatModal from "./components/modals/ChatModal";
 import { ChatContext } from "./context/ChatContext";
 import ChatFab from "./components/ChatFab";
 import ChatNotifier from "./components//ChatNotifier";
+import OfflineBanner from "./components/OfflineBanner";
 import "./locales/i18n";
 import "./App.css";
 
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY).catch(
+  () => null
+);
 
 const AppLayout = observer(() => {
   const location = useLocation();
@@ -80,6 +83,7 @@ const AppLayout = observer(() => {
 
   return (
     <>
+      <OfflineBanner />
       {appStore.isLoading && <LoadingBar />}
 
       <Elements stripe={stripePromise}>
