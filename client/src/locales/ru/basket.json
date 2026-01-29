@@ -25,6 +25,7 @@
 	"order processed as preorder": "Заказ оформляется как предзаказ",
 	"all items processed as preorder": "Все позиции будут оформлены как предзаказ",
 	"store closed preorder banner": "Магазин временно закрыт — все заказы оформляются как предзаказ",
+	"preorder badge": "Предварительный заказ",
 	"cart": "Корзина",
 	"out of stock items": "Товары нет в наличии",
 	"out-of-stock items must be paid for separately": "Товары, которых нет в наличии, оплачиваются отдельно от товаров, которые есть в наличии.",
@@ -35,5 +36,6 @@
 	"you cannot place an order with items from different sellers": "Нельзя оформить заказ с товарами разных продавцов",
 	"you cannot select items from different sellers. please place separate orders": "Нельзя выбрать товары разных продавцов. Пожалуйста, оформите отдельно.",
 	"you need to sign in to place an order": "Для оформления заказа нужно войти",
-	"sign in or register to proceed to payment and place your order": "Войдите или зарегистрируйтесь, чтобы перейти к оплате и оформить заказ."
+	"sign in or register to proceed to payment and place your order": "Войдите или зарегистрируйтесь, чтобы перейти к оплате и оформить заказ.",
+	"internet connection problem. Please check your connection": "Проблема с интернетом. Проверьте подключение."
 }
