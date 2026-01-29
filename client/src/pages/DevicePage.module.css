@@ -192,7 +192,6 @@
   cursor: not-allowed;
 }
 
-/* Плитки с картинками для первой опции */
 .OptionThumbGrid {
   display: flex;
   flex-wrap: wrap;
@@ -479,18 +478,15 @@
 }
 
 .DevicePageDiscountBadge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background-color: red;
-  color: white;
-  font-weight: bold;
-  padding: 5px 10px;
-  font-size: 14px;
-  border-radius: 5px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  z-index: 4;
-  pointer-events: none;
+ position: absolute;
+  top: 8px;
+  left: 8px;
+  color: rgba(239, 68, 68, 0.95);
+  font-weight: 700;
+  opacity: 0.9;
+  font-size: 18px;
+  letter-spacing: 0.2px;
+  z-index: 2;
 }
 
 .deviceCarousel {
