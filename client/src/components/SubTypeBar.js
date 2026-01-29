@@ -1,4 +1,10 @@
-import React, { useContext, useMemo, useEffect, useRef, useCallback } from "react";
+import React, {
+  useContext,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { observer } from "mobx-react-lite";
 import { Context } from "../index";
 import { useTranslation } from "react-i18next";
@@ -38,7 +44,7 @@ const SubTypeBar = observer(({ variant = "default", onPick, activeId }) => {
       if (!facets.length) return baseFromType;
 
       const countsById = new Map(
-        facets.map((f) => [Number(f.id), Number(f.count) || 0])
+        facets.map((f) => [Number(f.id), Number(f.count) || 0]),
       );
 
       return baseFromType
@@ -56,7 +62,7 @@ const SubTypeBar = observer(({ variant = "default", onPick, activeId }) => {
       if (facets.length) {
         const idSet = new Set(facets.map((f) => Number(f.id)));
         const countById = new Map(
-          facets.map((f) => [Number(f.id), Number(f.count || 0)])
+          facets.map((f) => [Number(f.id), Number(f.count || 0)]),
         );
 
         return baseFromType
@@ -72,11 +78,11 @@ const SubTypeBar = observer(({ variant = "default", onPick, activeId }) => {
 
       const mmAll = new Set((device.facets?.mmSubtypeIdsAll || []).map(Number));
       const univ = new Set(
-        (device.facets?.universalSubtypeIds || []).map(Number)
+        (device.facets?.universalSubtypeIds || []).map(Number),
       );
 
       return baseFromType.filter(
-        (s) => univ.has(Number(s.id)) && !mmAll.has(Number(s.id))
+        (s) => univ.has(Number(s.id)) && !mmAll.has(Number(s.id)),
       );
     }
 
@@ -103,7 +109,8 @@ const SubTypeBar = observer(({ variant = "default", onPick, activeId }) => {
     if (!el) return;
 
     // центруем актив в карусели
-    const targetLeft = el.offsetLeft - (row.clientWidth / 2 - el.clientWidth / 2);
+    const targetLeft =
+      el.offsetLeft - (row.clientWidth / 2 - el.clientWidth / 2);
     const maxLeft = row.scrollWidth - row.clientWidth;
     const clamped = Math.max(0, Math.min(targetLeft, maxLeft));
 
