@@ -519,6 +519,10 @@ const DeviceList = observer(({ onDeviceClick }) => {
         );
       })}
 
+      <div className={styles.inlineLoader} aria-live="polite">
+        {isLoading && <div className={styles.spinner} />}
+      </div>
+
       <div className={styles.catalogBottomBanner}>
         <img src={catalogSuggestImg} alt="" className={styles.bannerImg} />
 
