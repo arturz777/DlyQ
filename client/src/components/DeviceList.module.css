@@ -53,22 +53,22 @@
   margin-right: 0;
 }
 
-.mmTitle{
+.mmTitle {
   width: 100%;
   text-align: center;
   margin: 0 0 12px;
   font-size: 16px;
 }
 
-.mmTitleMakeModel{
+.mmTitleMakeModel {
   opacity: 0.95;
 }
 
-.mmTitleSep{
+.mmTitleSep {
   opacity: 0.65;
 }
 
-.mmTitleSubtype{
+.mmTitleSubtype {
   opacity: 1;
 }
 
@@ -176,7 +176,9 @@
   border: 1.5px solid rgba(255, 255, 255, 0.85);
   font-weight: 600;
   letter-spacing: 0.2px;
-  transition: transform 0.15s ease, background 0.15s ease,
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
     border-color 0.15s ease;
 }
 
@@ -202,5 +204,40 @@
   .bannerBtn {
     margin-bottom: 4px;
     padding: 11px 18px;
+  }
+}
+
+.inlineLoader {
+  display: flex;
+  contain: layout paint;
+  align-items: center;
+  justify-content: center;
+  min-height: 58px;
+  padding: 16px 12px;
+  margin-top: 10px;
+  margin-bottom: 18px;
+  background: transparent;
+}
+
+.spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 3px solid rgba(37, 99, 235, 0.2);
+  border-top-color: rgba(37, 99, 235, 1);
+  animation-name: deviceListSpin;
+  animation-duration: 0.85s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+@keyframes deviceListSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
   }
 }
