@@ -1,44 +1,43 @@
 {
-	"title": "Garantii ja tagastamine",
-	"last_updated": "Viimati uuendatud: 16. veebruar 2025",
-	"return_conditions": {
-		"title": "1. Tagastamise tingimused",
-		"text": "Me aktsepteerime tagastusi **14 päeva** jooksul alates tellimuse kättesaamisest. Tagastatav kaup peab olema algses seisukorras, ilma kasutusjälgedeta."
-	},
-	"how_to_return": {
-		"title": "2. Kuidas tagastada?",
-		"steps": [
-			"Võtke meiega: **support@mycompany.com**",
-			"Esitage tellimuse number ja tagastamise põhjus",
-			"Saatke toode meie lattu (aadressi täpsustab operaator)"
-		],
-		"contact_text": "Võtke meiega ühendust:",
-		"chat_link": "Ava tugivestlus"
-	},
-	"exceptions": {
-		"title": "3. Tagastamise erandid",
-		"text": "Mõnda toodet **ei saa tagastada**, kui:",
-		"list": [
-			"Need on kasutatud ja neil on kulumisjälgi",
-			"Need kuuluvad kategooriasse 'isiklik hügieen' (nt kõrvaklapid, pardlid)",
-			"Need osteti eripakkumise raames ilma tagastamisõiguseta"
-		]
-	},
-	"refunds": {
-		"title": "4. Raha tagastamine",
-		"text": "Pärast toote kontrollimist töötleme tagasimakse **5-10 tööpäeva** jooksul. Raha tagastatakse samale makseviisile, mida kasutati tellimuse eest tasumiseks.",
-		"details": [
-			"Raha tagastatakse ainult kauba eest.",
-			"**Tarnekulusid EI tagastata**, kui tagastamise algatajaks on klient (nt vale värv, suurus, meelemuutus).",
-			"**Tarnekulud tagastatakse AINULT juhul, kui toode on defektne või ei vasta tellimusele.**"
-		]
-	},
-	"warranty": {
-		"title": "5. Garantii",
-		"text": "Garantii kehtib ainult tootja garantii all olevatele toodetele. Kui tootja pakub garantiid, võib klient pöörduda ametliku teeninduskeskuse või müüja poole. Garantii ei kehti tavapärase kulumise, kulumaterjalide ega vale kasutamise tõttu tekkinud kahjustuste korral."
-	},
-	"contact": {
-		"title": "6. Kontakt",
-		"text": "Kui teil on küsimusi tagastamise või garantii kohta, võtke meiega:"
-	}
+  "title": "Garantii ja tagastamine",
+  "last_updated": "Viimati uuendatud: 16. veebruar 2025",
+  "return_conditions": {
+    "title": "1. Tagastamistingimused",
+    "text": "Tagastusi aktsepteeritakse **14 päeva** jooksul alates tellimuse kättesaamisest. Tarbijal on õigus toodet kontrollida samal viisil nagu tavapoes. Toode peab olema tagastatud seisukorras, mis võimaldab selle edasimüüki. Müüjal on õigus vähendada tagastatavat summat, kui toodet on kasutatud rohkem, kui on vajalik selle olemuse, omaduste ja toimimise kindlakstegemiseks."
+  },
+  "how_to_return": {
+    "title": "2. Kuidas toodet tagastada?",
+    "steps": [
+      "Võtke meiega ühendust: support@",
+      "Esitage tellimuse number ja tagastamise põhjus",
+      "Saatke toode meie lattu (aadressi edastab klienditugi)"
+    ],
+    "contact_text": "Võtke meiega ühendust:",
+    "chat_link": "Ava klienditoe vestlus"
+  },
+  "exceptions": {
+    "title": "3. Tagastamise erandid",
+    "text": "Mõningaid tooteid **ei saa tagastada**, kui need:",
+    "list": [
+      "Omavad kasutusjälgi, mis ületavad tootega tutvumiseks vajalikku (sellisel juhul võib tagastatav summa olla vähendatud)",
+      "Kuuluvad isikliku hügieeni toodete hulka ja on tarnitud suletud pakendis (näiteks kõrvaklapid, pardlid), kui pakend on pärast kättetoimetamist avatud"
+    ]
+  },
+  "refunds": {
+    "title": "4. Raha tagastamine",
+    "text": "Pärast tagastatud toote kontrollimist teostame raha tagastamise **5–10 tööpäeva** jooksul. Raha tagastatakse samale makseviisile, mida kasutati tellimuse eest tasumisel.",
+    "details": [
+      "14-päevase taganemisõiguse alusel toote tagastamisel tagastab müüja toote hinna ja standardse kohaletoimetamise kulu tarbijale.",
+      "Toote tagasisaatmise kulud kannab tarbija, välja arvatud juhul, kui tagastamise põhjuseks on toote puudus või müüja eksimus.",
+      "Kui toode on defektne või ei vasta tellimusele, kannab kõik kohaletoimetamise ja tagastamisega seotud kulud müüja."
+    ]
+  },
+  "warranty": {
+    "title": "5. Garantii",
+    "text": "Garantii kehtib ainult toodetele, millel on tootjapoolne garantii. Tootjagarantii olemasolul võib tarbija pöörduda volitatud hoolduskeskuse või müüja poole. Garantii ei kata loomulikku kulumist, kulumaterjale ega kahjustusi, mis on põhjustatud ebaõigest kasutamisest."
+  },
+  "contact": {
+    "title": "6. Kontaktandmed",
+    "text": "Kui teil on küsimusi tagastamise või garantii kohta, võtke meiega ühendust:"
+  }
 }
