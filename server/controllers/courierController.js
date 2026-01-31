@@ -31,7 +31,7 @@ function parseProcessingTimeToSec(processingTime) {
   const s = String(processingTime).trim().toLowerCase();
 
   const m = s.match(
-    /(\d+)\s*(d|day|days|д|дн|дня|дней|h|hr|hour|hours|ч|час|часа|часов|m|min|minute|minutes|м|мин|минут)?/
+    /(\d+)\s*(d|day|days|д|дн|дня|дней|h|hr|hour|hours|ч|час|часа|часов|m|min|minute|minutes|м|мин|минут)?/,
   );
   if (!m) return null;
 
@@ -52,10 +52,10 @@ function getPrepLeftSec(order, nowMs) {
   const startMs = order?.processingStartTime
     ? new Date(order.processingStartTime).getTime()
     : order?.updatedAt
-    ? new Date(order.updatedAt).getTime()
-    : order?.createdAt
-    ? new Date(order.createdAt).getTime()
-    : null;
+      ? new Date(order.updatedAt).getTime()
+      : order?.createdAt
+        ? new Date(order.createdAt).getTime()
+        : null;
 
   if (!durSec || !startMs) return null;
   const endMs = startMs + durSec * 1000;
@@ -66,7 +66,7 @@ async function countNearOnlineCouriersMeters(
   pickupLat,
   pickupLng,
   nearRadiusKm,
-  excludeCourierId
+  excludeCourierId,
 ) {
   const couriers = await Courier.findAll({
     where: {
@@ -85,7 +85,7 @@ async function countNearOnlineCouriersMeters(
       Number(c.currentLat),
       Number(c.currentLng),
       Number(pickupLat),
-      Number(pickupLng)
+      Number(pickupLng),
     );
     if (d <= nearRadiusKm) count++;
   }
@@ -115,7 +115,7 @@ async function countNearOnlineCouriers(
   pickupLat,
   pickupLng,
   nearRadiusKm,
-  excludeCourierId
+  excludeCourierId,
 ) {
   const couriers = await Courier.findAll({
     where: {
@@ -134,7 +134,7 @@ async function countNearOnlineCouriers(
       Number(c.currentLat),
       Number(c.currentLng),
       Number(pickupLat),
-      Number(pickupLng)
+      Number(pickupLng),
     );
     if (d <= nearRadiusKm) count++;
   }
@@ -188,6 +188,22 @@ const COURIER_ACTIVE_STATUSES = [
   "In transit",
   "Arrived at destination",
 ];
+
+async function courierHasActiveOrder(courierId, excludeOrderId = null) {
+  const where = {
+    courierId,
+    status: { [Op.in]: COURIER_ACTIVE_STATUSES },
+  };
+  if (excludeOrderId) where.id = { [Op.ne]: excludeOrderId };
+
+  const active = await Order.findOne({
+    where,
+    attributes: ["id", "status"],
+    raw: true,
+  });
+
+  return active;
+}
 
 function calcAcceptRate(sent, acc) {
   sent = Number(sent || 0);
@@ -258,6 +274,15 @@ class CourierController {
         return res.json({ candidates: [], reason: "no_geo" });
       }
 
+      const busy = await courierHasActiveOrder(courierId);
+      if (busy) {
+        return res.json({
+          candidates: [],
+          reason: "busy",
+          activeOrderId: busy.id,
+        });
+      }
+
       const freeOrders = await Order.findAll({
         where: {
           courierId: null,
@@ -302,8 +327,8 @@ class CourierController {
         b.count += 1;
 
         const aLeft =
-          b.best.status === "Ready for pickup" ? -1 : b.bestLeft ?? 1e15;
-        const bLeft = o.status === "Ready for pickup" ? -1 : left ?? 1e15;
+          b.best.status === "Ready for pickup" ? -1 : (b.bestLeft ?? 1e15);
+        const bLeft = o.status === "Ready for pickup" ? -1 : (left ?? 1e15);
 
         if (bLeft < aLeft) {
           b.best = o;
@@ -332,21 +357,21 @@ class CourierController {
           Number(courier.currentLat),
           Number(courier.currentLng),
           Number(s.pickupLat),
-          Number(s.pickupLng)
+          Number(s.pickupLng),
         );
 
         const nearCouriers = await countNearOnlineCouriersMeters(
           s.pickupLat,
           s.pickupLng,
           NEAR_RADIUS_KM,
-          courierId
+          courierId,
         );
 
         const canShow = distanceKm <= ACCEPT_RADIUS_KM && nearCouriers <= 1;
 
         const prepLeftSec =
           order.status === "Ready for pickup"
-            ? pack.bestLeft ?? -1
+            ? (pack.bestLeft ?? -1)
             : pack.bestLeft;
 
         out.push({
@@ -396,6 +421,17 @@ class CourierController {
       const order = await Order.findByPk(id);
       if (!order) return res.status(404).json({ message: "Заказ не найден." });
 
+      if (order.courierId && String(order.courierId) === String(courierId)) {
+      }
+
+      const busy = await courierHasActiveOrder(courierId);
+      if (busy)
+        return res.json({
+          canSelfPick: false,
+          reason: "busy",
+          activeOrderId: busy.id,
+        });
+
       const allowedStatuses = new Set([
         "Waiting for courier",
         "Ready for pickup",
@@ -424,14 +460,14 @@ class CourierController {
         Number(courier.currentLat),
         Number(courier.currentLng),
         Number(pickup.lat),
-        Number(pickup.lng)
+        Number(pickup.lng),
       );
 
       const nearCouriers = await countNearOnlineCouriers(
         pickup.lat,
         pickup.lng,
         NEAR_RADIUS_KM,
-        courierId
+        courierId,
       );
 
       const canSelfPick = distanceKm <= ACCEPT_RADIUS_KM && nearCouriers <= 1;
@@ -494,7 +530,7 @@ class CourierController {
         Number(courier.currentLat),
         Number(courier.currentLng),
         Number(pickup.lat),
-        Number(pickup.lng)
+        Number(pickup.lng),
       );
       if (distanceKm > ACCEPT_RADIUS_KM) {
         return res
@@ -506,12 +542,22 @@ class CourierController {
         pickup.lat,
         pickup.lng,
         NEAR_RADIUS_KM,
-        courierId
+        courierId,
       );
       if (nearCouriers > 1) {
         return res
           .status(403)
           .json({ message: "Возле заведения уже достаточно курьеров." });
+      }
+
+      const busy = await courierHasActiveOrder(courierId);
+      if (busy) {
+        return res.status(409).json({
+          message: `Нельзя взять новый заказ: у вас уже есть активный заказ #${busy.id} (${busy.status}).`,
+          code: "COURIER_BUSY",
+          activeOrderId: busy.id,
+          activeOrderStatus: busy.status,
+        });
       }
 
       order.courierId = courierId;
@@ -647,7 +693,7 @@ class CourierController {
             customerName: o.customerName || buildCustomerName(u) || null,
             customerPhone: o.customerPhone || u?.phone || null,
           };
-        })
+        }),
       );
     } catch (e) {
       console.error("getHistory error:", e);
@@ -688,7 +734,7 @@ class CourierController {
 
       const acceptRate = calcAcceptRate(
         courier?.offersSent,
-        courier?.offersAccepted
+        courier?.offersAccepted,
       );
 
       return res.json({
@@ -899,11 +945,11 @@ class CourierController {
             ? o.pickupAddress || null
             : o.pickupAddress || s?.address || null,
           pickupLat: isParcel
-            ? o.pickupLat ?? null
-            : o.pickupLat ?? s?.pickupLat ?? null,
+            ? (o.pickupLat ?? null)
+            : (o.pickupLat ?? s?.pickupLat ?? null),
           pickupLng: isParcel
-            ? o.pickupLng ?? null
-            : o.pickupLng ?? s?.pickupLng ?? null,
+            ? (o.pickupLng ?? null)
+            : (o.pickupLng ?? s?.pickupLng ?? null),
           customerName: o.customerName || buildCustomerName(u) || null,
           customerPhone: o.customerPhone || u?.phone || null,
           processingTime: order.processingTime,
@@ -977,6 +1023,16 @@ class CourierController {
       const customerName =
         order.customerName || buildCustomerName(user) || null;
       const customerPhone = order.customerPhone || user?.phone || null;
+
+      const busy = await courierHasActiveOrder(courierId, id);
+      if (busy) {
+        return res.status(409).json({
+          message: `Нельзя принять заказ: у вас уже есть активный заказ #${busy.id} (${busy.status}).`,
+          code: "COURIER_BUSY",
+          activeOrderId: busy.id,
+          activeOrderStatus: busy.status,
+        });
+      }
 
       order.courierId = courierId;
       order.acceptedAt = new Date();
@@ -1138,7 +1194,7 @@ class CourierController {
         } catch (err) {
           console.error(
             "❌ Ошибка планирования распределения при выходе курьера в онлайн:",
-            err
+            err,
           );
         }
       }
@@ -1285,7 +1341,7 @@ class CourierController {
       } catch (err) {
         console.error(
           "❌ Ошибка планирования распределения после завершения доставки:",
-          err
+          err,
         );
       }
 
@@ -1418,12 +1474,12 @@ async function calculateRouteTime(order) {
 
     if (data.features && data.features.length > 0) {
       const realTime = Math.round(
-        data.features[0].properties.segments[0].duration
+        data.features[0].properties.segments[0].duration,
       );
       return realTime;
     } else {
       console.warn(
-        "⚠️ Не удалось получить данные маршрута, оставляем 15 минут."
+        "⚠️ Не удалось получить данные маршрута, оставляем 15 минут.",
       );
       return 15 * 60;
     }
