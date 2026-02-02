@@ -18,6 +18,17 @@ const getImgSrc = (img) => {
   return `${API_BASE}/${img}`;
 };
 
+const buildVariantKey = (sel) => {
+  const keys = Object.keys(sel || {}).sort((a, b) => Number(a) - Number(b));
+  return keys
+    .map((k) => {
+      const v = sel[k];
+      if (Array.isArray(v)) return `${k}=${v.slice().sort().join(",")}`;
+      return `${k}=${String(v)}`;
+    })
+    .join("|");
+};
+
 const normUiLang = (l) => {
   const short = String(l || "ru")
     .toLowerCase()
@@ -71,7 +82,7 @@ const FoodCatalogPage = () => {
         if (cancelled) return;
 
         const active = (Array.isArray(list) ? list : []).filter(
-          (s) => s?.isActive !== false
+          (s) => s?.isActive !== false,
         );
         setTopSellers(active.slice(0, 12));
       } catch (e) {
@@ -99,7 +110,7 @@ const FoodCatalogPage = () => {
     const sellerIds = (basket.items || []).map((it) =>
       typeof basket.getItemSellerId === "function"
         ? basket.getItemSellerId(it)
-        : normalizeSellerId(it.sellerId)
+        : normalizeSellerId(it.sellerId),
     );
 
     if (sellerIds.length === 0) return true;
@@ -108,7 +119,7 @@ const FoodCatalogPage = () => {
     if (unique.length === 1 && unique[0] === newSellerId) return true;
 
     const ok = window.confirm(
-      t("confirm clear cart", { ns: "foodCatalogPage" })
+      t("confirm clear cart", { ns: "foodCatalogPage" }),
     );
     if (!ok) return false;
 
@@ -122,47 +133,6 @@ const FoodCatalogPage = () => {
     }
 
     return true;
-  };
-
-  const addToBasket = (item, qty = 1) => {
-    if (!item?.isAvailable) {
-      toast.error(t("dish unavailable", { ns: "foodCatalogPage" }));
-      return;
-    }
-
-    const sellerId = item?.seller?.id ?? item?.sellerId ?? null;
-    if (!ensureSingleSeller(sellerId)) return;
-
-    const itemName = pickTr(item.name, item.translations?.name, uiLang);
-
-    for (let i = 0; i < qty; i++) {
-      basket.addItem({
-        id: item.id,
-        name: item.name,
-        translations: item.translations,
-        price: Number(item.price) || 0,
-        img: item.img || null,
-        sellerId: Number(sellerId) || null,
-        isRestaurantItem: true,
-        isPreorder: false,
-        defaultSelected: true,
-        selectedOptions: {},
-        variantKey: null,
-        stockQuantity:
-          typeof item.stockQuantity === "number"
-            ? item.stockQuantity
-            : typeof item.quantity === "number"
-            ? item.quantity
-            : 999999,
-      });
-    }
-
-    toast.success(
-      <>
-        <strong>{itemName}</strong>
-        <div>{t("added to cart", { ns: "foodCatalogPage" })}</div>
-      </>
-    );
   };
 
   useEffect(() => {
@@ -200,15 +170,58 @@ const FoodCatalogPage = () => {
 
   const qTrim = query.trim();
 
+  const addToBasketConfigured = (
+    item,
+    qty,
+    unitPrice,
+    selectedOptions,
+    selectedOptionsMeta,
+  ) => {
+    if (!item?.isAvailable) {
+      toast.error(t("dish unavailable", { ns: "foodCatalogPage" }));
+      return;
+    }
+
+    const sellerId = item?.seller?.id ?? item?.sellerId ?? null;
+    if (!ensureSingleSeller(sellerId)) return;
+
+    for (let i = 0; i < qty; i++) {
+      basket.addItem({
+        id: item.id,
+        name: item.name,
+        translations: item.translations,
+        price: Number(unitPrice) || Number(item.price) || 0,
+        img: item.img || null,
+        sellerId: Number(sellerId) || null,
+        isRestaurantItem: true,
+        isPreorder: false,
+        defaultSelected: true,
+        selectedOptions: selectedOptions || {},
+        selectedOptionsMeta: selectedOptionsMeta || [],
+        variantKey: buildVariantKey(selectedOptions),
+        stockQuantity:
+          typeof item.stockQuantity === "number"
+            ? item.stockQuantity
+            : typeof item.quantity === "number"
+              ? item.quantity
+              : 999999,
+      });
+    }
+
+    toast.success(
+      <>
+        <strong>{pickTr(item.name, item.translations?.name, uiLang)}</strong>
+        <div>{t("added to cart", { ns: "foodCatalogPage" })}</div>
+      </>,
+    );
+  };
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
         <h1 className={styles.title}>
           {t("page title", { ns: "foodCatalogPage" })}
         </h1>
-        <div className={styles.subtitle}>
-          {t("page subtitle", { ns: "foodCatalogPage" })}
-        </div>
       </div>
 
       <div className={styles.searchWrap}>
@@ -256,10 +269,6 @@ const FoodCatalogPage = () => {
                 </button>
               ))}
             </div>
-
-            <div className={styles.hint}>
-              {t("hint", { ns: "foodCatalogPage" })}
-            </div>
           </div>
 
           <div className={styles.block}>
@@ -302,7 +311,7 @@ const FoodCatalogPage = () => {
                       )}
                       <div className={styles.topSellerName}>{s.name}</div>
                       {s.kind ? (
-                        <div className={styles.topSellerKind}>{s.kind}</div>
+                        <div className={styles.topSellerKind}></div>
                       ) : null}
                     </button>
                   );
@@ -365,7 +374,7 @@ const FoodCatalogPage = () => {
                       <div className={styles.sellerInfo}>
                         <div className={styles.sellerName}>{s.name}</div>
                         {s.kind ? (
-                          <div className={styles.sellerKind}>{s.kind}</div>
+                          <div className={styles.sellerKind}></div>
                         ) : null}
                       </div>
                     </button>
@@ -456,7 +465,8 @@ const FoodCatalogPage = () => {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              addToBasket(it, 1);
+                              if (!it.isAvailable) return;
+                              setSelectedItemId(it.id);
                             }}
                           >
                             {it.isAvailable
@@ -479,12 +489,12 @@ const FoodCatalogPage = () => {
             const title = pickTr(
               selectedItem.name,
               selectedItem.translations?.name,
-              uiLang
+              uiLang,
             );
             const desc = pickTr(
               selectedItem.description,
               selectedItem.translations?.description,
-              uiLang
+              uiLang,
             );
 
             return (
@@ -493,7 +503,21 @@ const FoodCatalogPage = () => {
                   item={{ ...selectedItem, name: title, description: desc }}
                   seller={selectedItem?.seller || null}
                   getImgSrc={getImgSrc}
-                  onAdd={(qty) => addToBasket(selectedItem, qty)}
+                  onAdd={({
+                    qty,
+                    unitPrice,
+                    selectedOptions,
+                    selectedOptionsMeta,
+                  }) => {
+                    addToBasketConfigured(
+                      selectedItem,
+                      qty,
+                      unitPrice,
+                      selectedOptions,
+                      selectedOptionsMeta,
+                    );
+                    setSelectedItemId(null);
+                  }}
                 />
               </SlideModal>
             );
