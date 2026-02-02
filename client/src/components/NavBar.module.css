@@ -68,7 +68,9 @@
   font-size: 13px;
   font-weight: 600;
 
-  transition: background 0.15s ease, transform 0.06s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.06s ease;
 }
 
 .navItem:hover {
@@ -185,7 +187,7 @@
 }
 
 .selected {
-  background: rgba(24, 129, 255, 0.10);
+  background: rgba(24, 129, 255, 0.1);
 }
 
 .resultImage {
@@ -248,13 +250,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-
   padding: 10px 10px;
   border-radius: 10px;
-
   background: transparent;
   border: none;
-
   color: #0a2540;
   text-decoration: none;
   font-size: 13px;
@@ -281,6 +280,15 @@
   letter-spacing: 0.05em;
 }
 
+.dropdownSectionTitle {
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 900;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .langRow {
   display: flex;
   gap: 8px;
@@ -294,7 +302,9 @@
   border: 1px solid rgba(10, 37, 64, 0.12);
   background: #fff;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .langPill:hover {
