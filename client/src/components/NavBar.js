@@ -191,7 +191,7 @@ const NavBar = observer(() => {
         </div>
 
         <div className={styles.center}>
-          <SearchBar />
+          <SearchBar mode={navMode} />
         </div>
 
         <div className={styles.right}>
