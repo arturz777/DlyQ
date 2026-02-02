@@ -1,11 +1,9 @@
 {
   "page title": "Search",
-  "page subtitle": "Restaurants and dishes (for example: “pizza”, “sushi”, “burger”)",
   "search placeholder": "Start typing…",
   "clear": "Clear",
   "popular queries title": "Popular searches",
   "popular queries": ["Pizza", "Sushi", "Burger", "Shawarma", "Pasta", "Salad"],
-  "hint": "Enter a query to find a restaurant or a dish.",
   "popular restaurants": "Popular restaurants",
   "empty yet": "Nothing here yet",
   "searching": "Searching…",
