@@ -1,14 +1,6 @@
 .page {
-  width: min(1320px, calc(100% - 24px));
+  width: min(1220px, calc(100% - 24px));
   margin: 90px auto 40px auto;
-}
-
-.page::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.02);
-  z-index: -1;
 }
 
 .header {
@@ -21,12 +13,6 @@
   color: #0a2540;
   font-weight: 800;
   letter-spacing: -0.02em;
-}
-
-.subtitle {
-  margin-top: 6px;
-  color: rgba(10, 37, 64, 0.7);
-  font-size: 13px;
 }
 
 .searchWrap {
@@ -65,15 +51,6 @@
 
 .clearBtn:hover {
   background: rgba(24, 129, 255, 0.12);
-}
-
-.hint {
-  margin-top: 14px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(10, 37, 64, 0.04);
-  color: rgba(10, 37, 64, 0.7);
-  font-size: 13px;
 }
 
 .loading {
@@ -307,7 +284,7 @@
 
 @media (max-width: 768px) {
   .page {
-    margin-top: 70px;
+    margin-top: 10px;
   }
 }
 
@@ -316,14 +293,6 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 14px;
-}
-
-@media (min-width: 900px) {
-  .emptyState .block:first-child {
-    position: sticky;
-    top: 110px;
-    align-self: start;
-  }
 }
 
 .chips {
