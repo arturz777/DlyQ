@@ -25,7 +25,7 @@ import "./locales/i18n";
 import "./App.css";
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY).catch(
-  () => null
+  () => null,
 );
 
 const AppLayout = observer(() => {
@@ -77,9 +77,10 @@ const AppLayout = observer(() => {
 
   const isCatalog = location.pathname.startsWith("/catalog");
   const isSellerPage = location.pathname.startsWith("/seller");
+  const isFoodCatalogPage = location.pathname.startsWith("/food-catalog");
   const isDesktop = useMediaQuery("(min-width: 769px)");
   const hideDesktopNavBar =
-    hideLayout || ((isCatalog || isSellerPage) && !isDesktop);
+    hideLayout || ((isCatalog || isSellerPage || isFoodCatalogPage) && !isDesktop);
 
   return (
     <>
