@@ -1,4 +1,7 @@
 {
   "parcel delivery": "Paki kohaletoimetamine",
-  "failed to load restaurants": "Restoranide laadimine ebaõnnestus"
+  "failed to load restaurants": "Restoranide laadimine ebaõnnestus",
+  "CLOSED": "SULETUD",
+  "opening hours": "Lahtiolekuajad"
 }
+
