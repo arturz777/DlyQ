@@ -35,7 +35,7 @@ const MainPage = () => {
     };
 
     load();
-  }, []);
+  }, [t]);
 
   const getSellerImgSrc = (img) => {
     if (!img) return null;
@@ -134,11 +134,7 @@ const MainPage = () => {
         onClick={handleOpenMainShop}
         type="button"
       >
-        <img
-          src={mainStoreImg}
-          alt="DlyQ Market"
-          className={styles.bannerImg}
-        />
+        <img src={mainStoreImg} alt="DlyQ Store" className={styles.bannerImg} />
 
         <div
           className={`${styles.bannerOverlay} ${
@@ -147,14 +143,17 @@ const MainPage = () => {
         />
 
         <div className={styles.bannerContent}>
-          <div className={styles.bannerTitle}>DlyQ Market</div>
+          <div className={styles.bannerTitle}>DlyQ Store</div>
         </div>
 
         {shopStatus && !shopStatus.isOpen && (
           <div className={styles.closedFull}>
-            <div className={styles.closedFullTitle}>Закрыто</div>
+            <div className={styles.closedFullTitle}>
+              {t("CLOSED", { ns: "mainPage" })}
+            </div>
             <div className={styles.closedFullSub}>
-              Рабочее время: {getTodayHoursText(shopStatus.workHours) || "—"}
+              {t("opening hours", { ns: "mainPage" })}{" "}
+              {getTodayHoursText(shopStatus.workHours) || "—"}
             </div>
           </div>
         )}
@@ -201,9 +200,12 @@ const MainPage = () => {
                   <>
                     <div className={styles.closedOverlay} />
                     <div className={styles.closedFull}>
-                      <div className={styles.closedFullTitle}>ЗАКРЫТО</div>
+                      <div className={styles.closedFullTitle}>
+                        {t("CLOSED", { ns: "mainPage" })}
+                      </div>
                       <div className={styles.closedFullSub}>
-                        Рабочее время: {getTodayHoursText(s.workHours) || "—"}
+                        {t("opening hours", { ns: "mainPage" })}{" "}
+                        {getTodayHoursText(s.workHours) || "—"}
                       </div>
                     </div>
                   </>
