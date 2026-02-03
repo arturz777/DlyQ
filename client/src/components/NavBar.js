@@ -11,6 +11,9 @@ import { fetchUserChats } from "../http/chatAPI";
 import { useTranslation } from "react-i18next";
 import styles from "./NavBar.module.css";
 
+const HIDE_AFTER = 100;
+const SHOW_AFTER = 14;
+
 const NavBar = observer(() => {
   const [scrollDirection, setScrollDirection] = useState("up");
   const [lastScroll, setLastScroll] = useState(0);
@@ -18,6 +21,11 @@ const NavBar = observer(() => {
   const profileRef = useRef(null);
   const { user, basket } = useContext(Context);
   const [unreadChats, setUnreadChats] = useState(new Set());
+  const [navbarHidden, setNavbarHidden] = useState(false);
+  const lastScrollRef = useRef(0);
+  const downAccumRef = useRef(0);
+  const upAccumRef = useRef(0);
+  const rafRef = useRef(0);
   const navigate = useNavigate();
   const location = useLocation();
   const { t, i18n } = useTranslation();
@@ -27,6 +35,48 @@ const NavBar = observer(() => {
     { code: "EN", language: "en" },
     { code: "RU", language: "ru" },
   ];
+
+  useEffect(() => {
+    lastScrollRef.current = window.pageYOffset || 0;
+
+    const onScroll = () => {
+      if (window.__lockNavbar) return;
+
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = 0;
+
+        const y = window.pageYOffset || 0;
+        const prev = lastScrollRef.current;
+        const dy = y - prev;
+        lastScrollRef.current = y;
+
+        if (dy > 0) {
+          downAccumRef.current += dy;
+          upAccumRef.current = 0;
+
+          if (!navbarHidden && downAccumRef.current >= HIDE_AFTER) {
+            setNavbarHidden(true);
+            downAccumRef.current = 0;
+          }
+        } else if (dy < 0) {
+          upAccumRef.current += -dy;
+          downAccumRef.current = 0;
+
+          if (navbarHidden && upAccumRef.current >= SHOW_AFTER) {
+            setNavbarHidden(false);
+            upAccumRef.current = 0;
+          }
+        }
+      });
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [navbarHidden]);
 
   const handleLogOut = () => {
     logOut();
@@ -142,7 +192,7 @@ const NavBar = observer(() => {
 
   const navbarStyle = {
     position: "fixed",
-    top: scrollDirection === "up" ? "0" : "-150px",
+    top: navbarHidden ? "-150px" : "0",
     width: "100%",
     transition: "top 0.3s",
     zIndex: 1000,
@@ -157,7 +207,7 @@ const NavBar = observer(() => {
   const navMode = useMemo(() => {
     const p = location.pathname;
 
-    if (p.startsWith("/parcel")) return "neutral";
+    if (p.startsWith("/parcel")) return "all";
     if (
       p.startsWith("/seller-admin/") ||
       p === "/courier" ||
@@ -165,7 +215,7 @@ const NavBar = observer(() => {
     )
       return "neutral";
 
-    if (p === "/" || p === "/main") return "all";
+    if (p === "/main" || p === "/main") return "all";
 
     if (p.startsWith("/seller") || p.startsWith("/food")) return "food-catalog";
 
@@ -196,7 +246,7 @@ const NavBar = observer(() => {
         </div>
 
         <div className={styles.center}>
-          <SearchBar mode={navMode} />
+          <SearchBar mode={navMode} hideDropdown={navbarHidden} />
         </div>
 
         <div className={styles.right}>
