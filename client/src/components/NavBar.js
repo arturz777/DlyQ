@@ -158,11 +158,16 @@ const NavBar = observer(() => {
     const p = location.pathname;
 
     if (p.startsWith("/parcel")) return "neutral";
-    if (p.startsWith("/main")) return "neutral";
+    if (
+      p.startsWith("/seller-admin/") ||
+      p === "/courier" ||
+      p === "/warehouse"
+    )
+      return "neutral";
 
-    if (p === "/MainPage" || p.startsWith("/seller") || p.startsWith("/food")) {
-      return "food-catalog";
-    }
+    if (p === "/" || p === "/main") return "all";
+
+    if (p.startsWith("/seller") || p.startsWith("/food")) return "food-catalog";
 
     return "market";
   }, [location.pathname]);
