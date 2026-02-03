@@ -1,4 +1,6 @@
 {
   "parcel delivery": "Доставка посылки",
-  "failed to load restaurants": "Не удалось загрузить рестораны"
+  "failed to load restaurants": "Не удалось загрузить рестораны",
+  "CLOSED": "ЗАКРЫТО",
+  "opening hours": "Рабочее время:"
 }
