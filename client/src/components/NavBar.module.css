@@ -35,6 +35,15 @@
   justify-content: center;
 }
 
+.resultImageStub {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  border: 1px solid rgba(10, 37, 64, 0.08);
+}
+
 .right {
   display: flex;
   align-items: center;
