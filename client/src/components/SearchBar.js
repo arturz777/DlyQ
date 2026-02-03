@@ -17,7 +17,7 @@ const getMenuImgSrc = (img) => {
   return `${API_BASE}/${img}`;
 };
 
-const SearchBar = ({ mode = "market" }) => {
+const SearchBar = ({ mode = "market", hideDropdown = false }) => {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -32,6 +32,14 @@ const SearchBar = ({ mode = "market" }) => {
   const searchRef = useRef(null);
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || "en";
+
+  useEffect(() => {
+    if (!hideDropdown) return;
+    setResults([]);
+    setFoodSellers([]);
+    setFoodItems([]);
+    setSelectedIndex(-1);
+  }, [hideDropdown]);
 
   const navItems = React.useMemo(() => {
     const arr = [];
@@ -263,12 +271,6 @@ const SearchBar = ({ mode = "market" }) => {
             <div className={styles.resultsDropdown} ref={dropdownRef}>
               {(mode === "market" || mode === "all") && results.length > 0 && (
                 <>
-                  {mode === "all" && (
-                    <div className={styles.dropdownSectionTitle}>
-                      DlyQ Store
-                    </div>
-                  )}
-
                   {results.slice(0, 6).map((device, index) => (
                     <div
                       key={device.id}
@@ -301,10 +303,6 @@ const SearchBar = ({ mode = "market" }) => {
               {(mode === "food-catalog" || mode === "all") &&
                 foodSellers.length > 0 && (
                   <>
-                    <div className={styles.dropdownSectionTitle}>
-                      {t("restaurants", { ns: "foodCatalogPage" })}
-                    </div>
-
                     {foodSellers.slice(0, 6).map((s, idx) => {
                       const globalIndex = sellersOffset + idx;
                       const slugOrId = s.slug || s.id;
@@ -350,10 +348,6 @@ const SearchBar = ({ mode = "market" }) => {
               {(mode === "food-catalog" || mode === "all") &&
                 foodItems.length > 0 && (
                   <>
-                    <div className={styles.dropdownSectionTitle}>
-                      {t("dishes", { ns: "foodCatalogPage" })}
-                    </div>
-
                     {foodItems.slice(0, 6).map((it, idx) => {
                       const globalIndex = dishesOffset + idx;
                       const itName =
