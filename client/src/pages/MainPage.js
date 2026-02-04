@@ -1,31 +1,65 @@
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchSellers } from "../http/sellerAPI";
 import { fetchShopStatus } from "../http/shopAPI";
+import { fetchDiscountedDevices } from "../http/deviceAPI";
 import mainStoreImg from "../assets/main-store.png";
 import parcelDeliveryImg from "../assets/parcel-delivery.png";
 import { useTranslation } from "react-i18next";
 import styles from "./MainPage.module.css";
 
+import DeviceItem from "../components/DeviceItem";
+import SlideModal from "../components/modals/SlideModal";
+
+const DevicePageLazy = lazy(() => import("../pages/DevicePage"));
+
 const MAIN_SHOP_PATH = "/shop";
 
 const MainPage = () => {
   const [sellers, setSellers] = useState([]);
+  const [discountedDevices, setDiscountedDevices] = useState([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
   const [shopStatus, setShopStatus] = useState(null);
+  const carouselRef = useRef(null);
+  const navigate = useNavigate();
   const { t } = useTranslation();
+
+  const scrollCarousel = (dir) => {
+    const el = carouselRef.current;
+    if (!el) return;
+
+    const amount = Math.max(320, Math.floor(el.clientWidth * 0.8));
+    el.scrollBy({ left: dir * amount, behavior: "smooth" });
+  };
+
+  const isStoreClosed = shopStatus
+    ? typeof shopStatus.isStoreClosed === "boolean"
+      ? shopStatus.isStoreClosed
+      : !shopStatus.isOpen
+    : false;
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [list, shop] = await Promise.all([
+        setLoading(true);
+
+        const DISCOUNT_LIMIT = 24;
+
+        const [list, shop, discounted] = await Promise.all([
           fetchSellers(),
           fetchShopStatus(),
+          fetchDiscountedDevices(DISCOUNT_LIMIT),
         ]);
+
         setSellers(list || []);
         setShopStatus(shop || null);
+
+        const devicesArr = Array.isArray(discounted)
+          ? discounted
+          : (discounted?.devices ?? []);
+        setDiscountedDevices(devicesArr);
       } catch (e) {
         console.error(e);
         setError(t("failed to load restaurants", { ns: "mainPage" }));
@@ -69,6 +103,16 @@ const MainPage = () => {
     </div>
   );
 
+  const SkeletonCarousel = ({ count = 8 }) => (
+    <div className={styles.deviceCarousel} aria-hidden="true">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className={styles.deviceItem}>
+          <div className={styles.deviceSkeletonCard} />
+        </div>
+      ))}
+    </div>
+  );
+
   const formatHours = (h) => {
     if (!h) return "";
     const start = h?.start || "";
@@ -93,40 +137,8 @@ const MainPage = () => {
     return formatHours(workHours[key]);
   };
 
-  const formatSellerHours = (s) => {
-    const wh = s?.workHours;
-    if (!wh) return null;
-
-    const now = new Date();
-    const day = now.getDay();
-
-    const sched = day === 0 ? wh.sunday : day === 6 ? wh.saturday : wh.weekdays;
-
-    if (!sched?.start || !sched?.end) return null;
-    return `${sched.start}–${sched.end}`;
-  };
-
   return (
     <div className={styles.wrapper}>
-      <button
-        className={styles.banner}
-        onClick={() => navigate("/parcel")}
-        type="button"
-      >
-        <img
-          src={parcelDeliveryImg}
-          alt="Parcel delivery"
-          className={styles.bannerImg}
-        />
-        <div className={styles.bannerOverlay} />
-
-        <div className={styles.bannerContent}>
-          <div className={styles.bannerTitle}>
-            📦 {t("parcel delivery", { ns: "mainPage" })}
-          </div>
-        </div>
-      </button>
-
       <button
         className={`${styles.banner} ${styles.mainStore} ${
           shopStatus && !shopStatus.isOpen ? styles.closedBanner : ""
@@ -159,14 +171,93 @@ const MainPage = () => {
         )}
       </button>
 
-      <div className={styles.sectionHeader} style={{ marginTop: 18 }}></div>
+      <section className={styles.productSection} aria-label="Discounts">
+        <div className={styles.sectionHead}>
+          <div className={styles.sectionTitleRow}>
+            <div className={styles.discountTitle}>
+              {t("discounts", { ns: "homePage" })}
+            </div>
+
+            <span className={styles.storePill}>DlyQ Store</span>
+          </div>
+        </div>
+
+        {loading ? (
+          <SkeletonCarousel count={8} />
+        ) : discountedDevices.length > 0 ? (
+          <div className={styles.carouselWrap}>
+            <button
+              type="button"
+              className={`${styles.carouselArrow} ${styles.left}`}
+              onClick={() => scrollCarousel(-1)}
+              aria-label="Scroll left"
+            >
+              ‹
+            </button>
+
+            <div ref={carouselRef} className={styles.deviceCarousel}>
+              {discountedDevices.map((d) => (
+                <div key={d.id} className={styles.deviceItem}>
+                  <DeviceItem
+                    device={d}
+                    onClick={(id) => setSelectedDeviceId(id)}
+                    isStoreClosed={isStoreClosed}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className={`${styles.carouselArrow} ${styles.right}`}
+              onClick={() => scrollCarousel(1)}
+              aria-label="Scroll right"
+            >
+              ›
+            </button>
+          </div>
+        ) : (
+          <div className={styles.emptyHint}>
+            {t("no_discounts_yet", {
+              ns: "mainPage",
+              defaultValue: "Пока нет товаров со скидкой.",
+            })}
+          </div>
+        )}
+      </section>
+
+      <button
+        className={styles.banner}
+        onClick={() => navigate("/parcel")}
+        type="button"
+      >
+        <img
+          src={parcelDeliveryImg}
+          alt="Parcel delivery"
+          className={styles.bannerImg}
+        />
+        <div className={styles.bannerOverlay} />
+
+        <div className={styles.bannerContent}>
+          <div className={styles.bannerTitle}>
+            📦 {t("parcel delivery", { ns: "mainPage" })}
+          </div>
+        </div>
+      </button>
+
+      <div className={styles.sectionHeader} style={{ marginTop: 18 }} />
 
       {error && <div className={styles.error}>{error}</div>}
 
-      {loading && (
-        <>
-          <SkeletonList count={4} />
-        </>
+      {loading && <SkeletonList count={4} />}
+
+      {!loading && !error && sellers.length === 0 && (
+        <div className={styles.emptyHint}>
+          {t("no_sellers_yet", {
+            ns: "mainPage",
+            defaultValue: "Пока нет продавцов. Скоро добавим!",
+          })}
+        </div>
       )}
 
       {!loading && !error && sellers.length > 0 && (
@@ -177,7 +268,9 @@ const MainPage = () => {
             return (
               <button
                 key={s.id}
-                className={`${styles.banner} ${!s.isOpenNow ? styles.closedBanner : ""}`}
+                className={`${styles.banner} ${
+                  !s.isOpenNow ? styles.closedBanner : ""
+                }`}
                 onClick={() => handleOpenSeller(s)}
                 type="button"
               >
@@ -192,7 +285,7 @@ const MainPage = () => {
                 <div className={styles.bannerContent}>
                   <div className={styles.bannerTitle}>{s.name}</div>
                   <div className={styles.badgeRow}>
-                    {s.kind && <div className={styles.badge}></div>}
+                    {s.kind && <div className={styles.badge} />}
                   </div>
                 </div>
 
@@ -214,6 +307,20 @@ const MainPage = () => {
             );
           })}
         </div>
+      )}
+
+      {selectedDeviceId && (
+        <SlideModal onClose={() => setSelectedDeviceId(null)}>
+          <Suspense
+            fallback={
+              <div style={{ padding: 16 }}>
+                {t("loading", { ns: "homePage", defaultValue: "Загрузка..." })}
+              </div>
+            }
+          >
+            <DevicePageLazy id={selectedDeviceId} />
+          </Suspense>
+        </SlideModal>
       )}
     </div>
   );
