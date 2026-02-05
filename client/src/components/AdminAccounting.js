@@ -115,7 +115,7 @@ const AdminAccounting = ({ devices }) => {
       const { from, to } = getCourierRange();
 
       const res = await fetch(
-        `${base}/api/accounting/couriers?from=${isoDate(from)}&to=${isoDate(to)}`,
+        `${base}/accounting/couriers?from=${isoDate(from)}&to=${isoDate(to)}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -183,7 +183,7 @@ const AdminAccounting = ({ devices }) => {
   useEffect(() => {
     const fetchSoldDevices = async () => {
       try {
-        const response = await fetch(`${base}/api/order/admin`, {
+        const response = await fetch(`${base}/order/admin`, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -513,7 +513,6 @@ const AdminAccounting = ({ devices }) => {
               );
             })}
 
-            {/* Итого */}
             <tr className={styles.goodsTotalRow}>
               <td className={styles.goodsTd} colSpan={2}>
                 Итого:
