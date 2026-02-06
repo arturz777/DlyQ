@@ -204,6 +204,7 @@ class WarehouseController {
       const where = {
         orderType: { [Op.ne]: "parcel" },
         warehouseStatus: { [Op.in]: ["pending", "processing"] },
+        status: { [Op.notIn]: ["Delivered", "Completed", "Cancelled"] },
         [Op.or]: [{ warehouseId: warehouse.id }, { warehouseId: null }],
       };
 
