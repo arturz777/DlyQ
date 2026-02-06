@@ -19,7 +19,6 @@ const CatalogPage = lazy(() => import("../pages/CatalogPage"));
 const UserProfile = lazy(() => import("../pages/UserProfile"));
 const ProfileSettings = lazy(() => import("../pages/ProfileSettings"));
 const Admin = lazy(() => import("../pages/Admin"));
-const Courier = lazy(() => import("../pages/Courier"));
 const Warehouse = lazy(() => import("../pages/Warehouse"));
 
 const ALLOWED_DURING_MAINTENANCE = ["/maintenance", "/login", "/catalog"];
@@ -114,7 +113,6 @@ const AppRouter = () => {
 
         <Route path={ADMIN_ROUTE} element={<Admin />} />
         <Route path="/seller-admin/:sellerId" element={<SellerAdminPage />} />
-        <Route path="/courier" element={<Courier />} />
         <Route path="/warehouse" element={<Warehouse />} />
         <Route path="/main" element={<MainPage />} />
         <Route path="/seller/:idOrSlug" element={<SellerPage />} />
