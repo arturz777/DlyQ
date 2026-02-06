@@ -6,7 +6,6 @@ import InputGroup from "react-bootstrap/InputGroup";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import { updateDeviceVisibility } from "../http/deviceAPI";
-import { fetchAllCouriers } from "../http/courierAPI";
 import { assignCourierToOrder } from "../http/orderAPI";
 import {
   fetchTranslations,
@@ -407,10 +406,6 @@ const Admin = () => {
       setOrderSaving((p) => ({ ...p, [orderId]: false }));
     }
   };
-
-  useEffect(() => {
-    fetchAllCouriers().then(setCouriers).catch(console.error);
-  }, []);
 
   useEffect(() => {
     if (!couriers?.length) return;
