@@ -118,7 +118,8 @@ const Admin = () => {
   const [menuItemVisible, setMenuItemVisible] = useState(false);
   const [editableMenuCategory, setEditableMenuCategory] = useState(null);
   const [editableMenuItem, setEditableMenuItem] = useState(null);
-
+  const [orderSaving, setOrderSaving] = useState({});
+  const [orderError, setOrderError] = useState({});
   const [sellerVisible, setSellerVisible] = useState(false);
   const [editableSeller, setEditableSeller] = useState(null);
   const [translations, setTranslations] = useState([]);
@@ -377,6 +378,11 @@ const Admin = () => {
     processingTime,
     estimatedTime,
   ) => {
+    const prevOrder = allOrders.find((o) => o.id === orderId);
+
+    setOrderSaving((p) => ({ ...p, [orderId]: true }));
+    setOrderError((p) => ({ ...p, [orderId]: "" }));
+
     try {
       await adminUpdateOrderStatus(
         orderId,
@@ -384,8 +390,21 @@ const Admin = () => {
         processingTime,
         estimatedTime,
       );
+
+      const fresh = await fetchAllOrdersForAdmin();
+      setAllOrders(fresh);
     } catch (err) {
       console.error("Ошибка при обновлении:", err);
+
+      if (prevOrder) {
+        setAllOrders((prev) =>
+          prev.map((o) => (o.id === orderId ? prevOrder : o)),
+        );
+      }
+
+      setOrderError((p) => ({ ...p, [orderId]: "Не сохранилось" }));
+    } finally {
+      setOrderSaving((p) => ({ ...p, [orderId]: false }));
     }
   };
 
@@ -2243,6 +2262,7 @@ const Admin = () => {
                       <td style={{ display: "flex", gap: "5px" }}>
                         <button
                           className={styles.saveButton}
+                          disabled={!!orderSaving[order.id]}
                           onClick={() =>
                             handleStatusChange(
                               order.id,
@@ -2252,8 +2272,14 @@ const Admin = () => {
                             )
                           }
                         >
-                          💾
+                          {orderSaving[order.id] ? "..." : "💾"}
                         </button>
+
+                        {orderError[order.id] ? (
+                          <div style={{ color: "red", fontSize: 12 }}>
+                            {orderError[order.id]}
+                          </div>
+                        ) : null}
                       </td>
                     </tr>
                   ))}
