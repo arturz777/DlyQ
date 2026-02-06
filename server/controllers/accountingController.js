@@ -57,8 +57,8 @@ class AccountingController {
       };
 
       if (start)
-        where.createdAt = { ...(where.createdAt || {}), [Op.gte]: start };
-      if (end) where.createdAt = { ...(where.createdAt || {}), [Op.lt]: end };
+        where.updatedAt = { ...(where.updatedAt || {}), [Op.gte]: start };
+      if (end) where.updatedAt = { ...(where.updatedAt || {}), [Op.lt]: end };
 
       const orders = await Order.findAll({
         where,
@@ -68,7 +68,7 @@ class AccountingController {
           "orderType",
           "courierFee",
           "courierCommission",
-          "createdAt",
+          "updatedAt",
         ],
         raw: true,
       });
@@ -96,8 +96,6 @@ class AccountingController {
             ordersCount: 0,
             payoutTotal: 0,
             commissionTotal: 0,
-            parcelCount: 0,
-            shopCount: 0,
           });
         }
 
@@ -108,33 +106,33 @@ class AccountingController {
         row.payoutTotal += payout;
 
         if (o.orderType === "parcel") {
-          row.parcelCount += 1;
           row.commissionTotal += Number(o.courierCommission || 0);
         } else {
-          row.shopCount += 1;
           row.commissionTotal += COMMISSION_SHOP_FLAT;
         }
       }
 
       const items = Array.from(byCourier.values()).map((x) => ({
-        ...x,
-        payoutTotal: Number(x.payoutTotal.toFixed(2)),
-        commissionTotal: Number(x.commissionTotal.toFixed(2)),
-        companyNet: Number(x.commissionTotal.toFixed(2)),
+        courierId: x.courierId,
+        courierName: x.courierName,
+        ordersCount: x.ordersCount,
+        sumDeliveryPrice: Number(x.payoutTotal.toFixed(2)),
+        sumCourierFee: Number(x.payoutTotal.toFixed(2)),
+        sumCommission: Number(x.commissionTotal.toFixed(2)),
       }));
 
       const totals = items.reduce(
         (acc, x) => {
           acc.ordersCount += x.ordersCount;
-          acc.payoutTotal += x.payoutTotal;
-          acc.commissionTotal += x.commissionTotal;
+          acc.sumCourierFee += x.sumCourierFee;
+          acc.sumCommission += x.sumCommission;
           return acc;
         },
-        { ordersCount: 0, payoutTotal: 0, commissionTotal: 0 },
+        { ordersCount: 0, sumCourierFee: 0, sumCommission: 0 },
       );
 
-      totals.payoutTotal = Number(totals.payoutTotal.toFixed(2));
-      totals.commissionTotal = Number(totals.commissionTotal.toFixed(2));
+      totals.sumCourierFee = Number(totals.sumCourierFee.toFixed(2));
+      totals.sumCommission = Number(totals.sumCommission.toFixed(2));
 
       return res.json({
         range: { start, end },
