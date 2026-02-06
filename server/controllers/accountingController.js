@@ -1,8 +1,7 @@
-const { Op } = require("sequelize");
-const { Order, Courier } = require("../models/models");
+const { Op, fn, col } = require("sequelize");
+const { Order, Courier, Seller } = require("../models/models");
 
 const COMMISSION_SHOP_FLAT = 0.3;
-
 const DONE_STATUSES = ["Delivered", "Completed"];
 
 function toDateStart(s) {
@@ -24,10 +23,9 @@ function rangeFromQuery(q) {
     return { start, end };
   }
 
-  if (from || to) {
-    return { start: from, end: to };
-  }
+  if (from || to) return { start: from, end: to };
 
+  // дефолт: текущая неделя (UTC)
   const now = new Date();
   const day = now.getUTCDay();
   const diffToMon = (day + 6) % 7;
@@ -46,7 +44,13 @@ function rangeFromQuery(q) {
   return { start, end };
 }
 
+function applyRange(where, start, end) {
+  if (start) where.updatedAt = { ...(where.updatedAt || {}), [Op.gte]: start };
+  if (end) where.updatedAt = { ...(where.updatedAt || {}), [Op.lt]: end };
+}
+
 class AccountingController {
+  // ТВОЙ текущий метод оставляем (он ок)
   async getCourierAccounting(req, res) {
     try {
       const { start, end } = rangeFromQuery(req.query);
@@ -55,10 +59,7 @@ class AccountingController {
         courierId: { [Op.ne]: null },
         status: { [Op.in]: DONE_STATUSES },
       };
-
-      if (start)
-        where.updatedAt = { ...(where.updatedAt || {}), [Op.gte]: start };
-      if (end) where.updatedAt = { ...(where.updatedAt || {}), [Op.lt]: end };
+      applyRange(where, start, end);
 
       const orders = await Order.findAll({
         where,
@@ -79,12 +80,11 @@ class AccountingController {
 
       const couriers = await Courier.findAll({
         where: { id: { [Op.in]: courierIds } },
-        attributes: ["id", "name"],
+        attributes: ["id", "name", "iban"],
         raw: true,
       });
 
       const courierMap = new Map(couriers.map((c) => [Number(c.id), c]));
-
       const byCourier = new Map();
 
       for (const o of orders) {
@@ -93,6 +93,7 @@ class AccountingController {
           byCourier.set(cid, {
             courierId: cid,
             courierName: courierMap.get(cid)?.name || `Courier #${cid}`,
+            iban: courierMap.get(cid)?.iban || null,
             ordersCount: 0,
             payoutTotal: 0,
             commissionTotal: 0,
@@ -105,16 +106,15 @@ class AccountingController {
         const payout = Number(o.courierFee || 0);
         row.payoutTotal += payout;
 
-        if (o.orderType === "parcel") {
+        if (o.orderType === "parcel")
           row.commissionTotal += Number(o.courierCommission || 0);
-        } else {
-          row.commissionTotal += COMMISSION_SHOP_FLAT;
-        }
+        else row.commissionTotal += COMMISSION_SHOP_FLAT;
       }
 
       const items = Array.from(byCourier.values()).map((x) => ({
         courierId: x.courierId,
         courierName: x.courierName,
+        iban: x.iban,
         ordersCount: x.ordersCount,
         sumDeliveryPrice: Number(x.payoutTotal.toFixed(2)),
         sumCourierFee: Number(x.payoutTotal.toFixed(2)),
@@ -134,16 +134,149 @@ class AccountingController {
       totals.sumCourierFee = Number(totals.sumCourierFee.toFixed(2));
       totals.sumCommission = Number(totals.sumCommission.toFixed(2));
 
-      return res.json({
-        range: { start, end },
-        items,
-        totals,
-      });
+      return res.json({ range: { start, end }, items, totals });
     } catch (e) {
       console.error("getCourierAccounting error:", e);
       return res.status(500).json({ message: "Ошибка сервера" });
     }
   }
+
+  async getIncomeShop(req, res) {
+    try {
+      const { start, end } = rangeFromQuery(req.query);
+
+      const where = {
+        status: { [Op.in]: DONE_STATUSES },
+        orderType: "shop",
+      };
+      if (start)
+        where.updatedAt = { ...(where.updatedAt || {}), [Op.gte]: start };
+      if (end) where.updatedAt = { ...(where.updatedAt || {}), [Op.lt]: end };
+
+      const row = await Order.findOne({
+        where,
+        attributes: [
+          [fn("COUNT", col("id")), "ordersCount"],
+          [fn("COALESCE", fn("SUM", col("totalPrice")), 0), "sumTotal"],
+          [fn("COALESCE", fn("SUM", col("deliveryPrice")), 0), "sumDelivery"],
+          [fn("COALESCE", fn("SUM", col("courierFee")), 0), "sumCourierFee"],
+          [
+            fn("COALESCE", fn("SUM", col("courierCommission")), 0),
+            "sumCourierCommission",
+          ],
+        ],
+        raw: true,
+      });
+
+      const ordersCount = Number(row?.ordersCount || 0);
+      const sumTotal = Number(row?.sumTotal || 0);
+      const sumDelivery = Number(row?.sumDelivery || 0);
+      const sumGoods = sumTotal - sumDelivery;
+      const sumCourierFee = Number(row?.sumCourierFee || 0);
+      const sumCourierCommission = Number(row?.sumCourierCommission || 0);
+
+      return res.json({
+        range: { start, end },
+        ordersCount,
+        sumTotal: Number(sumTotal.toFixed(2)),
+        sumDelivery: Number(sumDelivery.toFixed(2)),
+        sumGoods: Number(sumGoods.toFixed(2)),
+        sumCourierFee: Number(sumCourierFee.toFixed(2)),
+        sumCourierCommission: Number(sumCourierCommission.toFixed(2)),
+      });
+    } catch (e) {
+      console.error("getIncomeShop error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
+  async getIncomeSellers(req, res) {
+    try {
+      const { start, end } = rangeFromQuery(req.query);
+
+      const where = {
+        status: { [Op.in]: DONE_STATUSES },
+        sellerId: { [Op.ne]: null },
+      };
+      if (start)
+        where.updatedAt = { ...(where.updatedAt || {}), [Op.gte]: start };
+      if (end) where.updatedAt = { ...(where.updatedAt || {}), [Op.lt]: end };
+
+      const rows = await Order.findAll({
+        where,
+        attributes: [
+          "sellerId",
+          [fn("COUNT", col("order.id")), "ordersCount"],
+          [fn("COALESCE", fn("SUM", col("totalPrice")), 0), "sumTotal"],
+          [fn("COALESCE", fn("SUM", col("deliveryPrice")), 0), "sumDelivery"],
+          [fn("COALESCE", fn("SUM", col("courierFee")), 0), "sumCourierFee"],
+          [
+            fn("COALESCE", fn("SUM", col("courierCommission")), 0),
+            "sumCourierCommission",
+          ],
+        ],
+        include: [
+          { model: Seller, attributes: ["id", "name"], required: false },
+        ],
+        group: ["sellerId", "seller.id"],
+        raw: true,
+      });
+
+      const items = (rows || []).map((r) => ({
+        sellerId: Number(r.sellerId),
+        sellerName: r["seller.name"] || `Seller #${r.sellerId}`,
+        ordersCount: Number(r.ordersCount || 0),
+        sumTotal: Number(Number(r.sumTotal || 0).toFixed(2)),
+        sumDelivery: Number(Number(r.sumDelivery || 0).toFixed(2)),
+        sumCourierFee: Number(Number(r.sumCourierFee || 0).toFixed(2)),
+        sumCourierCommission: Number(
+          Number(r.sumCourierCommission || 0).toFixed(2),
+        ),
+      }));
+
+      return res.json({ range: { start, end }, items });
+    } catch (e) {
+      console.error("getIncomeSellers error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
+  async getCourierIncomeOrders(req, res) {
+  try {
+    const { start, end } = rangeFromQuery(req.query);
+    const courierId = Number(req.params.courierId);
+
+    if (!courierId) return res.status(400).json({ message: "Bad courierId" });
+
+    const where = {
+      courierId,
+      status: { [Op.in]: DONE_STATUSES },
+    };
+    if (start) where.updatedAt = { ...(where.updatedAt || {}), [Op.gte]: start };
+    if (end) where.updatedAt = { ...(where.updatedAt || {}), [Op.lt]: end };
+
+    const items = await Order.findAll({
+      where,
+      order: [["updatedAt", "DESC"]],
+      attributes: [
+        "id",
+        "orderType",
+        "sellerId",
+        "totalPrice",
+        "deliveryPrice",
+        "courierFee",
+        "courierCommission",
+        "updatedAt",
+      ],
+      raw: true,
+    });
+
+    return res.json({ range: { start, end }, courierId, items });
+  } catch (e) {
+    console.error("getCourierIncomeOrders error:", e);
+    return res.status(500).json({ message: "Ошибка сервера" });
+  }
+}
 }
 
 module.exports = new AccountingController();
