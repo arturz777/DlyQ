@@ -8,7 +8,6 @@
   margin-bottom: 14px;
 }
 
-/* ====== TABS ====== */
 .accTabs {
   display: flex;
   flex-wrap: wrap;
@@ -31,12 +30,10 @@
   font-weight: 700;
 }
 
-/* ====== COMMON HELPERS ====== */
 .left {
   text-align: left;
 }
 
-/* ====== CARD ====== */
 .accCard {
   background: #fff;
   border: 1px solid #eee;
@@ -44,7 +41,6 @@
   padding: 12px;
 }
 
-/* ====== COURIERS HEADER / CONTROLS ====== */
 .courierHeader {
   display: flex;
   justify-content: space-between;
@@ -108,7 +104,35 @@
   margin-top: 2px;
 }
 
-/* ====== ERRORS / EMPTY ====== */
+.courierRangeTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.courierRangeNav {
+  display: flex;
+  gap: 6px;
+}
+
+.rangeNavBtn {
+  width: 30px;
+  height: 28px;
+  border-radius: 10px;
+  border: 1px solid #d0d5dd;
+  background: #fff;
+  cursor: pointer;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rangeNavBtn:hover {
+  background: #f9fafb;
+}
+
 .accError {
   padding: 10px;
   border-radius: 10px;
@@ -125,7 +149,29 @@
   text-align: center;
 }
 
-/* ====== COURIER TABLE WRAP ====== */
+.payBtn {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.payOk {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.payNo {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
 .accTableWrap {
   width: 100%;
   overflow: auto;
@@ -156,7 +202,6 @@
   text-align: left;
 }
 
-/* ====== VAT / OTHER BOXES ====== */
 .accVatBox {
   padding: 20px;
   background: #fff7e6;
@@ -180,7 +225,6 @@
   font-weight: 700;
 }
 
-/* ====== GOODS TABLE (ALL / SOLD) ====== */
 .goodsTable {
   width: 100%;
   border-collapse: collapse;
