@@ -51,12 +51,10 @@ const MenuItem = sequelize.define("menu_item", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   sellerId: { type: DataTypes.INTEGER, allowNull: false },
   categoryId: { type: DataTypes.INTEGER, allowNull: true },
-
   name: { type: DataTypes.STRING, allowNull: false },
   description: { type: DataTypes.TEXT, allowNull: true },
   price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   img: { type: DataTypes.STRING, allowNull: true },
-
   isAvailable: { type: DataTypes.BOOLEAN, defaultValue: true },
   displayOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
@@ -65,18 +63,15 @@ const MenuItem = sequelize.define("menu_item", {
 const MenuOptionGroup = sequelize.define("menu_option_group", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   menuItemId: { type: DataTypes.INTEGER, allowNull: false },
-
   title: { type: DataTypes.STRING, allowNull: false },
   type: {
     type: DataTypes.ENUM("single", "multi"),
     allowNull: false,
     defaultValue: "single",
   },
-
   isRequired: { type: DataTypes.BOOLEAN, defaultValue: false },
   minSelect: { type: DataTypes.INTEGER, allowNull: true },
   maxSelect: { type: DataTypes.INTEGER, allowNull: true },
-
   displayOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
 });
@@ -84,14 +79,12 @@ const MenuOptionGroup = sequelize.define("menu_option_group", {
 const MenuOption = sequelize.define("menu_option", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   groupId: { type: DataTypes.INTEGER, allowNull: false },
-
   title: { type: DataTypes.STRING, allowNull: false },
   priceDelta: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
     defaultValue: 0,
   },
-
   displayOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
   isDefault: { type: DataTypes.BOOLEAN, defaultValue: false },
@@ -158,7 +151,6 @@ const DeviceVariant = sequelize.define(
       field: "purchasePrice",
       validate: { min: 0 },
     },
-
     quantity: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     image: { type: DataTypes.STRING, allowNull: true },
     isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
@@ -311,13 +303,11 @@ const Order = sequelize.define(
       allowNull: true,
       defaultValue: null,
     },
-
     courierCommission: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
       defaultValue: null,
     },
-
     courierCommissionRate: {
       type: DataTypes.DECIMAL(5, 4),
       allowNull: true,
@@ -385,6 +375,7 @@ const Courier = sequelize.define("courier", {
   status: { type: DataTypes.STRING, defaultValue: "offline" },
   currentLat: { type: DataTypes.FLOAT, allowNull: true },
   currentLng: { type: DataTypes.FLOAT, allowNull: true },
+  iban: { type: DataTypes.STRING, allowNull: true },
   expoPushToken: { type: DataTypes.STRING, allowNull: true },
   offersSent: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   offersAccepted: {
@@ -549,7 +540,6 @@ const InventoryReceiptItem = sequelize.define(
   "inventory_receipt_item",
   {
     id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-
     receiptId: {
       type: DataTypes.BIGINT,
       allowNull: false,
@@ -561,9 +551,7 @@ const InventoryReceiptItem = sequelize.define(
       allowNull: true,
       field: "variant_id",
     },
-
     quantity: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
-
     purchasePrice: {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
