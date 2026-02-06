@@ -30,6 +30,28 @@ const AdminAccounting = ({ devices }) => {
   const [courierRows, setCourierRows] = useState([]);
   const [courierLoading, setCourierLoading] = useState(false);
   const [courierError, setCourierError] = useState("");
+  const [courierWeekSpan, setCourierWeekSpan] = useState(1);
+  const [courierPaidMap, setCourierPaidMap] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("courierPaidMap") || "{}");
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem("courierPaidMap", JSON.stringify(courierPaidMap));
+  }, [courierPaidMap]);
+
+  useEffect(() => {
+    if (courierPeriod !== "week" && courierWeekSpan !== 1)
+      setCourierWeekSpan(1);
+  }, [courierPeriod]);
+
+  function togglePaid(rangeKey, courierId) {
+    const k = `${rangeKey}_${courierId}`;
+    setCourierPaidMap((prev) => ({ ...prev, [k]: !prev[k] }));
+  }
 
   const yearOptions = React.useMemo(() => {
     const y = new Date().getFullYear();
@@ -87,7 +109,7 @@ const AdminAccounting = ({ devices }) => {
 
     if (courierPeriod === "week") {
       from = startOfWeek(courierAnchor);
-      to = addDays(from, 7);
+      to = addDays(from, 7 * courierWeekSpan);
       return { from, to };
     }
 
@@ -115,7 +137,7 @@ const AdminAccounting = ({ devices }) => {
       const { from, to } = getCourierRange();
 
       const res = await fetch(
-        `${base}/accounting/couriers?from=${isoDate(from)}&to=${isoDate(to)}`,
+        `${base}/api/accounting/couriers?from=${isoDate(from)}&to=${isoDate(to)}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -183,7 +205,7 @@ const AdminAccounting = ({ devices }) => {
   useEffect(() => {
     const fetchSoldDevices = async () => {
       try {
-        const response = await fetch(`${base}/order/admin`, {
+        const response = await fetch(`${base}/api/order/admin`, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -311,6 +333,17 @@ const AdminAccounting = ({ devices }) => {
 
   const vatToPay = totalSalesVAT - totalPurchaseVAT;
 
+  const rangeKey = React.useMemo(() => {
+    const { from, to } = getCourierRange();
+    return `${isoDate(from)}_${isoDate(to)}`;
+  }, [
+    courierPeriod,
+    courierAnchor,
+    courierYear,
+    courierMonth,
+    courierWeekSpan,
+  ]);
+
   return (
     <div className={styles.accWrap}>
       <h3 className={styles.accTitle}>📊 Бухгалтерия</h3>
@@ -347,6 +380,19 @@ const AdminAccounting = ({ devices }) => {
                 <option value="month">Месяц</option>
                 <option value="year">Год</option>
               </select>
+
+              {courierPeriod === "week" && (
+                <select
+                  className={styles.accSelect}
+                  value={courierWeekSpan}
+                  onChange={(e) => setCourierWeekSpan(Number(e.target.value))}
+                  title="Ширина периода"
+                >
+                  <option value={1}>1 неделя</option>
+                  <option value={2}>2 недели</option>
+                  <option value={4}>4 недели</option>
+                </select>
+              )}
 
               {(courierPeriod === "month" || courierPeriod === "year") && (
                 <select
@@ -396,7 +442,30 @@ const AdminAccounting = ({ devices }) => {
             </div>
 
             <div className={styles.courierRange}>
-              <div className={styles.courierRangeLabel}>Период</div>
+              <div className={styles.courierRangeTop}>
+                <div className={styles.courierRangeLabel}>Период</div>
+
+                <div className={styles.courierRangeNav}>
+                  <button
+                    type="button"
+                    className={styles.rangeNavBtn}
+                    onClick={courierPrev}
+                    title="Предыдущий период"
+                  >
+                    ◀
+                  </button>
+
+                  <button
+                    type="button"
+                    className={styles.rangeNavBtn}
+                    onClick={courierNext}
+                    title="Следующий период"
+                  >
+                    ▶
+                  </button>
+                </div>
+              </div>
+
               <div className={styles.courierRangeValue}>
                 {courierRangeLabel}
               </div>
@@ -416,12 +485,13 @@ const AdminAccounting = ({ devices }) => {
                   <th>Доставка €</th>
                   <th>Выплата курьеру €</th>
                   <th>Комиссия €</th>
+                  <th>Статус</th>
                 </tr>
               </thead>
               <tbody>
                 {courierRows.length === 0 && !courierLoading ? (
                   <tr>
-                    <td colSpan={5} className={styles.accEmpty}>
+                    <td colSpan={6} className={styles.accEmpty}>
                       Нет данных за выбранный период
                     </td>
                   </tr>
@@ -435,6 +505,17 @@ const AdminAccounting = ({ devices }) => {
                       <td>{format(Number(r.sumDeliveryPrice || 0))}</td>
                       <td>{format(Number(r.sumCourierFee || 0))}</td>
                       <td>{format(Number(r.sumCommission || 0))}</td>
+                      <td>
+                        <button
+                          className={`${styles.payBtn} ${courierPaidMap[`${rangeKey}_${r.courierId}`] ? styles.payOk : styles.payNo}`}
+                          onClick={() => togglePaid(rangeKey, r.courierId)}
+                          type="button"
+                        >
+                          {courierPaidMap[`${rangeKey}_${r.courierId}`]
+                            ? "Выплачено"
+                            : "Не выплачено"}
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -513,6 +594,7 @@ const AdminAccounting = ({ devices }) => {
               );
             })}
 
+            {/* Итого */}
             <tr className={styles.goodsTotalRow}>
               <td className={styles.goodsTd} colSpan={2}>
                 Итого:
