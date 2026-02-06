@@ -1,0 +1,271 @@
+.accWrap {
+  padding-bottom: 40px;
+}
+
+.accTitle {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.accTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.accTabBtn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #d0d5dd;
+  background: #f9fafb;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.isActive {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  font-weight: 700;
+}
+
+.left {
+  text-align: left;
+}
+
+.accCard {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.courierHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.courierControls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.accSelect {
+  padding: 8px 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.accBtn {
+  padding: 8px 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.accBtnPrimary {
+  padding: 8px 12px;
+  border: 1px solid #93c5fd;
+  border-radius: 10px;
+  background: #dbeafe;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.accBtn:disabled,
+.accBtnPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.courierRange {
+  min-width: 220px;
+  padding: 8px 10px;
+  border: 1px dashed #d0d5dd;
+  border-radius: 12px;
+  background: #fcfcfd;
+}
+
+.courierRangeLabel {
+  font-size: 12px;
+  color: #667085;
+}
+
+.courierRangeValue {
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.courierRangeTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.courierRangeNav {
+  display: flex;
+  gap: 6px;
+}
+
+.rangeNavBtn {
+  width: 30px;
+  height: 28px;
+  border-radius: 10px;
+  border: 1px solid #d0d5dd;
+  background: #fff;
+  cursor: pointer;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rangeNavBtn:hover {
+  background: #f9fafb;
+}
+
+.accError {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.accEmpty {
+  padding: 16px;
+  color: #667085;
+  text-align: center;
+}
+
+.payBtn {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.payOk {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.payNo {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.accTableWrap {
+  width: 100%;
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid #eee;
+}
+
+.accTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 680px;
+}
+
+.accTable thead {
+  background: #f8f9fa;
+}
+
+.accTable th,
+.accTable td {
+  padding: 10px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+
+.accTable th.left,
+.accTable td.left {
+  text-align: left;
+}
+
+.accVatBox {
+  padding: 20px;
+  background: #fff7e6;
+  border: 1px solid #ffd580;
+  border-radius: 12px;
+}
+
+.accOtherBox {
+  padding: 20px;
+  background: #f1f5f9;
+  border: 1px dashed #94a3b8;
+  border-radius: 12px;
+}
+
+.accSubTitle {
+  margin-bottom: 10px;
+}
+
+.accVatPay {
+  margin-top: 8px;
+  font-weight: 700;
+}
+
+.goodsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-bottom: 20px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.goodsThead {
+  background: #f8f9fa;
+}
+
+.goodsTh {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid #ccc;
+}
+
+.goodsTd {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+
+.goodsRowEven {
+  background: #fff;
+}
+
+.goodsRowOdd {
+  background: #f9f9f9;
+}
+
+.goodsTotalRow {
+  font-weight: 700;
+  background: #eef2f7;
+}
+
+.goodsPos {
+  color: #16a34a;
+}
+
+.goodsNeg {
+  color: #dc2626;
+}
