@@ -1,5 +1,25 @@
 import React, { useState, useEffect } from "react";
+import {
+  fetchCourierAccounting,
+  fetchAdminOrders,
+} from "../http/accountingAPI";
 import InventoryReceipts from "./InventoryReceipts";
+import styles from "./AdminAccounting.module.css";
+
+const MONTHS = [
+  "Январь",
+  "Февраль",
+  "Март",
+  "Апрель",
+  "Май",
+  "Июнь",
+  "Июль",
+  "Август",
+  "Сентябрь",
+  "Октябрь",
+  "Ноябрь",
+  "Декабрь",
+];
 
 const base = process.env.REACT_APP_API_URL.replace(/\/+$/, "");
 
@@ -7,30 +27,194 @@ const AdminAccounting = ({ devices }) => {
   const [activeTab, setActiveTab] = useState("all");
   const [soldDevices, setSoldDevices] = useState([]);
   const [devicesLocal, setDevicesLocal] = useState(devices || []);
+  const [courierPeriod, setCourierPeriod] = useState("week");
+  const [courierAnchor, setCourierAnchor] = useState(new Date());
+  const [courierYear, setCourierYear] = useState(new Date().getFullYear());
+  const [courierMonth, setCourierMonth] = useState(new Date().getMonth());
+  const [courierRows, setCourierRows] = useState([]);
+  const [courierLoading, setCourierLoading] = useState(false);
+  const [courierError, setCourierError] = useState("");
+  const [courierWeekSpan, setCourierWeekSpan] = useState(1);
+  const [courierPaidMap, setCourierPaidMap] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("courierPaidMap") || "{}");
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem("courierPaidMap", JSON.stringify(courierPaidMap));
+  }, [courierPaidMap]);
+
+  useEffect(() => {
+    if (courierPeriod !== "week" && courierWeekSpan !== 1)
+      setCourierWeekSpan(1);
+  }, [courierPeriod]);
+
+  function togglePaid(rangeKey, courierId) {
+    const k = `${rangeKey}_${courierId}`;
+    setCourierPaidMap((prev) => ({ ...prev, [k]: !prev[k] }));
+  }
+
+  const yearOptions = React.useMemo(() => {
+    const y = new Date().getFullYear();
+    const arr = [];
+    for (let i = 0; i < 10; i++) arr.push(y - i);
+    return arr;
+  }, []);
 
   useEffect(() => {
     setDevicesLocal(devices || []);
   }, [devices]);
 
+  function startOfWeek(d) {
+    const x = new Date(d);
+    const day = (x.getDay() + 6) % 7;
+    x.setDate(x.getDate() - day);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
+  function startOfMonth(d) {
+    const x = new Date(d);
+    x.setDate(1);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
+  function startOfYear(d) {
+    const x = new Date(d);
+    x.setMonth(0, 1);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
+  function addDays(d, n) {
+    const x = new Date(d);
+    x.setDate(x.getDate() + n);
+    return x;
+  }
+  function addMonths(d, n) {
+    const x = new Date(d);
+    x.setMonth(x.getMonth() + n);
+    return x;
+  }
+  function addYears(d, n) {
+    const x = new Date(d);
+    x.setFullYear(x.getFullYear() + n);
+    return x;
+  }
+  function isoDate(d) {
+    const x = new Date(d);
+    return x.toISOString().slice(0, 10);
+  }
+
+  function getCourierRange() {
+    let from;
+    let to;
+
+    if (courierPeriod === "week") {
+      from = startOfWeek(courierAnchor);
+      to = addDays(from, 7 * courierWeekSpan);
+      return { from, to };
+    }
+
+    if (courierPeriod === "month") {
+      from = startOfMonth(new Date(courierYear, courierMonth, 1));
+      to = startOfMonth(addMonths(from, 1));
+      return { from, to };
+    }
+
+    from = startOfYear(new Date(courierYear, 0, 1));
+    to = startOfYear(addYears(from, 1));
+    return { from, to };
+  }
+
+  const courierRangeLabel = React.useMemo(() => {
+    const { from, to } = getCourierRange();
+    const toShown = addDays(to, -1);
+    return `${isoDate(from)} — ${isoDate(toShown)}`;
+  }, [courierPeriod, courierAnchor, courierYear, courierMonth]);
+
+  async function loadCourierAccounting() {
+    setCourierLoading(true);
+    setCourierError("");
+    try {
+      const { from, to } = getCourierRange();
+
+      const data = await fetchCourierAccounting({
+        from: isoDate(from),
+        to: isoDate(to),
+      });
+
+      setCourierRows(Array.isArray(data?.items) ? data.items : []);
+    } catch (e) {
+      console.error(e);
+      setCourierRows([]);
+      setCourierError("Не удалось загрузить данные по курьерам");
+    } finally {
+      setCourierLoading(false);
+    }
+  }
+
+  function courierPrev() {
+    if (courierPeriod === "week") {
+      setCourierAnchor((d) => addDays(d, -7));
+    } else if (courierPeriod === "month") {
+      const dt = new Date(courierYear, courierMonth, 1);
+      const prev = addMonths(dt, -1);
+      setCourierYear(prev.getFullYear());
+      setCourierMonth(prev.getMonth());
+    } else {
+      setCourierYear((y) => y - 1);
+    }
+  }
+
+  function courierNext() {
+    if (courierPeriod === "week") {
+      setCourierAnchor((d) => addDays(d, 7));
+    } else if (courierPeriod === "month") {
+      const dt = new Date(courierYear, courierMonth, 1);
+      const next = addMonths(dt, 1);
+      setCourierYear(next.getFullYear());
+      setCourierMonth(next.getMonth());
+    } else {
+      setCourierYear((y) => y + 1);
+    }
+  }
+
+  function courierToday() {
+    const n = new Date();
+    if (courierPeriod === "week") setCourierAnchor(n);
+    if (courierPeriod === "month") {
+      setCourierYear(n.getFullYear());
+      setCourierMonth(n.getMonth());
+    }
+    if (courierPeriod === "year") setCourierYear(n.getFullYear());
+  }
+
+  useEffect(() => {
+    if (activeTab === "couriers") loadCourierAccounting();
+  }, [activeTab, courierPeriod, courierAnchor, courierYear, courierMonth]);
+
   useEffect(() => {
     const fetchSoldDevices = async () => {
       try {
-        const response = await fetch(`${base}/order/admin`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`Orders ${response.status}: ${text.slice(0, 120)}`);
-        }
-        const orders = await response.json();
-
+        const orders = await fetchAdminOrders();
         const allSold = [];
 
         orders.forEach((order) => {
-          const details = JSON.parse(order.orderDetails || "[]");
+          let details = [];
+
+          try {
+            details =
+              typeof order.orderDetails === "string"
+                ? JSON.parse(order.orderDetails || "[]")
+                : Array.isArray(order.orderDetails)
+                  ? order.orderDetails
+                  : [];
+          } catch {
+            details = [];
+          }
+
           details.forEach((item) => {
             const deviceId = Number(item.deviceId ?? item.id);
             const sku = item.sku || item.variantSku || "";
@@ -39,20 +223,20 @@ const AdminAccounting = ({ devices }) => {
             const existing = allSold.find((d) => d._key === key);
 
             const deviceData = devicesLocal.find(
-              (d) => Number(d.id) === deviceId
+              (d) => Number(d.id) === deviceId,
             );
             if (!deviceData) return;
 
             const unitSell = Number(
-              item.sellPriceAtSale ?? item.price ?? deviceData.price ?? 0
+              item.sellPriceAtSale ?? item.price ?? deviceData.price ?? 0,
             );
 
             const unitCost =
               item.purchasePriceAtSale != null
                 ? Number(item.purchasePriceAtSale)
                 : deviceData.purchasePrice != null
-                ? Number(deviceData.purchasePrice)
-                : null;
+                  ? Number(deviceData.purchasePrice)
+                  : null;
 
             const enrichedItem = {
               _key: key,
@@ -63,15 +247,12 @@ const AdminAccounting = ({ devices }) => {
               name: item.name || deviceData.name,
               purchasePrice: unitCost,
               purchaseHasVAT: Boolean(
-                item.purchaseHasVATAtSale ?? deviceData.purchaseHasVAT
+                item.purchaseHasVATAtSale ?? deviceData.purchaseHasVAT,
               ),
             };
 
-            if (existing) {
-              existing.quantity += enrichedItem.quantity;
-            } else {
-              allSold.push(enrichedItem);
-            }
+            if (existing) existing.quantity += enrichedItem.quantity;
+            else allSold.push(enrichedItem);
           });
         });
 
@@ -81,8 +262,9 @@ const AdminAccounting = ({ devices }) => {
       }
     };
 
+    if (!devicesLocal.length) return;
     fetchSoldDevices();
-  }, []);
+  }, [devicesLocal]);
 
   const VAT_RATE = 0.24;
   const INCOME_TAX_RATE = 0.2;
@@ -99,11 +281,11 @@ const AdminAccounting = ({ devices }) => {
 
   const totalQuantity = currentDevices.reduce(
     (sum, d) => sum + Number(d.quantity || 0),
-    0
+    0,
   );
   const totalSalesSum = currentDevices.reduce(
     (sum, d) => sum + Number(d.price || 0) * Number(d.quantity || 0),
-    0
+    0,
   );
   const totalProfitWithVAT = currentDevices.reduce((sum, d) => {
     const qty = Number(d.quantity || 0);
@@ -143,57 +325,213 @@ const AdminAccounting = ({ devices }) => {
 
   const vatToPay = totalSalesVAT - totalPurchaseVAT;
 
-  return (
-    <div style={{ paddingBottom: "40px" }}>
-      <h3 className="text-xl font-semibold mb-4">📊 Бухгалтерия</h3>
+  const rangeKey = React.useMemo(() => {
+    const { from, to } = getCourierRange();
+    return `${isoDate(from)}_${isoDate(to)}`;
+  }, [
+    courierPeriod,
+    courierAnchor,
+    courierYear,
+    courierMonth,
+    courierWeekSpan,
+  ]);
 
-      <div style={{ marginBottom: "16px" }}>
+  return (
+    <div className={styles.accWrap}>
+      <h3 className={styles.accTitle}>📊 Бухгалтерия</h3>
+
+      <div className={styles.accTabs}>
         {[
           { key: "all", label: "🗃 Все товары" },
           { key: "sold", label: `💸 Проданные (${soldDevices.length})` },
           { key: "receipts", label: "📦 Приход" },
+          { key: "couriers", label: "🛵 Курьеры" },
           { key: "vat", label: "📄 Декларация по НДС" },
           { key: "other", label: "📑 Другая декларация" },
         ].map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            style={{
-              padding: "8px 16px",
-              marginRight: "8px",
-              borderRadius: "6px",
-              border: "1px solid #ccc",
-              background: activeTab === tab.key ? "#dbeafe" : "#f9fafb",
-              fontWeight: activeTab === tab.key ? "bold" : "normal",
-              cursor: "pointer",
-            }}
+            className={`${styles.accTabBtn} ${activeTab === tab.key ? styles.isActive : ""}`}
           >
             {tab.label}
           </button>
         ))}
       </div>
-      {activeTab === "all" && (
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            fontSize: "14px",
-            marginBottom: "20px",
-            boxShadow: "0 0 10px rgba(0,0,0,0.05)",
-          }}
-        >
-          <thead style={{ background: "#f8f9fa" }}>
+
+      {activeTab === "couriers" && (
+        <div className={styles.accCard}>
+          <div className={styles.courierHeader}>
+            <div className={styles.courierControls}>
+              <select
+                className={styles.accSelect}
+                value={courierPeriod}
+                onChange={(e) => setCourierPeriod(e.target.value)}
+              >
+                <option value="week">Неделя</option>
+                <option value="month">Месяц</option>
+                <option value="year">Год</option>
+              </select>
+
+              {courierPeriod === "week" && (
+                <select
+                  className={styles.accSelect}
+                  value={courierWeekSpan}
+                  onChange={(e) => setCourierWeekSpan(Number(e.target.value))}
+                  title="Ширина периода"
+                >
+                  <option value={1}>1 неделя</option>
+                  <option value={2}>2 недели</option>
+                  <option value={4}>4 недели</option>
+                </select>
+              )}
+
+              {(courierPeriod === "month" || courierPeriod === "year") && (
+                <select
+                  className={styles.accSelect}
+                  value={courierYear}
+                  onChange={(e) => setCourierYear(Number(e.target.value))}
+                >
+                  {yearOptions.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {courierPeriod === "month" && (
+                <select
+                  className={styles.accSelect}
+                  value={courierMonth}
+                  onChange={(e) => setCourierMonth(Number(e.target.value))}
+                >
+                  {MONTHS.map((m, idx) => (
+                    <option key={m} value={idx}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <button className={styles.accBtn} onClick={courierPrev}>
+                ◀
+              </button>
+              <button className={styles.accBtn} onClick={courierToday}>
+                Сегодня
+              </button>
+              <button className={styles.accBtn} onClick={courierNext}>
+                ▶
+              </button>
+
+              <button
+                className={styles.accBtnPrimary}
+                onClick={loadCourierAccounting}
+                disabled={courierLoading}
+              >
+                {courierLoading ? "Загрузка..." : "Обновить"}
+              </button>
+            </div>
+
+            <div className={styles.courierRange}>
+              <div className={styles.courierRangeTop}>
+                <div className={styles.courierRangeLabel}>Период</div>
+
+                <div className={styles.courierRangeNav}>
+                  <button
+                    type="button"
+                    className={styles.rangeNavBtn}
+                    onClick={courierPrev}
+                    title="Предыдущий период"
+                  >
+                    ◀
+                  </button>
+
+                  <button
+                    type="button"
+                    className={styles.rangeNavBtn}
+                    onClick={courierNext}
+                    title="Следующий период"
+                  >
+                    ▶
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.courierRangeValue}>
+                {courierRangeLabel}
+              </div>
+            </div>
+          </div>
+
+          {courierError ? (
+            <div className={styles.accError}>{courierError}</div>
+          ) : null}
+
+          <div className={styles.accTableWrap}>
+            <table className={styles.accTable}>
+              <thead>
+                <tr>
+                  <th className={styles.left}>Курьер</th>
+                  <th>Заказов</th>
+                  <th>Доставка €</th>
+                  <th>Выплата курьеру €</th>
+                  <th>Комиссия €</th>
+                  <th>Статус</th>
+                </tr>
+              </thead>
+              <tbody>
+                {courierRows.length === 0 && !courierLoading ? (
+                  <tr>
+                    <td colSpan={6} className={styles.accEmpty}>
+                      Нет данных за выбранный период
+                    </td>
+                  </tr>
+                ) : (
+                  courierRows.map((r) => (
+                    <tr key={r.courierId}>
+                      <td className={styles.left}>
+                        {r.courierName || `#${r.courierId}`}
+                      </td>
+                      <td>{r.ordersCount}</td>
+                      <td>{format(Number(r.sumDeliveryPrice || 0))}</td>
+                      <td>{format(Number(r.sumCourierFee || 0))}</td>
+                      <td>{format(Number(r.sumCommission || 0))}</td>
+                      <td>
+                        <button
+                          className={`${styles.payBtn} ${courierPaidMap[`${rangeKey}_${r.courierId}`] ? styles.payOk : styles.payNo}`}
+                          onClick={() => togglePaid(rangeKey, r.courierId)}
+                          type="button"
+                        >
+                          {courierPaidMap[`${rangeKey}_${r.courierId}`]
+                            ? "Выплачено"
+                            : "Не выплачено"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {(activeTab === "all" || activeTab === "sold") && (
+        <table className={styles.goodsTable}>
+          <thead className={styles.goodsThead}>
             <tr>
-              <th style={thStyle}>№</th>
-              <th style={thStyle}>Название</th>
-              <th style={thStyle}>Кол-во</th>
-              <th style={thStyle}>Закуп. цена</th>
-              <th style={thStyle}>Прибыль за 1 ед.</th>
-              <th style={thStyle}>Общая прибыль</th>
-              <th style={thStyle}>Продажа (с НДС)</th>
-              <th style={thStyle}>НДС с продажи</th>
+              <th className={styles.goodsTh}>№</th>
+              <th className={`${styles.goodsTh} ${styles.left}`}>Название</th>
+              <th className={styles.goodsTh}>Кол-во</th>
+              <th className={styles.goodsTh}>Закуп. цена</th>
+              <th className={styles.goodsTh}>Прибыль за 1 ед.</th>
+              <th className={styles.goodsTh}>Общая прибыль</th>
+              <th className={styles.goodsTh}>Продажа (с НДС)</th>
+              <th className={styles.goodsTh}>НДС с продажи</th>
             </tr>
           </thead>
+
           <tbody>
             {currentDevices.map((device, index) => {
               const quantity = Number(device.quantity || 0);
@@ -202,233 +540,122 @@ const AdminAccounting = ({ devices }) => {
                 device.purchasePrice != null
                   ? Number(device.purchasePrice)
                   : null;
+
               const diffPerUnit =
                 purchase != null ? priceWithVAT - purchase : null;
               const totalProfit =
                 diffPerUnit != null ? diffPerUnit * quantity : null;
+
               const sum = priceWithVAT * quantity;
               const vat = (sum * VAT_RATE) / (1 + VAT_RATE);
 
               return (
                 <tr
                   key={device.id}
-                  style={{ background: index % 2 === 0 ? "#fff" : "#f9f9f9" }}
+                  className={
+                    index % 2 === 0 ? styles.goodsRowEven : styles.goodsRowOdd
+                  }
                 >
-                  <td style={tdStyle}>{index + 1}</td>
-                  <td style={{ ...tdStyle, textAlign: "left" }}>
+                  <td className={styles.goodsTd}>{index + 1}</td>
+                  <td className={`${styles.goodsTd} ${styles.left}`}>
                     {device.name}
                   </td>
-                  <td style={tdStyle}>{quantity}</td>
-                  <td style={tdStyle}>
+                  <td className={styles.goodsTd}>{quantity}</td>
+
+                  <td className={styles.goodsTd}>
                     {purchase != null
-                      ? `${format(purchase)} €${
-                          device.purchaseHasVAT ? " (НДС)" : ""
-                        }`
+                      ? `${format(purchase)} €${device.purchaseHasVAT ? " (НДС)" : ""}`
                       : "—"}
                   </td>
+
                   <td
-                    style={{
-                      ...tdStyle,
-                      color: diffPerUnit < 0 ? "red" : "green",
-                    }}
+                    className={`${styles.goodsTd} ${
+                      diffPerUnit < 0 ? styles.goodsNeg : styles.goodsPos
+                    }`}
                   >
                     {diffPerUnit != null ? format(diffPerUnit) : "—"}
                   </td>
-                  <td style={tdStyle}>
+
+                  <td className={styles.goodsTd}>
                     {totalProfit != null ? format(totalProfit) : "—"}
                   </td>
-                  <td style={tdStyle}>{format(sum)}</td>
-                  <td style={tdStyle}>{format(vat)}</td>
+
+                  <td className={styles.goodsTd}>{format(sum)}</td>
+                  <td className={styles.goodsTd}>{format(vat)}</td>
                 </tr>
               );
             })}
 
-            <tr style={{ fontWeight: "bold", background: "#eef2f7" }}>
-              <td colSpan={2} style={tdStyle}>
+            {/* Итого */}
+            <tr className={styles.goodsTotalRow}>
+              <td className={styles.goodsTd} colSpan={2}>
                 Итого:
               </td>
 
-              <td style={tdStyle}>
+              <td className={styles.goodsTd}>
                 {format(
-                  devicesLocal.reduce(
+                  (activeTab === "sold" ? soldDevices : devicesLocal).reduce(
                     (sum, d) => sum + Number(d.quantity || 0),
-                    0
-                  )
+                    0,
+                  ),
                 )}
               </td>
 
-              <td style={tdStyle}>
+              <td className={styles.goodsTd}>
                 {format(
-                  devices.reduce((sum, d) => {
-                    const quantity = Number(d.quantity || 0);
-                    const pur =
-                      d.purchasePrice != null ? Number(d.purchasePrice) : null;
-                    return pur != null ? sum + pur * quantity : sum;
-                  }, 0)
+                  (activeTab === "sold" ? soldDevices : devices).reduce(
+                    (sum, d) => {
+                      const quantity = Number(d.quantity || 0);
+                      const pur =
+                        d.purchasePrice != null
+                          ? Number(d.purchasePrice)
+                          : null;
+                      return pur != null ? sum + pur * quantity : sum;
+                    },
+                    0,
+                  ),
                 )}
               </td>
 
-              <td style={tdStyle}>—</td>
+              <td className={styles.goodsTd}>—</td>
 
-              <td style={tdStyle}>
+              <td className={styles.goodsTd}>
                 {format(
-                  devices.reduce((sum, d) => {
-                    const quantity = Number(d.quantity || 0);
-                    const price = Number(d.price || 0);
-                    const pur =
-                      d.purchasePrice != null ? Number(d.purchasePrice) : null;
-                    return pur != null ? sum + (price - pur) * quantity : sum;
-                  }, 0)
+                  (activeTab === "sold" ? soldDevices : devices).reduce(
+                    (sum, d) => {
+                      const quantity = Number(d.quantity || 0);
+                      const price = Number(d.price || 0);
+                      const pur =
+                        d.purchasePrice != null
+                          ? Number(d.purchasePrice)
+                          : null;
+                      return pur != null ? sum + (price - pur) * quantity : sum;
+                    },
+                    0,
+                  ),
                 )}
               </td>
 
-              <td style={tdStyle}>
+              <td className={styles.goodsTd}>
                 {format(
-                  devices.reduce((sum, d) => {
-                    return sum + Number(d.price || 0) * Number(d.quantity || 0);
-                  }, 0)
+                  (activeTab === "sold" ? soldDevices : devices).reduce(
+                    (sum, d) =>
+                      sum + Number(d.price || 0) * Number(d.quantity || 0),
+                    0,
+                  ),
                 )}
               </td>
 
-              <td style={tdStyle}>
+              <td className={styles.goodsTd}>
                 {format(
-                  devices.reduce((sum, d) => {
-                    const total =
-                      Number(d.price || 0) * Number(d.quantity || 0);
-                    return sum + (total * VAT_RATE) / (1 + VAT_RATE);
-                  }, 0)
-                )}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      )}
-
-      {activeTab === "sold" && (
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            fontSize: "14px",
-            marginBottom: "20px",
-            boxShadow: "0 0 10px rgba(0,0,0,0.05)",
-          }}
-        >
-          <thead style={{ background: "#f8f9fa" }}>
-            <tr>
-              <th style={thStyle}>№</th>
-              <th style={thStyle}>Название</th>
-              <th style={thStyle}>Кол-во</th>
-              <th style={thStyle}>Закуп. цена</th>
-              <th style={thStyle}>Прибыль за 1 ед.</th>
-              <th style={thStyle}>Общая прибыль</th>
-              <th style={thStyle}>Продажа (с НДС)</th>
-              <th style={thStyle}>НДС с продажи</th>
-            </tr>
-          </thead>
-          <tbody>
-            {soldDevices.map((device, index) => {
-              const quantity = Number(device.quantity || 0);
-              const priceWithVAT = Number(device.price || 0);
-              const purchase =
-                device.purchasePrice != null
-                  ? Number(device.purchasePrice)
-                  : null;
-              const diffPerUnit =
-                purchase != null ? priceWithVAT - purchase : null;
-              const totalProfit =
-                diffPerUnit != null ? diffPerUnit * quantity : null;
-              const sum = priceWithVAT * quantity;
-              const vat = (sum * VAT_RATE) / (1 + VAT_RATE);
-
-              return (
-                <tr
-                  key={device.id}
-                  style={{ background: index % 2 === 0 ? "#fff" : "#f9f9f9" }}
-                >
-                  <td style={tdStyle}>{index + 1}</td>
-                  <td style={{ ...tdStyle, textAlign: "left" }}>
-                    {device.name}
-                  </td>
-                  <td style={tdStyle}>{quantity}</td>
-                  <td style={tdStyle}>
-                    {purchase != null
-                      ? `${format(purchase)} €${
-                          device.purchaseHasVAT ? " (НДС)" : ""
-                        }`
-                      : "—"}
-                  </td>
-                  <td
-                    style={{
-                      ...tdStyle,
-                      color: diffPerUnit < 0 ? "red" : "green",
-                    }}
-                  >
-                    {diffPerUnit != null ? format(diffPerUnit) : "—"}
-                  </td>
-                  <td style={tdStyle}>
-                    {totalProfit != null ? format(totalProfit) : "—"}
-                  </td>
-                  <td style={tdStyle}>{format(sum)}</td>
-                  <td style={tdStyle}>{format(vat)}</td>
-                </tr>
-              );
-            })}
-
-            <tr style={{ fontWeight: "bold", background: "#eef2f7" }}>
-              <td colSpan={2} style={tdStyle}>
-                Итого:
-              </td>
-
-              <td style={tdStyle}>
-                {format(
-                  soldDevices.reduce(
-                    (sum, d) => sum + Number(d.quantity || 0),
-                    0
-                  )
-                )}
-              </td>
-
-              <td style={tdStyle}>
-                {format(
-                  soldDevices.reduce((sum, d) => {
-                    const quantity = Number(d.quantity || 0);
-                    const pur =
-                      d.purchasePrice != null ? Number(d.purchasePrice) : null;
-                    return pur != null ? sum + pur * quantity : sum;
-                  }, 0)
-                )}
-              </td>
-
-              <td style={tdStyle}>—</td>
-
-              <td style={tdStyle}>
-                {format(
-                  soldDevices.reduce((sum, d) => {
-                    const quantity = Number(d.quantity || 0);
-                    const price = Number(d.price || 0);
-                    const pur =
-                      d.purchasePrice != null ? Number(d.purchasePrice) : null;
-                    return pur != null ? sum + (price - pur) * quantity : sum;
-                  }, 0)
-                )}
-              </td>
-
-              <td style={tdStyle}>
-                {format(
-                  soldDevices.reduce((sum, d) => {
-                    return sum + Number(d.price || 0) * Number(d.quantity || 0);
-                  }, 0)
-                )}
-              </td>
-
-              <td style={tdStyle}>
-                {format(
-                  soldDevices.reduce((sum, d) => {
-                    const total =
-                      Number(d.price || 0) * Number(d.quantity || 0);
-                    return sum + (total * VAT_RATE) / (1 + VAT_RATE);
-                  }, 0)
+                  (activeTab === "sold" ? soldDevices : devices).reduce(
+                    (sum, d) => {
+                      const total =
+                        Number(d.price || 0) * Number(d.quantity || 0);
+                      return sum + (total * VAT_RATE) / (1 + VAT_RATE);
+                    },
+                    0,
+                  ),
                 )}
               </td>
             </tr>
@@ -497,7 +724,7 @@ const AdminAccounting = ({ devices }) => {
                       })();
 
                   const vi = vars.find(
-                    (v) => Number(v.id) === Number(r.variantId)
+                    (v) => Number(v.id) === Number(r.variantId),
                   );
                   if (vi) {
                     vi.quantity = Number(vi.quantity || 0) + qty;
@@ -518,18 +745,6 @@ const AdminAccounting = ({ devices }) => {
       )}
     </div>
   );
-};
-
-const thStyle = {
-  padding: "8px",
-  textAlign: "center",
-  borderBottom: "1px solid #ccc",
-};
-
-const tdStyle = {
-  padding: "8px",
-  textAlign: "center",
-  borderBottom: "1px solid #eee",
 };
 
 export default AdminAccounting;
