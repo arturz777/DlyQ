@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from "react";
+import {
+  fetchCourierAccounting,
+  fetchAdminOrders,
+} from "../http/accountingAPI";
 import InventoryReceipts from "./InventoryReceipts";
 import styles from "./AdminAccounting.module.css";
 
@@ -136,22 +140,11 @@ const AdminAccounting = ({ devices }) => {
     try {
       const { from, to } = getCourierRange();
 
-      const res = await fetch(
-        `${base}/accounting/couriers?from=${isoDate(from)}&to=${isoDate(to)}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        },
-      );
+      const data = await fetchCourierAccounting({
+        from: isoDate(from),
+        to: isoDate(to),
+      });
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Couriers ${res.status}: ${text.slice(0, 160)}`);
-      }
-
-      const data = await res.json();
       setCourierRows(Array.isArray(data?.items) ? data.items : []);
     } catch (e) {
       console.error(e);
@@ -205,22 +198,23 @@ const AdminAccounting = ({ devices }) => {
   useEffect(() => {
     const fetchSoldDevices = async () => {
       try {
-        const response = await fetch(`${base}/order/admin`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`Orders ${response.status}: ${text.slice(0, 120)}`);
-        }
-        const orders = await response.json();
-
+        const orders = await fetchAdminOrders();
         const allSold = [];
 
         orders.forEach((order) => {
-          const details = JSON.parse(order.orderDetails || "[]");
+          let details = [];
+
+          try {
+            details =
+              typeof order.orderDetails === "string"
+                ? JSON.parse(order.orderDetails || "[]")
+                : Array.isArray(order.orderDetails)
+                  ? order.orderDetails
+                  : [];
+          } catch {
+            details = [];
+          }
+
           details.forEach((item) => {
             const deviceId = Number(item.deviceId ?? item.id);
             const sku = item.sku || item.variantSku || "";
@@ -257,11 +251,8 @@ const AdminAccounting = ({ devices }) => {
               ),
             };
 
-            if (existing) {
-              existing.quantity += enrichedItem.quantity;
-            } else {
-              allSold.push(enrichedItem);
-            }
+            if (existing) existing.quantity += enrichedItem.quantity;
+            else allSold.push(enrichedItem);
           });
         });
 
@@ -271,8 +262,9 @@ const AdminAccounting = ({ devices }) => {
       }
     };
 
+    if (!devicesLocal.length) return;
     fetchSoldDevices();
-  }, []);
+  }, [devicesLocal]);
 
   const VAT_RATE = 0.24;
   const INCOME_TAX_RATE = 0.2;
