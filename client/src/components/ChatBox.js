@@ -153,7 +153,6 @@ const ChatBox = ({
     setUnreadChats((prev) => {
       const updated = new Set(prev);
       updated.delete(id);
-      onUnreadChange?.(updated);
       return updated;
     });
 
@@ -239,13 +238,16 @@ const ChatBox = ({
           });
 
           setUnreadChats(unread);
-          if (onUnreadChange) onUnreadChange(unread);
         })
         .catch(console.error);
     };
 
     loadChats();
   }, [userId, forceOpenChatId, view, showHistory]);
+
+  useEffect(() => {
+    onUnreadChange?.(unreadChats);
+  }, [unreadChats, onUnreadChange]);
 
   useEffect(() => {
     if (!activeChatId || !userId) return;
@@ -322,7 +324,6 @@ const ChatBox = ({
           setUnreadChats((prev) => {
             const updated = new Set(prev);
             updated.add(msg.chatId);
-            onUnreadChange?.(updated);
             return updated;
           });
         }
@@ -373,7 +374,6 @@ const ChatBox = ({
         setUnreadChats((prev) => {
           const updated = new Set(prev);
           updated.add(msg.chatId);
-          onUnreadChange?.(updated);
           return updated;
         });
       };
