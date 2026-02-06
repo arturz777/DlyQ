@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import {
   fetchCourierAccounting,
   fetchAdminOrders,
+  fetchCourierIncomeOrders,
+  fetchIncomeSellers,
+  fetchIncomeShop,
 } from "../http/accountingAPI";
 import InventoryReceipts from "./InventoryReceipts";
 import styles from "./AdminAccounting.module.css";
@@ -34,6 +37,11 @@ const AdminAccounting = ({ devices }) => {
   const [courierRows, setCourierRows] = useState([]);
   const [courierLoading, setCourierLoading] = useState(false);
   const [courierError, setCourierError] = useState("");
+  const [incomeTab, setIncomeTab] = useState("couriers");
+  const [incomeLoading, setIncomeLoading] = useState(false);
+  const [incomeError, setIncomeError] = useState("");
+  const [incomeShop, setIncomeShop] = useState(null);
+  const [incomeSellersRows, setIncomeSellersRows] = useState([]);
   const [courierWeekSpan, setCourierWeekSpan] = useState(1);
   const [courierPaidMap, setCourierPaidMap] = useState(() => {
     try {
@@ -155,6 +163,33 @@ const AdminAccounting = ({ devices }) => {
     }
   }
 
+  async function loadIncome() {
+    setIncomeLoading(true);
+    setIncomeError("");
+
+    try {
+      const { from, to } = getCourierRange();
+      const params = { from: isoDate(from), to: isoDate(to) };
+
+      if (incomeTab === "shop") {
+        const data = await fetchIncomeShop(params);
+        setIncomeShop(data || null);
+      }
+
+      if (incomeTab === "sellers") {
+        const data = await fetchIncomeSellers(params);
+        setIncomeSellersRows(Array.isArray(data?.items) ? data.items : []);
+      }
+    } catch (e) {
+      console.error(e);
+      setIncomeError("Не удалось загрузить доход за выбранный период");
+      setIncomeShop(null);
+      setIncomeSellersRows([]);
+    } finally {
+      setIncomeLoading(false);
+    }
+  }
+
   function courierPrev() {
     if (courierPeriod === "week") {
       setCourierAnchor((d) => addDays(d, -7));
@@ -192,8 +227,37 @@ const AdminAccounting = ({ devices }) => {
   }
 
   useEffect(() => {
-    if (activeTab === "couriers") loadCourierAccounting();
-  }, [activeTab, courierPeriod, courierAnchor, courierYear, courierMonth]);
+    if (activeTab !== "couriers" && activeTab !== "income") return;
+
+    if (activeTab === "couriers") {
+      loadCourierAccounting();
+      return;
+    }
+
+    if (incomeTab === "couriers") loadCourierAccounting();
+  }, [
+    activeTab,
+    incomeTab,
+    courierPeriod,
+    courierAnchor,
+    courierYear,
+    courierMonth,
+    courierWeekSpan,
+  ]);
+
+  useEffect(() => {
+    if (activeTab !== "income") return;
+    if (incomeTab === "couriers") return;
+    loadIncome();
+  }, [
+    activeTab,
+    incomeTab,
+    courierPeriod,
+    courierAnchor,
+    courierYear,
+    courierMonth,
+    courierWeekSpan,
+  ]);
 
   useEffect(() => {
     const fetchSoldDevices = async () => {
@@ -345,6 +409,7 @@ const AdminAccounting = ({ devices }) => {
           { key: "all", label: "🗃 Все товары" },
           { key: "sold", label: `💸 Проданные (${soldDevices.length})` },
           { key: "receipts", label: "📦 Приход" },
+          { key: "income", label: "💰 Доход" },
           { key: "couriers", label: "🛵 Курьеры" },
           { key: "vat", label: "📄 Декларация по НДС" },
           { key: "other", label: "📑 Другая декларация" },
@@ -358,164 +423,6 @@ const AdminAccounting = ({ devices }) => {
           </button>
         ))}
       </div>
-
-      {activeTab === "couriers" && (
-        <div className={styles.accCard}>
-          <div className={styles.courierHeader}>
-            <div className={styles.courierControls}>
-              <select
-                className={styles.accSelect}
-                value={courierPeriod}
-                onChange={(e) => setCourierPeriod(e.target.value)}
-              >
-                <option value="week">Неделя</option>
-                <option value="month">Месяц</option>
-                <option value="year">Год</option>
-              </select>
-
-              {courierPeriod === "week" && (
-                <select
-                  className={styles.accSelect}
-                  value={courierWeekSpan}
-                  onChange={(e) => setCourierWeekSpan(Number(e.target.value))}
-                  title="Ширина периода"
-                >
-                  <option value={1}>1 неделя</option>
-                  <option value={2}>2 недели</option>
-                  <option value={4}>4 недели</option>
-                </select>
-              )}
-
-              {(courierPeriod === "month" || courierPeriod === "year") && (
-                <select
-                  className={styles.accSelect}
-                  value={courierYear}
-                  onChange={(e) => setCourierYear(Number(e.target.value))}
-                >
-                  {yearOptions.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {courierPeriod === "month" && (
-                <select
-                  className={styles.accSelect}
-                  value={courierMonth}
-                  onChange={(e) => setCourierMonth(Number(e.target.value))}
-                >
-                  {MONTHS.map((m, idx) => (
-                    <option key={m} value={idx}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              <button className={styles.accBtn} onClick={courierPrev}>
-                ◀
-              </button>
-              <button className={styles.accBtn} onClick={courierToday}>
-                Сегодня
-              </button>
-              <button className={styles.accBtn} onClick={courierNext}>
-                ▶
-              </button>
-
-              <button
-                className={styles.accBtnPrimary}
-                onClick={loadCourierAccounting}
-                disabled={courierLoading}
-              >
-                {courierLoading ? "Загрузка..." : "Обновить"}
-              </button>
-            </div>
-
-            <div className={styles.courierRange}>
-              <div className={styles.courierRangeTop}>
-                <div className={styles.courierRangeLabel}>Период</div>
-
-                <div className={styles.courierRangeNav}>
-                  <button
-                    type="button"
-                    className={styles.rangeNavBtn}
-                    onClick={courierPrev}
-                    title="Предыдущий период"
-                  >
-                    ◀
-                  </button>
-
-                  <button
-                    type="button"
-                    className={styles.rangeNavBtn}
-                    onClick={courierNext}
-                    title="Следующий период"
-                  >
-                    ▶
-                  </button>
-                </div>
-              </div>
-
-              <div className={styles.courierRangeValue}>
-                {courierRangeLabel}
-              </div>
-            </div>
-          </div>
-
-          {courierError ? (
-            <div className={styles.accError}>{courierError}</div>
-          ) : null}
-
-          <div className={styles.accTableWrap}>
-            <table className={styles.accTable}>
-              <thead>
-                <tr>
-                  <th className={styles.left}>Курьер</th>
-                  <th>Заказов</th>
-                  <th>Доставка €</th>
-                  <th>Выплата курьеру €</th>
-                  <th>Комиссия €</th>
-                  <th>Статус</th>
-                </tr>
-              </thead>
-              <tbody>
-                {courierRows.length === 0 && !courierLoading ? (
-                  <tr>
-                    <td colSpan={6} className={styles.accEmpty}>
-                      Нет данных за выбранный период
-                    </td>
-                  </tr>
-                ) : (
-                  courierRows.map((r) => (
-                    <tr key={r.courierId}>
-                      <td className={styles.left}>
-                        {r.courierName || `#${r.courierId}`}
-                      </td>
-                      <td>{r.ordersCount}</td>
-                      <td>{format(Number(r.sumDeliveryPrice || 0))}</td>
-                      <td>{format(Number(r.sumCourierFee || 0))}</td>
-                      <td>{format(Number(r.sumCommission || 0))}</td>
-                      <td>
-                        <button
-                          className={`${styles.payBtn} ${courierPaidMap[`${rangeKey}_${r.courierId}`] ? styles.payOk : styles.payNo}`}
-                          onClick={() => togglePaid(rangeKey, r.courierId)}
-                          type="button"
-                        >
-                          {courierPaidMap[`${rangeKey}_${r.courierId}`]
-                            ? "Выплачено"
-                            : "Не выплачено"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       {(activeTab === "all" || activeTab === "sold") && (
         <table className={styles.goodsTable}>
@@ -663,42 +570,6 @@ const AdminAccounting = ({ devices }) => {
         </table>
       )}
 
-      {activeTab === "vat" && (
-        <div
-          style={{
-            padding: "20px",
-            background: "#fff7e6",
-            border: "1px solid #ffd580",
-            borderRadius: "10px",
-          }}
-        >
-          <h4 style={{ marginBottom: "10px" }}>📄 Декларация по НДС</h4>
-          <p>
-            🔸 <strong>НДС с продаж:</strong> {format(totalSalesVAT)} €
-          </p>
-          <p>
-            🔹 <strong>НДС с закупок (где включён):</strong>{" "}
-            {format(totalPurchaseVAT)} €
-          </p>
-          <p style={{ marginTop: "8px" }}>
-            📤 <strong>К уплате государству:</strong> {format(vatToPay)} €
-          </p>
-        </div>
-      )}
-
-      {activeTab === "other" && (
-        <div
-          style={{
-            padding: "20px",
-            background: "#f1f5f9",
-            border: "1px dashed #94a3b8",
-            borderRadius: "10px",
-          }}
-        >
-          <h4>📑 Другая декларация</h4>
-          <p>Пока не реализована. Здесь появится расчёт налога с прибыли.</p>
-        </div>
-      )}
       {activeTab === "receipts" && (
         <InventoryReceipts
           devices={devicesLocal}
@@ -742,6 +613,543 @@ const AdminAccounting = ({ devices }) => {
             });
           }}
         />
+      )}
+
+      {activeTab === "income" && (
+        <div className={styles.accCard}>
+          <div className={styles.incomeHeader}>
+            {/* Tabs внутри дохода */}
+            <div className={styles.incomeTabs}>
+              <button
+                type="button"
+                className={`${styles.accBtn} ${incomeTab === "couriers" ? styles.accBtnPrimary : ""}`}
+                onClick={() => setIncomeTab("couriers")}
+              >
+                🛵 Курьеры
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.accBtn} ${incomeTab === "shop" ? styles.accBtnPrimary : ""}`}
+                onClick={() => setIncomeTab("shop")}
+              >
+                🛒 Shop
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.accBtn} ${incomeTab === "sellers" ? styles.accBtnPrimary : ""}`}
+                onClick={() => setIncomeTab("sellers")}
+              >
+                🏪 Селлеры
+              </button>
+            </div>
+
+            {/* Управление периодом */}
+            <div className={styles.incomePeriod}>
+              <div className={styles.courierRange}>
+                <div className={styles.courierRangeTop}>
+                  <div className={styles.courierRangeLabel}>Период</div>
+
+                  <div className={styles.courierRangeNav}>
+                    <button
+                      type="button"
+                      className={styles.rangeNavBtn}
+                      onClick={courierPrev}
+                      title="Предыдущий период"
+                    >
+                      ◀
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.rangeNavBtn}
+                      onClick={courierNext}
+                      title="Следующий период"
+                    >
+                      ▶
+                    </button>
+                  </div>
+                </div>
+
+                <div className={styles.courierRangeValue}>
+                  {courierRangeLabel}
+                </div>
+              </div>
+
+              <div className={styles.incomeControls}>
+                <select
+                  className={styles.accSelect}
+                  value={courierPeriod}
+                  onChange={(e) => setCourierPeriod(e.target.value)}
+                >
+                  <option value="week">Неделя</option>
+                  <option value="month">Месяц</option>
+                  <option value="year">Год</option>
+                </select>
+
+                {courierPeriod === "week" && (
+                  <select
+                    className={styles.accSelect}
+                    value={courierWeekSpan}
+                    onChange={(e) => setCourierWeekSpan(Number(e.target.value))}
+                    title="Ширина периода"
+                  >
+                    <option value={1}>1 неделя</option>
+                    <option value={2}>2 недели</option>
+                    <option value={4}>4 недели</option>
+                  </select>
+                )}
+
+                {(courierPeriod === "month" || courierPeriod === "year") && (
+                  <select
+                    className={styles.accSelect}
+                    value={courierYear}
+                    onChange={(e) => setCourierYear(Number(e.target.value))}
+                  >
+                    {yearOptions.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {courierPeriod === "month" && (
+                  <select
+                    className={styles.accSelect}
+                    value={courierMonth}
+                    onChange={(e) => setCourierMonth(Number(e.target.value))}
+                  >
+                    {MONTHS.map((m, idx) => (
+                      <option key={m} value={idx}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                <button className={styles.accBtn} onClick={courierToday}>
+                  Сегодня
+                </button>
+
+                <button
+                  className={styles.accBtnPrimary}
+                  onClick={() => {
+                    if (incomeTab === "couriers") loadCourierAccounting();
+                    else loadIncome();
+                  }}
+                  disabled={incomeLoading || courierLoading}
+                >
+                  {(incomeTab === "couriers" ? courierLoading : incomeLoading)
+                    ? "Загрузка..."
+                    : "Обновить"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {incomeError ? (
+            <div className={styles.accError}>{incomeError}</div>
+          ) : null}
+
+          {incomeTab === "couriers" && (
+            <>
+              <div style={{ marginBottom: 10, fontWeight: 600 }}>
+                Комиссия с доставок (за период, как в “Курьеры”)
+              </div>
+
+              <div className={styles.accTableWrap}>
+                <table className={styles.accTable}>
+                  <thead>
+                    <tr>
+                      <th className={styles.left}>Курьер</th>
+                      <th>Заказов</th>
+                      <th>Комиссия €</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {courierRows.length === 0 && !courierLoading ? (
+                      <tr>
+                        <td colSpan={3} className={styles.accEmpty}>
+                          Нет данных за выбранный период
+                        </td>
+                      </tr>
+                    ) : (
+                      courierRows.map((r) => (
+                        <tr key={r.courierId}>
+                          <td className={styles.left}>
+                            {r.courierName || `#${r.courierId}`}
+                          </td>
+                          <td>{r.ordersCount}</td>
+                          <td>{format(Number(r.sumCommission || 0))}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ marginTop: 10, fontWeight: 700 }}>
+                Итого комиссия:{" "}
+                {format(
+                  courierRows.reduce(
+                    (s, r) => s + Number(r.sumCommission || 0),
+                    0,
+                  ),
+                )}{" "}
+                €
+              </div>
+            </>
+          )}
+
+          {incomeTab === "shop" && (
+            <>
+              <div style={{ marginBottom: 10, fontWeight: 600 }}>
+                Доход / сводка по Shop (за период)
+              </div>
+
+              {!incomeShop && !incomeLoading ? (
+                <div className={styles.accEmpty}>
+                  Нет данных за выбранный период
+                </div>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 12,
+                      flexWrap: "wrap",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div className={styles.accMiniCard}>
+                      <div className={styles.accMiniLabel}>Заказов</div>
+                      <div className={styles.accMiniValue}>
+                        {Number(incomeShop?.ordersCount || 0)}
+                      </div>
+                    </div>
+
+                    <div className={styles.accMiniCard}>
+                      <div className={styles.accMiniLabel}>Сумма заказов</div>
+                      <div className={styles.accMiniValue}>
+                        {format(Number(incomeShop?.sumTotal || 0))} €
+                      </div>
+                    </div>
+
+                    <div className={styles.accMiniCard}>
+                      <div className={styles.accMiniLabel}>Доставка</div>
+                      <div className={styles.accMiniValue}>
+                        {format(Number(incomeShop?.sumDelivery || 0))} €
+                      </div>
+                    </div>
+
+                    <div className={styles.accMiniCard}>
+                      <div className={styles.accMiniLabel}>
+                        Выплаты курьерам
+                      </div>
+                      <div className={styles.accMiniValue}>
+                        {format(Number(incomeShop?.sumCourierFee || 0))} €
+                      </div>
+                    </div>
+
+                    <div className={styles.accMiniCard}>
+                      <div className={styles.accMiniLabel}>
+                        Комиссия курьера
+                      </div>
+                      <div className={styles.accMiniValue}>
+                        {format(Number(incomeShop?.sumCourierCommission || 0))}{" "}
+                        €
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.accTableWrap}>
+                    <table className={styles.accTable}>
+                      <tbody>
+                        <tr>
+                          <td className={styles.left}>
+                            <b>Условный “валовой доход” доставки</b>
+                          </td>
+                          <td>
+                            {format(
+                              Number(incomeShop?.sumDelivery || 0) -
+                                Number(incomeShop?.sumCourierFee || 0) -
+                                Number(incomeShop?.sumCourierCommission || 0),
+                            )}{" "}
+                            €
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {incomeTab === "sellers" && (
+            <>
+              <div style={{ marginBottom: 10, fontWeight: 600 }}>
+                Сводка по селлерам (за период)
+              </div>
+
+              <div className={styles.accTableWrap}>
+                <table className={styles.accTable}>
+                  <thead>
+                    <tr>
+                      <th className={styles.left}>Селлер</th>
+                      <th>Заказов</th>
+                      <th>Сумма заказов €</th>
+                      <th>Доставка €</th>
+                      <th>Выплаты курьерам €</th>
+                      <th>Комиссия курьера €</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {incomeSellersRows.length === 0 && !incomeLoading ? (
+                      <tr>
+                        <td colSpan={6} className={styles.accEmpty}>
+                          Нет данных за выбранный период
+                        </td>
+                      </tr>
+                    ) : (
+                      incomeSellersRows.map((r) => (
+                        <tr key={r.sellerId}>
+                          <td className={styles.left}>
+                            {r.sellerName || `#${r.sellerId}`}
+                          </td>
+                          <td>{Number(r.ordersCount || 0)}</td>
+                          <td>{format(Number(r.sumTotal || 0))}</td>
+                          <td>{format(Number(r.sumDelivery || 0))}</td>
+                          <td>{format(Number(r.sumCourierFee || 0))}</td>
+                          <td>{format(Number(r.sumCourierCommission || 0))}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ marginTop: 10, fontWeight: 700 }}>
+                Итого по селлерам:{" "}
+                {format(
+                  incomeSellersRows.reduce(
+                    (s, r) => s + Number(r.sumTotal || 0),
+                    0,
+                  ),
+                )}{" "}
+                €, доставка:{" "}
+                {format(
+                  incomeSellersRows.reduce(
+                    (s, r) => s + Number(r.sumDelivery || 0),
+                    0,
+                  ),
+                )}{" "}
+                €, выплаты курьерам:{" "}
+                {format(
+                  incomeSellersRows.reduce(
+                    (s, r) => s + Number(r.sumCourierFee || 0),
+                    0,
+                  ),
+                )}{" "}
+                €
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {activeTab === "couriers" && (
+        <div className={styles.accCard}>
+          <div className={styles.courierHeader}>
+            <div className={styles.courierControls}>
+              <select
+                className={styles.accSelect}
+                value={courierPeriod}
+                onChange={(e) => setCourierPeriod(e.target.value)}
+              >
+                <option value="week">Неделя</option>
+                <option value="month">Месяц</option>
+                <option value="year">Год</option>
+              </select>
+
+              {courierPeriod === "week" && (
+                <select
+                  className={styles.accSelect}
+                  value={courierWeekSpan}
+                  onChange={(e) => setCourierWeekSpan(Number(e.target.value))}
+                  title="Ширина периода"
+                >
+                  <option value={1}>1 неделя</option>
+                  <option value={2}>2 недели</option>
+                  <option value={4}>4 недели</option>
+                </select>
+              )}
+
+              {(courierPeriod === "month" || courierPeriod === "year") && (
+                <select
+                  className={styles.accSelect}
+                  value={courierYear}
+                  onChange={(e) => setCourierYear(Number(e.target.value))}
+                >
+                  {yearOptions.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {courierPeriod === "month" && (
+                <select
+                  className={styles.accSelect}
+                  value={courierMonth}
+                  onChange={(e) => setCourierMonth(Number(e.target.value))}
+                >
+                  {MONTHS.map((m, idx) => (
+                    <option key={m} value={idx}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <button className={styles.accBtn} onClick={courierPrev}>
+                ◀
+              </button>
+              <button className={styles.accBtn} onClick={courierToday}>
+                Сегодня
+              </button>
+              <button className={styles.accBtn} onClick={courierNext}>
+                ▶
+              </button>
+
+              <button
+                className={styles.accBtnPrimary}
+                onClick={loadCourierAccounting}
+                disabled={courierLoading}
+              >
+                {courierLoading ? "Загрузка..." : "Обновить"}
+              </button>
+            </div>
+
+            <div className={styles.courierRange}>
+              <div className={styles.courierRangeTop}>
+                <div className={styles.courierRangeLabel}>Период</div>
+
+                <div className={styles.courierRangeNav}>
+                  <button
+                    type="button"
+                    className={styles.rangeNavBtn}
+                    onClick={courierPrev}
+                    title="Предыдущий период"
+                  >
+                    ◀
+                  </button>
+
+                  <button
+                    type="button"
+                    className={styles.rangeNavBtn}
+                    onClick={courierNext}
+                    title="Следующий период"
+                  >
+                    ▶
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.courierRangeValue}>
+                {courierRangeLabel}
+              </div>
+            </div>
+          </div>
+
+          {courierError ? (
+            <div className={styles.accError}>{courierError}</div>
+          ) : null}
+
+          <div className={styles.accTableWrap}>
+            <table className={styles.accTable}>
+              <thead>
+                <tr>
+                  <th className={styles.left}>Курьер</th>
+                  <th>Заказов</th>
+                  <th>Выплата курьеру €</th>
+                  <th>Счёт</th>
+                  <th>Статус</th>
+                </tr>
+              </thead>
+              <tbody>
+                {courierRows.length === 0 && !courierLoading ? (
+                  <tr>
+                    <td colSpan={5} className={styles.accEmpty}>
+                      Нет данных за выбранный период
+                    </td>
+                  </tr>
+                ) : (
+                  courierRows.map((r) => (
+                    <tr key={r.courierId}>
+                      <td className={styles.left}>
+                        {r.courierName || `#${r.courierId}`}
+                      </td>
+                      <td>{r.ordersCount}</td>
+                      <td>{format(Number(r.sumCourierFee || 0))}</td>
+                      <td>{r.iban || "—"}</td>
+                      <td>
+                        <button
+                          className={`${styles.payBtn} ${courierPaidMap[`${rangeKey}_${r.courierId}`] ? styles.payOk : styles.payNo}`}
+                          onClick={() => togglePaid(rangeKey, r.courierId)}
+                          type="button"
+                        >
+                          {courierPaidMap[`${rangeKey}_${r.courierId}`]
+                            ? "Выплачено"
+                            : "Не выплачено"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "vat" && (
+        <div
+          style={{
+            padding: "20px",
+            background: "#fff7e6",
+            border: "1px solid #ffd580",
+            borderRadius: "10px",
+          }}
+        >
+          <h4 style={{ marginBottom: "10px" }}>📄 Декларация по НДС</h4>
+          <p>
+            🔸 <strong>НДС с продаж:</strong> {format(totalSalesVAT)} €
+          </p>
+          <p>
+            🔹 <strong>НДС с закупок (где включён):</strong>{" "}
+            {format(totalPurchaseVAT)} €
+          </p>
+          <p style={{ marginTop: "8px" }}>
+            📤 <strong>К уплате государству:</strong> {format(vatToPay)} €
+          </p>
+        </div>
+      )}
+
+      {activeTab === "other" && (
+        <div
+          style={{
+            padding: "20px",
+            background: "#f1f5f9",
+            border: "1px dashed #94a3b8",
+            borderRadius: "10px",
+          }}
+        >
+          <h4>📑 Другая декларация</h4>
+          <p>Пока не реализована. Здесь появится расчёт налога с прибыли.</p>
+        </div>
       )}
     </div>
   );
