@@ -99,6 +99,7 @@ const User = sequelize.define("user", {
   lastName: { type: DataTypes.STRING },
   phone: { type: DataTypes.STRING },
   stripeCustomerId: { type: DataTypes.STRING, allowNull: true },
+  isBlocked: { type: DataTypes.BOOLEAN, defaultValue: false },
 });
 
 const Basket = sequelize.define("basket", {
@@ -370,7 +371,7 @@ const Order = sequelize.define(
 );
 
 const Courier = sequelize.define("courier", {
-  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: false },
   name: { type: DataTypes.STRING, allowNull: false },
   status: { type: DataTypes.STRING, defaultValue: "offline" },
   currentLat: { type: DataTypes.FLOAT, allowNull: true },
