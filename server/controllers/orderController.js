@@ -8,6 +8,7 @@ const {
   Chat,
   ChatParticipant,
   Seller,
+  Setting,
 } = require("../models/models");
 const { Op } = require("sequelize");
 const fs = require("fs");
@@ -67,18 +68,36 @@ function toNumberPrice(v) {
   return null;
 }
 
-const calculateDeliveryBase = (distance) => {
-  let baseCost = 2;
-  let distanceCost = distance * 0.5;
-  const deliveryCost = baseCost + distanceCost;
-  return parseFloat(deliveryCost.toFixed(2));
+const DELIVERY_KEY = "delivery_pricing";
+const DEFAULT_DELIVERY = {
+  baseCost: 2,
+  perKm: 0.5,
+  discountStepEur: 30,
+  discountAmount: 2,
+  minCost: 0,
 };
 
-const calculateDeliveryCost = (totalPrice, distance) => {
-  const base = calculateDeliveryBase(distance);
-  let discount = Math.floor(totalPrice / 30) * 2;
-  const deliveryCost = Math.max(0, base - discount);
-  return parseFloat(deliveryCost.toFixed(2));
+async function getDeliveryCfg() {
+  const row = await Setting.findByPk(DELIVERY_KEY);
+  return { ...DEFAULT_DELIVERY, ...(row?.value || {}) };
+}
+
+const calculateDeliveryBase = (distance, cfg) => {
+  const deliveryCost =
+    Number(cfg.baseCost) + Number(distance) * Number(cfg.perKm);
+  return Number(deliveryCost.toFixed(2));
+};
+
+const calculateDeliveryCost = (totalPrice, distance, cfg) => {
+  const base = calculateDeliveryBase(distance, cfg);
+  const discount =
+    cfg.discountStepEur > 0
+      ? Math.floor(Number(totalPrice) / Number(cfg.discountStepEur)) *
+        Number(cfg.discountAmount)
+      : 0;
+
+  const deliveryCost = Math.max(Number(cfg.minCost ?? 0), base - discount);
+  return Number(deliveryCost.toFixed(2));
 };
 
 const downloadReceipt = async (req, res) => {
@@ -212,6 +231,7 @@ const downloadReceipt = async (req, res) => {
 // Proda
 //Proda
 //Proda
+
 const createOrder = async (req, res) => {
   try {
     const {
@@ -246,14 +266,17 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ message: "PaymentIntent not found" });
     }
 
+    const cfg = await getDeliveryCfg();
+
+    const total = Number(totalPrice || 0);
+
     const distanceForAmount = getDistanceFromWarehouse(latitude, longitude);
     const deliveryPriceServer = calculateDeliveryCost(
-      totalPrice,
-      distanceForAmount
+      total,
+      distanceForAmount,
+      cfg,
     );
-    const serverAmountCents = Math.round(
-      (Number(totalPrice) + Number(deliveryPriceServer)) * 100
-    );
+    const serverAmountCents = Math.round((total + deliveryPriceServer) * 100);
 
     if (pi.amount !== serverAmountCents) {
       return res.status(400).json({
@@ -294,9 +317,9 @@ const createOrder = async (req, res) => {
 
     const userId = req.user ? req.user.id : null;
 
-   const distance = getDistanceFromWarehouse(latitude, longitude);
-    const deliveryPrice = calculateDeliveryCost(totalPrice, distance);
-    const courierFee = calculateDeliveryBase(distance);
+    const distance = getDistanceFromWarehouse(latitude, longitude);
+    const deliveryPrice = calculateDeliveryCost(total, distance, cfg);
+    const courierFee = calculateDeliveryBase(distance, cfg);
 
     let isPreorder = false;
     const devicesToUpdate = [];
@@ -315,15 +338,15 @@ const createOrder = async (req, res) => {
         if (menuItem.sellerId) sellerIds.add(menuItem.sellerId);
         continue;
       }
-      
+
       const deviceId = item.deviceId ?? item.id;
       const device = await Device.findByPk(deviceId);
-      deviceCache.set(Number(device.id), device);
       if (!device) {
         return res
           .status(400)
           .json({ message: `Товар "${item.name}" не найден.` });
       }
+      deviceCache.set(Number(device.id), device);
 
       if (device.sellerId) sellerIds.add(device.sellerId);
 
@@ -366,9 +389,9 @@ const createOrder = async (req, res) => {
       Boolean(deliveryDateFromFirstItem || desiredDeliveryDate);
 
     let status =
-  hasShortagePreorder || hasScheduledPreorder || isStoreClosedNow
-    ? "preorder"
-    : "Pending";
+      hasShortagePreorder || hasScheduledPreorder || isStoreClosedNow
+        ? "preorder"
+        : "Pending";
 
     let preorderReason = null;
     if (status === "preorder") {
@@ -389,7 +412,7 @@ const createOrder = async (req, res) => {
       desiredDeliveryDateToStore = rawDate ? new Date(rawDate) : null;
       preferredDeliveryCommentToStore = preferredTimeFromFirstItem || null;
     }
-    
+
     let deviceImageUrl = orderDetails[0]?.image || PLACEHOLDER_IMG;
 
     if (
@@ -424,7 +447,7 @@ const createOrder = async (req, res) => {
 
     const downloadToken = uuid.v4();
 
-     const normLang = (l) => {
+    const normLang = (l) => {
       const short = String(l || "ru")
         .toLowerCase()
         .split("-")[0];
@@ -439,8 +462,8 @@ const createOrder = async (req, res) => {
         orderDetails
           .filter((it) => it?.isRestaurantItem)
           .map((it) => Number(it.menuItemId ?? it.itemId ?? it.id))
-          .filter((x) => Number.isFinite(x) && x > 0)
-      )
+          .filter((x) => Number.isFinite(x) && x > 0),
+      ),
     );
 
     if (menuIds.length) {
@@ -479,7 +502,7 @@ const createOrder = async (req, res) => {
       const lang = langNorm;
       const translatedName = item.translations?.name?.[lang] || item.name;
 
-       const localizedSelectedOptionsMeta = Array.isArray(
+      const localizedSelectedOptionsMeta = Array.isArray(
         item.selectedOptionsMeta,
       )
         ? item.selectedOptionsMeta.map((g) => ({
@@ -497,10 +520,10 @@ const createOrder = async (req, res) => {
       const localizedOptions = {};
       if (item.selectedOptions && Array.isArray(item.translations?.options)) {
         for (const [rawOptionKey, val] of Object.entries(
-          item.selectedOptions
+          item.selectedOptions,
         )) {
           const optionTranslation = item.translations.options.find((opt) =>
-            Object.values(opt.name || {}).includes(rawOptionKey)
+            Object.values(opt.name || {}).includes(rawOptionKey),
           );
           const label = optionTranslation?.name?.[lang] || rawOptionKey;
 
@@ -510,7 +533,7 @@ const createOrder = async (req, res) => {
           for (const valObj of optionTranslation?.values || []) {
             const directMatch = valObj[lang]?.trim() === valueToMatch;
             const anyMatch = Object.values(valObj).some(
-              (v) => v?.trim() === valueToMatch
+              (v) => v?.trim() === valueToMatch,
             );
             if (directMatch || anyMatch) {
               matchedValue = valObj;
@@ -533,17 +556,17 @@ const createOrder = async (req, res) => {
         const device = deviceCache.get(deviceId);
 
         sellPriceAtSale = toNumberPrice(
-          item.sellPriceAtSale ?? item.price ?? device?.price
+          item.sellPriceAtSale ?? item.price ?? device?.price,
         );
 
         purchasePriceAtSale = toNumberPrice(
           item.purchasePriceAtSale ??
             item.purchasePriceOverride ??
-            device?.purchasePrice
+            device?.purchasePrice,
         );
 
         purchaseHasVATAtSale = Boolean(
-          item.purchaseHasVATAtSale ?? device?.purchaseHasVAT
+          item.purchaseHasVATAtSale ?? device?.purchaseHasVAT,
         );
 
         vatRateAtSale = getVatRateByDate(new Date());
@@ -562,13 +585,13 @@ const createOrder = async (req, res) => {
       };
     });
 
-  const orderData = {
-    orderType: "shop",
-    sellerId,
+    const orderData = {
+      orderType: "shop",
+      sellerId,
       userId,
-      totalPrice: Number(totalPrice) + Number(deliveryPrice),
+      totalPrice: total + deliveryPrice,
       deliveryPrice,
-    courierFee, 
+      courierFee,
       status,
       warehouseStatus: "pending",
       courierId: null,
@@ -580,24 +603,22 @@ const createOrder = async (req, res) => {
       productName:
         orderDetails.length > 0 ? orderDetails[0].name : "Неизвестный товар",
       orderDetails: JSON.stringify(localizedOrderDetails),
-     desiredDeliveryDate: desiredDeliveryDateToStore,
+      desiredDeliveryDate: desiredDeliveryDateToStore,
       preferredDeliveryComment: preferredDeliveryCommentToStore,
       formData: JSON.stringify(formData),
-    preorderReason,
+      preorderReason,
     };
 
     if (Order.rawAttributes?.paymentIntentId) orderData.paymentIntentId = pi.id;
     if (Order.rawAttributes?.paymentStatus) orderData.paymentStatus = pi.status;
     if (Order.rawAttributes?.currency)
       orderData.currency = (pi.currency || "eur").toUpperCase();
-  if (Order.rawAttributes?.amountCents)
-      orderData.amountCents = Math.round(
-        (Number(totalPrice) + Number(deliveryPrice)) * 100
-      );
+    if (Order.rawAttributes?.amountCents)
+      orderData.amountCents = Math.round((total + deliveryPrice) * 100);
 
     const order = await Order.create(orderData);
 
-     const [deliveryChat] = await Chat.findOrCreate({
+    const [deliveryChat] = await Chat.findOrCreate({
       where: { type: "delivery", orderId: order.id },
       defaults: { type: "delivery", orderId: order.id },
     });
@@ -632,7 +653,7 @@ const createOrder = async (req, res) => {
       });
     }
 
-     const io = req.app.get("io");
+    const io = req.app.get("io");
 
     const whRoom = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
     io.to(whRoom).emit("newOrder", order);
@@ -654,28 +675,28 @@ const createOrder = async (req, res) => {
     const room = sellerId ? `warehouse:seller:${sellerId}` : "warehouse:main";
     io.to(room).emit("newOrder", order);
 
-   const generateSummaryItems = (items) => {
-  return items
-    .map((item) => {
-      const options =
-        item.selectedOptions && Object.keys(item.selectedOptions).length > 0
-          ? Object.entries(item.selectedOptions)
-              .map(([k, v]) => `${k}: ${v}`)
-              .join(", ")
-          : "";
+    const generateSummaryItems = (items) => {
+      return items
+        .map((item) => {
+          const options =
+            item.selectedOptions && Object.keys(item.selectedOptions).length > 0
+              ? Object.entries(item.selectedOptions)
+                  .map(([k, v]) => `${k}: ${v}`)
+                  .join(", ")
+              : "";
 
-      const qty = Number(item.count ?? item.quantity ?? 1) || 1;
+          const qty = Number(item.count ?? item.quantity ?? 1) || 1;
 
-      const unitPrice =
+          const unitPrice =
             Number(
               typeof item.price === "string"
                 ? item.price.replace(/[^\d.,-]/g, "").replace(",", ".")
-                : item.price
+                : item.price,
             ) || 0;
 
-      const lineTotal = unitPrice * qty;
-      
-       return `
+          const lineTotal = unitPrice * qty;
+
+          return `
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;">
           <div style="flex:1; min-width:0;">
             ${item.name}
@@ -686,7 +707,7 @@ const createOrder = async (req, res) => {
           </div>
           <div style="width:60px; text-align:center; white-space:nowrap;">× ${qty}</div>
           <div style="white-space:nowrap;"><strong>${lineTotal.toFixed(
-            2
+            2,
           )} €</strong></div>
         </div>
       `;
@@ -694,7 +715,7 @@ const createOrder = async (req, res) => {
         .join("");
     };
 
-   const receiptUrl = `${PUBLIC_URL}/api/order/${order.id}/receipt?token=${downloadToken}`; //Proda
+    const receiptUrl = `${PUBLIC_URL}/static/receipts/receipt-${order.id}.pdf`; //Local
     order.receiptUrl = receiptUrl;
     await order.save();
 
@@ -703,11 +724,11 @@ const createOrder = async (req, res) => {
         <div style="background:#f2f2f2; padding:15px 20px; border-radius:8px; display:flex; align-items:center;">
           <div style="flex:1;">
             <h2 style="margin:0; font-size:1.4em;">${t("hello", language)}, ${
-      firstName || ""
-    } ${lastName || ""}!</h2>
+              firstName || ""
+            } ${lastName || ""}!</h2>
             <p style="margin:0; color:#777;">${t(
               "this_is_your_receipt",
-              language
+              language,
             )}</p>
           </div>
         </div>
@@ -748,11 +769,9 @@ const createOrder = async (req, res) => {
         <div style="border-top:1px solid #eee; margin-top:20px; padding-top:15px;">
           <p style="margin:5px 0; font-size:1em;"><strong>${t(
             "total_charged",
-            language
+            language,
           )}</strong></p>
-          <p style="font-size:1.2em;"><strong>${(
-            Number(totalPrice) + deliveryPrice
-          ).toFixed(2)} €</strong></p>
+          <p style="font-size:1.2em;"><strong>${(total + deliveryPrice).toFixed(2)} €</strong></p>
         </div>
 
         <hr style="margin-top:30px;">
@@ -784,7 +803,7 @@ const createOrder = async (req, res) => {
       </div>
     `;
 
-    const subtotal = parseFloat(totalPrice) || 0;
+    const subtotal = total;
     const totalWithVAT = subtotal + deliveryPrice;
     const vatRate = 0.22;
     const priceWithoutVAT = totalWithVAT / (1 + vatRate);
@@ -832,7 +851,7 @@ const createOrder = async (req, res) => {
           <p><strong>Kokku:</strong> ${priceWithoutVAT.toFixed(2)} €</p>
           <p><strong>KM (22%):</strong> ${vatAmount.toFixed(2)} €</p>
           <p><strong>Kokku koos KM-ga (EUR):</strong> ${totalWithVAT.toFixed(
-            2
+            2,
           )} €</p>
         </div>
 
@@ -872,7 +891,7 @@ const createOrder = async (req, res) => {
   }
 };
 
-const getDeliveryCost = (req, res) => {
+onst getDeliveryCost = async (req, res) => {
   const { totalPrice, lat, lon } = req.query;
 
   if (!totalPrice || !lat || !lon) {
@@ -881,10 +900,16 @@ const getDeliveryCost = (req, res) => {
       .json({ message: "Нужно указать totalPrice, lat и lon" });
   }
 
-  const distance = getDistanceFromWarehouse(parseFloat(lat), parseFloat(lon));
-  const deliveryCost = calculateDeliveryCost(parseFloat(totalPrice), distance);
+  const cfg = await getDeliveryCfg();
 
-  res.json({ deliveryCost });
+  const distance = getDistanceFromWarehouse(parseFloat(lat), parseFloat(lon));
+  const deliveryCost = calculateDeliveryCost(
+    parseFloat(totalPrice),
+    distance,
+    cfg,
+  );
+
+  return res.json({ deliveryCost });
 };
 
 const updateOrderStatus = async (req, res) => {
@@ -908,7 +933,7 @@ const updateOrderStatus = async (req, res) => {
             type: { [Op.in]: ["delivery", "seller"] },
             closedAt: { [Op.is]: null },
           },
-        }
+        },
       );
     }
 
@@ -952,23 +977,23 @@ const getUserOrders = async (req, res) => {
     });
 
     const allDetails = orders.flatMap((order) =>
-      safeParse(order.orderDetails, [])
+      safeParse(order.orderDetails, []),
     );
 
     const deviceIds = Array.from(
       new Set(
         allDetails
           .map((d) => Number(d.deviceId ?? d.device_id))
-          .filter((x) => Number.isFinite(x) && x > 0)
-      )
+          .filter((x) => Number.isFinite(x) && x > 0),
+      ),
     );
 
     const menuItemIds = Array.from(
       new Set(
         allDetails
           .map((d) => Number(d.menuItemId ?? d.menu_item_id))
-          .filter((x) => Number.isFinite(x) && x > 0)
-      )
+          .filter((x) => Number.isFinite(x) && x > 0),
+      ),
     );
 
     const keys = [
@@ -1043,9 +1068,9 @@ const getActiveOrder = async (req, res) => {
       where: {
         userId,
         status: {
-         [Op.in]: [
+          [Op.in]: [
             "Pending",
-            "preorder",  
+            "preorder",
             "Waiting for courier",
             "Ready for pickup",
             "Accepted",
@@ -1110,20 +1135,20 @@ const adminUpdateOrderStatus = async (req, res) => {
     order.pickupStartTime = new Date();
   }
 
- await order.save();
+  await order.save();
 
-  if (["Delivered", "Completed", "Cancelled"].includes(order.status)) {
-  await Chat.update(
-    { closedAt: new Date() },
-    {
-      where: {
-        orderId: order.id,
-        type: { [Op.in]: ["delivery", "seller"] },
-        closedAt: { [Op.is]: null },
+  if (["Completed", "Cancelled"].includes(order.status)) {
+    await Chat.update(
+      { closedAt: new Date() },
+      {
+        where: {
+          orderId: order.id,
+          type: { [Op.in]: ["delivery", "seller"] },
+          closedAt: { [Op.is]: null },
+        },
       },
-    }
-  );
-}
+    );
+  }
 
   const io = req.app.get("io");
 
@@ -1192,7 +1217,7 @@ const assignCourier = async (req, res) => {
     });
 
     sendOrderAssignedPush(order).catch((err) =>
-      console.error("push error:", err)
+      console.error("push error:", err),
     );
 
     res.json({ message: "Курьер назначен", order });
