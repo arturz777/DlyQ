@@ -891,7 +891,7 @@ const createOrder = async (req, res) => {
   }
 };
 
-onst getDeliveryCost = async (req, res) => {
+const getDeliveryCost = async (req, res) => {
   const { totalPrice, lat, lon } = req.query;
 
   if (!totalPrice || !lat || !lon) {
