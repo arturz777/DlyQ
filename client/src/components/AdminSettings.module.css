@@ -1,0 +1,187 @@
+.settingsPanel {
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settingsCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  padding: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.settingsTitle {
+  margin: 0 0 8px 0;
+  font-weight: 700;
+  color: #111827;
+}
+
+.settingsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hoursGrid {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.hoursRow {
+  display: grid;
+  grid-template-columns: 110px 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.dayLabel {
+  font-weight: 600;
+  color: #374151;
+}
+
+.timeInput {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fff;
+}
+
+.dash {
+  color: #9ca3af;
+  text-align: center;
+}
+
+.saveRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.saveHint {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.saveOk {
+  font-size: 12px;
+  color: #059669;
+  font-weight: 600;
+}
+
+.saveErr {
+  font-size: 12px;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.btnPrimary {
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 520px) {
+  .hoursRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .dash {
+    display: none;
+  }
+}
+
+.tabs {
+  max-width: 520px;
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 12px;
+  flex-wrap: wrap;
+}
+
+.tabBtn {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.tabActive {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+}
+
+.cardTitle {
+  margin: 0 0 10px 0;
+  font-weight: 800;
+  color: #111827;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  color: #374151;
+  font-weight: 700;
+}
+
+.textInput {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fff;
+}
+
+@media (max-width: 520px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
