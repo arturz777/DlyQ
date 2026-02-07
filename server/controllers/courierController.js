@@ -253,6 +253,189 @@ function safeParse(v, fallback) {
 }
 
 class CourierController {
+  async adminSearchUsers(req, res) {
+    try {
+      const q = String(req.query?.query || "")
+        .trim()
+        .toLowerCase();
+
+      const where = {};
+      if (q) {
+        where[Op.or] = [
+          { email: { [Op.iLike]: `%${q}%` } },
+          { phone: { [Op.iLike]: `%${q}%` } },
+          { firstName: { [Op.iLike]: `%${q}%` } },
+          { lastName: { [Op.iLike]: `%${q}%` } },
+        ];
+      }
+
+      const users = await User.findAll({
+        where,
+        attributes: [
+          "id",
+          "email",
+          "role",
+          "firstName",
+          "lastName",
+          "phone",
+          "isBlocked",
+        ],
+        order: [["id", "DESC"]],
+        limit: 200,
+        raw: true,
+      });
+
+      const ids = users.map((u) => u.id);
+      const couriers = ids.length
+        ? await Courier.findAll({
+            where: { id: { [Op.in]: ids } },
+            attributes: ["id", "name", "status", "iban", "expoPushToken"],
+            raw: true,
+          })
+        : [];
+
+      const courierMap = new Map(couriers.map((c) => [Number(c.id), c]));
+
+      return res.json({
+        items: users.map((u) => ({
+          ...u,
+          isBlocked: !!u.isBlocked,
+          courier: courierMap.get(Number(u.id)) || null,
+        })),
+      });
+    } catch (e) {
+      console.error("adminSearchUsers error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
+  async adminMakeCourier(req, res) {
+    try {
+      const userId = Number(req.params.userId);
+      const user = await User.findByPk(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      user.role = "COURIER";
+      await user.save();
+
+      await Courier.findOrCreate({
+        where: { id: userId },
+        defaults: {
+          id: userId,
+          name: buildCourierName(user),
+          status: "offline",
+          offersSent: 0,
+          offersAccepted: 0,
+        },
+      });
+
+      return res.json({ ok: true });
+    } catch (e) {
+      console.error("adminMakeCourier error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
+  async adminRemoveCourier(req, res) {
+    try {
+      const userId = Number(req.params.userId);
+      const user = await User.findByPk(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      user.role = "USER";
+      await user.save();
+
+      await Courier.update(
+        {
+          status: "offline",
+          expoPushToken: null,
+          currentLat: null,
+          currentLng: null,
+        },
+        { where: { id: userId } },
+      );
+
+      return res.json({ ok: true });
+    } catch (e) {
+      console.error("adminRemoveCourier error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
+  async adminUpdateCourierProfile(req, res) {
+    try {
+      const userId = Number(req.params.userId);
+      const { firstName, lastName, phone, iban } = req.body || {};
+
+      const user = await User.findByPk(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      if (firstName != null) user.firstName = String(firstName || "").trim();
+      if (lastName != null) user.lastName = String(lastName || "").trim();
+      if (phone != null) user.phone = String(phone || "").trim();
+
+      await user.save();
+
+      const role = String(user.role || "").toUpperCase();
+      if (role === "COURIER") {
+        const [courier] = await Courier.findOrCreate({
+          where: { id: userId },
+          defaults: {
+            id: userId,
+            name: buildCourierName(user),
+            status: "offline",
+            offersSent: 0,
+            offersAccepted: 0,
+          },
+        });
+
+        if (iban != null) courier.iban = String(iban || "").trim();
+        courier.name = buildCourierName(user);
+        await courier.save();
+      }
+
+      return res.json({ ok: true });
+    } catch (e) {
+      console.error("adminUpdateCourierProfile error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
+  async adminResetCourierPushToken(req, res) {
+    try {
+      const userId = Number(req.params.userId);
+
+      await Courier.update({ expoPushToken: null }, { where: { id: userId } });
+
+      return res.json({ ok: true });
+    } catch (e) {
+      console.error("adminResetCourierPushToken error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
+  async adminToggleUserBlock(req, res) {
+    try {
+      const userId = Number(req.params.userId);
+      const { isBlocked } = req.body || {};
+
+      const user = await User.findByPk(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      user.isBlocked = !!isBlocked;
+      await user.save();
+
+      if (user.isBlocked) {
+        await Courier.update({ status: "offline" }, { where: { id: userId } });
+      }
+
+      return res.json({ ok: true, isBlocked: user.isBlocked });
+    } catch (e) {
+      console.error("adminToggleUserBlock error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
   async selfPickCandidates(req, res) {
     try {
       const courierId = req.user?.id;
