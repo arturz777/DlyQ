@@ -12,6 +12,50 @@ const DEFAULT_SHOP = {
   },
 };
 
+const DELIVERY_KEY = "delivery_pricing";
+
+const DEFAULT_DELIVERY = {
+  baseCost: 2,
+  perKm: 0.5,
+  discountStepEur: 30,
+  discountAmount: 2,
+  minCost: 0,
+};
+
+async function getDeliveryPricing(req, res, next) {
+  try {
+    const row = await Setting.findByPk(DELIVERY_KEY);
+    const value = row?.value || DEFAULT_DELIVERY;
+    res.json({ ...DEFAULT_DELIVERY, ...value });
+  } catch (e) {
+    next(e);
+  }
+}
+
+async function setDeliveryPricing(req, res, next) {
+  try {
+    const row = await Setting.findByPk(DELIVERY_KEY);
+    const prev = row?.value || DEFAULT_DELIVERY;
+
+    const value = {
+      ...prev,
+      baseCost: Number(req.body?.baseCost ?? prev.baseCost),
+      perKm: Number(req.body?.perKm ?? prev.perKm),
+      discountStepEur: Number(
+        req.body?.discountStepEur ?? prev.discountStepEur,
+      ),
+      discountAmount: Number(req.body?.discountAmount ?? prev.discountAmount),
+      minCost: Number(req.body?.minCost ?? prev.minCost),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await Setting.upsert({ key: DELIVERY_KEY, value });
+    res.json(value);
+  } catch (e) {
+    next(e);
+  }
+}
+
 async function getShopConfig(req, res, next) {
   try {
     const row = await Setting.findByPk(SHOP_KEY);
@@ -79,4 +123,6 @@ module.exports = {
   setMaintenance,
   getShopConfig,
   setShopConfig,
+  getDeliveryPricing,
+  setDeliveryPricing,
 };
