@@ -19,3 +19,13 @@ export const updateShopConfig = async (payload) => {
   const { data } = await $authHost.post("/config/shop", payload);
   return data;
 };
+
+export const fetchDeliveryPricing = async () => {
+  const { data } = await $authHost.get("/config/delivery");
+  return data;
+};
+
+export const updateDeliveryPricing = async (payload) => {
+  const { data } = await $authHost.post("/config/delivery", payload);
+  return data;
+};
