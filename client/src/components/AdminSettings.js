@@ -60,6 +60,7 @@ const AdminSettings = () => {
       .then((v) => {
         setShopForceClosed(!!v.forceClosed);
         if (v.workHours) setShopHours(v.workHours);
+        appStore.setShopConfig?.(v);
       })
       .catch(console.error);
   }, []);
@@ -95,10 +96,14 @@ const AdminSettings = () => {
       setShopSaving(true);
       setShopSaveState(null);
 
-      await updateShopConfig({
+      const saved = await updateShopConfig({
         forceClosed: shopForceClosed,
         workHours: shopHours,
       });
+
+      appStore.setShopConfig?.(
+        saved || { forceClosed: shopForceClosed, workHours: shopHours },
+      ); // ✅
 
       setShopSaveState("ok");
       setTimeout(() => setShopSaveState(null), 1800);
