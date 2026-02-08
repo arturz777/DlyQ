@@ -15,21 +15,6 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
-.brandBlock {
-  display: flex;
-  flex-direction: column;
-}
-
-.brandTitle {
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.brandSubtitle {
-  font-size: 12px;
-  color: #6b7280;
-}
-
 .topRight {
   display: flex;
   align-items: center;
@@ -88,7 +73,7 @@
 
 .menuDropdown {
   position: absolute;
-  right: 0;
+  left: 0;
   top: calc(100% + 8px);
   background: #ffffff;
   box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
