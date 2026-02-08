@@ -639,7 +639,7 @@ const AdminAccounting = ({ devices }) => {
                 className={`${styles.accBtn} ${incomeTab === "couriers" ? styles.accBtnPrimary : ""}`}
                 onClick={() => setIncomeTab("couriers")}
               >
-                🛵 ылата курьерам
+                🛵 Комисия курьера
               </button>
 
               <button
