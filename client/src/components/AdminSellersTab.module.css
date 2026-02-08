@@ -1,0 +1,96 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.addBtn {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+.addBtn:hover {
+  background: #f9fafb;
+}
+
+.list {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.itemSelected {
+  border: 2px solid #0d6efd;
+  background: rgba(13, 110, 253, 0.06);
+}
+
+.nameLine {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.slug {
+  color: #777;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.status {
+  margin-right: 6px;
+  font-weight: 600;
+}
+
+.statusActive {
+  color: green;
+}
+
+.statusInactive {
+  color: red;
+}
+
+.editBtn,
+.deactivateBtn {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+}
+
+.deactivateBtn {
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+.deactivateBtn:hover {
+  background: #fff5f5;
+}
+
+.loading {
+  padding: 12px;
+}
