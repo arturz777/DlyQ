@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { fetchSellers } from "../http/sellerAPI";
-import styles from "./SellerPicker.module.css";
+import styles from "./AdminSellerPicker.module.css";
 
 export default function SellerPicker({ value, onChange, onlyActive = false }) {
   const [sellers, setSellers] = useState([]);
