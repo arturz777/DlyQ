@@ -191,6 +191,7 @@ const ChatBox = ({
 
   const isClosed = Boolean(activeChat?.closedAt);
   const canClose = isAdmin && isSupportChat(activeChat) && !isClosed;
+  const canReopen = isAdmin && isSupportChat(activeChat) && isClosed;
 
   useEffect(() => {
     if (chatId) {
@@ -424,6 +425,25 @@ const ChatBox = ({
     return () => socket.off("chatClosed", onChatClosed);
   }, [activeChatId]);
 
+  useEffect(() => {
+    const onChatReopened = ({ chatId, reopenedAt }) => {
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === chatId
+            ? {
+                ...c,
+                closedAt: null,
+                reopenedAt: reopenedAt || new Date().toISOString(),
+              }
+            : c,
+        ),
+      );
+    };
+
+    socket.on("chatReopened", onChatReopened);
+    return () => socket.off("chatReopened", onChatReopened);
+  }, []);
+
   const getSenderName = (msg) => {
     if (msg.senderId === userId) return t("you", { ns: "chatBox" });
     if (msg.senderRole === "admin") return t("supportName", { ns: "chatBox" });
@@ -479,7 +499,20 @@ const ChatBox = ({
 
   const handleCloseChat = () => {
     if (!activeChatId) return;
-    socket.emit("closeChat", { chatId: activeChatId, senderId: userId });
+    socket.emit("closeChat", {
+      chatId: activeChatId,
+      senderId: userId,
+      lang: i18n.language,
+    });
+  };
+
+  const handleReopenChat = () => {
+    if (!activeChatId) return;
+    socket.emit("reopenChat", {
+      chatId: activeChatId,
+      senderId: userId,
+      lang: i18n.language,
+    });
   };
 
   const scrollToBottom = (smooth = false) => {
@@ -610,6 +643,20 @@ const ChatBox = ({
               title={t("closeChat", { ns: "chatBox" })}
             >
               {t("closeChat", { ns: "chatBox" })}
+            </button>
+          )}
+
+          {canReopen && (
+            <button
+              type="button"
+              className={styles.headerAction}
+              onClick={handleReopenChat}
+              title={t("reopenChat", {
+                ns: "chatBox",
+                defaultValue: "Открыть чат",
+              })}
+            >
+              {t("reopenChat", { ns: "chatBox", defaultValue: "Открыть чат" })}
             </button>
           )}
 
