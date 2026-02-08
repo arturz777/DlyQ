@@ -17,6 +17,7 @@ const sellerRouter = require("./sellerRouter");
 const menuRouter = require("./menuRouter");
 const parcelRouter = require("./parcelRouter");
 const inventoryRouter = require("./inventoryReceiptRouter");
+const accountingRouter = require("./accountingRouter");
 
 router.use("/user", userRouter);
 router.use("/type", typeRouter);
@@ -35,5 +36,6 @@ router.use("/seller", sellerRouter);
 router.use("/menu", menuRouter);
 router.use("/parcel", parcelRouter);
 router.use("/inventory", inventoryRouter);
+router.use("/accounting", accountingRouter);
 
 module.exports = router;
