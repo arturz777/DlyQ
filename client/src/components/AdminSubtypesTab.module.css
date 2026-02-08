@@ -1,0 +1,77 @@
+.actionButtons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.actionButton {
+  padding: 10px 20px;
+  background: #007bff;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.actionButton:hover {
+  background: #0056b3;
+}
+
+.typeGroup {
+  border-top: 2px solid #e5e7eb;
+  margin: 18px 0;
+}
+
+.typeHeader {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  background: #f2f2f2;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 5px;
+  user-select: none;
+}
+
+.typeTitle {
+  margin: 0;
+}
+
+.itemList {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.editButton {
+  background: #ffc107;
+  color: #111827;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 6px 10px;
+}
+
+.deleteButton {
+  background: #dc3545;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 6px 10px;
+}
