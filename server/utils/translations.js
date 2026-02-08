@@ -84,6 +84,11 @@ const translations = {
   est: "Vestlus on suletud. Aitäh!",
   ru: "Чат закрыт. Спасибо!",
 },
+  chat_reopened: {
+  en: "Chat reopened",
+  est: "Vestlus on uuesti avatud",
+  ru: "Чат снова открыт",
+},
 };
 
 const normLang = (lang) => {
