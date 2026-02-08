@@ -88,7 +88,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     const keys = Object.keys(errs);
 
     const hasOptErr = keys.some(
-      (k) => k.startsWith("option_") || k.startsWith("option_values_")
+      (k) => k.startsWith("option_") || k.startsWith("option_values_"),
     );
 
     const hasVariantErr = keys.some((k) => k.startsWith("variant_"));
@@ -120,11 +120,11 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
   const normBrandQuery = brandQuery.trim().toLowerCase();
   const exactBrandExists = device.brands.some(
-    (b) => (b.name || "").trim().toLowerCase() === normBrandQuery
+    (b) => (b.name || "").trim().toLowerCase() === normBrandQuery,
   );
 
   const filteredBrands = device.brands.filter((b) =>
-    (b.name || "").toLowerCase().includes(normBrandQuery)
+    (b.name || "").toLowerCase().includes(normBrandQuery),
   );
 
   const addValueQuick = (optionIndex) => {
@@ -182,7 +182,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const cartesian = (arrays) =>
     arrays.reduce(
       (acc, arr) => acc.flatMap((a) => arr.map((b) => [...a, b])),
-      [[]]
+      [[]],
     );
 
   const generateVariantsFromOptions = (options) => {
@@ -241,7 +241,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const currentYear = new Date().getFullYear();
   const YEARS = Array.from(
     { length: currentYear - 1949 },
-    (_, i) => currentYear - i
+    (_, i) => currentYear - i,
   );
   const yearOptions = YEARS;
 
@@ -258,7 +258,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         editableDevice.purchasePrice !== undefined &&
           editableDevice.purchasePrice !== null
           ? String(editableDevice.purchasePrice)
-          : ""
+          : "",
       );
       setPurchaseHasVAT(Boolean(editableDevice.purchaseHasVAT));
     } else {
@@ -270,7 +270,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   useEffect(() => {
     if (editableDevice?.types) {
       const primaryType = Number(
-        editableDevice.typeId ?? editableDevice.type?.id ?? NaN
+        editableDevice.typeId ?? editableDevice.type?.id ?? NaN,
       );
       const extras = editableDevice.types
         .map((t) => Number(t.id))
@@ -322,22 +322,22 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
           ? editableDevice.variants.map((v) => ({
               selected: v.selected || {},
               sku: v.sku || "",
-              price: (v.price ?? "") === null ? "" : v.price ?? "",
-              oldPrice: (v.oldPrice ?? "") === null ? "" : v.oldPrice ?? "",
+              price: (v.price ?? "") === null ? "" : (v.price ?? ""),
+              oldPrice: (v.oldPrice ?? "") === null ? "" : (v.oldPrice ?? ""),
               purchasePrice:
-                (v.purchasePrice ?? "") === null ? "" : v.purchasePrice ?? "",
+                (v.purchasePrice ?? "") === null ? "" : (v.purchasePrice ?? ""),
               quantity: Number(v.quantity) || 0,
               image: v.image || "",
               isActive: v.isActive !== false,
               key: v.key || makeVariantKey(v.selected || {}),
             }))
-          : []
+          : [],
       );
 
       setIsEditMode(true);
       setExistingImages([editableDevice.img, ...editableDevice.thumbnails]);
       setQuantity(
-        editableDevice.quantity !== undefined ? editableDevice.quantity : 0
+        editableDevice.quantity !== undefined ? editableDevice.quantity : 0,
       );
       setTranslations({
         name: editableDevice.translations?.name || { en: "", ru: "", est: "" },
@@ -358,7 +358,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
       if (editableDevice.brandId) {
         const selectedBrand = device.brands.find(
-          (b) => b.id === editableDevice.brandId
+          (b) => b.id === editableDevice.brandId,
         );
         if (selectedBrand) {
           device.setSelectedBrand(selectedBrand);
@@ -367,7 +367,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
       if (editableDevice.typeId) {
         const selectedType = device.types.find(
-          (t) => t.id === editableDevice.typeId
+          (t) => t.id === editableDevice.typeId,
         );
         if (selectedType) {
           device.setSelectedType(selectedType);
@@ -379,7 +379,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
           device.setSubtypes(data);
           if (editableDevice.subtypeId) {
             const selectedSubType = data.find(
-              (st) => st.id === editableDevice.subtypeId
+              (st) => st.id === editableDevice.subtypeId,
             );
             if (selectedSubType) {
               device.setSelectedSubType(selectedSubType);
@@ -484,7 +484,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       device.selectedSubType?.id ??
         editableDevice.subtypeId ??
         editableDevice.subtype?.id ??
-        0
+        0,
     );
 
     const existing = (editableDevice.subtypes || [])
@@ -492,7 +492,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       .filter(Boolean);
 
     const extras = existing.filter(
-      (id) => id !== currentPrimary && allowed.has(id)
+      (id) => id !== currentPrimary && allowed.has(id),
     );
 
     setExtraSubtypeIds(new Set(extras));
@@ -619,7 +619,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   useEffect(() => {
     if (isEditMode && editableDevice?.subtypeId && device.subtypes.length > 0) {
       const matchedSubtype = device.subtypes.find(
-        (st) => String(st.id) === String(editableDevice.subtypeId)
+        (st) => String(st.id) === String(editableDevice.subtypeId),
       );
 
       if (matchedSubtype) {
@@ -638,14 +638,14 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     if (ready) {
       if (editableDevice.brandId && !device.selectedBrand?.id) {
         const selectedBrand = device.brands.find(
-          (b) => b.id === editableDevice.brandId
+          (b) => b.id === editableDevice.brandId,
         );
         if (selectedBrand) device.setSelectedBrand(selectedBrand);
       }
 
       if (editableDevice.typeId && !device.selectedType?.id) {
         const selectedType = device.types.find(
-          (t) => t.id === editableDevice.typeId
+          (t) => t.id === editableDevice.typeId,
         );
         if (selectedType) device.setSelectedType(selectedType);
       }
@@ -657,7 +657,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         !device.selectedSubType?.id
       ) {
         const selectedSubType = device.subtypes.find(
-          (st) => st.id === editableDevice.subtypeId
+          (st) => st.id === editableDevice.subtypeId,
         );
         if (selectedSubType) device.setSelectedSubType(selectedSubType);
       }
@@ -833,8 +833,8 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     lang === "ru"
       ? bulkInfoText
       : lang === "en"
-      ? bulkInfoTextEN
-      : bulkInfoTextEST;
+        ? bulkInfoTextEN
+        : bulkInfoTextEST;
 
   const setBulkByLang = (lang, v) => {
     if (lang === "ru") setBulkInfoText(v);
@@ -904,7 +904,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
             ? description
               ? `${title}: ${description}`
               : title
-            : ""
+            : "",
         )
         .filter(Boolean)
         .join("\n");
@@ -1054,7 +1054,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
     const totalVariantsQty = (variants || []).reduce(
       (s, v) => s + (Number(v.quantity) || 0),
-      0
+      0,
     );
 
     if (!isEditMode) {
@@ -1099,16 +1099,52 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       errors.variants = "Сгенерируйте варианты для комбинаций опций";
     }
 
+    // ===== Закупочная цена обязательна при стартовых остатках =====
+    const num = (x) => {
+      if (x === "" || x === null || x === undefined) return NaN;
+      const n = Number(String(x).replace(",", "."));
+      return Number.isFinite(n) ? n : NaN;
+    };
+
+    const basePurchase = num(purchasePrice);
+
+    if (variants.length > 0) {
+      // есть варианты: каждый вариант с qty > 0 должен иметь себестоимость
+      const missing = variants.some((v) => {
+        const q = Number(v.quantity) || 0;
+        const active = v.isActive !== false;
+        if (!active || q <= 0) return false;
+
+        const vp = num(v.purchasePrice);
+        const hasVariantPP = Number.isFinite(vp) && vp > 0;
+        const hasBasePP = Number.isFinite(basePurchase) && basePurchase > 0;
+
+        return !hasVariantPP && !hasBasePP;
+      });
+
+      if (missing) {
+        errors.purchasePrice =
+          "Укажите закупочную цену: общую или для каждого варианта с остатком > 0";
+      }
+    } else {
+      const q = Number(quantity) || 0;
+      if (q > 0) {
+        if (!Number.isFinite(basePurchase) || basePurchase <= 0) {
+          errors.purchasePrice =
+            "Укажите закупочную цену (обязательна при наличии стартового остатка)";
+        }
+      }
+    }
+
     options.forEach((option, index) => {
       if (!option.name.trim()) {
         errors[`option_${index}`] = `Введите название для опции ${index + 1}`;
       }
       if (option.values.length === 0) {
-        errors[
-          `option_values_${index}`
-        ] = `Добавьте хотя бы одно значение для опции ${
-          option.name || index + 1
-        }`;
+        errors[`option_values_${index}`] =
+          `Добавьте хотя бы одно значение для опции ${
+            option.name || index + 1
+          }`;
       }
     });
 
@@ -1129,7 +1165,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
           "Добавьте хотя бы одну строку совместимости или включите «универсальный товар».";
       } else if (
         compatRows.some(
-          (r) => !r.makeId && !r.modelId && !r.yearFrom && !r.yearTo
+          (r) => !r.makeId && !r.modelId && !r.yearFrom && !r.yearTo,
         )
       ) {
         validationErrors.compat =
@@ -1158,7 +1194,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     formData.append("price", price);
     formData.append(
       "purchasePrice",
-      purchasePrice === "" ? "" : String(purchasePrice)
+      purchasePrice === "" ? "" : String(purchasePrice),
     );
     formData.append("purchaseHasVAT", String(purchaseHasVAT));
     formData.append("quantity", quantity);
@@ -1205,7 +1241,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       new Set([
         ...(primarySubtypeId ? [primarySubtypeId] : []),
         ...Array.from(extraSubtypeIds).map(Number),
-      ])
+      ]),
     );
 
     const primaryTypeId =
@@ -1227,7 +1263,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         Object.entries(v.selected || {}).map(([k, val]) => [
           k,
           val && typeof val === "object" && "value" in val ? val.value : val,
-        ])
+        ]),
       );
 
       const toNumOrNull = (x) =>
@@ -1263,7 +1299,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       .catch((error) => {
         console.error(
           "Ошибка при отправке запроса:",
-          error.response?.data || error.message
+          error.response?.data || error.message,
         );
       })
       .finally(() => {
@@ -1297,7 +1333,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     optionIndex,
     valueIndex,
     lang,
-    value
+    value,
   ) => {
     setTranslations((prev) => {
       const updatedTranslations = { ...prev };
@@ -1352,7 +1388,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
 
   const changeInfo = (key, value, number) => {
     setInfo(
-      info.map((i) => (i.number === number ? { ...i, [key]: value } : i))
+      info.map((i) => (i.number === number ? { ...i, [key]: value } : i)),
     );
   };
 
@@ -1362,7 +1398,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     const next = [...options];
     next[optionIndex] = next[optionIndex] || { name: "", values: [] };
     const exists = (next[optionIndex].values || []).some(
-      (v) => (v.value || "").trim().toLowerCase() === text.toLowerCase()
+      (v) => (v.value || "").trim().toLowerCase() === text.toLowerCase(),
     );
     if (!exists) {
       next[optionIndex].values = [
@@ -1530,8 +1566,8 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                       activeNameLang === "ru"
                         ? "Введите название устройства (RU)"
                         : activeNameLang === "en"
-                        ? "Enter device name (EN)"
-                        : "Sisesta seadme nimi (EST)"
+                          ? "Enter device name (EN)"
+                          : "Sisesta seadme nimi (EST)"
                     }
                   />
                 </div>
@@ -1564,7 +1600,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                             device.clearSelectedSubType();
                             setExtraSubtypeIds(new Set());
                             fetchSubtypesByType(type.id).then((data) =>
-                              device.setSubtypes(data)
+                              device.setSubtypes(data),
                             );
                           }}
                           key={type.id}
@@ -1583,7 +1619,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                         .filter(
                           (t) =>
                             t.id !==
-                            (device.selectedType?.id ?? editableDevice?.typeId)
+                            (device.selectedType?.id ?? editableDevice?.typeId),
                         )
                         .map((t) => (
                           <Form.Check
@@ -1638,7 +1674,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                         const stId = Number(st.id);
                         const primaryIdNum = Number(
                           device.selectedSubType?.id ??
-                            editableDevice?.subtypeId
+                            editableDevice?.subtypeId,
                         );
 
                         return (
@@ -1780,7 +1816,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                                 onCompatChange(
                                   idx,
                                   "makeId",
-                                  e.target.value ? Number(e.target.value) : ""
+                                  e.target.value ? Number(e.target.value) : "",
                                 )
                               }
                             >
@@ -1799,7 +1835,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                                 onCompatChange(
                                   idx,
                                   "modelId",
-                                  e.target.value ? Number(e.target.value) : ""
+                                  e.target.value ? Number(e.target.value) : "",
                                 )
                               }
                               disabled={!row.makeId}
@@ -1819,7 +1855,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                                 onCompatChange(
                                   idx,
                                   "yearFrom",
-                                  e.target.value ? Number(e.target.value) : ""
+                                  e.target.value ? Number(e.target.value) : "",
                                 )
                               }
                             >
@@ -1838,7 +1874,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                                 onCompatChange(
                                   idx,
                                   "yearTo",
-                                  e.target.value ? Number(e.target.value) : ""
+                                  e.target.value ? Number(e.target.value) : "",
                                 )
                               }
                             >
@@ -1900,6 +1936,17 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                   onChange={(e) => setPurchasePrice(e.target.value)}
                   placeholder="Например, 5.50"
                 />
+                {isSubmitted && errors.purchasePrice && (
+                  <span
+                    style={{
+                      color: "red",
+                      display: "block",
+                      marginTop: "5px",
+                    }}
+                  >
+                    {errors.purchasePrice}
+                  </span>
+                )}
               </Form.Group>
 
               <Form.Group className="mt-3">
@@ -2076,15 +2123,15 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                               onChange={(e) =>
                                 updateOptionNameByLang(
                                   optionIndex,
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               placeholder={
                                 activeOptionsLang === "ru"
                                   ? "Название опции (напр. Тип)"
                                   : activeOptionsLang === "en"
-                                  ? "Option name (e.g. Type)"
-                                  : "Valiku nimi (nt Tüüp)"
+                                    ? "Option name (e.g. Type)"
+                                    : "Valiku nimi (nt Tüüp)"
                               }
                             />
                             <Button
@@ -2135,13 +2182,13 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                                   size="sm"
                                   value={getOptionValueLabelByLang(
                                     optionIndex,
-                                    valueIndex
+                                    valueIndex,
                                   )}
                                   onChange={(e) =>
                                     updateOptionValueLabelByLang(
                                       optionIndex,
                                       valueIndex,
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   style={{ width: "16ch" }}
@@ -2334,7 +2381,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                                       src={
                                         v.image.startsWith("gallery:")
                                           ? galleryItems().find(
-                                              (g) => g.token === v.image
+                                              (g) => g.token === v.image,
                                             )?.url || ""
                                           : v.image
                                       }
@@ -2382,7 +2429,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                                   size="sm"
                                   onClick={() => {
                                     const next = variants.filter(
-                                      (_, i) => i !== idx
+                                      (_, i) => i !== idx,
                                     );
                                     setVariants(next);
                                   }}
@@ -2400,7 +2447,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                         <strong>
                           {variants.reduce(
                             (s, v) => s + (Number(v.quantity) || 0),
-                            0
+                            0,
                           )}
                         </strong>
                       </div>
@@ -2427,8 +2474,8 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                   {activeDescLang === "ru"
                     ? "Описание (RU)"
                     : activeDescLang === "en"
-                    ? "Description (EN)"
-                    : "Kirjeldus (EST)"}
+                      ? "Description (EN)"
+                      : "Kirjeldus (EST)"}
                 </label>
 
                 <textarea
@@ -2440,8 +2487,8 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                     activeDescLang === "ru"
                       ? "Введите описание девайса RU (необязательно)"
                       : activeDescLang === "en"
-                      ? "Enter device description EN (optional)"
-                      : "Sisesta seadme kirjeldus EST (valikuline)"
+                        ? "Enter device description EN (optional)"
+                        : "Sisesta seadme kirjeldus EST (valikuline)"
                   }
                 />
 
@@ -2452,8 +2499,8 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                       {activeDescLang === "ru"
                         ? "Описание должно быть не менее 5 символов"
                         : activeDescLang === "en"
-                        ? "Description must be at least 5 characters"
-                        : "Kirjeldus peab olema vähemalt 5 tähemärki"}
+                          ? "Description must be at least 5 characters"
+                          : "Kirjeldus peab olema vähemalt 5 tähemärki"}
                     </span>
                   )}
               </div>
@@ -2484,8 +2531,8 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                     activeInfoLang === "ru"
                       ? `RU: по одной характеристике в строке.\nМатериал: нержавеющая сталь\nДлина кабеля — 1.2 м\nВес - 350 г`
                       : activeInfoLang === "en"
-                      ? `EN (optional):\nMaterial: Stainless steel\nCable length — 1.2 m\nWeight - 350 g`
-                      : `EST (valikuline):\nMaterjal: roostevaba teras\nKaabli pikkus — 1.2 m\nKaal - 350 g`
+                        ? `EN (optional):\nMaterial: Stainless steel\nCable length — 1.2 m\nWeight - 350 g`
+                        : `EST (valikuline):\nMaterjal: roostevaba teras\nKaabli pikkus — 1.2 m\nKaal - 350 g`
                   }
                 />
 
@@ -2525,8 +2572,8 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                           activeInfoLang === "ru"
                             ? "Название (RU)"
                             : activeInfoLang === "en"
-                            ? "Title (EN)"
-                            : "Nimetus (EST)"
+                              ? "Title (EN)"
+                              : "Nimetus (EST)"
                         }
                       />
                       <Form.Control
@@ -2539,8 +2586,8 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                           activeInfoLang === "ru"
                             ? "Описание (RU)"
                             : activeInfoLang === "en"
-                            ? "Description (EN)"
-                            : "Kirjeldus (EST)"
+                              ? "Description (EN)"
+                              : "Kirjeldus (EST)"
                         }
                       />
                     </div>
@@ -2734,7 +2781,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
           const picked = saved?.id
             ? brands.find((b) => b.id === saved.id)
             : brands.find(
-                (b) => (b.name || "").trim().toLowerCase() === normBrandQuery
+                (b) => (b.name || "").trim().toLowerCase() === normBrandQuery,
               );
 
           if (picked) device.setSelectedBrand(picked);
