@@ -191,6 +191,59 @@ module.exports = function chatSocket(io, socket) {
     }
   });
 
+  socket.on("reopenChat", async ({ chatId, senderId, lang }) => {
+    try {
+      if (!chatId || !senderId) return;
+
+      const u = await User.findByPk(senderId, {
+        attributes: ["role"],
+        raw: true,
+      });
+      if (!isAdminRole(u?.role)) return;
+
+      const chat = await Chat.findByPk(chatId);
+      if (!chat) return;
+      if (chat.type !== "support") return;
+      if (!chat.closedAt) return;
+
+      // снимаем закрытие
+      chat.closedAt = null;
+
+      // восстанавливаем supportKey
+      if (chat.supportKey) {
+        const m = String(chat.supportKey).match(/^(support:[^:]+:\d+)/i);
+        if (m?.[1]) chat.supportKey = m[1];
+      }
+
+      await chat.save();
+
+      const REOPENED_TEXT = t("chat_reopened", lang);
+
+      const systemMsg = await ChatMessage.create({
+        chatId,
+        senderId,
+        senderRole: "system",
+        text: REOPENED_TEXT,
+        isRead: false,
+      });
+
+      io.to(`chat_${chatId}`).emit("receiveMessage", systemMsg);
+      io.to("admin_notifications").emit("newChatMessage", systemMsg);
+
+      io.to(`chat_${chatId}`).emit("chatReopened", {
+        chatId,
+        reopenedAt: new Date().toISOString(),
+      });
+
+      io.to("admin_notifications").emit("chatReopened", {
+        chatId,
+        reopenedAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error("❌ reopenChat error:", e);
+    }
+  });
+
   socket.on("readMessages", ({ chatId, userId }) => {
     io.to(`chat_${chatId}`).emit("readMessages", { chatId, userId });
   });
