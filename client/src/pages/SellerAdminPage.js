@@ -35,9 +35,10 @@ const getMenuImgSrc = (img) => {
   return `${base}/${img}`;
 };
 
-const SellerAdminPage = () => {
-  const { sellerId } = useParams();
-  const sid = Number(sellerId);
+const SellerAdminPage = ({ sellerId: propsSellerId }) => {
+  const params = useParams();
+  const sid = Number(propsSellerId ?? params.sellerId);
+  const embedded = propsSellerId != null;
   const { user } = useContext(Context);
   const { t } = useTranslation();
   const [menuCategories, setMenuCategories] = useState([]);
@@ -91,18 +92,18 @@ const SellerAdminPage = () => {
   };
 
   useEffect(() => {
-    if (!sid || !user.isAuth || !hasAccess) return;
+    if (!sid || !hasAccess) return;
 
     (async () => {
       const s = await fetchSeller(sid);
       setSeller(s);
     })().catch(console.error);
-  }, [sid, user.isAuth, hasAccess]);
+  }, [sid, hasAccess]);
 
   useEffect(() => {
-    if (!sid || !user.isAuth) {
-      setAccessChecked(false);
-      setHasAccess(false);
+    if (embedded) {
+      setAccessChecked(true);
+      setHasAccess(true);
       setAccessError("");
       return;
     }
@@ -131,12 +132,12 @@ const SellerAdminPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [sid, user.isAuth, t]);
+  }, [sid, user.isAuth, t, embedded]);
 
   useEffect(() => {
-    if (!sid || !user.isAuth || !hasAccess) return;
+    if (!sid || !hasAccess) return;
     reload().catch(console.error);
-  }, [sid, user.isAuth, hasAccess]);
+  }, [sid, hasAccess]);
 
   const sortedCategories = useMemo(() => {
     return [...(menuCategories || [])].sort(
@@ -285,7 +286,7 @@ const SellerAdminPage = () => {
     );
   }
 
-  if (!user.isAuth) {
+  if (!embedded && !user.isAuth) {
     return (
       <div className={styles.authWrapper}>
         <div className={styles.authBox}>
@@ -333,7 +334,7 @@ const SellerAdminPage = () => {
     );
   }
 
-  if (user.isAuth && !accessChecked) {
+  if (!embedded && user.isAuth && !accessChecked) {
     return (
       <div className={styles.authWrapper}>
         <div className={styles.authBox}>
@@ -345,7 +346,7 @@ const SellerAdminPage = () => {
     );
   }
 
-  if (user.isAuth && accessChecked && !hasAccess) {
+  if (!embedded && user.isAuth && accessChecked && !hasAccess) {
     return (
       <div className={styles.authWrapper}>
         <div className={styles.authBox}>
@@ -464,84 +465,75 @@ const SellerAdminPage = () => {
   return (
     <div className={styles.adminPageRoot}>
       <header className={styles.topBar}>
-        <div className={styles.brandBlock}>
-          <div className={styles.brandTitle}>
-            {t("restaurant admin", { ns: "sellerAdminPage" })}
+        {!embedded && (
+          <div className={styles.topRight}>
+            <button
+              type="button"
+              className={styles.burgerButton}
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              <span className={styles.burgerLines} />
+            </button>
+            <span className={styles.userName}>{displayName}</span>
+            {menuOpen && (
+              <div className={styles.menuDropdown}>
+                <button
+                  type="button"
+                  className={styles.menuItemButton}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {t("restaurant settings", { ns: "sellerAdminPage" })}
+                  <span className={styles.menuItemSoon}>
+                    {t("soon", { ns: "sellerAdminPage" })}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.menuItemButton}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setHoursVisible(true);
+                  }}
+                >
+                  {t("working hours", { ns: "sellerAdminPage" })}
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.menuItemButton}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {t("delivery and pickup", { ns: "sellerAdminPage" })}
+                  <span className={styles.menuItemSoon}>
+                    {t("soon", { ns: "sellerAdminPage" })}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.menuItemButton}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {t("payments and integrations", { ns: "sellerAdminPage" })}
+                  <span className={styles.menuItemSoon}>
+                    {t("soon", { ns: "sellerAdminPage" })}
+                  </span>
+                </button>
+
+                <div className={styles.menuDivider} />
+
+                <button
+                  type="button"
+                  className={`${styles.menuItemButton} ${styles.menuItemDanger}`}
+                  onClick={handleLogout}
+                >
+                  {t("sign out", { ns: "sellerAdminPage" })}
+                </button>
+              </div>
+            )}
           </div>
-          <div className={styles.brandSubtitle}>
-            {t("manage menu and settings", { ns: "sellerAdminPage" })}
-          </div>
-        </div>
-
-        <div className={styles.topRight}>
-          <span className={styles.userName}>{displayName}</span>
-
-          <button
-            type="button"
-            className={styles.burgerButton}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <span className={styles.burgerLines} />
-          </button>
-
-          {menuOpen && (
-            <div className={styles.menuDropdown}>
-              <button
-                type="button"
-                className={styles.menuItemButton}
-                onClick={() => setMenuOpen(false)}
-              >
-                {t("restaurant settings", { ns: "sellerAdminPage" })}
-                <span className={styles.menuItemSoon}>
-                  {t("soon", { ns: "sellerAdminPage" })}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className={styles.menuItemButton}
-                onClick={() => {
-                  setMenuOpen(false);
-                  setHoursVisible(true);
-                }}
-              >
-                {t("working hours", { ns: "sellerAdminPage" })}
-              </button>
-
-              <button
-                type="button"
-                className={styles.menuItemButton}
-                onClick={() => setMenuOpen(false)}
-              >
-                {t("delivery and pickup", { ns: "sellerAdminPage" })}
-                <span className={styles.menuItemSoon}>
-                  {t("soon", { ns: "sellerAdminPage" })}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className={styles.menuItemButton}
-                onClick={() => setMenuOpen(false)}
-              >
-                {t("payments and integrations", { ns: "sellerAdminPage" })}
-                <span className={styles.menuItemSoon}>
-                  {t("soon", { ns: "sellerAdminPage" })}
-                </span>
-              </button>
-
-              <div className={styles.menuDivider} />
-
-              <button
-                type="button"
-                className={`${styles.menuItemButton} ${styles.menuItemDanger}`}
-                onClick={handleLogout}
-              >
-                {t("sign out", { ns: "sellerAdminPage" })}
-              </button>
-            </div>
-          )}
-        </div>
+        )}
       </header>
 
       <div className={styles.adminPanelContainer}>
