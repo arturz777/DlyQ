@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { fetchDevices } from "../http/deviceAPI";
 import {
   fetchCourierAccounting,
   fetchAdminOrders,
@@ -65,7 +66,7 @@ const AdminAccounting = ({ devices }) => {
     setCourierPaidMap((prev) => ({ ...prev, [k]: !prev[k] }));
   }
 
-  const yearOptions = React.useMemo(() => {
+  const yearOptions = useMemo(() => {
     const y = new Date().getFullYear();
     const arr = [];
     for (let i = 0; i < 10; i++) arr.push(y - i);
@@ -73,7 +74,14 @@ const AdminAccounting = ({ devices }) => {
   }, []);
 
   useEffect(() => {
-    setDevicesLocal(devices || []);
+    if (Array.isArray(devices)) setDevicesLocal(devices);
+  }, [devices]);
+
+  useEffect(() => {
+    if (Array.isArray(devices)) return;
+    fetchDevices(undefined, undefined, undefined, 1, 1000)
+      .then((data) => setDevicesLocal(data?.rows || data || []))
+      .catch(console.error);
   }, [devices]);
 
   function startOfWeek(d) {
@@ -136,11 +144,17 @@ const AdminAccounting = ({ devices }) => {
     return { from, to };
   }
 
-  const courierRangeLabel = React.useMemo(() => {
+  const courierRangeLabel = useMemo(() => {
     const { from, to } = getCourierRange();
     const toShown = addDays(to, -1);
     return `${isoDate(from)} — ${isoDate(toShown)}`;
-  }, [courierPeriod, courierAnchor, courierYear, courierMonth]);
+  }, [
+    courierPeriod,
+    courierAnchor,
+    courierYear,
+    courierMonth,
+    courierWeekSpan,
+  ]);
 
   async function loadCourierAccounting() {
     setCourierLoading(true);
@@ -389,7 +403,7 @@ const AdminAccounting = ({ devices }) => {
 
   const vatToPay = totalSalesVAT - totalPurchaseVAT;
 
-  const rangeKey = React.useMemo(() => {
+  const rangeKey = useMemo(() => {
     const { from, to } = getCourierRange();
     return `${isoDate(from)}_${isoDate(to)}`;
   }, [
@@ -410,7 +424,7 @@ const AdminAccounting = ({ devices }) => {
           { key: "sold", label: `💸 Проданные (${soldDevices.length})` },
           { key: "receipts", label: "📦 Приход" },
           { key: "income", label: "💰 Доход" },
-          { key: "couriers", label: "🛵 Курьеры" },
+          { key: "couriers", label: "🛵 Вылата курьерам" },
           { key: "vat", label: "📄 Декларация по НДС" },
           { key: "other", label: "📑 Другая декларация" },
         ].map((tab) => (
@@ -510,7 +524,7 @@ const AdminAccounting = ({ devices }) => {
 
               <td className={styles.goodsTd}>
                 {format(
-                  (activeTab === "sold" ? soldDevices : devices).reduce(
+                  (activeTab === "sold" ? soldDevices : devicesLocal).reduce(
                     (sum, d) => {
                       const quantity = Number(d.quantity || 0);
                       const pur =
@@ -528,7 +542,7 @@ const AdminAccounting = ({ devices }) => {
 
               <td className={styles.goodsTd}>
                 {format(
-                  (activeTab === "sold" ? soldDevices : devices).reduce(
+                  (activeTab === "sold" ? soldDevices : devicesLocal).reduce(
                     (sum, d) => {
                       const quantity = Number(d.quantity || 0);
                       const price = Number(d.price || 0);
@@ -545,7 +559,7 @@ const AdminAccounting = ({ devices }) => {
 
               <td className={styles.goodsTd}>
                 {format(
-                  (activeTab === "sold" ? soldDevices : devices).reduce(
+                  (activeTab === "sold" ? soldDevices : devicesLocal).reduce(
                     (sum, d) =>
                       sum + Number(d.price || 0) * Number(d.quantity || 0),
                     0,
@@ -555,7 +569,7 @@ const AdminAccounting = ({ devices }) => {
 
               <td className={styles.goodsTd}>
                 {format(
-                  (activeTab === "sold" ? soldDevices : devices).reduce(
+                  (activeTab === "sold" ? soldDevices : devicesLocal).reduce(
                     (sum, d) => {
                       const total =
                         Number(d.price || 0) * Number(d.quantity || 0);
@@ -625,7 +639,7 @@ const AdminAccounting = ({ devices }) => {
                 className={`${styles.accBtn} ${incomeTab === "couriers" ? styles.accBtnPrimary : ""}`}
                 onClick={() => setIncomeTab("couriers")}
               >
-                🛵 Курьеры
+                🛵 ылата курьерам
               </button>
 
               <button
