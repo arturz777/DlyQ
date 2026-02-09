@@ -199,7 +199,7 @@ class SellerController {
         companyName,
         registrationNumber,
         phone,
-        website,
+        websitecommissionPercent,
       } = req.body;
 
       if (!name) {
@@ -253,6 +253,17 @@ class SellerController {
         imgUrl = `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${fileName}`;
       }
 
+      const cp =
+        commissionPercent == null || commissionPercent === ""
+          ? 20
+          : Number(commissionPercent);
+
+      if (!Number.isFinite(cp) || cp < 0 || cp > 100) {
+        throw ApiError.badRequest(
+          "commissionPercent должен быть числом 0..100",
+        );
+      }
+
       const seller = await Seller.create(
         {
           name: finalName,
@@ -263,6 +274,7 @@ class SellerController {
           address: address ? String(address).trim() : null,
           pickupLat: latNum,
           pickupLng: lngNum,
+          commissionPercent: cp,
           companyName: companyName ? String(companyName).trim() : null,
           registrationNumber: registrationNumber
             ? String(registrationNumber).trim()
@@ -345,6 +357,7 @@ class SellerController {
         registrationNumber,
         phone,
         website,
+        commissionPercent,
       } = req.body;
 
       const seller = await Seller.findByPk(Number(id), { transaction: t });
@@ -360,6 +373,16 @@ class SellerController {
           }
         }
         seller.workHours = v && typeof v === "object" ? v : null;
+      }
+
+      if (commissionPercent !== undefined) {
+        const cp = commissionPercent === "" ? 20 : Number(commissionPercent);
+        if (!Number.isFinite(cp) || cp < 0 || cp > 100) {
+          throw ApiError.badRequest(
+            "commissionPercent должен быть числом 0..100",
+          );
+        }
+        seller.commissionPercent = cp;
       }
 
       const fc = parseBool(forceClosed, null);
