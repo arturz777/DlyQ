@@ -206,14 +206,7 @@ module.exports = function chatSocket(io, socket) {
       if (chat.type !== "support") return;
       if (!chat.closedAt) return;
 
-      // снимаем закрытие
       chat.closedAt = null;
-
-      // восстанавливаем supportKey
-      if (chat.supportKey) {
-        const m = String(chat.supportKey).match(/^(support:[^:]+:\d+)/i);
-        if (m?.[1]) chat.supportKey = m[1];
-      }
 
       await chat.save();
 
