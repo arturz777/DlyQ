@@ -10,6 +10,8 @@ import {
 import InventoryReceipts from "./InventoryReceipts";
 import styles from "./AdminAccounting.module.css";
 
+const DONE_STATUSES = ["Delivered", "Completed"];
+
 const MONTHS = [
   "Январь",
   "Февраль",
@@ -185,11 +187,6 @@ const AdminAccounting = ({ devices }) => {
       const { from, to } = getCourierRange();
       const params = { from: isoDate(from), to: isoDate(to) };
 
-      if (incomeTab === "shop") {
-        const data = await fetchIncomeShop(params);
-        setIncomeShop(data || null);
-      }
-
       if (incomeTab === "sellers") {
         const data = await fetchIncomeSellers(params);
         setIncomeSellersRows(Array.isArray(data?.items) ? data.items : []);
@@ -276,12 +273,24 @@ const AdminAccounting = ({ devices }) => {
   useEffect(() => {
     const fetchSoldDevices = async () => {
       try {
+        const { from, to } = getCourierRange();
+        const fromTime = from.getTime();
+        const toTime = to.getTime();
+
         const orders = await fetchAdminOrders();
         const allSold = [];
 
         orders.forEach((order) => {
-          let details = [];
+          if (order?.orderType !== "shop") return;
+          if (order?.sellerId != null) return;
+          if (!DONE_STATUSES.includes(order?.status)) return;
 
+          const upd = new Date(
+            order.updatedAt || order.createdAt || 0,
+          ).getTime();
+          if (!upd || upd < fromTime || upd >= toTime) return; // ✅ период
+
+          let details = [];
           try {
             details =
               typeof order.orderDetails === "string"
@@ -294,6 +303,8 @@ const AdminAccounting = ({ devices }) => {
           }
 
           details.forEach((item) => {
+            if (item?.isRestaurantItem) return;
+
             const deviceId = Number(item.deviceId ?? item.id);
             const sku = item.sku || item.variantSku || "";
             const key = `${deviceId}_${sku}`;
@@ -342,7 +353,14 @@ const AdminAccounting = ({ devices }) => {
 
     if (!devicesLocal.length) return;
     fetchSoldDevices();
-  }, [devicesLocal]);
+  }, [
+    devicesLocal,
+    courierPeriod,
+    courierAnchor,
+    courierYear,
+    courierMonth,
+    courierWeekSpan,
+  ]);
 
   const VAT_RATE = 0.24;
   const INCOME_TAX_RATE = 0.2;
@@ -356,6 +374,24 @@ const AdminAccounting = ({ devices }) => {
       : "—";
 
   const currentDevices = activeTab === "sold" ? soldDevices : devicesLocal;
+
+  const shopOrdersCount = soldDevices.reduce(
+    (sum, d) => sum + Number(d.quantity || 0),
+    0,
+  );
+
+  const shopGoodsRevenue = soldDevices.reduce(
+    (sum, d) => sum + Number(d.price || 0) * Number(d.quantity || 0),
+    0,
+  );
+
+  const shopGoodsProfit = soldDevices.reduce((sum, d) => {
+    const qty = Number(d.quantity || 0);
+    const sell = Number(d.price || 0);
+    const cost = d.purchasePrice != null ? Number(d.purchasePrice) : null;
+    if (cost == null) return sum;
+    return sum + (sell - cost) * qty;
+  }, 0);
 
   const totalQuantity = currentDevices.reduce(
     (sum, d) => sum + Number(d.quantity || 0),
@@ -507,7 +543,6 @@ const AdminAccounting = ({ devices }) => {
               );
             })}
 
-            {/* Итого */}
             <tr className={styles.goodsTotalRow}>
               <td className={styles.goodsTd} colSpan={2}>
                 Итого:
@@ -632,22 +667,13 @@ const AdminAccounting = ({ devices }) => {
       {activeTab === "income" && (
         <div className={styles.accCard}>
           <div className={styles.incomeHeader}>
-            {/* Tabs внутри дохода */}
             <div className={styles.incomeTabs}>
               <button
                 type="button"
                 className={`${styles.accBtn} ${incomeTab === "couriers" ? styles.accBtnPrimary : ""}`}
                 onClick={() => setIncomeTab("couriers")}
               >
-                🛵 Комисия курьера
-              </button>
-
-              <button
-                type="button"
-                className={`${styles.accBtn} ${incomeTab === "shop" ? styles.accBtnPrimary : ""}`}
-                onClick={() => setIncomeTab("shop")}
-              >
-                🛒 Shop
+                🛵 Комисия с курьеров
               </button>
 
               <button
@@ -655,11 +681,18 @@ const AdminAccounting = ({ devices }) => {
                 className={`${styles.accBtn} ${incomeTab === "sellers" ? styles.accBtnPrimary : ""}`}
                 onClick={() => setIncomeTab("sellers")}
               >
-                🏪 Селлеры
+                🏪 Комисия от Селеров
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.accBtn} ${incomeTab === "shop" ? styles.accBtnPrimary : ""}`}
+                onClick={() => setIncomeTab("shop")}
+              >
+                🛒 Доход DlyQ Store
               </button>
             </div>
 
-            {/* Управление периодом */}
             <div className={styles.incomePeriod}>
               <div className={styles.courierRange}>
                 <div className={styles.courierRangeTop}>
@@ -819,84 +852,36 @@ const AdminAccounting = ({ devices }) => {
           {incomeTab === "shop" && (
             <>
               <div style={{ marginBottom: 10, fontWeight: 600 }}>
-                Доход / сводка по Shop (за период)
+                Доход DlyQ Store (проданные товары, без доставки)
               </div>
 
-              {!incomeShop && !incomeLoading ? (
+              {soldDevices.length === 0 && !incomeLoading ? (
                 <div className={styles.accEmpty}>
                   Нет данных за выбранный период
                 </div>
               ) : (
-                <>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 12,
-                      flexWrap: "wrap",
-                      marginBottom: 12,
-                    }}
-                  >
-                    <div className={styles.accMiniCard}>
-                      <div className={styles.accMiniLabel}>Заказов</div>
-                      <div className={styles.accMiniValue}>
-                        {Number(incomeShop?.ordersCount || 0)}
-                      </div>
-                    </div>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <div className={styles.accMiniCard}>
+                    <div className={styles.accMiniLabel}>Продано (шт.)</div>
+                    <div className={styles.accMiniValue}>{shopOrdersCount}</div>
+                  </div>
 
-                    <div className={styles.accMiniCard}>
-                      <div className={styles.accMiniLabel}>Сумма заказов</div>
-                      <div className={styles.accMiniValue}>
-                        {format(Number(incomeShop?.sumTotal || 0))} €
-                      </div>
+                  <div className={styles.accMiniCard}>
+                    <div className={styles.accMiniLabel}>
+                      Товары (Продажи товаров €) €
                     </div>
-
-                    <div className={styles.accMiniCard}>
-                      <div className={styles.accMiniLabel}>Доставка</div>
-                      <div className={styles.accMiniValue}>
-                        {format(Number(incomeShop?.sumDelivery || 0))} €
-                      </div>
-                    </div>
-
-                    <div className={styles.accMiniCard}>
-                      <div className={styles.accMiniLabel}>
-                        Выплаты курьерам
-                      </div>
-                      <div className={styles.accMiniValue}>
-                        {format(Number(incomeShop?.sumCourierFee || 0))} €
-                      </div>
-                    </div>
-
-                    <div className={styles.accMiniCard}>
-                      <div className={styles.accMiniLabel}>
-                        Комиссия курьера
-                      </div>
-                      <div className={styles.accMiniValue}>
-                        {format(Number(incomeShop?.sumCourierCommission || 0))}{" "}
-                        €
-                      </div>
+                    <div className={styles.accMiniValue}>
+                      {format(shopGoodsRevenue)} €
                     </div>
                   </div>
 
-                  <div className={styles.accTableWrap}>
-                    <table className={styles.accTable}>
-                      <tbody>
-                        <tr>
-                          <td className={styles.left}>
-                            <b>Условный “валовой доход” доставки</b>
-                          </td>
-                          <td>
-                            {format(
-                              Number(incomeShop?.sumDelivery || 0) -
-                                Number(incomeShop?.sumCourierFee || 0) -
-                                Number(incomeShop?.sumCourierCommission || 0),
-                            )}{" "}
-                            €
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                  <div className={styles.accMiniCard}>
+                    <div className={styles.accMiniLabel}>Прибыль €</div>
+                    <div className={styles.accMiniValue}>
+                      {format(shopGoodsProfit)} €
+                    </div>
                   </div>
-                </>
+                </div>
               )}
             </>
           )}
@@ -904,25 +889,23 @@ const AdminAccounting = ({ devices }) => {
           {incomeTab === "sellers" && (
             <>
               <div style={{ marginBottom: 10, fontWeight: 600 }}>
-                Сводка по селлерам (за период)
+                Комиссия с селлеров (за период)
               </div>
 
               <div className={styles.accTableWrap}>
                 <table className={styles.accTable}>
                   <thead>
                     <tr>
-                      <th className={styles.left}>Селлер</th>
+                      <th className={styles.left}>Ресторан</th>
                       <th>Заказов</th>
-                      <th>Сумма заказов €</th>
-                      <th>Доставка €</th>
-                      <th>Выплаты курьерам €</th>
-                      <th>Комиссия курьера €</th>
+                      <th>Комиссия €</th>
                     </tr>
                   </thead>
+
                   <tbody>
                     {incomeSellersRows.length === 0 && !incomeLoading ? (
                       <tr>
-                        <td colSpan={6} className={styles.accEmpty}>
+                        <td colSpan={3} className={styles.accEmpty}>
                           Нет данных за выбранный период
                         </td>
                       </tr>
@@ -933,10 +916,7 @@ const AdminAccounting = ({ devices }) => {
                             {r.sellerName || `#${r.sellerId}`}
                           </td>
                           <td>{Number(r.ordersCount || 0)}</td>
-                          <td>{format(Number(r.sumTotal || 0))}</td>
-                          <td>{format(Number(r.sumDelivery || 0))}</td>
-                          <td>{format(Number(r.sumCourierFee || 0))}</td>
-                          <td>{format(Number(r.sumCourierCommission || 0))}</td>
+                          <td>{format(Number(r.sumSellerCommission || 0))}</td>
                         </tr>
                       ))
                     )}
@@ -945,24 +925,10 @@ const AdminAccounting = ({ devices }) => {
               </div>
 
               <div style={{ marginTop: 10, fontWeight: 700 }}>
-                Итого по селлерам:{" "}
+                Итого комиссия:{" "}
                 {format(
                   incomeSellersRows.reduce(
-                    (s, r) => s + Number(r.sumTotal || 0),
-                    0,
-                  ),
-                )}{" "}
-                €, доставка:{" "}
-                {format(
-                  incomeSellersRows.reduce(
-                    (s, r) => s + Number(r.sumDelivery || 0),
-                    0,
-                  ),
-                )}{" "}
-                €, выплаты курьерам:{" "}
-                {format(
-                  incomeSellersRows.reduce(
-                    (s, r) => s + Number(r.sumCourierFee || 0),
+                    (s, r) => s + Number(r.sumSellerCommission || 0),
                     0,
                   ),
                 )}{" "}
