@@ -1,4 +1,4 @@
-const { Op, fn, col } = require("sequelize");
+const { Op, fn, col, literal } = require("sequelize");
 const { Order, Courier, Seller } = require("../models/models");
 
 const COMMISSION_SHOP_FLAT = 0.3;
@@ -148,7 +148,9 @@ class AccountingController {
       const where = {
         status: { [Op.in]: DONE_STATUSES },
         orderType: "shop",
+        sellerId: null,
       };
+
       if (start)
         where.updatedAt = { ...(where.updatedAt || {}), [Op.gte]: start };
       if (end) where.updatedAt = { ...(where.updatedAt || {}), [Op.lt]: end };
@@ -159,11 +161,6 @@ class AccountingController {
           [fn("COUNT", col("id")), "ordersCount"],
           [fn("COALESCE", fn("SUM", col("totalPrice")), 0), "sumTotal"],
           [fn("COALESCE", fn("SUM", col("deliveryPrice")), 0), "sumDelivery"],
-          [fn("COALESCE", fn("SUM", col("courierFee")), 0), "sumCourierFee"],
-          [
-            fn("COALESCE", fn("SUM", col("courierCommission")), 0),
-            "sumCourierCommission",
-          ],
         ],
         raw: true,
       });
@@ -172,8 +169,6 @@ class AccountingController {
       const sumTotal = Number(row?.sumTotal || 0);
       const sumDelivery = Number(row?.sumDelivery || 0);
       const sumGoods = sumTotal - sumDelivery;
-      const sumCourierFee = Number(row?.sumCourierFee || 0);
-      const sumCourierCommission = Number(row?.sumCourierCommission || 0);
 
       return res.json({
         range: { start, end },
@@ -181,8 +176,6 @@ class AccountingController {
         sumTotal: Number(sumTotal.toFixed(2)),
         sumDelivery: Number(sumDelivery.toFixed(2)),
         sumGoods: Number(sumGoods.toFixed(2)),
-        sumCourierFee: Number(sumCourierFee.toFixed(2)),
-        sumCourierCommission: Number(sumCourierCommission.toFixed(2)),
       });
     } catch (e) {
       console.error("getIncomeShop error:", e);
@@ -214,25 +207,71 @@ class AccountingController {
             fn("COALESCE", fn("SUM", col("courierCommission")), 0),
             "sumCourierCommission",
           ],
+
+          [
+            fn(
+              "COALESCE",
+              fn(
+                "SUM",
+                literal(`("order"."totalPrice" - "order"."deliveryPrice")`),
+              ),
+              0,
+            ),
+            "sumGoods",
+          ],
+
+          [
+            fn(
+              "COALESCE",
+              fn(
+                "SUM",
+                literal(
+                  `("order"."totalPrice" - "order"."deliveryPrice") * (COALESCE("seller"."commission_percent", 20) / 100.0)`,
+                ),
+              ),
+              0,
+            ),
+            "sumSellerCommission",
+          ],
         ],
         include: [
-          { model: Seller, attributes: ["id", "name"], required: false },
+          {
+            model: Seller,
+            attributes: ["id", "name", "commissionPercent"],
+            required: false,
+          },
         ],
         group: ["sellerId", "seller.id"],
         raw: true,
       });
 
-      const items = (rows || []).map((r) => ({
-        sellerId: Number(r.sellerId),
-        sellerName: r["seller.name"] || `Seller #${r.sellerId}`,
-        ordersCount: Number(r.ordersCount || 0),
-        sumTotal: Number(Number(r.sumTotal || 0).toFixed(2)),
-        sumDelivery: Number(Number(r.sumDelivery || 0).toFixed(2)),
-        sumCourierFee: Number(Number(r.sumCourierFee || 0).toFixed(2)),
-        sumCourierCommission: Number(
-          Number(r.sumCourierCommission || 0).toFixed(2),
-        ),
-      }));
+      const items = (rows || []).map((r) => {
+        const sumTotal = Number(r.sumTotal || 0);
+        const sumDelivery = Number(r.sumDelivery || 0);
+        const sumGoods = Number(r.sumGoods || sumTotal - sumDelivery || 0);
+
+        const sumSellerCommission = Number(r.sumSellerCommission || 0);
+        const toSeller = sumGoods - sumSellerCommission;
+
+        return {
+          sellerId: Number(r.sellerId),
+          sellerName: r["seller.name"] || `Seller #${r.sellerId}`,
+          commissionPercent: Number(r["seller.commissionPercent"] ?? 20),
+
+          ordersCount: Number(r.ordersCount || 0),
+          sumTotal: Number(sumTotal.toFixed(2)),
+          sumDelivery: Number(sumDelivery.toFixed(2)),
+          sumGoods: Number(sumGoods.toFixed(2)),
+
+          sumSellerCommission: Number(sumSellerCommission.toFixed(2)),
+          sumToSeller: Number(toSeller.toFixed(2)),
+
+          sumCourierFee: Number(Number(r.sumCourierFee || 0).toFixed(2)),
+          sumCourierCommission: Number(
+            Number(r.sumCourierCommission || 0).toFixed(2),
+          ),
+        };
+      });
 
       return res.json({ range: { start, end }, items });
     } catch (e) {
@@ -242,41 +281,42 @@ class AccountingController {
   }
 
   async getCourierIncomeOrders(req, res) {
-  try {
-    const { start, end } = rangeFromQuery(req.query);
-    const courierId = Number(req.params.courierId);
+    try {
+      const { start, end } = rangeFromQuery(req.query);
+      const courierId = Number(req.params.courierId);
 
-    if (!courierId) return res.status(400).json({ message: "Bad courierId" });
+      if (!courierId) return res.status(400).json({ message: "Bad courierId" });
 
-    const where = {
-      courierId,
-      status: { [Op.in]: DONE_STATUSES },
-    };
-    if (start) where.updatedAt = { ...(where.updatedAt || {}), [Op.gte]: start };
-    if (end) where.updatedAt = { ...(where.updatedAt || {}), [Op.lt]: end };
+      const where = {
+        courierId,
+        status: { [Op.in]: DONE_STATUSES },
+      };
+      if (start)
+        where.updatedAt = { ...(where.updatedAt || {}), [Op.gte]: start };
+      if (end) where.updatedAt = { ...(where.updatedAt || {}), [Op.lt]: end };
 
-    const items = await Order.findAll({
-      where,
-      order: [["updatedAt", "DESC"]],
-      attributes: [
-        "id",
-        "orderType",
-        "sellerId",
-        "totalPrice",
-        "deliveryPrice",
-        "courierFee",
-        "courierCommission",
-        "updatedAt",
-      ],
-      raw: true,
-    });
+      const items = await Order.findAll({
+        where,
+        order: [["updatedAt", "DESC"]],
+        attributes: [
+          "id",
+          "orderType",
+          "sellerId",
+          "totalPrice",
+          "deliveryPrice",
+          "courierFee",
+          "courierCommission",
+          "updatedAt",
+        ],
+        raw: true,
+      });
 
-    return res.json({ range: { start, end }, courierId, items });
-  } catch (e) {
-    console.error("getCourierIncomeOrders error:", e);
-    return res.status(500).json({ message: "Ошибка сервера" });
+      return res.json({ range: { start, end }, courierId, items });
+    } catch (e) {
+      console.error("getCourierIncomeOrders error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
   }
-}
 }
 
 module.exports = new AccountingController();
