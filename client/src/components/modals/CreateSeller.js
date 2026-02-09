@@ -23,6 +23,7 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [phone, setPhone] = useState("");
   const [website, setWebsite] = useState("");
+  const [commissionPercent, setCommissionPercent] = useState(20);
 
   useEffect(() => {
     if (!show) return;
@@ -44,6 +45,7 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
       setRegistrationNumber(editableSeller?.registrationNumber || "");
       setPhone(editableSeller?.phone || "");
       setWebsite(editableSeller?.website || "");
+      setCommissionPercent(editableSeller?.commissionPercent ?? 20);
 
       setIsActive(
         editableSeller?.isActive === undefined
@@ -71,6 +73,7 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
       setRegistrationNumber("");
       setPhone("");
       setWebsite("");
+      setCommissionPercent(20);
     }
   }, [show, isEdit, editableSeller]);
 
@@ -113,7 +116,14 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
       return;
     }
 
+    const cp = commissionPercent === "" ? 20 : Number(commissionPercent);
+    if (!Number.isFinite(cp) || cp < 0 || cp > 100) {
+      alert("Комиссия должна быть числом 0..100");
+      return;
+    }
+
     const fd = new FormData();
+    fd.append("commissionPercent", String(cp));
     fd.append("name", name.trim());
     if (slug.trim()) fd.append("slug", slug.trim());
 
@@ -295,19 +305,20 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
                   : "ID пользователя, который будет владельцем магазина"
               }
             />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Комиссия платформы (%)</Form.Label>
+            <Form.Control
+              type="number"
+              min={0}
+              max={100}
+              value={commissionPercent}
+              onChange={(e) => setCommissionPercent(e.target.value)}
+              placeholder="20"
+            />
             <Form.Text>
-              Если поле пустое — владелец не изменится (при редактировании) / не
-              будет назначен (при создании).
-              <ul style={{ marginBottom: 0 }}>
-                <li>
-                  При указании корректного userId создаётся запись в SellerUser
-                  с ролью owner
-                </li>
-                <li>
-                  Пользователю автоматически присваивается роль SELLER (если он
-                  не ADMIN)
-                </li>
-              </ul>
+              По умолчанию 20%. Можно менять для каждого ресторана.
             </Form.Text>
           </Form.Group>
 
