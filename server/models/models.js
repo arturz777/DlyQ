@@ -36,6 +36,13 @@ const Seller = sequelize.define("seller", {
     allowNull: false,
     defaultValue: false,
   },
+  commissionPercent: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 20,
+    field: "commission_percent",
+    validate: { min: 0, max: 100 },
+  },
 });
 
 const MenuCategory = sequelize.define("menu_category", {
