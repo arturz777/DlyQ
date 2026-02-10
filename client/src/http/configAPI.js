@@ -29,3 +29,13 @@ export const updateDeliveryPricing = async (payload) => {
   const { data } = await $authHost.post("/config/delivery", payload);
   return data;
 };
+
+export const fetchCourierConfig = async () => {
+  const { data } = await $authHost.get("/config/courier");
+  return data;
+};
+
+export const updateCourierConfig = async (payload) => {
+  const { data } = await $authHost.post("/config/courier", payload);
+  return data;
+};
