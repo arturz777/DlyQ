@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -427,6 +427,11 @@ useEffect(() => {
     p = p.replace(/^\++/, "+");
     return p.trim();
   };
+
+  const phoneNormalized = useMemo(
+    () => normalizePhone(user?.user?.phone || ""),
+    [user?.user?.phone],
+  );
 
   const handleSubmit = async (event) => {
     event.preventDefault();
