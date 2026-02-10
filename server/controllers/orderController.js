@@ -77,6 +77,21 @@ const DEFAULT_DELIVERY = {
   minCost: 0,
 };
 
+const COURIER_KEY = "courier";
+const DEFAULT_COURIER = {
+  shopCommissionPercent: 10,
+  parcelCommissionPercent: 20,
+};
+
+async function getCourierCfg() {
+  const row = await Setting.findByPk(COURIER_KEY);
+  return { ...DEFAULT_COURIER, ...(row?.value || {}) };
+}
+
+function round2(n) {
+  return Number((Math.round(Number(n) * 100) / 100).toFixed(2));
+}
+
 async function getDeliveryCfg() {
   const row = await Setting.findByPk(DELIVERY_KEY);
   return { ...DEFAULT_DELIVERY, ...(row?.value || {}) };
@@ -317,9 +332,12 @@ const createOrder = async (req, res) => {
 
     const userId = req.user ? req.user.id : null;
 
-    const distance = getDistanceFromWarehouse(latitude, longitude);
+     const distance = getDistanceFromWarehouse(latitude, longitude);
     const deliveryPrice = calculateDeliveryCost(total, distance, cfg);
     const courierFee = calculateDeliveryBase(distance, cfg);
+    const courierCfg = await getCourierCfg();
+    const shopPercent = Number(courierCfg.shopCommissionPercent ?? 0);
+    const courierCommission = round2(courierFee * (shopPercent / 100));
 
     let isPreorder = false;
     const devicesToUpdate = [];
@@ -577,7 +595,6 @@ const createOrder = async (req, res) => {
         name: translatedName,
         selectedOptions: localizedOptions,
         selectedOptionsMeta: localizedSelectedOptionsMeta,
-
         sellPriceAtSale,
         purchasePriceAtSale,
         purchaseHasVATAtSale,
@@ -601,12 +618,14 @@ const createOrder = async (req, res) => {
       deliveryAddress: address,
       deviceImage: deviceImageUrl,
       productName:
-        orderDetails.length > 0 ? orderDetails[0].name : "Неизвестный товар",
+      orderDetails.length > 0 ? orderDetails[0].name : "Неизвестный товар",
       orderDetails: JSON.stringify(localizedOrderDetails),
       desiredDeliveryDate: desiredDeliveryDateToStore,
       preferredDeliveryComment: preferredDeliveryCommentToStore,
       formData: JSON.stringify(formData),
       preorderReason,
+      courierCommission,
+      courierCommissionRate: shopPercent / 100,
     };
 
     if (Order.rawAttributes?.paymentIntentId) orderData.paymentIntentId = pi.id;
