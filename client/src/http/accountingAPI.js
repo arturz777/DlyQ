@@ -27,3 +27,13 @@ export const fetchAdminOrders = async () => {
   const { data } = await $authHost.get("/order/admin");
   return data;
 };
+
+export const fetchPayoutStatuses = async (params) => {
+  const { data } = await $authHost.get("/accounting/payouts", { params });
+  return data;
+};
+
+export const setPayoutStatus = async (payload) => {
+  const { data } = await $authHost.post("/accounting/payouts", payload);
+  return data;
+};
