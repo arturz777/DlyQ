@@ -1,6 +1,24 @@
 const sequelize = require("../db");
 const { DataTypes, literal } = require("sequelize");
 
+const AccountingPayout = sequelize.define(
+  "accounting_payout",
+  {
+    kind: { type: DataTypes.TEXT, allowNull: false },
+    entityId: { type: DataTypes.INTEGER, allowNull: false },
+    rangeStart: { type: DataTypes.DATEONLY, allowNull: false },
+    rangeEnd: { type: DataTypes.DATEONLY, allowNull: false },
+    isPaid: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    paidAt: { type: DataTypes.DATE },
+    paidBy: { type: DataTypes.INTEGER },
+  },
+  {
+    tableName: "accounting_payouts",
+    underscored: false,
+    timestamps: true,
+  },
+);
+
 const SellerUser = sequelize.define("seller_user", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   sellerId: { type: DataTypes.INTEGER, allowNull: false },
@@ -16,6 +34,7 @@ const Seller = sequelize.define("seller", {
   img: { type: DataTypes.STRING, allowNull: true },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
   address: { type: DataTypes.STRING, allowNull: true },
+  iban: { type: DataTypes.STRING, allowNull: true },
   companyName: {
     type: DataTypes.STRING,
     allowNull: true,
@@ -844,4 +863,5 @@ module.exports = {
   InventoryReceiptItem,
   MenuOptionGroup,
   MenuOption,
+  AccountingPayout,
 };
