@@ -8,6 +8,8 @@ const {
   setShopConfig,
   getDeliveryPricing,
   setDeliveryPricing,
+  getCourierConfig,
+  setCourierConfig,
 } = require("../controllers/configController");
 
 router.get("/maintenance", getMaintenance);
@@ -18,5 +20,8 @@ router.post("/shop", setShopConfig);
 
 router.get("/delivery", getDeliveryPricing);
 router.post("/delivery", setDeliveryPricing);
+
+router.get("/courier", getCourierConfig);
+router.post("/courier", setCourierConfig);
 
 module.exports = router;
