@@ -1,89 +1,191 @@
 .cookieBanner {
-	position: fixed;
-	bottom: 20px;
-	left: 50%;
-	transform: translateX(-50%);
-	width: 90%;
-	max-width: 450px;
-	background: #ffffff;
-	padding: 15px;
-	border-radius: 8px;
-	box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	text-align: center;
-	z-index: 1000;
-	margin-bottom: 60px;
-  }
-  
-  .cookieContent {
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-  }
-  
-  .cookieContent p {
-	font-size: 0.85rem;
-	color: #333;
-	margin: 0;
-	line-height: 1.4;
-  }
-  
-  .cookieContent a {
-	color: #007bff;
-	text-decoration: none;
-	font-weight: 500;
-  }
-  
-  .cookieContent a:hover {
-	text-decoration: underline;
-  }
-  
-  .buttons {
-	display: flex;
-	gap: 8px;
-	justify-content: center;
-	width: 100%;
-	margin-top: 10px;
-  }
-  
-  label {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	font-size: 0.85rem;
-	color: #333;
-	cursor: pointer;
-  }
-  
-  input[type="checkbox"] {
-	accent-color: #007bff;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 450px;
+  background: #ffffff;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  z-index: 1000;
+  margin-bottom: 60px;
+}
+
+.cookieContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cookieContent p {
+  font-size: 0.85rem;
+  color: #333;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.cookieContent a {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.cookieContent a:hover {
+  text-decoration: underline;
+}
+
+.buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.accept,
+.settings,
+.reject {
+  border: none;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: 0.15s ease;
+  white-space: nowrap;
+}
+
+.accept {
+  background: #1f7a1f;
+  color: #fff;
+}
+
+.settings {
+  background: #f2f4f7;
+  color: #111;
+}
+
+.reject {
+  background: #111;
+  color: #fff;
+}
+
+.accept:hover,
+.settings:hover,
+.reject:hover {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+.accept:active,
+.settings:active,
+.reject:active {
+  transform: translateY(0);
+  opacity: 0.9;
+}
+
+.accept:focus-visible,
+.settings:focus-visible,
+.reject:focus-visible {
+  outline: 2px solid #2684ff;
+  outline-offset: 2px;
+}
+
+.cookieContentButtons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+  margin-top: 10px;
+}
+
+label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #333;
+  cursor: pointer;
+}
+
+input[type="checkbox"] {
+  accent-color: #007bff;
+}
+
+@media (max-width: 600px) {
+  .cookieBanner {
+    width: calc(100% - 20px);
+    max-width: 420px;
+    padding: 12px;
+    bottom: 12px;
+    margin-bottom: 16px;
   }
 
-  @media (max-width: 600px) {
-  .cookieBanner {
-    transform: scale(0.8) translateX(-50%);
-    transform-origin: bottom center;
+  .cookieContent {
+    gap: 10px;
+  }
+
+  .cookieContent p {
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  .buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .buttons button {
+    width: 100%;
+  }
+
+  .buttons .reject {
+    grid-column: 1 / -1;
+  }
+
+  .accept,
+  .settings,
+  .reject {
+    padding: 10px 10px;
+    font-size: 0.8rem;
+    border-radius: 10px;
+  }
+
+  .cookieContentButtons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .cookieContentButtons button {
+    width: 100%;
   }
 }
 
-@media (max-width: 480px) {
-	.cookieBanner {
-	  transform: scale(0.7) translateX(-50%);
-	  transform-origin: bottom center;
-	}
+@media (max-width: 360px) {
+  .cookieBanner {
+    width: calc(100% - 16px);
+    padding: 10px;
   }
 
-  @media (max-width: 303px) {
-	.cookieBanner {
-	  transform: scale(0.4) translateX(-50%);
-	}
+  .cookieContent p {
+    font-size: 0.78rem;
   }
-  
 
-
-
-  
-  
-  
+  .accept,
+  .settings,
+  .reject {
+    padding: 9px 8px;
+    font-size: 0.78rem;
+  }
+}
