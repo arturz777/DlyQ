@@ -31,4 +31,17 @@ router.get(
   accountingController.getCourierIncomeOrders,
 );
 
+router.get(
+  "/payouts",
+  authMiddleware,
+  checkRoleMiddleware("ADMIN"),
+  accountingController.getPayoutStatuses,
+);
+router.post(
+  "/payouts",
+  authMiddleware,
+  checkRoleMiddleware("ADMIN"),
+  accountingController.setPayoutStatus,
+);
+
 module.exports = router;
