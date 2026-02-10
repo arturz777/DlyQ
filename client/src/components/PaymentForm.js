@@ -428,6 +428,11 @@ useEffect(() => {
     return p.trim();
   };
 
+   const phoneNormalized = useMemo(
+    () => normalizePhone(user?.user?.phone || ""),
+    [user?.user?.phone],
+  );
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
