@@ -6,6 +6,8 @@ import {
   updateShopConfig,
   fetchDeliveryPricing,
   updateDeliveryPricing,
+  fetchCourierConfig,
+  updateCourierConfig,
 } from "../http/configAPI";
 import appStore from "../store/appStore";
 import styles from "./AdminSettings.module.css";
@@ -29,6 +31,7 @@ const AdminSettings = () => {
     () => [
       { key: "general", label: "Общее" },
       { key: "shop", label: "Магазин" },
+      { key: "courier", label: "Курьеры" },
       { key: "delivery", label: "Доставка" },
     ],
     [],
@@ -45,6 +48,26 @@ const AdminSettings = () => {
   const [delivery, setDelivery] = useState(DEFAULT_DELIVERY);
   const [deliverySaving, setDeliverySaving] = useState(false);
   const [deliverySaveState, setDeliverySaveState] = useState(null);
+  const [courierSaving, setCourierSaving] = useState(false);
+  const [courierSaveState, setCourierSaveState] = useState(null);
+  const [courierCfg, setCourierCfg] = useState({
+    shopCommissionPercent: 10,
+    parcelCommissionPercent: 20,
+  });
+
+  useEffect(() => {
+    fetchCourierConfig()
+      .then((v) => {
+        const shop = Number(v?.shopCommissionPercent ?? 10);
+        const parcel = Number(v?.parcelCommissionPercent ?? 20);
+
+        setCourierCfg({
+          shopCommissionPercent: Number.isFinite(shop) ? shop : 10,
+          parcelCommissionPercent: Number.isFinite(parcel) ? parcel : 20,
+        });
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     fetchMaintenance()
@@ -72,6 +95,42 @@ const AdminSettings = () => {
       })
       .catch(console.error);
   }, []);
+
+  const setCourierField = (key, val) => {
+    setCourierCfg((prev) => ({ ...prev, [key]: val }));
+  };
+
+  const saveCourier = async () => {
+    try {
+      setCourierSaving(true);
+      setCourierSaveState(null);
+
+      const payload = {
+        shopCommissionPercent: Number(
+          String(courierCfg.shopCommissionPercent).replace(",", "."),
+        ),
+        parcelCommissionPercent: Number(
+          String(courierCfg.parcelCommissionPercent).replace(",", "."),
+        ),
+      };
+
+      const saved = await updateCourierConfig(payload);
+      const flat = Number(
+        saved?.shopCommissionFlat ?? payload.shopCommissionFlat,
+      );
+
+      setCourierCfg({ shopCommissionFlat: Number.isFinite(flat) ? flat : 0.3 });
+
+      setCourierSaveState("ok");
+      setTimeout(() => setCourierSaveState(null), 1800);
+    } catch (e) {
+      console.error(e);
+      setCourierSaveState("error");
+      setTimeout(() => setCourierSaveState(null), 2500);
+    } finally {
+      setCourierSaving(false);
+    }
+  };
 
   const toggleMaintenance = async (next) => {
     try {
@@ -184,7 +243,7 @@ const AdminSettings = () => {
 
         {activeTab === "shop" && (
           <div className={styles.settingsCard}>
-            <div className={styles.cardTitle}>DlyQ Market</div>
+            <div className={styles.cardTitle}>Время работы DlyQ Market</div>
 
             <div className={styles.settingsRow}>
               <label className={styles.toggleWrap}>
@@ -273,6 +332,62 @@ const AdminSettings = () => {
                   <span className={styles.saveErr}>Ошибка сохранения</span>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "courier" && (
+          <div className={styles.settingsCard}>
+            <div className={styles.cardTitle}>Комиссия у курьеров</div>
+
+            <div className={styles.formGrid}>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Комиссия shop (%)</span>
+                <input
+                  className={styles.textInput}
+                  type="number"
+                  step="0.1"
+                  value={courierCfg.shopCommissionPercent}
+                  onChange={(e) =>
+                    setCourierField("shopCommissionPercent", e.target.value)
+                  }
+                />
+              </label>
+
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Комиссия parcel (%)</span>
+                <input
+                  className={styles.textInput}
+                  type="number"
+                  step="0.1"
+                  value={courierCfg.parcelCommissionPercent}
+                  onChange={(e) =>
+                    setCourierField("parcelCommissionPercent", e.target.value)
+                  }
+                />
+              </label>
+            </div>
+
+            <div className={styles.saveRow}>
+              <button
+                className={styles.btnPrimary}
+                onClick={saveCourier}
+                disabled={courierSaving}
+              >
+                {courierSaving && <span className={styles.spinner} />}
+                {courierSaving ? "Сохранение..." : "Сохранить"}
+              </button>
+
+              {courierSaveState === "ok" && (
+                <span className={styles.saveOk}>Сохранено</span>
+              )}
+              {courierSaveState === "error" && (
+                <span className={styles.saveErr}>Ошибка сохранения</span>
+              )}
+            </div>
+
+            <div className={styles.saveHint}>
+              Эта сумма используется вместо “жёстких 0.30€” в расчётах.
             </div>
           </div>
         )}
