@@ -24,6 +24,7 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
   const [phone, setPhone] = useState("");
   const [website, setWebsite] = useState("");
   const [commissionPercent, setCommissionPercent] = useState(20);
+  const [iban, setIban] = useState("");
 
   useEffect(() => {
     if (!show) return;
@@ -44,6 +45,7 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
       setCompanyName(editableSeller?.companyName || "");
       setRegistrationNumber(editableSeller?.registrationNumber || "");
       setPhone(editableSeller?.phone || "");
+      setIban(editableSeller?.iban || "");
       setWebsite(editableSeller?.website || "");
       setCommissionPercent(editableSeller?.commissionPercent ?? 20);
 
@@ -72,6 +74,7 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
       setCompanyName("");
       setRegistrationNumber("");
       setPhone("");
+      setIban("");
       setWebsite("");
       setCommissionPercent(20);
     }
@@ -145,6 +148,7 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
     if (registrationNumber.trim())
       fd.append("registrationNumber", registrationNumber.trim());
     if (phone.trim()) fd.append("phone", phone.trim());
+    if (iban.trim()) fd.append("iban", iban.trim());
     if (website.trim()) fd.append("website", website.trim());
     if (ownerIdNum) fd.append("ownerUserId", String(ownerIdNum));
     if (imgFile) fd.append("img", imgFile);
@@ -231,15 +235,6 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Адрес магазина</Form.Label>
-            <Form.Control
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Город, улица, дом..."
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-3">
             <Form.Label>Юридическое название (название фирмы)</Form.Label>
             <Form.Control
               value={companyName}
@@ -254,6 +249,24 @@ const CreateSeller = ({ show, onHide, editableSeller = null, onSaved }) => {
               value={registrationNumber}
               onChange={(e) => setRegistrationNumber(e.target.value)}
               placeholder="Например: 12345678"
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>IBAN (счёт для выплат)</Form.Label>
+            <Form.Control
+              value={iban}
+              onChange={(e) => setIban(e.target.value)}
+              placeholder="EE12 1234 1234 1234 1234"
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Адрес магазина</Form.Label>
+            <Form.Control
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Город, улица, дом..."
             />
           </Form.Group>
 
