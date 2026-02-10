@@ -2,6 +2,13 @@ const { Setting } = require("../models/models");
 
 const MAINT_KEY = "maintenance";
 const SHOP_KEY = "shop";
+const DELIVERY_KEY = "delivery_pricing";
+const COURIER_KEY = "courier";
+
+const DEFAULT_COURIER = {
+  shopCommissionPercent: 10,
+  parcelCommissionPercent: 20,
+};
 
 const DEFAULT_SHOP = {
   forceClosed: false,
@@ -12,8 +19,6 @@ const DEFAULT_SHOP = {
   },
 };
 
-const DELIVERY_KEY = "delivery_pricing";
-
 const DEFAULT_DELIVERY = {
   baseCost: 2,
   perKm: 0.5,
@@ -21,6 +26,50 @@ const DEFAULT_DELIVERY = {
   discountAmount: 2,
   minCost: 0,
 };
+
+async function getCourierConfig(req, res, next) {
+  try {
+    const row = await Setting.findByPk(COURIER_KEY);
+    const value = row?.value || DEFAULT_COURIER;
+    res.json({ ...DEFAULT_COURIER, ...value });
+  } catch (e) {
+    next(e);
+  }
+}
+
+async function setCourierConfig(req, res, next) {
+  try {
+    const row = await Setting.findByPk(COURIER_KEY);
+    const prev = row?.value || DEFAULT_COURIER;
+
+    const shopCommissionPercent = Number(
+      String(
+        req.body?.shopCommissionPercent ?? prev.shopCommissionPercent,
+      ).replace(",", "."),
+    );
+    const parcelCommissionPercent = Number(
+      String(
+        req.body?.parcelCommissionPercent ?? prev.parcelCommissionPercent,
+      ).replace(",", "."),
+    );
+
+    const value = {
+      ...prev,
+      shopCommissionPercent: Number.isFinite(shopCommissionPercent)
+        ? shopCommissionPercent
+        : prev.shopCommissionPercent,
+      parcelCommissionPercent: Number.isFinite(parcelCommissionPercent)
+        ? parcelCommissionPercent
+        : prev.parcelCommissionPercent,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await Setting.upsert({ key: COURIER_KEY, value });
+    res.json(value);
+  } catch (e) {
+    next(e);
+  }
+}
 
 async function getDeliveryPricing(req, res, next) {
   try {
@@ -125,4 +174,6 @@ module.exports = {
   setShopConfig,
   getDeliveryPricing,
   setDeliveryPricing,
+  getCourierConfig,
+  setCourierConfig,
 };
