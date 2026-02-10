@@ -9,15 +9,9 @@ const CookieConsent = () => {
   const [marketing, setMarketing] = useState(false);
   const { t, i18n } = useTranslation();
 
-
-  // useEffect(() => {
-	// localStorage.removeItem("cookieConsent"); // удалить весь юзер после тестировании
-	// setIsVisible(true); 
-  // }, []);
-
   useEffect(() => {
     const consent = localStorage.getItem("cookieConsent");
-    if (!consent) {  // вернуть этот код после тестировании
+    if (!consent) {
       setIsVisible(true);
     }
   }, []);
@@ -53,7 +47,7 @@ const CookieConsent = () => {
           {t("cookies_info", { ns: "cookieConsent" })}
             <a href="/cookie-policy"> {t("cookies_policy", { ns: "cookieConsent" })}</a>.
           </p>
-          <div className={styles.cookieContentButtons}>
+          <div className={styles.buttons}>
             <button onClick={handleAcceptAll} className={styles.accept}>{t("Accept all", { ns: "cookieConsent" })}</button>
             <button onClick={() => setShowSettings(true)} className={styles.settings}>{t("customize", { ns: "cookieConsent" })}</button>
             <button onClick={handleNecessaryOnly} className={styles.reject}>{t("only_necessary", { ns: "cookieConsent" })}</button>
@@ -76,7 +70,7 @@ const CookieConsent = () => {
               onChange={() => setMarketing(!marketing)}
             /> {t("allow_marketing_cookies", { ns: "cookieConsent" })}
           </label>
-          <div className={styles.buttons}>
+          <div className={styles.cookieContentButtons}>
             <button onClick={handleSaveSettings} className={styles.accept}>{t("save_settings", { ns: "cookieConsent" })}</button>
             <button onClick={() => setShowSettings(false)} className={styles.settings}>{t("back", { ns: "cookieConsent" })}</button>
           </div>
