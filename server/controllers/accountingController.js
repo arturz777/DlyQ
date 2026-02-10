@@ -1,8 +1,25 @@
 const { Op, fn, col, literal } = require("sequelize");
 const { Order, Courier, Seller } = require("../models/models");
+const { Setting, AccountingPayout } = require("../models/models");
 
-const COMMISSION_SHOP_FLAT = 0.3;
 const DONE_STATUSES = ["Delivered", "Completed"];
+
+const COURIER_KEY = "courier";
+const DEFAULT_SHOP_COMMISSION_FLAT = 0.3;
+
+function parseISODateOnly(s) {
+  if (!s) return null;
+  // ожидаем YYYY-MM-DD
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  return s;
+}
+
+async function getShopCourierCommissionFlat() {
+  const row = await Setting.findByPk(COURIER_KEY);
+  const v = row?.value?.shopCommissionFlat;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : DEFAULT_SHOP_COMMISSION_FLAT;
+}
 
 function toDateStart(s) {
   const d = new Date(s);
@@ -25,7 +42,6 @@ function rangeFromQuery(q) {
 
   if (from || to) return { start: from, end: to };
 
-  // дефолт: текущая неделя (UTC)
   const now = new Date();
   const day = now.getUTCDay();
   const diffToMon = (day + 6) % 7;
@@ -50,7 +66,88 @@ function applyRange(where, start, end) {
 }
 
 class AccountingController {
-  // ТВОЙ текущий метод оставляем (он ок)
+  async getPayoutStatuses(req, res) {
+    try {
+      const kind = req.query.kind;
+      const from = parseISODateOnly(req.query.from);
+      const to = parseISODateOnly(req.query.to);
+
+      if (!["courier", "seller"].includes(kind)) {
+        return res.status(400).json({ message: "Bad kind" });
+      }
+      if (!from || !to) {
+        return res.status(400).json({ message: "Bad from/to" });
+      }
+
+      const rows = await AccountingPayout.findAll({
+        where: {
+          kind,
+          rangeStart: from,
+          rangeEnd: to,
+        },
+        attributes: ["entityId", "isPaid", "paidAt", "paidBy"],
+        raw: true,
+      });
+
+      const map = {};
+      for (const r of rows) map[String(r.entityId)] = !!r.isPaid;
+
+      return res.json({ kind, from, to, map, rows });
+    } catch (e) {
+      console.error("getPayoutStatuses error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
+  // POST /api/accounting/payouts
+  async setPayoutStatus(req, res) {
+    try {
+      const kind = req.body.kind;
+      const entityId = Number(req.body.entityId);
+      const from = parseISODateOnly(req.body.from);
+      const to = parseISODateOnly(req.body.to);
+      const isPaid = !!req.body.isPaid;
+
+      if (!["courier", "seller"].includes(kind)) {
+        return res.status(400).json({ message: "Bad kind" });
+      }
+      if (!entityId || entityId < 1) {
+        return res.status(400).json({ message: "Bad entityId" });
+      }
+      if (!from || !to) {
+        return res.status(400).json({ message: "Bad from/to" });
+      }
+
+      const patch = {
+        isPaid,
+        paidAt: isPaid ? new Date() : null,
+        paidBy: isPaid ? req.user?.id || null : null,
+      };
+
+      const [row, created] = await AccountingPayout.findOrCreate({
+        where: { kind, entityId, rangeStart: from, rangeEnd: to },
+        defaults: { kind, entityId, rangeStart: from, rangeEnd: to, ...patch },
+      });
+
+      if (!created) {
+        await row.update(patch);
+      }
+
+      return res.json({
+        ok: true,
+        kind,
+        entityId,
+        from,
+        to,
+        isPaid: !!row.isPaid,
+        paidAt: row.paidAt || null,
+      });
+    } catch (e) {
+      console.error("setPayoutStatus error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
   async getCourierAccounting(req, res) {
     try {
       const { start, end } = rangeFromQuery(req.query);
@@ -86,6 +183,7 @@ class AccountingController {
 
       const courierMap = new Map(couriers.map((c) => [Number(c.id), c]));
       const byCourier = new Map();
+      const shopCommissionFlat = await getShopCourierCommissionFlat();
 
       for (const o of orders) {
         const cid = Number(o.courierId);
@@ -103,12 +201,20 @@ class AccountingController {
         const row = byCourier.get(cid);
         row.ordersCount += 1;
 
-        const payout = Number(o.courierFee || 0);
-        row.payoutTotal += payout;
+        const fee = Number(o.courierFee || 0);
+        const commission = Number(o.courierCommission || 0);
 
-        if (o.orderType === "parcel")
+        const payoutNet =
+          o.orderType === "parcel" ? fee : Math.max(0, fee - commission);
+
+        row.payoutTotal += payoutNet;
+
+        if (o.orderType === "parcel") {
           row.commissionTotal += Number(o.courierCommission || 0);
-        else row.commissionTotal += COMMISSION_SHOP_FLAT;
+        } else {
+          const cc = Number(o.courierCommission);
+          row.commissionTotal += Number.isFinite(cc) ? cc : shopCommissionFlat;
+        }
       }
 
       const items = Array.from(byCourier.values()).map((x) => ({
@@ -237,7 +343,7 @@ class AccountingController {
         include: [
           {
             model: Seller,
-            attributes: ["id", "name", "commissionPercent"],
+            attributes: ["id", "name", "commissionPercent", "iban"],
             required: false,
           },
         ],
@@ -256,16 +362,14 @@ class AccountingController {
         return {
           sellerId: Number(r.sellerId),
           sellerName: r["seller.name"] || `Seller #${r.sellerId}`,
+          iban: r["seller.iban"] || null,
           commissionPercent: Number(r["seller.commissionPercent"] ?? 20),
-
           ordersCount: Number(r.ordersCount || 0),
           sumTotal: Number(sumTotal.toFixed(2)),
           sumDelivery: Number(sumDelivery.toFixed(2)),
           sumGoods: Number(sumGoods.toFixed(2)),
-
           sumSellerCommission: Number(sumSellerCommission.toFixed(2)),
           sumToSeller: Number(toSeller.toFixed(2)),
-
           sumCourierFee: Number(Number(r.sumCourierFee || 0).toFixed(2)),
           sumCourierCommission: Number(
             Number(r.sumCourierCommission || 0).toFixed(2),
