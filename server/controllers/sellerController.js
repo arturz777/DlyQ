@@ -199,7 +199,9 @@ class SellerController {
         companyName,
         registrationNumber,
         phone,
-        websitecommissionPercent,
+        iban,
+        website,
+        commissionPercent,
       } = req.body;
 
       if (!name) {
@@ -280,6 +282,7 @@ class SellerController {
             ? String(registrationNumber).trim()
             : null,
           phone: phone ? String(phone).trim() : null,
+          iban: iban ? String(iban).trim() : null,
           website: website ? String(website).trim() : null,
         },
         { transaction: t },
@@ -357,6 +360,7 @@ class SellerController {
         registrationNumber,
         phone,
         website,
+        iban,
         commissionPercent,
       } = req.body;
 
@@ -453,6 +457,8 @@ class SellerController {
 
       if (phone !== undefined)
         seller.phone = phone ? String(phone).trim() : null;
+
+      if (iban !== undefined) seller.iban = iban ? String(iban).trim() : null;
 
       if (website !== undefined)
         seller.website = website ? String(website).trim() : null;
