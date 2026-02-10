@@ -1,17 +1,26 @@
-const { Order } = require("../models/models");
+const { Order, Setting } = require("../models/models");
 const {
   sendOrderToNextCourier,
 } = require("../services/orderDistributionService");
 const Stripe = require("stripe");
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const COMMISSION_RATE = 0.2;
-
 const PARCEL_PRICING = {
   base: 3.0,
   perKm: 0.5,
   min: 3,
 };
+
+const COURIER_KEY = "courier";
+const DEFAULT_COURIER = {
+  shopCommissionPercent: 10,
+  parcelCommissionPercent: 20,
+};
+
+async function getCourierCfg() {
+  const row = await Setting.findByPk(COURIER_KEY);
+  return { ...DEFAULT_COURIER, ...(row?.value || {}) };
+}
 
 function round2(n) {
   return Number((Math.round(Number(n) * 100) / 100).toFixed(2));
@@ -23,11 +32,12 @@ function calcGross(distanceKm) {
   return round2(Math.max(PARCEL_PRICING.min, raw));
 }
 
-function calcPayout(gross) {
+function calcPayout(gross, rate) {
   const g = round2(gross);
-  const commission = round2(g * COMMISSION_RATE);
+  const r = Number(rate) || 0;
+  const commission = round2(g * r);
   const net = round2(g - commission);
-  return { gross: g, commission, net, rate: COMMISSION_RATE };
+  return { gross: g, commission, net, rate: r };
 }
 
 function mustNumber(v) {
@@ -64,8 +74,11 @@ class ParcelController {
 
       const dist = distanceKm(aLat, aLng, bLat, bLng);
 
+      const courierCfg = await getCourierCfg();
+      const rate = Number(courierCfg.parcelCommissionPercent ?? 0) / 100;
+
       const price = calcGross(dist);
-      const payout = calcPayout(price);
+      const payout = calcPayout(price, rate);
 
       return res.json({
         distanceKm: Number(dist.toFixed(2)),
@@ -106,8 +119,11 @@ class ParcelController {
 
       const dist = distanceKm(aLat, aLng, bLat, bLng);
 
+      const courierCfg = await getCourierCfg();
+      const rate = Number(courierCfg.parcelCommissionPercent ?? 0) / 100;
+
       const price = calcGross(dist);
-      const payout = calcPayout(price);
+      const payout = calcPayout(price, rate);
 
       const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
       if (!pi || !pi.id)
