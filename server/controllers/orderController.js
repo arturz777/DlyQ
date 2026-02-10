@@ -1081,6 +1081,7 @@ const getUserOrders = async (req, res) => {
 
 const getActiveOrder = async (req, res) => {
   try {
+    if (!req.user?.id) return res.status(401).json(null);
     const userId = req.user.id;
 
     const order = await Order.findOne({
