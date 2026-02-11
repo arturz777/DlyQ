@@ -19,6 +19,10 @@ const SlideModal = observer(({ children, onClose, title = "Modal" }) => {
   const [snap, setSnap] = useState(DEFAULT_SNAP);
 
   useEffect(() => {
+    if (open) setSnap(DEFAULT_SNAP);
+  }, [open]);
+
+  useEffect(() => {
     const id = requestAnimationFrame(() => {
       const id2 = requestAnimationFrame(() => setOpen(true));
       return () => cancelAnimationFrame(id2);
@@ -32,25 +36,27 @@ const SlideModal = observer(({ children, onClose, title = "Modal" }) => {
     return () => clearTimeout(t);
   }, [open, onClose]);
 
-  useEffect(() => {
-    if (!open) setSnap(DEFAULT_SNAP);
-  }, [open]);
+  const handleOpenChange = (v) => {
+    setOpen(v);
+  };
+
+  const snapProps = !isDesktop
+    ? {
+        snapPoints: [DEFAULT_SNAP, 1],
+        activeSnapPoint: snap,
+        setActiveSnapPoint: setSnap,
+      }
+    : {};
 
   return (
     <Drawer.Root
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
       dismissible
       modal
       onOpenAutoFocus={(e) => e.preventDefault()}
       onCloseAutoFocus={(e) => e.preventDefault()}
-      {...(!isDesktop
-        ? {
-            snapPoints: [DEFAULT_SNAP, 1],
-            activeSnapPoint: snap,
-            setActiveSnapPoint: setSnap,
-          }
-        : {})}
+      {...(!isDesktop && open ? snapProps : {})}
     >
       <Drawer.Portal>
         <Drawer.Overlay className={styles.modalOverlay} />
