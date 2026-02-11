@@ -8,5 +8,6 @@
 	"Select an option": "Выберите опцию",
 	"you cannot add a pre-order to the cart with regular items": "Нельзя добавить предзаказ в корзину с обычными товарами!",
 	"you cannot add a regular item to the cart with a pre-order": "Нельзя добавить обычный товар в корзину с предзаказом!",
-	  "cart has items from another seller. clear cart and add this item?": "В корзине уже есть товары другого продавца. Очистить корзину и добавить этот товар?"
+	"cart has items from another seller. clear cart and add this item?": "В корзине уже есть товары другого продавца. Очистить корзину и добавить этот товар?",
+	"added_count": "Добавлено {{count}} шт."
 }
