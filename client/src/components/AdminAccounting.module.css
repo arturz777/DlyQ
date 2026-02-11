@@ -142,24 +142,6 @@
   gap: 8px;
 }
 
-.courierRangeNav {
-  display: flex;
-  gap: 6px;
-}
-
-.rangeNavBtn {
-  width: 30px;
-  height: 28px;
-  border-radius: 10px;
-  border: 1px solid #d0d5dd;
-  background: #fff;
-  cursor: pointer;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .rangeNavBtn:hover {
   background: #f9fafb;
 }
@@ -294,15 +276,6 @@
   border-radius: 12px;
 }
 
-.accSubTitle {
-  margin-bottom: 10px;
-}
-
-.accVatPay {
-  margin-top: 8px;
-  font-weight: 700;
-}
-
 .incomeHeader {
   display: flex;
   flex-direction: column;
@@ -310,21 +283,6 @@
 }
 
 .incomeTabs {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.incomePeriod {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.incomeControls {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
