@@ -68,11 +68,13 @@ const SlideModal = observer(({ children, onClose, title = "Modal" }) => {
               {children}
             </div>
 
-            {appStore.isLoading && (
-              <div className={styles.spinnerOverlay}>
-                <div className={styles.spinner} />
-              </div>
-            )}
+            <div
+              className={`${styles.spinnerOverlay} ${
+                appStore.isLoading ? styles.isVisible : ""
+              }`}
+            >
+              <div className={styles.spinner} />
+            </div>
           </div>
         </Drawer.Content>
       </Drawer.Portal>
