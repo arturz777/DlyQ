@@ -22,6 +22,38 @@ const DeviceItem = ({ device, onClick, isStoreClosed = false }) => {
   const currentLang = i18n.language || "en";
   const deviceName = device.translations?.name?.[currentLang] || device.name;
 
+  const toastIdRef = useRef(null);
+
+  const renderAddedToast = (count) => (
+    <>
+      <strong className={styles.toastTitle}>{deviceName}</strong>
+      <span className={styles.toastSubtitle}>
+        {t("added_count", { ns: "deviceItem", count })}
+      </span>
+    </>
+  );
+
+  const showOrUpdateAddedToast = (count) => {
+    const id = `added-${device.id}`;
+
+    if (toast.isActive(id)) {
+      toast.update(id, {
+        render: renderAddedToast(count),
+        type: "success",
+        autoClose: 1200,
+        closeOnClick: true,
+      });
+      return;
+    }
+
+    toastIdRef.current = toast.success(renderAddedToast(count), {
+      toastId: id,
+      autoClose: 1200,
+      closeOnClick: true,
+      style: { maxWidth: "400px" },
+    });
+  };
+
   useEffect(() => {
     return () => {
       if (addedTimerRef.current) clearTimeout(addedTimerRef.current);
@@ -180,15 +212,7 @@ const DeviceItem = ({ device, onClick, isStoreClosed = false }) => {
 
       basket.addItem(itemForBasket);
 
-      toast.success(
-        <>
-          <strong className={styles.toastTitle}>{deviceName}</strong>
-          <span className={styles.toastSubtitle}>
-            {t("Added to cart!", { ns: "devicePage" })}
-          </span>
-        </>,
-        { style: { maxWidth: "400px" } },
-      );
+      showOrUpdateAddedToast(newCount);
 
       setAvailableQuantity((prev) => Math.max(0, prev - 1));
       setAdded(true);
