@@ -67,6 +67,15 @@ const SlideModal = observer(({ children, onClose, title = "Modal" }) => {
 
           <div className={styles.dragHandle} />
 
+          <button
+            type="button"
+            className={styles.closeIcon}
+            aria-label="Закрыть"
+            onClick={() => setOpen(false)}
+          >
+            ×
+          </button>
+
           <div className={styles.modalScroll}>
             <div
               className={appStore.isLoading ? styles.hiddenContent : undefined}
