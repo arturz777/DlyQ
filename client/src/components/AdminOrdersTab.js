@@ -4,6 +4,7 @@ import {
   fetchAllOrdersForAdmin,
   adminUpdateOrderStatus,
   assignCourierToOrder,
+  updateOrderPayout,
 } from "../http/orderAPI";
 import CourierMap from "./CourierMap";
 import { socket } from "../socket";
@@ -27,6 +28,8 @@ const AdminOrdersTab = () => {
   const [orderError, setOrderError] = useState({});
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [loadingCouriers, setLoadingCouriers] = useState(false);
+  const [payoutDraft, setPayoutDraft] = useState({});
+  const [payoutSaving, setPayoutSaving] = useState({});
 
   const couriersById = useMemo(() => {
     const m = new Map();
@@ -180,6 +183,9 @@ const AdminOrdersTab = () => {
               <tr>
                 <th>ID</th>
                 <th>Курьер</th>
+                <th>Доставка (ручн.)</th>
+                <th>Бонус</th>
+                <th>Доставка €</th>
                 <th>Статус</th>
                 <th>Время готовки</th>
                 <th>Время доставки</th>
@@ -210,6 +216,110 @@ const AdminOrdersTab = () => {
                         </option>
                       ))}
                     </select>
+                  </td>
+
+                  <td>
+                    <input
+                      className={styles.tableInput}
+                      value={
+                        payoutDraft[order.id]?.deliveryPriceOverride ??
+                        order.deliveryPriceOverride ??
+                        ""
+                      }
+                      placeholder="—"
+                      onChange={(e) =>
+                        setPayoutDraft((p) => ({
+                          ...p,
+                          [order.id]: {
+                            ...p[order.id],
+                            deliveryPriceOverride: e.target.value,
+                          },
+                        }))
+                      }
+                      title={`Авто: ${order.deliveryPrice} / Override: ${order.deliveryPriceOverride ?? "—"}`}
+                    />
+                  </td>
+
+                  <td>
+                    <div className={styles.payoutCell}>
+                      <input
+                        className={styles.tableInput}
+                        value={
+                          payoutDraft[order.id]?.courierBonus ??
+                          order.courierBonus ??
+                          0
+                        }
+                        onChange={(e) =>
+                          setPayoutDraft((p) => ({
+                            ...p,
+                            [order.id]: {
+                              ...p[order.id],
+                              courierBonus: e.target.value,
+                            },
+                          }))
+                        }
+                      />
+                      <button
+                        className={styles.saveButtonSmall}
+                        disabled={!!payoutSaving[order.id]}
+                        onClick={async () => {
+                          try {
+                            setPayoutSaving((p) => ({
+                              ...p,
+                              [order.id]: true,
+                            }));
+
+                            const draft = payoutDraft[order.id] || {};
+
+                            const payload = {
+                              deliveryPriceOverride:
+                                draft.deliveryPriceOverride !== undefined
+                                  ? draft.deliveryPriceOverride
+                                  : (order.deliveryPriceOverride ?? ""),
+
+                              courierBonus:
+                                draft.courierBonus !== undefined
+                                  ? draft.courierBonus
+                                  : (order.courierBonus ?? 0),
+                            };
+
+                            await updateOrderPayout(order.id, payload);
+                            await reloadOrders();
+                          } catch (e) {
+                            console.error("updateOrderPayout failed:", e);
+                            setOrderError((p) => ({
+                              ...p,
+                              [order.id]: "Не сохранилось",
+                            }));
+                          } finally {
+                            setPayoutSaving((p) => ({
+                              ...p,
+                              [order.id]: false,
+                            }));
+                          }
+                        }}
+                        title="Сохранить выплаты"
+                      >
+                        {payoutSaving[order.id] ? "..." : "💸"}
+                      </button>
+                    </div>
+                  </td>
+
+                  <td className={styles.deliveryCell}>
+                    <b>
+                      {Number(
+                        payoutDraft[order.id]?.deliveryPriceOverride !==
+                          undefined
+                          ? payoutDraft[order.id].deliveryPriceOverride
+                          : (order.deliveryPriceOverride ??
+                              order.deliveryPrice ??
+                              0),
+                      ).toLocaleString("et-EE", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{" "}
+                      €
+                    </b>
                   </td>
 
                   <td>
