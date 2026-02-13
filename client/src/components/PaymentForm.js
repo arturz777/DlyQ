@@ -64,6 +64,7 @@ const getCardLogo = (brand = "") => {
   const file = CARD_LOGOS_FILES[key] || CARD_LOGOS_FILES._default;
   return `${BASE_URL}card-logos/${file}`;
 };
+// Proda
 
 const MapUpdater = ({ latitude, longitude }) => {
   const map = useMap();
@@ -78,7 +79,7 @@ const MapUpdater = ({ latitude, longitude }) => {
 const LocationPicker = ({ setFormData }) => {
   const { t } = useTranslation("paymentForm");
   useMapEvents({
-   click(e) {
+    click(e) {
       const lat = e.latlng.lat;
       const lon = e.latlng.lng;
 
@@ -113,11 +114,13 @@ const LocationPicker = ({ setFormData }) => {
 
 const PaymentForm = ({
   totalPrice,
+  sellerId,
   onPaymentSuccess,
   onDeliveryCostChange,
+  onDeliveryMetaChange,
   preorder,
 }) => {
- const { user } = useContext(Context);
+  const { user } = useContext(Context);
   const [loading, setLoading] = useState(false);
   const {
     isPreorder,
@@ -132,7 +135,7 @@ const PaymentForm = ({
     setPreferredTime,
     isStoreClosed,
   } = preorder || {};
-   const stripe = useStripe();
+  const stripe = useStripe();
   const elements = useElements();
   const confirm = useConfirm();
   const [deliveryCost, setDeliveryCost] = useState(0);
@@ -148,6 +151,12 @@ const PaymentForm = ({
   const [deletingId, setDeletingId] = useState(null);
   const [addressLoading, setAddressLoading] = useState(false);
   const [pmSaving, setPmSaving] = useState(false);
+  const [deliveryMeta, setDeliveryMeta] = useState({
+    deliveryCost: 0,
+    baseDelivery: 0,
+    peakMultiplier: 1,
+    peakSource: null,
+  });
 
   const applyPlace = (place) => {
     const short = place.short_display_name || place.display_name;
@@ -172,7 +181,7 @@ const PaymentForm = ({
     longitude: 24.753,
   });
 
- useEffect(() => {
+  useEffect(() => {
     if (!addressFocused) {
       setSuggestions([]);
       return;
@@ -222,7 +231,7 @@ const PaymentForm = ({
       }));
 
       const fallback = `${Number(latitude).toFixed(6)}, ${Number(
-        longitude
+        longitude,
       ).toFixed(6)}`;
 
       geoReverse(latitude, longitude)
@@ -255,9 +264,9 @@ const PaymentForm = ({
         async (error) => {
           console.warn(t("geolocation disabled", { ns: "paymentForm" }));
 
-        try {
+          try {
             const res = await fetch(
-              `https://ipinfo.io/json?token=${process.env.REACT_APP_IPINFO_TOKEN}`
+              `https://ipinfo.io/json?token=${process.env.REACT_APP_IPINFO_TOKEN}`,
             );
             const data = await res.json();
             const [lat, lon] = data.loc.split(",");
@@ -265,36 +274,41 @@ const PaymentForm = ({
           } catch (err) {
             console.error(
               t("ip geolocation error", { ns: "paymentForm" }),
-              err
+              err,
             );
           }
         },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 },
       );
     }
   }, []);
 
   useEffect(() => {
     const updateDeliveryCost = async () => {
-      if (!formData.latitude || !formData.longitude) return;
+      const lat = Number(formData.latitude);
+      const lon = Number(formData.longitude);
+      const total = Number(totalPrice);
 
-      const newDeliveryCost = await fetchDeliveryCost(
-        totalPrice,
-        formData.latitude,
-        formData.longitude
-      );
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+      if (!Number.isFinite(total) || total < 0) return;
+      const r = await fetchDeliveryCost(total, lat, lon, sellerId ?? null);
+      const meta = {
+        deliveryCost: Number(r?.deliveryCost) || 0,
+        baseDelivery: Number(r?.baseDelivery) || 0,
+        peakMultiplier: Number(r?.peakMultiplier) || 1,
+        peakSource: r?.peakSource || null,
+      };
 
-      setDeliveryCost(newDeliveryCost);
-      if (onDeliveryCostChange) {
-        onDeliveryCostChange(newDeliveryCost);
-      }
+      setDeliveryCost(meta.deliveryCost);
+      onDeliveryCostChange?.(meta.deliveryCost);
+      onDeliveryMetaChange?.(meta);
     };
 
     updateDeliveryCost();
-  }, [totalPrice, formData.latitude, formData.longitude, onDeliveryCostChange]);
+  }, [totalPrice, formData.latitude, formData.longitude, sellerId]);
 
   const handleDeleteCard = async (pmIdToDelete) => {
-     try {
+    try {
       setDeletingId(pmIdToDelete);
       await detachPaymentMethod(pmIdToDelete);
       const { cards } = await fetchPaymentMethods();
@@ -319,16 +333,16 @@ const PaymentForm = ({
       console.error(e);
       toast.error(t("failed to remove card", { ns: "paymentForm" }));
     } finally {
-     setDeletingId(null);
+      setDeletingId(null);
     }
   };
 
- const searchAddress = async () => {
-  const q = (formData.address || "").trim();
-  if (!q || addressLoading) return;
+  const searchAddress = async () => {
+    const q = (formData.address || "").trim();
+    if (!q || addressLoading) return;
 
-  setAddressLoading(true);
-  try {
+    setAddressLoading(true);
+    try {
       const data = await geoSearch(q);
 
       if (Array.isArray(data) && data.length > 0) {
@@ -342,17 +356,17 @@ const PaymentForm = ({
           longitude: parseFloat(place.lon) || prev.longitude,
         }));
 
-      toast.success(t("address found", { ns: "paymentForm" }));
-    } else {
-      toast.error(t("address not found", { ns: "paymentForm" }));
+        toast.success(t("address found", { ns: "paymentForm" }));
+      } else {
+        toast.error(t("address not found", { ns: "paymentForm" }));
+      }
+    } catch (error) {
+      console.error("Address search error:", error);
+      toast.error(t("address search error", { ns: "paymentForm" }));
+    } finally {
+      setAddressLoading(false);
     }
-  } catch (error) {
-    console.error("Address search error:", error);
-    toast.error(t("address search error", { ns: "paymentForm" }));
-  } finally {
-    setAddressLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -361,30 +375,30 @@ const PaymentForm = ({
         const saved = localStorage.getItem("userFormData");
         if (saved) parsedData = JSON.parse(saved);
 
-          setFormData((prev) => ({
-            ...prev,
-            apartment:
-              parsedData.apartment != null
-                ? String(parsedData.apartment)
-                : prev.apartment,
-            floor:
-              parsedData.floor != null ? String(parsedData.floor) : prev.floor,
-            entrance:
-              parsedData.entrance != null
-                ? String(parsedData.entrance)
-                : prev.entrance,
-            comment:
-              parsedData.comment != null
-                ? String(parsedData.comment)
-                : prev.comment,
-            address: parsedData.address ?? prev.address,
-            latitude: parsedData.latitude ?? prev.latitude,
-            longitude: parsedData.longitude ?? prev.longitude,
-          }));
+        setFormData((prev) => ({
+          ...prev,
+          apartment:
+            parsedData.apartment != null
+              ? String(parsedData.apartment)
+              : prev.apartment,
+          floor:
+            parsedData.floor != null ? String(parsedData.floor) : prev.floor,
+          entrance:
+            parsedData.entrance != null
+              ? String(parsedData.entrance)
+              : prev.entrance,
+          comment:
+            parsedData.comment != null
+              ? String(parsedData.comment)
+              : prev.comment,
+          address: parsedData.address ?? prev.address,
+          latitude: parsedData.latitude ?? prev.latitude,
+          longitude: parsedData.longitude ?? prev.longitude,
+        }));
       } catch (e) {
         console.error(
           t("failed to load or parse userFormData", { ns: "paymentForm" }),
-          e
+          e,
         );
       } finally {
         setHydrated(true);
@@ -392,9 +406,9 @@ const PaymentForm = ({
     };
 
     loadUserData();
-   }, [user.isAuth, t]);
+  }, [user.isAuth, t]);
 
-useEffect(() => {
+  useEffect(() => {
     if (!hydrated) return;
     try {
       localStorage.setItem(
