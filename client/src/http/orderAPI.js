@@ -56,6 +56,24 @@ export const fetchAllOrdersForAdmin = async () => {
     });
     return data;
   };
+
+  export const fetchDeliveryCost = async (totalPrice, lat, lon, sellerId) => {
+  const { data } = await $host.get("/order/delivery-cost", {
+    params: { totalPrice, lat, lon, sellerId },
+  });
+
+  return {
+    deliveryCost: Number(data?.deliveryCost || 0),
+    baseDelivery: Number(data?.baseDelivery || 0),
+    peakMultiplier: Number(data?.peak?.multiplier || 1),
+    peakSource: data?.peak?.source || null,
+  };
+};
+
+export const updateOrderPayout = async (orderId, payload) => {
+  const { data } = await $authHost.patch(`/order/${orderId}/payout`, payload);
+  return data;
+};
   
 
 
