@@ -1,5 +1,6 @@
 .settingsPanel {
-  max-width: 520px;
+  max-width: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -63,6 +64,7 @@
   align-items: center;
   gap: 10px;
   margin-top: 10px;
+  flex-wrap: wrap;
 }
 
 .saveHint {
@@ -82,51 +84,14 @@
   font-weight: 600;
 }
 
-.btnPrimary {
-  padding: 10px 14px;
-  border: 0;
-  border-radius: 10px;
-  background: #2563eb;
-  color: #fff;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.btnPrimary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.spinner {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #fff;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (max-width: 520px) {
-  .hoursRow {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-  .dash {
-    display: none;
-  }
+.unsavedHint {
+  margin-left: 10px;
+  opacity: 0.7;
+  font-size: 12px;
 }
 
 .tabs {
-  max-width: 520px;
+  max-width: 100%;
   display: flex;
   gap: 8px;
   margin: 8px 0 12px;
@@ -180,8 +145,188 @@
   background: #fff;
 }
 
+.btnPrimary {
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #111827;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.btnSecondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 520px) {
+  .hoursRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .dash {
+    display: none;
+  }
+
   .formGrid {
     grid-template-columns: 1fr;
   }
+}
+
+.deliveryGrid4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(260px, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
+.deliveryGrid4 > .settingsCard,
+.deliveryGrid4 > .peakCard,
+.deliveryGrid4 > .deliveryCard {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 1100px) {
+  .deliveryGrid4 {
+    grid-template-columns: repeat(2, minmax(260px, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .deliveryGrid4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.deliveryPricesCard {
+  height: fit-content;
+}
+
+.deliveryTopGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+@media (max-width: 720px) {
+  .deliveryTopGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.peakColumn {
+  grid-column: auto;
+  display: contents;
+}
+
+.peakCardsGrid {
+  display: contents;
+}
+
+.peakCard {
+  height: fit-content;
+}
+
+.peakRowHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.peakTitle {
+  font-weight: 800;
+  color: #111827;
+}
+
+.peakInlineTop {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 10px;
+}
+
+.peakInlineField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.peakInlineLabel {
+  font-size: 12px;
+  color: #374151;
+  font-weight: 700;
+}
+
+.peakMultiplierInput {
+  width: 96px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 6px 10px;
+  background: #fff;
+}
+
+.peakGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 720px) {
+  .peakGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.peakNoteFull {
+  grid-column: 1 / -1;
+}
+
+.deliveryActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
 }
