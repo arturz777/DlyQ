@@ -364,6 +364,43 @@ const Order = sequelize.define(
     pickupAddress: { type: DataTypes.STRING, allowNull: true },
     pickupLat: { type: DataTypes.FLOAT, allowNull: true },
     pickupLng: { type: DataTypes.FLOAT, allowNull: true },
+    deliveryPriceOverride: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      defaultValue: null,
+    },
+    courierBonus: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      defaultValue: 0,
+    },
+    deliveryOverrideReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    deliveryOverriddenAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    deliveryOverriddenBy: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+
+    deliveryMultiplier: {
+      type: DataTypes.DECIMAL(10, 4),
+      allowNull: true,
+      defaultValue: null,
+    },
+    deliveryMultiplierSource: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+
     deviceImage: {
       type: DataTypes.STRING,
       allowNull: false,
