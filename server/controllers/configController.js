@@ -25,6 +25,31 @@ const DEFAULT_DELIVERY = {
   discountStepEur: 30,
   discountAmount: 2,
   minCost: 0,
+
+  peakWindows: [
+    {
+      id: "lunch",
+      enabled: true,
+      start: "12:00",
+      end: "15:00",
+      multiplier: 1.2,
+    },
+    {
+      id: "dinner",
+      enabled: true,
+      start: "17:00",
+      end: "21:00",
+      multiplier: 1.3,
+    },
+    {
+      id: "special",
+      enabled: false,
+      start: "00:00",
+      end: "23:59",
+      multiplier: 1.0,
+      note: "праздник",
+    },
+  ],
 };
 
 async function getCourierConfig(req, res, next) {
@@ -74,10 +99,15 @@ async function setCourierConfig(req, res, next) {
 async function getDeliveryPricing(req, res, next) {
   try {
     const row = await Setting.findByPk(DELIVERY_KEY);
-    const value = row?.value || DEFAULT_DELIVERY;
-    res.json({ ...DEFAULT_DELIVERY, ...value });
+    const merged = { ...DEFAULT_DELIVERY, ...(row?.value || {}) };
+
+    if (!Array.isArray(merged.peakWindows)) {
+      merged.peakWindows = DEFAULT_DELIVERY.peakWindows;
+    }
+
+    return res.json(merged);
   } catch (e) {
-    next(e);
+    return next(e);
   }
 }
 
@@ -85,6 +115,17 @@ async function setDeliveryPricing(req, res, next) {
   try {
     const row = await Setting.findByPk(DELIVERY_KEY);
     const prev = row?.value || DEFAULT_DELIVERY;
+
+    const peakWindows = Array.isArray(req.body?.peakWindows)
+      ? req.body.peakWindows.map((w) => ({
+          id: String(w.id),
+          enabled: !!w.enabled,
+          start: w.start,
+          end: w.end,
+          multiplier: Number(String(w.multiplier).replace(",", ".")) || 1,
+          note: w.note || "",
+        }))
+      : prev.peakWindows;
 
     const value = {
       ...prev,
@@ -95,6 +136,7 @@ async function setDeliveryPricing(req, res, next) {
       ),
       discountAmount: Number(req.body?.discountAmount ?? prev.discountAmount),
       minCost: Number(req.body?.minCost ?? prev.minCost),
+      peakWindows,
       updatedAt: new Date().toISOString(),
     };
 
