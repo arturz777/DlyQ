@@ -24,6 +24,31 @@ const DEFAULT_DELIVERY = {
   discountStepEur: 30,
   discountAmount: 2,
   minCost: 0,
+
+  peakWindows: [
+    {
+      id: "lunch",
+      enabled: true,
+      start: "12:00",
+      end: "15:00",
+      multiplier: 1.2,
+    },
+    {
+      id: "dinner",
+      enabled: true,
+      start: "17:00",
+      end: "21:00",
+      multiplier: 1.3,
+    },
+    {
+      id: "special",
+      enabled: false,
+      start: "00:00",
+      end: "23:59",
+      multiplier: 1.0,
+      note: "праздник",
+    },
+  ],
 };
 
 const AdminSettings = () => {
@@ -45,15 +70,19 @@ const AdminSettings = () => {
   const [shopHours, setShopHours] = useState(DEFAULT_SHOP_HOURS);
   const [shopSaving, setShopSaving] = useState(false);
   const [shopSaveState, setShopSaveState] = useState(null);
-  const [delivery, setDelivery] = useState(DEFAULT_DELIVERY);
   const [deliverySaving, setDeliverySaving] = useState(false);
   const [deliverySaveState, setDeliverySaveState] = useState(null);
+  const [deliverySaved, setDeliverySaved] = useState(DEFAULT_DELIVERY);
+  const [deliveryDraft, setDeliveryDraft] = useState(DEFAULT_DELIVERY);
   const [courierSaving, setCourierSaving] = useState(false);
   const [courierSaveState, setCourierSaveState] = useState(null);
   const [courierCfg, setCourierCfg] = useState({
     shopCommissionPercent: 10,
     parcelCommissionPercent: 20,
   });
+
+  const deliveryDirty =
+    JSON.stringify(deliveryDraft) !== JSON.stringify(deliverySaved);
 
   useEffect(() => {
     fetchCourierConfig()
@@ -91,7 +120,9 @@ const AdminSettings = () => {
   useEffect(() => {
     fetchDeliveryPricing()
       .then((v) => {
-        setDelivery({ ...DEFAULT_DELIVERY, ...(v || {}) });
+        const merged = { ...DEFAULT_DELIVERY, ...(v || {}) };
+        setDeliverySaved(merged);
+        setDeliveryDraft(merged);
       })
       .catch(console.error);
   }, []);
@@ -176,10 +207,20 @@ const AdminSettings = () => {
   };
 
   const setDeliveryField = (key, val) => {
-    setDelivery((prev) => ({
+    setDeliveryDraft((prev) => ({ ...prev, [key]: val }));
+  };
+
+  const setPeakField = (id, key, val) => {
+    setDeliveryDraft((prev) => ({
       ...prev,
-      [key]: val,
+      peakWindows: (prev.peakWindows || []).map((w) =>
+        w.id === id ? { ...w, [key]: val } : w,
+      ),
     }));
+  };
+
+  const resetDelivery = () => {
+    setDeliveryDraft(deliverySaved);
   };
 
   const saveDelivery = async () => {
@@ -187,16 +228,39 @@ const AdminSettings = () => {
       setDeliverySaving(true);
       setDeliverySaveState(null);
 
+      const d = deliveryDraft;
+
       const payload = {
-        baseCost: Number(delivery.baseCost),
-        perKm: Number(delivery.perKm),
-        discountStepEur: Number(delivery.discountStepEur),
-        discountAmount: Number(delivery.discountAmount),
-        minCost: Number(delivery.minCost),
+        baseCost: Number(String(d.baseCost).replace(",", ".")),
+        perKm: Number(String(d.perKm).replace(",", ".")),
+        discountStepEur: Number(String(d.discountStepEur).replace(",", ".")),
+        discountAmount: Number(String(d.discountAmount).replace(",", ".")),
+        minCost: Number(String(d.minCost).replace(",", ".")),
+        peakWindows: (d.peakWindows || []).map((w) => ({
+          id: w.id,
+          enabled: !!w.enabled,
+          start: w.start,
+          end: w.end,
+          multiplier: Number(String(w.multiplier).replace(",", ".")) || 1,
+          note: w.note || "",
+        })),
       };
 
       const saved = await updateDeliveryPricing(payload);
-      setDelivery({ ...DEFAULT_DELIVERY, ...(saved || payload) });
+
+      const merged = { ...DEFAULT_DELIVERY, ...(saved ?? payload) };
+
+      const mergedSafe = {
+        ...DEFAULT_DELIVERY,
+        ...(saved ?? payload),
+        peakWindows:
+          saved?.peakWindows ??
+          payload.peakWindows ??
+          DEFAULT_DELIVERY.peakWindows,
+      };
+
+      setDeliverySaved(mergedSafe);
+      setDeliveryDraft(mergedSafe);
 
       setDeliverySaveState("ok");
       setTimeout(() => setDeliverySaveState(null), 1800);
@@ -393,92 +457,208 @@ const AdminSettings = () => {
         )}
 
         {activeTab === "delivery" && (
-          <div className={styles.settingsCard}>
-            <div className={styles.cardTitle}>Цены доставки</div>
+          <div className={styles.deliveryGrid4}>
+            <div className={`${styles.settingsCard} ${styles.deliveryCard}`}>
+              <div className={styles.cardTitle}>Цены доставки</div>
 
-            <div className={styles.formGrid}>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>База (€)</span>
-                <input
-                  className={styles.textInput}
-                  type="number"
-                  step="0.01"
-                  value={delivery.baseCost}
-                  onChange={(e) => setDeliveryField("baseCost", e.target.value)}
-                />
-              </label>
+              <div className={styles.deliveryTopGrid}>
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>База (€)</span>
+                  <input
+                    className={styles.textInput}
+                    type="number"
+                    step="0.01"
+                    value={deliveryDraft.baseCost}
+                    onChange={(e) =>
+                      setDeliveryField("baseCost", e.target.value)
+                    }
+                  />
+                </label>
 
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>€/км</span>
-                <input
-                  className={styles.textInput}
-                  type="number"
-                  step="0.01"
-                  value={delivery.perKm}
-                  onChange={(e) => setDeliveryField("perKm", e.target.value)}
-                />
-              </label>
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>€/км</span>
+                  <input
+                    className={styles.textInput}
+                    type="number"
+                    step="0.01"
+                    value={deliveryDraft.perKm}
+                    onChange={(e) => setDeliveryField("perKm", e.target.value)}
+                  />
+                </label>
 
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Шаг скидки (€)</span>
-                <input
-                  className={styles.textInput}
-                  type="number"
-                  step="1"
-                  value={delivery.discountStepEur}
-                  onChange={(e) =>
-                    setDeliveryField("discountStepEur", e.target.value)
-                  }
-                />
-              </label>
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>Шаг скидки (€)</span>
+                  <input
+                    className={styles.textInput}
+                    type="number"
+                    step="1"
+                    value={deliveryDraft.discountStepEur}
+                    onChange={(e) =>
+                      setDeliveryField("discountStepEur", e.target.value)
+                    }
+                  />
+                </label>
 
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Скидка (€)</span>
-                <input
-                  className={styles.textInput}
-                  type="number"
-                  step="0.01"
-                  value={delivery.discountAmount}
-                  onChange={(e) =>
-                    setDeliveryField("discountAmount", e.target.value)
-                  }
-                />
-              </label>
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>Скидка (€)</span>
+                  <input
+                    className={styles.textInput}
+                    type="number"
+                    step="0.01"
+                    value={deliveryDraft.discountAmount}
+                    onChange={(e) =>
+                      setDeliveryField("discountAmount", e.target.value)
+                    }
+                  />
+                </label>
 
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Мин. цена (€)</span>
-                <input
-                  className={styles.textInput}
-                  type="number"
-                  step="0.01"
-                  value={delivery.minCost}
-                  onChange={(e) => setDeliveryField("minCost", e.target.value)}
-                />
-              </label>
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>Мин. цена (€)</span>
+                  <input
+                    className={styles.textInput}
+                    type="number"
+                    step="0.01"
+                    value={deliveryDraft.minCost}
+                    onChange={(e) =>
+                      setDeliveryField("minCost", e.target.value)
+                    }
+                  />
+                </label>
+              </div>
+
+              <div className={styles.saveRow}>
+                <button
+                  className={styles.btnPrimary}
+                  onClick={saveDelivery}
+                  disabled={deliverySaving || !deliveryDirty}
+                >
+                  {deliverySaving && <span className={styles.spinner} />}
+                  {deliverySaving ? "Сохранение..." : "Сохранить"}
+                </button>
+
+                {deliverySaveState === "ok" && (
+                  <span className={styles.saveOk}>Сохранено</span>
+                )}
+                {deliverySaveState === "error" && (
+                  <span className={styles.saveErr}>Ошибка</span>
+                )}
+              </div>
+
+              {deliveryDirty && !deliverySaving && (
+                <div className={styles.unsavedHint}>
+                  Есть несохранённые изменения
+                </div>
+              )}
             </div>
 
-            <div className={styles.saveRow}>
+            {(deliveryDraft.peakWindows || []).map((w) => (
+              <div
+                key={w.id}
+                className={`${styles.settingsCard} ${styles.peakCard}`}
+              >
+                <div className={styles.peakRowHeader}>
+                  <div className={styles.peakTitle}>
+                    {w.id === "lunch"
+                      ? "Обед"
+                      : w.id === "dinner"
+                        ? "Ужин"
+                        : "Спец"}
+                  </div>
+
+                  <label className={styles.toggleWrap}>
+                    <input
+                      type="checkbox"
+                      className={styles.toggleInput}
+                      checked={!!w.enabled}
+                      onChange={(e) =>
+                        setPeakField(w.id, "enabled", e.target.checked)
+                      }
+                    />
+                    <span className={styles.toggleLabel}>Включено</span>
+                  </label>
+                </div>
+
+                <div className={styles.peakInlineTop}>
+                  <label className={styles.peakInlineField}>
+                    <span className={styles.peakInlineLabel}>Множитель</span>
+                    <input
+                      className={styles.peakMultiplierInput}
+                      type="number"
+                      step="0.01"
+                      value={w.multiplier ?? 1}
+                      onChange={(e) =>
+                        setPeakField(w.id, "multiplier", e.target.value)
+                      }
+                    />
+                  </label>
+                </div>
+
+                <div className={styles.peakGrid}>
+                  <label className={styles.field}>
+                    <span className={styles.fieldLabel}>Start</span>
+                    <input
+                      className={styles.timeInput}
+                      type="time"
+                      value={w.start || "00:00"}
+                      onChange={(e) =>
+                        setPeakField(w.id, "start", e.target.value)
+                      }
+                    />
+                  </label>
+
+                  <label className={styles.field}>
+                    <span className={styles.fieldLabel}>End</span>
+                    <input
+                      className={styles.timeInput}
+                      type="time"
+                      value={w.end || "23:59"}
+                      onChange={(e) =>
+                        setPeakField(w.id, "end", e.target.value)
+                      }
+                    />
+                  </label>
+
+                  {w.id === "special" && (
+                    <label className={`${styles.field} ${styles.peakNoteFull}`}>
+                      <span className={styles.fieldLabel}>Примечание</span>
+                      <input
+                        className={styles.textInput}
+                        value={w.note || ""}
+                        onChange={(e) =>
+                          setPeakField(w.id, "note", e.target.value)
+                        }
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            <div className={styles.deliveryActions}>
               <button
                 className={styles.btnPrimary}
                 onClick={saveDelivery}
-                disabled={deliverySaving}
+                disabled={deliverySaving || !deliveryDirty}
               >
                 {deliverySaving && <span className={styles.spinner} />}
-                {deliverySaving ? "Сохранение..." : "Сохранить цены доставки"}
+                {deliverySaving ? "Сохранение..." : "Сохранить всё"}
+              </button>
+
+              <button
+                className={styles.btnSecondary}
+                type="button"
+                onClick={resetDelivery}
+                disabled={deliverySaving || !deliveryDirty}
+              >
+                Отменить
               </button>
 
               {deliverySaveState === "ok" && (
                 <span className={styles.saveOk}>Сохранено</span>
               )}
               {deliverySaveState === "error" && (
-                <span className={styles.saveErr}>Ошибка сохранения</span>
+                <span className={styles.saveErr}>Ошибка</span>
               )}
-            </div>
-
-            <div className={styles.saveHint}>
-              Формула: <b>baseCost + distanceKm * perKm</b>, затем минус скидка:{" "}
-              <b>floor(total/discountStepEur) * discountAmount</b>, минимум =
-              minCost.
             </div>
           </div>
         )}
