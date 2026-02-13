@@ -501,7 +501,6 @@ const AdminAccounting = ({ devices }) => {
     return sum + (sell - cost) * qty;
   }, 0);
 
-  // для декларации НДС считаем ТОЛЬКО по проданным за период
   const vatSalesSum = soldDevices.reduce(
     (sum, d) => sum + Number(d.price || 0) * Number(d.quantity || 0),
     0,
@@ -1064,6 +1063,7 @@ const AdminAccounting = ({ devices }) => {
                   <th>Заказов</th>
                   <th>Сумма с комиссией €</th>
                   <th>Снято комиссии €</th>
+                  <th>Бонус €</th>
                   <th>Выплата курьеру €</th>
                   <th>Счёт</th>
                   <th>Статус</th>
@@ -1072,7 +1072,7 @@ const AdminAccounting = ({ devices }) => {
               <tbody>
                 {courierRows.length === 0 && !courierLoading ? (
                   <tr>
-                    <td colSpan={7} className={styles.accEmpty}>
+                    <td colSpan={8} className={styles.accEmpty}>
                       Нет данных за выбранный период
                     </td>
                   </tr>
@@ -1083,15 +1083,11 @@ const AdminAccounting = ({ devices }) => {
                         {r.courierName || `#${r.courierId}`}
                       </td>
                       <td>{r.ordersCount}</td>
-                      <td>
-                        {format(
-                          Number(r.sumCourierFee || 0) +
-                            Number(r.sumCommission || 0),
-                        )}
-                      </td>
-
+                      <td>{format(Number(r.sumCourierFeeGross || 0))}</td>
                       <td>{format(Number(r.sumCommission || 0))}</td>
-                      <td>{format(Number(r.sumCourierFee || 0))}</td>
+                      <td>{format(Number(r.sumBonus || 0))}</td>
+                      <td>{format(Number(r.sumCourierPayout || 0))}</td>
+
                       <td>{r.iban || "—"}</td>
                       <td>
                         <button
