@@ -1,20 +1,29 @@
 .tabWrap {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
+  padding: 16px;
+  background: #f3f6fb;
+  min-height: 100vh;
 }
 
 .headerRow {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
   flex-wrap: wrap;
+  background: #ffffff;
+  padding: 18px 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
 }
 
 .title {
   margin: 0;
-  font-weight: 800;
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: -0.3px;
 }
 
 .subTitle {
@@ -51,10 +60,11 @@
 }
 
 .mapBlock {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fff;
-  padding: 12px;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  border: none;
 }
 
 .blockTitle {
@@ -74,7 +84,7 @@
 
 .ordersTable table {
   width: 100%;
-  min-width: 980px; /* ключевое: не даём таблице схлопнуться в мобилку */
+  min-width: 980px;
   border-collapse: collapse;
 }
 
@@ -88,8 +98,17 @@
 }
 
 .ordersTable th {
-  background: #f8fafc;
+  background: #f1f5f9;
   font-weight: 800;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #475569;
+}
+
+.ordersTable tbody tr:hover {
+  background: #f8fafc;
+  transition: background 0.2s ease;
 }
 
 .cellId {
@@ -132,17 +151,77 @@
 }
 
 .saveButton {
-  background: #22c55e;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
   color: #fff;
   border: none;
   border-radius: 10px;
   cursor: pointer;
-  padding: 6px 10px;
+  padding: 6px 12px;
   font-weight: 700;
+  transition: all 0.2s ease;
 }
+.saveButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(34, 197, 94, 0.3);
+}
+
 .saveButton:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.saveButtonSmall {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 5px 8px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+.saveButtonSmall:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(59, 130, 246, 0.3);
+}
+
+.tableInput {
+  width: 100%;
+  min-width: 90px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.tableInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.deliveryCell {
+  text-align: center;
+  font-weight: 500;
+}
+
+.payoutCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.payoutBonusInput {
+  flex: 1;
+  min-width: 80px;
+}
+
+.saveButtonSmall {
+  flex: 0 0 auto;
 }
 
 .errText {
