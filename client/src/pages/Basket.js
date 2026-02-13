@@ -18,8 +18,20 @@ import { useTranslation } from "react-i18next";
 import styles from "./Basket.module.css";
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY).catch(
-  () => null
+  () => null,
 );
+
+const toNum = (v) => {
+  if (v == null) return 0;
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+
+  const n = Number(
+    String(v)
+      .replace(/[^\d.,-]/g, "")
+      .replace(",", "."),
+  );
+  return Number.isFinite(n) ? n : 0;
+};
 
 const getVal = (x) =>
   x && typeof x === "object" && "value" in x ? x.value : x;
@@ -118,8 +130,13 @@ const Basket = observer(() => {
   const [storeClosed, setStoreClosed] = useState(false);
   const [preferredTime, setPreferredTime] = useState("");
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
-
   const [busyAction, setBusyAction] = useState({});
+  const [deliveryMeta, setDeliveryMeta] = useState({
+    deliveryCost: 0,
+    baseDelivery: 0,
+    peakMultiplier: 1,
+    peakSource: null,
+  });
 
   const getSelectedSellerId = (basket) => {
     const list = basket.selectedItems || [];
@@ -143,6 +160,10 @@ const Basket = observer(() => {
   const selectedItems = basket.selectedItems || [];
   const selectedTotal = basket.getSelectedTotalPrice
     ? basket.getSelectedTotalPrice()
+    : 0;
+
+  const selectedTotalSafe = Number.isFinite(Number(selectedTotal))
+    ? Number(selectedTotal)
     : 0;
 
   const isOOS = (item) =>
@@ -395,7 +416,7 @@ const Basket = observer(() => {
     const dataToSend = {
       formData,
       paymentIntentId,
-      totalPrice: basket.getSelectedTotalPrice(),
+      totalPrice: selectedTotalSafe,
       language: uiLang,
       orderDetails: (basket.selectedItems || []).map((item, index) => {
         const isRest = item.isRestaurantItem === true;
@@ -766,14 +787,14 @@ const Basket = observer(() => {
 
             <div className={styles.price}>
               €
-              {(
-                (item.price +
-                  Object.values(item.selectedOptions || {}).reduce(
-                    (sum, opt) => sum + (opt?.price || 0),
-                    0,
-                  )) *
-                item.count
-              ).toFixed(2)}
+              {(() => {
+                const unit = toNum(item.price);
+                const options = Object.values(
+                  item.selectedOptions || {},
+                ).reduce((sum, opt) => sum + toNum(opt?.price), 0);
+                const qty = toNum(item.count || 1);
+                return ((unit + options) * qty).toFixed(2);
+              })()}
             </div>
 
             <button
@@ -868,11 +889,16 @@ const Basket = observer(() => {
       {basket.items.length > 0 && (
         <>
           <h3 className={styles.totalDeliverPrice}>
-            {t("delivery", { ns: "basket" })}: {deliveryCost.toFixed(2)}€
+            {Number(deliveryMeta?.peakMultiplier ?? 1) > 1 && (
+              <span className={styles.peakBadge}>Большой спрос</span>
+            )}
+            {t("delivery", { ns: "basket" })}:{" "}
+            {Number(deliveryCost ?? 0).toFixed(2)}€
           </h3>
+
           <h3 className={styles.totalPrice}>
             {t("total", { ns: "basket" })}:{" "}
-            {(selectedTotal + deliveryCost).toFixed(2)} €
+            {(selectedTotalSafe + deliveryCost).toFixed(2)} €
           </h3>
         </>
       )}
@@ -892,9 +918,11 @@ const Basket = observer(() => {
         (user?.isAuth ? (
           <Elements stripe={stripePromise}>
             <PaymentForm
-              totalPrice={selectedTotal}
+              totalPrice={selectedTotalSafe}
+              sellerId={basket.selectedSellerId}
               onPaymentSuccess={handlePaymentSuccess}
               onDeliveryCostChange={setDeliveryCost}
+              onDeliveryMetaChange={setDeliveryMeta}
               preorder={{
                 isPreorder,
                 setIsPreorder,
