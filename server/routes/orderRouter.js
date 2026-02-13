@@ -13,20 +13,28 @@ router.get(
   "/admin",
   authMiddleware,
   checkRole("ADMIN"),
-  orderController.getAllOrdersForAdmin
+  orderController.getAllOrdersForAdmin,
 );
 router.put(
   "/:id/status",
   authMiddleware,
   checkRole("ADMIN"),
-  orderController.adminUpdateOrderStatus
+  orderController.adminUpdateOrderStatus,
 );
 router.put(
   "/:id/assign-courier",
   authMiddleware,
   checkRole("ADMIN"),
-  orderController.assignCourier
+  orderController.assignCourier,
 );
+
+router.patch(
+  "/:id/payout",
+  authMiddleware,
+  checkRole("ADMIN"),
+  orderController.adminUpdateOrderPayout,
+);
+
 router.get("/:id/receipt", orderController.downloadReceipt);
 
 module.exports = router;
