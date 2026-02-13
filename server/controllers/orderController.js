@@ -18,6 +18,7 @@ const { t } = require("../utils/translations");
 const getDistanceFromWarehouse = require("../utils/distance");
 const { isShopOpenNow } = require("../utils/shopSchedule");
 const { isSellerOpenNow } = require("../utils/sellerSchedule");
+const { getActivePeak } = require("../services/peakPricingService");
 const generatePDFShiftBuffer = require("../services/generatePDFShiftBuffer");  // Proda (PDFShift)
 const { supabase } = require("../config/supabaseClient");
 const {
@@ -41,7 +42,7 @@ function mustEnv(name) {
 const PUBLIC_URL = mustEnv("PUBLIC_URL").replace(/\/+$/, "");
 const COMPANY = {
   email: mustEnv("COMPANY_EMAIL"),
-  site: (process.env.COMPANY_SITE || process.env.SITE_URL || "dlyq-staging.netlify.app").trim(),
+  site: (process.env.COMPANY_SITE || process.env.SITE_URL || "dlyq.ee").trim(),
 };
 const SUPABASE_IMAGE_BUCKET =
   process.env.SUPABASE_IMAGE_BUCKET || process.env.SUPABASE_BUCKET || "images";
@@ -75,6 +76,31 @@ const DEFAULT_DELIVERY = {
   discountStepEur: 30,
   discountAmount: 2,
   minCost: 0,
+
+ peakWindows: [
+    {
+      id: "lunch",
+      enabled: true,
+      start: "12:00",
+      end: "15:00",
+      multiplier: 1.2,
+    },
+    {
+      id: "dinner",
+      enabled: true,
+      start: "17:00",
+      end: "21:00",
+      multiplier: 1.3,
+    },
+    {
+      id: "special",
+      enabled: false,
+      start: "00:00",
+      end: "23:59",
+      multiplier: 1.0,
+      note: "праздник",
+    },
+  ],
 };
 
 const COURIER_KEY = "courier";
@@ -286,10 +312,14 @@ const createOrder = async (req, res) => {
     const total = Number(totalPrice || 0);
 
     const distanceForAmount = getDistanceFromWarehouse(latitude, longitude);
-    const deliveryPriceServer = calculateDeliveryCost(
+    const baseDeliveryServer = calculateDeliveryCost(
       total,
       distanceForAmount,
       cfg,
+    );
+    const peakNow = getActivePeak(cfg);
+    const deliveryPriceServer = Number(
+      (baseDeliveryServer * peakNow.multiplier).toFixed(2),
     );
     const serverAmountCents = Math.round((total + deliveryPriceServer) * 100);
 
@@ -332,12 +362,17 @@ const createOrder = async (req, res) => {
 
     const userId = req.user ? req.user.id : null;
 
-     const distance = getDistanceFromWarehouse(latitude, longitude);
-    const deliveryPrice = calculateDeliveryCost(total, distance, cfg);
-    const courierFee = calculateDeliveryBase(distance, cfg);
+    const distance = getDistanceFromWarehouse(latitude, longitude);
+    const baseDelivery = calculateDeliveryCost(total, distance, cfg);
+    const peakNow2 = getActivePeak(cfg);
+    const deliveryPrice = Number(
+      (baseDelivery * peakNow2.multiplier).toFixed(2),
+    );
+    const courierFeeGross = deliveryPrice;
     const courierCfg = await getCourierCfg();
     const shopPercent = Number(courierCfg.shopCommissionPercent ?? 0);
-    const courierCommission = round2(courierFee * (shopPercent / 100));
+    const courierCommission = round2(courierFeeGross * (shopPercent / 100));
+    const courierFeeNet = round2(courierFeeGross - courierCommission);
 
     let isPreorder = false;
     const devicesToUpdate = [];
@@ -608,7 +643,12 @@ const createOrder = async (req, res) => {
       userId,
       totalPrice: total + deliveryPrice,
       deliveryPrice,
-      courierFee,
+      deliveryMultiplier: peakNow2.multiplier,
+      deliveryMultiplierSource: peakNow2.source,
+      courierFeeGross,
+      courierFee: courierFeeNet,
+      courierCommission,
+      courierCommissionRate: shopPercent / 100,
       status,
       warehouseStatus: "pending",
       courierId: null,
@@ -618,7 +658,7 @@ const createOrder = async (req, res) => {
       deliveryAddress: address,
       deviceImage: deviceImageUrl,
       productName:
-      orderDetails.length > 0 ? orderDetails[0].name : "Неизвестный товар",
+        orderDetails.length > 0 ? orderDetails[0].name : "Неизвестный товар",
       orderDetails: JSON.stringify(localizedOrderDetails),
       desiredDeliveryDate: desiredDeliveryDateToStore,
       preferredDeliveryComment: preferredDeliveryCommentToStore,
@@ -920,15 +960,26 @@ const getDeliveryCost = async (req, res) => {
   }
 
   const cfg = await getDeliveryCfg();
-
   const distance = getDistanceFromWarehouse(parseFloat(lat), parseFloat(lon));
-  const deliveryCost = calculateDeliveryCost(
+  const baseDelivery = calculateDeliveryCost(
     parseFloat(totalPrice),
     distance,
     cfg,
   );
 
-  return res.json({ deliveryCost });
+  const peak = getActivePeak?.(cfg) || { multiplier: 1, source: null };
+  const deliveryCost = Number(
+    (baseDelivery * Number(peak.multiplier || 1)).toFixed(2),
+  );
+
+  return res.json({
+    deliveryCost,
+    baseDelivery,
+    peak: {
+      multiplier: Number(peak.multiplier || 1),
+      source: peak.source || null,
+    },
+  });
 };
 
 const updateOrderStatus = async (req, res) => {
@@ -1247,6 +1298,76 @@ const assignCourier = async (req, res) => {
   }
 };
 
+const adminUpdateOrderPayout = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { deliveryPriceOverride, courierBonus, deliveryOverrideReason } =
+      req.body;
+
+    const order = await Order.findByPk(id);
+    if (!order) return res.status(404).json({ message: "Заказ не найден" });
+
+    const numOrNull = (v) => {
+      if (v === "" || v === null || v === undefined) return null;
+      const n = Number(String(v).replace(",", "."));
+      return Number.isFinite(n) ? n : NaN;
+    };
+
+    const ovr = numOrNull(deliveryPriceOverride);
+    const bonusRaw = numOrNull(courierBonus);
+
+    if (ovr !== null && !Number.isFinite(ovr)) {
+      return res
+        .status(400)
+        .json({ message: "deliveryPriceOverride must be a number or null" });
+    }
+    if (bonusRaw !== null && !Number.isFinite(bonusRaw)) {
+      return res
+        .status(400)
+        .json({ message: "courierBonus must be a number or null" });
+    }
+
+    if (ovr !== null && ovr < 0) {
+      return res
+        .status(400)
+        .json({ message: "deliveryPriceOverride must be >= 0" });
+    }
+
+    const bonus = bonusRaw == null ? 0 : bonusRaw;
+    if (bonus < 0) {
+      return res.status(400).json({ message: "courierBonus must be >= 0" });
+    }
+
+    order.deliveryPriceOverride = ovr;
+    order.courierBonus = bonus;
+
+    if (typeof deliveryOverrideReason === "string") {
+      order.deliveryOverrideReason = deliveryOverrideReason.trim() || null;
+    }
+
+    if (Order.rawAttributes?.deliveryOverriddenAt)
+      order.deliveryOverriddenAt = new Date();
+    if (Order.rawAttributes?.deliveryOverriddenBy)
+      order.deliveryOverriddenBy = req.user?.id ?? null;
+
+    await order.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("orderUpdated", {
+        id: order.id,
+        deliveryPriceOverride: order.deliveryPriceOverride,
+        courierBonus: order.courierBonus,
+      });
+    }
+
+    return res.json({ message: "Payout updated", order });
+  } catch (e) {
+    console.error("adminUpdateOrderPayout error:", e);
+    return res.status(500).json({ message: "Ошибка сервера" });
+  }
+};
+
 module.exports = {
   createOrder,
   getDeliveryCost,
@@ -1257,4 +1378,5 @@ module.exports = {
   adminUpdateOrderStatus,
   assignCourier,
   downloadReceipt,
+  adminUpdateOrderPayout,
 };
