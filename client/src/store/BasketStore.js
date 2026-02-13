@@ -15,6 +15,18 @@ class BasketStore {
     this.cleanupSelectionKeys();
   }
 
+  toNum(v) {
+    if (v == null) return 0;
+    if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+
+    const n = Number(
+      String(v)
+        .replace(/[^\d.,-]/g, "")
+        .replace(",", "."),
+    );
+    return Number.isFinite(n) ? n : 0;
+  }
+
   getItemStockQty(item) {
     const raw = item?.stockQuantity ?? item?.quantity ?? 0;
     const n = Number(raw);
@@ -68,13 +80,13 @@ class BasketStore {
 
   get hasSelectedPreorders() {
     return this._items.some(
-      (i) => this._selected[i.uniqueKey] && this.isOOS(i)
+      (i) => this._selected[i.uniqueKey] && this.isOOS(i),
     );
   }
 
   get hasSelectedStockItems() {
     return this._items.some(
-      (i) => this._selected[i.uniqueKey] && !this.isOOS(i)
+      (i) => this._selected[i.uniqueKey] && !this.isOOS(i),
     );
   }
 
@@ -236,7 +248,7 @@ class BasketStore {
 
   removeSelectedItems() {
     const keys = new Set(
-      this._items.map((i) => i.uniqueKey).filter((k) => this._selected[k])
+      this._items.map((i) => i.uniqueKey).filter((k) => this._selected[k]),
     );
 
     this._items = this._items.filter((i) => !keys.has(i.uniqueKey));
@@ -249,13 +261,13 @@ class BasketStore {
   addItem(item) {
     const newSellerId = this.getItemSellerId(item);
     const existingSellerIds = new Set(
-      this._items.map((i) => this.getItemSellerId(i))
+      this._items.map((i) => this.getItemSellerId(i)),
     );
 
     if (existingSellerIds.size > 0) {
       if (!existingSellerIds.has(newSellerId)) {
         const ok = window.confirm(
-          "В корзине уже есть товары другого продавца. Очистить корзину и добавить этот товар?"
+          "В корзине уже есть товары другого продавца. Очистить корзину и добавить этот товар?",
         );
 
         if (!ok) {
@@ -356,21 +368,27 @@ class BasketStore {
 
   getTotalPrice() {
     return this._items.reduce((total, item) => {
+      const unit = this.toNum(item.price);
       const optionPrice = Object.values(item.selectedOptions || {}).reduce(
-        (sum, opt) => sum + (opt.price || 0),
-        0
+        (sum, opt) => sum + this.toNum(opt?.price ?? opt?.priceDelta),
+        0,
       );
-      return total + (item.price + optionPrice) * item.count;
+      const qty = this.toNum(item.count || 1);
+
+      return total + (unit + optionPrice) * qty;
     }, 0);
   }
 
   getSelectedTotalPrice() {
     return this.selectedItems.reduce((total, item) => {
+      const unit = this.toNum(item.price);
       const optionPrice = Object.values(item.selectedOptions || {}).reduce(
-        (sum, opt) => sum + (opt.price || 0),
-        0
+        (sum, opt) => sum + this.toNum(opt?.price ?? opt?.priceDelta),
+        0,
       );
-      return total + (item.price + optionPrice) * item.count;
+      const qty = this.toNum(item.count || 1);
+
+      return total + (unit + optionPrice) * qty;
     }, 0);
   }
 
