@@ -9,7 +9,6 @@ const DEFAULT_SHOP_COMMISSION_FLAT = 0.3;
 
 function parseISODateOnly(s) {
   if (!s) return null;
-  // ожидаем YYYY-MM-DD
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
   return s;
 }
@@ -99,7 +98,6 @@ class AccountingController {
     }
   }
 
-  // POST /api/accounting/payouts
   async setPayoutStatus(req, res) {
     try {
       const kind = req.body.kind;
@@ -158,87 +156,86 @@ class AccountingController {
       };
       applyRange(where, start, end);
 
-      const orders = await Order.findAll({
+      const row = await Setting.findByPk(COURIER_KEY);
+      const shopPercent = Number(row?.value?.shopCommissionPercent ?? 10);
+      const fallbackRate = Number.isFinite(shopPercent) ? shopPercent / 100 : 0;
+
+      const effectivePrice = literal(
+        `COALESCE("order"."deliveryPriceOverride", "order"."deliveryPrice")`,
+      );
+
+      const rateExpr = literal(
+        `COALESCE("order"."courierCommissionRate", ${fallbackRate})`,
+      );
+
+      const commissionExpr = literal(
+        `(COALESCE("order"."deliveryPriceOverride", "order"."deliveryPrice") * COALESCE("order"."courierCommissionRate", ${fallbackRate}))`,
+      );
+
+      const bonusExpr = literal(`COALESCE("order"."courierBonus", 0)`);
+
+      const payoutExpr = literal(
+        `((COALESCE("order"."deliveryPriceOverride", "order"."deliveryPrice") - ` +
+          `(COALESCE("order"."deliveryPriceOverride", "order"."deliveryPrice") * COALESCE("order"."courierCommissionRate", ${fallbackRate}))) + ` +
+          `COALESCE("order"."courierBonus", 0))`,
+      );
+
+      const rows = await Order.findAll({
         where,
         attributes: [
-          "id",
           "courierId",
-          "orderType",
-          "courierFee",
-          "courierCommission",
-          "updatedAt",
+          [fn("COUNT", col("order.id")), "ordersCount"],
+          [fn("COALESCE", fn("SUM", effectivePrice), 0), "sumCourierFeeGross"],
+          [fn("COALESCE", fn("SUM", commissionExpr), 0), "sumCommission"],
+          [fn("COALESCE", fn("SUM", bonusExpr), 0), "sumBonus"],
+          [fn("COALESCE", fn("SUM", payoutExpr), 0), "sumCourierPayout"],
         ],
+        include: [
+          {
+            model: Courier,
+            attributes: ["id", "name", "iban"],
+            required: false,
+          },
+        ],
+        group: ["order.courierId", "courier.id"],
         raw: true,
       });
 
-      const courierIds = Array.from(
-        new Set(orders.map((o) => o.courierId)),
-      ).filter(Boolean);
-
-      const couriers = await Courier.findAll({
-        where: { id: { [Op.in]: courierIds } },
-        attributes: ["id", "name", "iban"],
-        raw: true,
-      });
-
-      const courierMap = new Map(couriers.map((c) => [Number(c.id), c]));
-      const byCourier = new Map();
-      const shopCommissionFlat = await getShopCourierCommissionFlat();
-
-      for (const o of orders) {
-        const cid = Number(o.courierId);
-        if (!byCourier.has(cid)) {
-          byCourier.set(cid, {
-            courierId: cid,
-            courierName: courierMap.get(cid)?.name || `Courier #${cid}`,
-            iban: courierMap.get(cid)?.iban || null,
-            ordersCount: 0,
-            payoutTotal: 0,
-            commissionTotal: 0,
-          });
-        }
-
-        const row = byCourier.get(cid);
-        row.ordersCount += 1;
-
-        const fee = Number(o.courierFee || 0);
-        const commission = Number(o.courierCommission || 0);
-
-        const payoutNet =
-          o.orderType === "parcel" ? fee : Math.max(0, fee - commission);
-
-        row.payoutTotal += payoutNet;
-
-        if (o.orderType === "parcel") {
-          row.commissionTotal += Number(o.courierCommission || 0);
-        } else {
-          const cc = Number(o.courierCommission);
-          row.commissionTotal += Number.isFinite(cc) ? cc : shopCommissionFlat;
-        }
-      }
-
-      const items = Array.from(byCourier.values()).map((x) => ({
-        courierId: x.courierId,
-        courierName: x.courierName,
-        iban: x.iban,
-        ordersCount: x.ordersCount,
-        sumDeliveryPrice: Number(x.payoutTotal.toFixed(2)),
-        sumCourierFee: Number(x.payoutTotal.toFixed(2)),
-        sumCommission: Number(x.commissionTotal.toFixed(2)),
+      const items = (rows || []).map((r) => ({
+        courierId: Number(r.courierId),
+        courierName: r["courier.name"] || `Courier #${r.courierId}`,
+        iban: r["courier.iban"] || null,
+        ordersCount: Number(r.ordersCount || 0),
+        sumCourierFeeGross: Number(
+          Number(r.sumCourierFeeGross || 0).toFixed(2),
+        ),
+        sumCommission: Number(Number(r.sumCommission || 0).toFixed(2)),
+        sumBonus: Number(Number(r.sumBonus || 0).toFixed(2)),
+        sumCourierPayout: Number(Number(r.sumCourierPayout || 0).toFixed(2)),
       }));
 
       const totals = items.reduce(
         (acc, x) => {
           acc.ordersCount += x.ordersCount;
-          acc.sumCourierFee += x.sumCourierFee;
+          acc.sumCourierFeeGross += x.sumCourierFeeGross;
           acc.sumCommission += x.sumCommission;
+          acc.sumBonus += x.sumBonus;
+          acc.sumCourierPayout += x.sumCourierPayout;
           return acc;
         },
-        { ordersCount: 0, sumCourierFee: 0, sumCommission: 0 },
+        {
+          ordersCount: 0,
+          sumCourierFeeGross: 0,
+          sumCommission: 0,
+          sumBonus: 0,
+          sumCourierPayout: 0,
+        },
       );
 
-      totals.sumCourierFee = Number(totals.sumCourierFee.toFixed(2));
-      totals.sumCommission = Number(totals.sumCommission.toFixed(2));
+      Object.keys(totals).forEach((k) => {
+        if (k !== "ordersCount")
+          totals[k] = Number(Number(totals[k]).toFixed(2));
+      });
 
       return res.json({ range: { start, end }, items, totals });
     } catch (e) {
