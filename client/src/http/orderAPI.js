@@ -1,4 +1,4 @@
-import { $authHost } from './index';
+import { $authHost, $host } from './index';
 
 export const fetchUserOrders = async () => {
     const { data } = await $authHost.get('/order/user');
