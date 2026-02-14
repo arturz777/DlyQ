@@ -27,7 +27,7 @@ import {
   setDefaultPaymentMethod,
 } from "../http/paymentsAPI";
 import { Context } from "../index";
-import { fetchDeliveryCost } from "../utils/deliveryCost";
+import { fetchDeliveryCost } from "../http/orderAPI";
 import LoadingButton from "../components/LoadingButton";
 import LoadingIconButton from "../components/LoadingIconButton";
 import { useTranslation } from "react-i18next";
