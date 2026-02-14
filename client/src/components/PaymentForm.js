@@ -496,13 +496,6 @@ const PaymentForm = ({
     try {
       const amountCents = Math.round((totalPrice + deliveryCost) * 100);
 
-      console.log("[PAY] totals", {
-  totalPrice,
-  deliveryCost,
-  totalSum: totalPrice + deliveryCost,
-  amountCents,
-});
-
       const { clientSecret } = await createPaymentIntent({
         amount: amountCents,
         currency: "eur",
