@@ -906,6 +906,7 @@ class CourierController {
           [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "gross"],
           [fn("COALESCE", fn("SUM", col("courierCommission")), 0), "withheld"],
           [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
+          [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
         ],
         raw: true,
       });
@@ -925,7 +926,7 @@ class CourierController {
         gross: Number(Number(row?.gross || 0).toFixed(2)),
         withheld: Number(Number(row?.withheld || 0).toFixed(2)),
         net: Number(Number(row?.net || 0).toFixed(2)),
-        bonuses: 0,
+        bonuses: Number(Number(row?.bonuses || 0).toFixed(2)),
         tips: 0,
         acceptRate,
       });
@@ -1071,6 +1072,8 @@ class CourierController {
           "deliveryAddress",
           "orderDetails",
           "deliveryPrice",
+          "deliveryPriceOverride",
+          "courierBonus",
           "courierFee",
           "courierId",
           "courierFeeGross",
