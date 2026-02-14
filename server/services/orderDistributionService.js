@@ -89,9 +89,10 @@ async function sendOrderToNextCourier(order, { io } = {}) {
   });
 
   if (!couriers.length) {
-    console.warn("sendOrderToNextCourier: нет онлайн-курьеров");
-    return;
-  }
+  if (io) io.emit("highDemandUpdate", { highDemand: true });
+  console.warn("sendOrderToNextCourier: нет онлайн-курьеров");
+  return;
+}
 
   const busyOrders = await Order.findAll({
     where: {
@@ -134,9 +135,10 @@ async function sendOrderToNextCourier(order, { io } = {}) {
   }
 
   if (!candidates.length) {
-    console.warn("sendOrderToNextCourier: все курьеры заняты");
-    return;
-  }
+  if (io) io.emit("highDemandUpdate", { highDemand: true });
+  console.warn("sendOrderToNextCourier: все курьеры заняты");
+  return;
+}
 
   const pickup = await getPickupPoint(fresh);
 
@@ -229,6 +231,8 @@ async function sendOrderToNextCourier(order, { io } = {}) {
   if (io) {
     io.to(`courier:${nextCourier.id}`).emit("warehouseOrder", { id: fresh.id });
   }
+
+  if (io) io.emit("highDemandUpdate", { highDemand: false });
 
   setTimeout(async () => {
     try {
