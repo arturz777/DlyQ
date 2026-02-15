@@ -26,6 +26,39 @@ const RADAR_STATUSES = ["Waiting for courier", "Ready for pickup"];
 
 const MAX_VISIBLE_SEC = 60 * 60;
 
+function getTallinnMinutesOfDay(date = new Date()) {
+  const dtf = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Tallinn",
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const parts = dtf.formatToParts(date);
+  const get = (t) => parts.find((p) => p.type === t)?.value;
+
+  const hh = Number(get("hour"));
+  const mm = Number(get("minute"));
+  return hh * 60 + mm;
+}
+
+function buildHighDemandPayload(date = new Date()) {
+  const t = getTallinnMinutesOfDay(date);
+
+  let mult = 1;
+
+  const inRange = (start, end) => t >= start && t <= end;
+
+  if (inRange(8 * 60, 10 * 60 + 30)) mult = Math.max(mult, 1.2);
+  if (inRange(18 * 60, 22 * 60)) mult = Math.max(mult, 1.5);
+
+  return {
+    highDemand: mult > 1,
+    peakMultiplier: mult,
+    peakSource: mult > 1 ? "time_window" : null,
+  };
+}
+
 function parseProcessingTimeToSec(processingTime) {
   if (!processingTime) return null;
   const s = String(processingTime).trim().toLowerCase();
@@ -253,6 +286,10 @@ function safeParse(v, fallback) {
 }
 
 class CourierController {
+  async getHighDemand(req, res) {
+    return res.json(buildHighDemandPayload());
+  }
+
   async adminSearchUsers(req, res) {
     try {
       const q = String(req.query?.query || "")
