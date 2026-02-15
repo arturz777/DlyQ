@@ -4,6 +4,8 @@ const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 const checkRoleMiddleware = require("../middleware/checkRoleMiddleware");
 
+router.get("/high-demand", authMiddleware, courierController.getHighDemand);
+
 router.get(
   "/orders",
   authMiddleware,
