@@ -8,6 +8,7 @@ const {
   User,
   Chat,
   ChatParticipant,
+  Setting,
 } = require("../models/models");
 const {
   sendOrderToNextCourier,
@@ -25,6 +26,99 @@ const WAREHOUSE = {
 const RADAR_STATUSES = ["Waiting for courier", "Ready for pickup"];
 
 const MAX_VISIBLE_SEC = 60 * 60;
+
+function parseHHMMtoMinutes(v) {
+  if (!v) return null;
+  const m = String(v).trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  return hh * 60 + mm;
+}
+
+function inWindowMinutes(nowMin, startMin, endMin) {
+  if (startMin == null || endMin == null) return false;
+  if (startMin <= endMin) return nowMin >= startMin && nowMin <= endMin; // обычное окно
+  return nowMin >= startMin || nowMin <= endMin; // через полночь
+}
+
+async function readDeliveryPricingValue() {
+  const keys = ["delivery", "delivery_pricing", "deliveryPricing"];
+  for (const key of keys) {
+    const row = await Setting.findByPk(key, { attributes: ["value"], raw: true });
+    if (row?.value) return row.value;
+  }
+  return null;
+}
+
+async function buildHighDemandPayloadFromSettings(date = new Date()) {
+  const t = getTallinnMinutesOfDay(date);
+
+  const row = await Setting.findByPk("delivery_pricing", {
+    attributes: ["value"],
+    raw: true,
+  });
+
+  const v = row?.value || {};
+  const windows = Array.isArray(v.peakWindows) ? v.peakWindows : [];
+
+  let mult = 1;
+  let source = null;
+
+  for (const w of windows) {
+    if (!w || !w.enabled) continue;
+
+    const startMin = parseHHMMtoMinutes(w.start);
+    const endMin = parseHHMMtoMinutes(w.end);
+    if (!inWindowMinutes(t, startMin, endMin)) continue;
+
+    const m = Number(w.multiplier || 1);
+    if (Number.isFinite(m) && m > mult) {
+      mult = m;
+      source = w.id || "peak_window";
+    }
+  }
+
+  return {
+    highDemand: mult > 1,
+    peakMultiplier: mult,
+    peakSource: source,
+  };
+}
+
+function getTallinnMinutesOfDay(date = new Date()) {
+  const dtf = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Tallinn",
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const parts = dtf.formatToParts(date);
+  const get = (t) => parts.find((p) => p.type === t)?.value;
+
+  const hh = Number(get("hour"));
+  const mm = Number(get("minute"));
+  return hh * 60 + mm;
+}
+
+function buildHighDemandPayload(date = new Date()) {
+  const t = getTallinnMinutesOfDay(date);
+
+  let mult = 1;
+
+  const inRange = (start, end) => t >= start && t <= end;
+
+  if (inRange(8 * 60, 10 * 60 + 30)) mult = Math.max(mult, 1.2);
+  if (inRange(18 * 60, 22 * 60)) mult = Math.max(mult, 1.5);
+
+  return {
+    highDemand: mult > 1,
+    peakMultiplier: mult,
+    peakSource: mult > 1 ? "time_window" : null,
+  };
+}
 
 function parseProcessingTimeToSec(processingTime) {
   if (!processingTime) return null;
@@ -253,6 +347,41 @@ function safeParse(v, fallback) {
 }
 
 class CourierController {
+  async getHighDemand(req, res) {
+    try {
+      const v = (await readDeliveryPricingValue()) || {};
+      const windows = Array.isArray(v.peakWindows) ? v.peakWindows : [];
+
+      const nowMin = getTallinnMinutesOfDay(new Date());
+
+      let mult = 1;
+      let source = null;
+
+      for (const w of windows) {
+        if (!w || !w.enabled) continue;
+
+        const startMin = parseHHMMtoMinutes(w.start);
+        const endMin = parseHHMMtoMinutes(w.end);
+        if (!inWindowMinutes(nowMin, startMin, endMin)) continue;
+
+        const m = Number(w.multiplier || 1);
+        if (Number.isFinite(m) && m > mult) {
+          mult = m;
+          source = w.id || "peak_window";
+        }
+      }
+
+      return res.json({
+        highDemand: mult > 1,
+        peakMultiplier: mult,
+        peakSource: source,
+      });
+    } catch (e) {
+      console.error("getHighDemand error:", e);
+      return res.json({ highDemand: false, peakMultiplier: 1, peakSource: null });
+    }
+  }
+
   async adminSearchUsers(req, res) {
     try {
       const q = String(req.query?.query || "")
@@ -906,6 +1035,7 @@ class CourierController {
           [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "gross"],
           [fn("COALESCE", fn("SUM", col("courierCommission")), 0), "withheld"],
           [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
+          [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
         ],
         raw: true,
       });
@@ -925,7 +1055,7 @@ class CourierController {
         gross: Number(Number(row?.gross || 0).toFixed(2)),
         withheld: Number(Number(row?.withheld || 0).toFixed(2)),
         net: Number(Number(row?.net || 0).toFixed(2)),
-        bonuses: 0,
+        bonuses: Number(Number(row?.bonuses || 0).toFixed(2)),
         tips: 0,
         acceptRate,
       });
@@ -1071,6 +1201,8 @@ class CourierController {
           "deliveryAddress",
           "orderDetails",
           "deliveryPrice",
+          "deliveryPriceOverride",
+          "courierBonus",
           "courierFee",
           "courierId",
           "courierFeeGross",
