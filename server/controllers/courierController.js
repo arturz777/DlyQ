@@ -1018,9 +1018,13 @@ class CourierController {
             deliveredAt: o[timeField] || o.createdAt,
             pickupAddress: o.pickupAddress || null,
             deliveryAddress: o.deliveryAddress || null,
-            sum: Number(o.totalPrice || 0),
-            customerName: o.customerName || buildCustomerName(u) || null,
-            customerPhone: o.customerPhone || u?.phone || null,
+            sum: Number(deliveryClient || 0),
+            customerName:
+              String(o.customerName || "").trim() ||
+              buildCustomerName(u) ||
+              null,
+            customerPhone:
+              String(o.customerPhone || "").trim() || u?.phone || null,
 
             deliveryPrice: Number(o.deliveryPrice || 0),
             deliveryPriceOverride:
@@ -1060,13 +1064,28 @@ class CourierController {
           [fn("COALESCE", fn("SUM", col("courierCommission")), 0), "withheld"],
           [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
           [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
-        ],
-        raw: true,
-      });
 
-      const list = await Order.findAll({
-        where,
-        attributes: ["deliveryPrice", "deliveryPriceOverride"],
+          [
+            fn(
+              "COALESCE",
+              fn(
+                "SUM",
+                fn(
+                  "COALESCE",
+                  col("deliveryPriceOverride"),
+                  col("deliveryPrice"),
+                ),
+              ),
+              0,
+            ),
+            "deliveryClientTotal",
+          ],
+
+          [
+            fn("COALESCE", fn("SUM", col("deliveryPrice")), 0),
+            "deliveryBaseTotal",
+          ],
+        ],
         raw: true,
       });
 
@@ -1102,8 +1121,12 @@ class CourierController {
         bonuses: Number(Number(row?.bonuses || 0).toFixed(2)),
         tips: 0,
         acceptRate,
-        deliveryClientTotal: Number(deliveryClientTotal.toFixed(2)),
-        deliveryBaseTotal: Number(deliveryBaseTotal.toFixed(2)),
+        deliveryClientTotal: Number(
+          Number(row?.deliveryClientTotal || 0).toFixed(2),
+        ),
+        deliveryBaseTotal: Number(
+          Number(row?.deliveryBaseTotal || 0).toFixed(2),
+        ),
       });
     } catch (e) {
       console.error("getFinance error:", e);
