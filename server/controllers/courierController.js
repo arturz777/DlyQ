@@ -29,7 +29,9 @@ const MAX_VISIBLE_SEC = 60 * 60;
 
 function parseHHMMtoMinutes(v) {
   if (!v) return null;
-  const m = String(v).trim().match(/^(\d{1,2}):(\d{2})$/);
+  const m = String(v)
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})$/);
   if (!m) return null;
   const hh = Number(m[1]);
   const mm = Number(m[2]);
@@ -46,7 +48,10 @@ function inWindowMinutes(nowMin, startMin, endMin) {
 async function readDeliveryPricingValue() {
   const keys = ["delivery", "delivery_pricing", "deliveryPricing"];
   for (const key of keys) {
-    const row = await Setting.findByPk(key, { attributes: ["value"], raw: true });
+    const row = await Setting.findByPk(key, {
+      attributes: ["value"],
+      raw: true,
+    });
     if (row?.value) return row.value;
   }
   return null;
@@ -378,7 +383,11 @@ class CourierController {
       });
     } catch (e) {
       console.error("getHighDemand error:", e);
-      return res.json({ highDemand: false, peakMultiplier: 1, peakSource: null });
+      return res.json({
+        highDemand: false,
+        peakMultiplier: 1,
+        peakSource: null,
+      });
     }
   }
 
@@ -951,9 +960,13 @@ class CourierController {
           "orderType",
           "sellerId",
           "userId",
+          "customerName",
+          "customerPhone",
           "pickupAddress",
           "deliveryAddress",
           "totalPrice",
+          "deliveryPrice",
+          "deliveryPriceOverride",
           timeField,
           "createdAt",
         ],
@@ -990,6 +1003,10 @@ class CourierController {
         orders.map((o) => {
           const seller = o.sellerId ? sellerMap.get(Number(o.sellerId)) : null;
           const u = o.userId ? userMap.get(Number(o.userId)) : null;
+          const deliveryClient =
+            o.deliveryPriceOverride != null
+              ? o.deliveryPriceOverride
+              : o.deliveryPrice;
 
           const kind =
             o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
@@ -1004,6 +1021,13 @@ class CourierController {
             sum: Number(o.totalPrice || 0),
             customerName: o.customerName || buildCustomerName(u) || null,
             customerPhone: o.customerPhone || u?.phone || null,
+
+            deliveryPrice: Number(o.deliveryPrice || 0),
+            deliveryPriceOverride:
+              o.deliveryPriceOverride != null
+                ? Number(o.deliveryPriceOverride)
+                : null,
+            deliveryPriceEffective: Number(deliveryClient || 0),
           };
         }),
       );
@@ -1040,6 +1064,26 @@ class CourierController {
         raw: true,
       });
 
+      const list = await Order.findAll({
+        where,
+        attributes: ["deliveryPrice", "deliveryPriceOverride"],
+        raw: true,
+      });
+
+      const deliveryClientTotal = list.reduce((sum, o) => {
+        const v =
+          o.deliveryPriceOverride != null
+            ? o.deliveryPriceOverride
+            : o.deliveryPrice;
+        const n = Number(v);
+        return sum + (Number.isFinite(n) ? n : 0);
+      }, 0);
+
+      const deliveryBaseTotal = list.reduce((sum, o) => {
+        const n = Number(o.deliveryPrice);
+        return sum + (Number.isFinite(n) ? n : 0);
+      }, 0);
+
       const courier = await Courier.findByPk(courierId, {
         attributes: ["offersSent", "offersAccepted"],
         raw: true,
@@ -1058,6 +1102,8 @@ class CourierController {
         bonuses: Number(Number(row?.bonuses || 0).toFixed(2)),
         tips: 0,
         acceptRate,
+        deliveryClientTotal: Number(deliveryClientTotal.toFixed(2)),
+        deliveryBaseTotal: Number(deliveryBaseTotal.toFixed(2)),
       });
     } catch (e) {
       console.error("getFinance error:", e);
