@@ -8,6 +8,7 @@ const {
   User,
   Chat,
   ChatParticipant,
+  Setting,
 } = require("../models/models");
 const {
   sendOrderToNextCourier,
@@ -25,6 +26,66 @@ const WAREHOUSE = {
 const RADAR_STATUSES = ["Waiting for courier", "Ready for pickup"];
 
 const MAX_VISIBLE_SEC = 60 * 60;
+
+function parseHHMMtoMinutes(v) {
+  if (!v) return null;
+  const m = String(v).trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  return hh * 60 + mm;
+}
+
+function inWindowMinutes(nowMin, startMin, endMin) {
+  if (startMin == null || endMin == null) return false;
+  if (startMin <= endMin) return nowMin >= startMin && nowMin <= endMin; // обычное окно
+  return nowMin >= startMin || nowMin <= endMin; // через полночь
+}
+
+async function readDeliveryPricingValue() {
+  const keys = ["delivery", "delivery_pricing", "deliveryPricing"];
+  for (const key of keys) {
+    const row = await Setting.findByPk(key, { attributes: ["value"], raw: true });
+    if (row?.value) return row.value;
+  }
+  return null;
+}
+
+async function buildHighDemandPayloadFromSettings(date = new Date()) {
+  const t = getTallinnMinutesOfDay(date);
+
+  const row = await Setting.findByPk("delivery_pricing", {
+    attributes: ["value"],
+    raw: true,
+  });
+
+  const v = row?.value || {};
+  const windows = Array.isArray(v.peakWindows) ? v.peakWindows : [];
+
+  let mult = 1;
+  let source = null;
+
+  for (const w of windows) {
+    if (!w || !w.enabled) continue;
+
+    const startMin = parseHHMMtoMinutes(w.start);
+    const endMin = parseHHMMtoMinutes(w.end);
+    if (!inWindowMinutes(t, startMin, endMin)) continue;
+
+    const m = Number(w.multiplier || 1);
+    if (Number.isFinite(m) && m > mult) {
+      mult = m;
+      source = w.id || "peak_window";
+    }
+  }
+
+  return {
+    highDemand: mult > 1,
+    peakMultiplier: mult,
+    peakSource: source,
+  };
+}
 
 function getTallinnMinutesOfDay(date = new Date()) {
   const dtf = new Intl.DateTimeFormat("en-GB", {
@@ -287,7 +348,38 @@ function safeParse(v, fallback) {
 
 class CourierController {
   async getHighDemand(req, res) {
-    return res.json(buildHighDemandPayload());
+    try {
+      const v = (await readDeliveryPricingValue()) || {};
+      const windows = Array.isArray(v.peakWindows) ? v.peakWindows : [];
+
+      const nowMin = getTallinnMinutesOfDay(new Date());
+
+      let mult = 1;
+      let source = null;
+
+      for (const w of windows) {
+        if (!w || !w.enabled) continue;
+
+        const startMin = parseHHMMtoMinutes(w.start);
+        const endMin = parseHHMMtoMinutes(w.end);
+        if (!inWindowMinutes(nowMin, startMin, endMin)) continue;
+
+        const m = Number(w.multiplier || 1);
+        if (Number.isFinite(m) && m > mult) {
+          mult = m;
+          source = w.id || "peak_window";
+        }
+      }
+
+      return res.json({
+        highDemand: mult > 1,
+        peakMultiplier: mult,
+        peakSource: source,
+      });
+    } catch (e) {
+      console.error("getHighDemand error:", e);
+      return res.json({ highDemand: false, peakMultiplier: 1, peakSource: null });
+    }
   }
 
   async adminSearchUsers(req, res) {
