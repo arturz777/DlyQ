@@ -942,26 +942,36 @@ class CourierController {
         status: { [Op.in]: ["Delivered", "Completed"] },
       };
 
-     const filterField = "updatedAt";
+      const timeField = Order.rawAttributes?.deliveredAt
+        ? "deliveredAt"
+        : "updatedAt";
 
-if (from || to) {
-  where[filterField] = {};
-  if (from) where[filterField][Op.gte] = new Date(from);
-  if (to) where[filterField][Op.lt] = new Date(to);
-}
+      if (from || to) {
+        where[timeField] = {};
+        if (from) where[timeField][Op.gte] = new Date(from);
+        if (to) where[timeField][Op.lt] = new Date(to);
+      }
 
-const orders = await Order.findAll({
-  where,
-  order: [[filterField, "DESC"]],
-  attributes: [
-    "id","orderType","sellerId","userId",
-    "customerName","customerPhone",
-    "pickupAddress","deliveryAddress",
-    "totalPrice","deliveryPrice","deliveryPriceOverride",
-    "deliveredAt","updatedAt","createdAt",
-  ],
-  raw: true,
-});
+      const orders = await Order.findAll({
+        where,
+        order: [[timeField, "DESC"]],
+        attributes: [
+          "id",
+          "orderType",
+          "sellerId",
+          "userId",
+          "customerName",
+          "customerPhone",
+          "pickupAddress",
+          "deliveryAddress",
+          "totalPrice",
+          "deliveryPrice",
+          "deliveryPriceOverride",
+          timeField,
+          "createdAt",
+        ],
+        raw: true,
+      });
 
       const sellerIds = [
         ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
@@ -1022,7 +1032,6 @@ const orders = await Order.findAll({
                 ? Number(o.deliveryPriceOverride)
                 : null,
             deliveryPriceEffective: Number(deliveryClient || 0),
-            deliveredAt: o.deliveredAt || o.updatedAt || o.createdAt,
           };
         }),
       );
@@ -1045,26 +1054,47 @@ const orders = await Order.findAll({
         status: { [Op.in]: ["Delivered", "Completed"] },
       };
 
-      const filterField = "updatedAt";
+      const timeField = Order.rawAttributes?.deliveredAt
+        ? "deliveredAt"
+        : "updatedAt";
 
-if (from || to) {
-  where[filterField] = {};
-  if (from) where[filterField][Op.gte] = new Date(from);
-  if (to) where[filterField][Op.lt] = new Date(to);
-}
+      if (from || to) {
+        where[timeField] = {};
+        if (from) where[timeField][Op.gte] = new Date(from);
+        if (to) where[timeField][Op.lt] = new Date(to);
+      }
 
-const orders = await Order.findAll({
-  where,
-  order: [[filterField, "DESC"]],
-  attributes: [
-    "id","orderType","sellerId","userId",
-    "customerName","customerPhone",
-    "pickupAddress","deliveryAddress",
-    "totalPrice","deliveryPrice","deliveryPriceOverride",
-    "deliveredAt","updatedAt","createdAt",
-  ],
-  raw: true,
-});      
+      const effectiveDelivery = fn(
+        "COALESCE",
+        col("deliveryPriceOverride"),
+        col("deliveryPrice"),
+      );
+
+      const row = await Order.findOne({
+        where,
+        attributes: [
+          [fn("COUNT", col("id")), "trips"],
+
+          [
+            fn("COALESCE", fn("SUM", effectiveDelivery), 0),
+            "deliveryClientTotal",
+          ],
+
+          [
+            fn("COALESCE", fn("SUM", col("deliveryPrice")), 0),
+            "deliveryBaseTotal",
+          ],
+
+          [fn("COALESCE", fn("SUM", effectiveDelivery), 0), "gross"],
+
+          [fn("COALESCE", fn("SUM", col("courierCommission")), 0), "withheld"],
+
+          [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
+        ],
+        raw: true,
+      });
+
+      row.net = Number(row.gross || 0) - Number(row.withheld || 0);
 
       const courier = await Courier.findByPk(courierId, {
         attributes: ["offersSent", "offersAccepted"],
@@ -1090,7 +1120,6 @@ const orders = await Order.findAll({
         deliveryBaseTotal: Number(
           Number(row?.deliveryBaseTotal || 0).toFixed(2),
         ),
-        deliveredAt: o.deliveredAt || o.updatedAt || o.createdAt,
       });
     } catch (e) {
       console.error("getFinance error:", e);
