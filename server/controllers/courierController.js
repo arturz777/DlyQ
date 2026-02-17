@@ -969,6 +969,8 @@ class CourierController {
           "deliveryPriceOverride",
           timeField,
           "createdAt",
+          "highDemand",
+          "peakMultiplier",
         ],
         raw: true,
       });
@@ -1003,10 +1005,13 @@ class CourierController {
         orders.map((o) => {
           const seller = o.sellerId ? sellerMap.get(Number(o.sellerId)) : null;
           const u = o.userId ? userMap.get(Number(o.userId)) : null;
+          const peakMult = Number(o.peakMultiplier || 1);
+          const demandDelivery = Number(o.deliveryPrice || 0) * peakMult;
+
           const deliveryClient =
             o.deliveryPriceOverride != null
               ? o.deliveryPriceOverride
-              : o.deliveryPrice;
+              : demandDelivery;
 
           const kind =
             o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
@@ -1276,6 +1281,8 @@ class CourierController {
           "userId",
           "processingTime",
           "processingStartTime",
+          "highDemand",
+          "peakMultiplier",
         ],
       });
 
@@ -1312,7 +1319,12 @@ class CourierController {
         const o = order.toJSON();
         const s = o.sellerId ? sellerMap.get(o.sellerId) : null;
         const u = o.userId ? userMap.get(Number(o.userId)) : null;
-
+        const peakMult = Number(o.peakMultiplier || 1);
+        const demandDelivery = Number(o.deliveryPrice || 0) * peakMult;
+        const deliveryEffective =
+          o.deliveryPriceOverride != null
+            ? Number(o.deliveryPriceOverride)
+            : Number(demandDelivery);
         const isParcel = o.orderType === "parcel";
 
         return {
@@ -1331,6 +1343,7 @@ class CourierController {
           customerPhone: o.customerPhone || u?.phone || null,
           processingTime: order.processingTime,
           processingStartTime: order.processingStartTime,
+          deliveryPriceEffective: Number(deliveryEffective.toFixed(2)),
         };
       });
 
@@ -1483,6 +1496,14 @@ class CourierController {
         pickupLng = order.pickupLng ?? s?.pickupLng ?? null;
       }
 
+      const peakMult = Number(order.peakMultiplier || 1);
+      const demandDelivery = Number(order.deliveryPrice || 0) * peakMult;
+
+      const deliveryEffective =
+        order.deliveryPriceOverride != null
+          ? Number(order.deliveryPriceOverride)
+          : Number(demandDelivery);
+
       return res.json({
         id: order.id,
         orderType: order.orderType,
@@ -1500,6 +1521,9 @@ class CourierController {
         courierCommissionRate: order.courierCommissionRate,
         processingTime: order.processingTime,
         processingStartTime: order.processingStartTime,
+        highDemand: order.highDemand ?? null,
+        peakMultiplier: order.peakMultiplier ?? null,
+        deliveryPriceEffective: Number(deliveryEffective.toFixed(2)),
 
         pickupAddress,
         pickupLat,
