@@ -942,36 +942,26 @@ class CourierController {
         status: { [Op.in]: ["Delivered", "Completed"] },
       };
 
-      const timeField = Order.rawAttributes?.deliveredAt
-        ? "deliveredAt"
-        : "updatedAt";
+     const filterField = "updatedAt";
 
-      if (from || to) {
-        where[timeField] = {};
-        if (from) where[timeField][Op.gte] = new Date(from);
-        if (to) where[timeField][Op.lt] = new Date(to);
-      }
+if (from || to) {
+  where[filterField] = {};
+  if (from) where[filterField][Op.gte] = new Date(from);
+  if (to) where[filterField][Op.lt] = new Date(to);
+}
 
-      const orders = await Order.findAll({
-        where,
-        order: [[timeField, "DESC"]],
-        attributes: [
-          "id",
-          "orderType",
-          "sellerId",
-          "userId",
-          "customerName",
-          "customerPhone",
-          "pickupAddress",
-          "deliveryAddress",
-          "totalPrice",
-          "deliveryPrice",
-          "deliveryPriceOverride",
-          timeField,
-          "createdAt",
-        ],
-        raw: true,
-      });
+const orders = await Order.findAll({
+  where,
+  order: [[filterField, "DESC"]],
+  attributes: [
+    "id","orderType","sellerId","userId",
+    "customerName","customerPhone",
+    "pickupAddress","deliveryAddress",
+    "totalPrice","deliveryPrice","deliveryPriceOverride",
+    "deliveredAt","updatedAt","createdAt",
+  ],
+  raw: true,
+});
 
       const sellerIds = [
         ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
@@ -1032,6 +1022,7 @@ class CourierController {
                 ? Number(o.deliveryPriceOverride)
                 : null,
             deliveryPriceEffective: Number(deliveryClient || 0),
+            deliveredAt: o.deliveredAt || o.updatedAt || o.createdAt,
           };
         }),
       );
@@ -1054,48 +1045,26 @@ class CourierController {
         status: { [Op.in]: ["Delivered", "Completed"] },
       };
 
-      // лучше как в getHistory: deliveredAt если есть
-      const timeField = Order.rawAttributes?.deliveredAt
-        ? "deliveredAt"
-        : "updatedAt";
+      const filterField = "updatedAt";
 
-      if (from || to) {
-        where[timeField] = {};
-        if (from) where[timeField][Op.gte] = new Date(from);
-        if (to) where[timeField][Op.lt] = new Date(to);
-      }
+if (from || to) {
+  where[filterField] = {};
+  if (from) where[filterField][Op.gte] = new Date(from);
+  if (to) where[filterField][Op.lt] = new Date(to);
+}
 
-      const row = await Order.findOne({
-        where,
-        attributes: [
-          [fn("COUNT", col("id")), "trips"],
-          [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "gross"],
-          [fn("COALESCE", fn("SUM", col("courierCommission")), 0), "withheld"],
-          [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
-          [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
-
-          [
-            fn(
-              "COALESCE",
-              fn(
-                "SUM",
-                fn(
-                  "COALESCE",
-                  col("deliveryPriceOverride"),
-                  col("deliveryPrice"),
-                ),
-              ),
-              0,
-            ),
-            "deliveryClientTotal",
-          ],
-          [
-            fn("COALESCE", fn("SUM", col("deliveryPrice")), 0),
-            "deliveryBaseTotal",
-          ],
-        ],
-        raw: true,
-      });
+const orders = await Order.findAll({
+  where,
+  order: [[filterField, "DESC"]],
+  attributes: [
+    "id","orderType","sellerId","userId",
+    "customerName","customerPhone",
+    "pickupAddress","deliveryAddress",
+    "totalPrice","deliveryPrice","deliveryPriceOverride",
+    "deliveredAt","updatedAt","createdAt",
+  ],
+  raw: true,
+});      
 
       const courier = await Courier.findByPk(courierId, {
         attributes: ["offersSent", "offersAccepted"],
@@ -1121,6 +1090,7 @@ class CourierController {
         deliveryBaseTotal: Number(
           Number(row?.deliveryBaseTotal || 0).toFixed(2),
         ),
+        deliveredAt: o.deliveredAt || o.updatedAt || o.createdAt,
       });
     } catch (e) {
       console.error("getFinance error:", e);
