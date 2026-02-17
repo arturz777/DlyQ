@@ -29,7 +29,9 @@ const MAX_VISIBLE_SEC = 60 * 60;
 
 function parseHHMMtoMinutes(v) {
   if (!v) return null;
-  const m = String(v).trim().match(/^(\d{1,2}):(\d{2})$/);
+  const m = String(v)
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})$/);
   if (!m) return null;
   const hh = Number(m[1]);
   const mm = Number(m[2]);
@@ -46,7 +48,10 @@ function inWindowMinutes(nowMin, startMin, endMin) {
 async function readDeliveryPricingValue() {
   const keys = ["delivery", "delivery_pricing", "deliveryPricing"];
   for (const key of keys) {
-    const row = await Setting.findByPk(key, { attributes: ["value"], raw: true });
+    const row = await Setting.findByPk(key, {
+      attributes: ["value"],
+      raw: true,
+    });
     if (row?.value) return row.value;
   }
   return null;
@@ -378,7 +383,11 @@ class CourierController {
       });
     } catch (e) {
       console.error("getHighDemand error:", e);
-      return res.json({ highDemand: false, peakMultiplier: 1, peakSource: null });
+      return res.json({
+        highDemand: false,
+        peakMultiplier: 1,
+        peakSource: null,
+      });
     }
   }
 
@@ -951,9 +960,13 @@ class CourierController {
           "orderType",
           "sellerId",
           "userId",
+          "customerName",
+          "customerPhone",
           "pickupAddress",
           "deliveryAddress",
           "totalPrice",
+          "deliveryPrice",
+          "deliveryPriceOverride",
           timeField,
           "createdAt",
         ],
@@ -990,6 +1003,10 @@ class CourierController {
         orders.map((o) => {
           const seller = o.sellerId ? sellerMap.get(Number(o.sellerId)) : null;
           const u = o.userId ? userMap.get(Number(o.userId)) : null;
+          const deliveryClient =
+            o.deliveryPriceOverride != null
+              ? o.deliveryPriceOverride
+              : o.deliveryPrice;
 
           const kind =
             o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
@@ -1001,9 +1018,20 @@ class CourierController {
             deliveredAt: o[timeField] || o.createdAt,
             pickupAddress: o.pickupAddress || null,
             deliveryAddress: o.deliveryAddress || null,
-            sum: Number(o.totalPrice || 0),
-            customerName: o.customerName || buildCustomerName(u) || null,
-            customerPhone: o.customerPhone || u?.phone || null,
+            sum: Number(deliveryClient || 0),
+            customerName:
+              String(o.customerName || "").trim() ||
+              buildCustomerName(u) ||
+              null,
+            customerPhone:
+              String(o.customerPhone || "").trim() || u?.phone || null,
+
+            deliveryPrice: Number(o.deliveryPrice || 0),
+            deliveryPriceOverride:
+              o.deliveryPriceOverride != null
+                ? Number(o.deliveryPriceOverride)
+                : null,
+            deliveryPriceEffective: Number(deliveryClient || 0),
           };
         }),
       );
@@ -1025,8 +1053,17 @@ class CourierController {
         courierId,
         status: { [Op.in]: ["Delivered", "Completed"] },
       };
-      if (from && to)
-        where.updatedAt = { [Op.gte]: new Date(from), [Op.lt]: new Date(to) };
+
+      // лучше как в getHistory: deliveredAt если есть
+      const timeField = Order.rawAttributes?.deliveredAt
+        ? "deliveredAt"
+        : "updatedAt";
+
+      if (from || to) {
+        where[timeField] = {};
+        if (from) where[timeField][Op.gte] = new Date(from);
+        if (to) where[timeField][Op.lt] = new Date(to);
+      }
 
       const row = await Order.findOne({
         where,
@@ -1036,6 +1073,26 @@ class CourierController {
           [fn("COALESCE", fn("SUM", col("courierCommission")), 0), "withheld"],
           [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
           [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
+
+          [
+            fn(
+              "COALESCE",
+              fn(
+                "SUM",
+                fn(
+                  "COALESCE",
+                  col("deliveryPriceOverride"),
+                  col("deliveryPrice"),
+                ),
+              ),
+              0,
+            ),
+            "deliveryClientTotal",
+          ],
+          [
+            fn("COALESCE", fn("SUM", col("deliveryPrice")), 0),
+            "deliveryBaseTotal",
+          ],
         ],
         raw: true,
       });
@@ -1058,6 +1115,12 @@ class CourierController {
         bonuses: Number(Number(row?.bonuses || 0).toFixed(2)),
         tips: 0,
         acceptRate,
+        deliveryClientTotal: Number(
+          Number(row?.deliveryClientTotal || 0).toFixed(2),
+        ),
+        deliveryBaseTotal: Number(
+          Number(row?.deliveryBaseTotal || 0).toFixed(2),
+        ),
       });
     } catch (e) {
       console.error("getFinance error:", e);
