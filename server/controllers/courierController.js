@@ -1053,8 +1053,17 @@ class CourierController {
         courierId,
         status: { [Op.in]: ["Delivered", "Completed"] },
       };
-      if (from && to)
-        where.updatedAt = { [Op.gte]: new Date(from), [Op.lt]: new Date(to) };
+
+      // лучше как в getHistory: deliveredAt если есть
+      const timeField = Order.rawAttributes?.deliveredAt
+        ? "deliveredAt"
+        : "updatedAt";
+
+      if (from || to) {
+        where[timeField] = {};
+        if (from) where[timeField][Op.gte] = new Date(from);
+        if (to) where[timeField][Op.lt] = new Date(to);
+      }
 
       const row = await Order.findOne({
         where,
@@ -1080,7 +1089,6 @@ class CourierController {
             ),
             "deliveryClientTotal",
           ],
-
           [
             fn("COALESCE", fn("SUM", col("deliveryPrice")), 0),
             "deliveryBaseTotal",
@@ -1088,20 +1096,6 @@ class CourierController {
         ],
         raw: true,
       });
-
-      const deliveryClientTotal = list.reduce((sum, o) => {
-        const v =
-          o.deliveryPriceOverride != null
-            ? o.deliveryPriceOverride
-            : o.deliveryPrice;
-        const n = Number(v);
-        return sum + (Number.isFinite(n) ? n : 0);
-      }, 0);
-
-      const deliveryBaseTotal = list.reduce((sum, o) => {
-        const n = Number(o.deliveryPrice);
-        return sum + (Number.isFinite(n) ? n : 0);
-      }, 0);
 
       const courier = await Courier.findByPk(courierId, {
         attributes: ["offersSent", "offersAccepted"],
