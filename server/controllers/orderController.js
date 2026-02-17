@@ -1315,6 +1315,13 @@ const adminUpdateOrderPayout = async (req, res) => {
 
     const ovr = numOrNull(deliveryPriceOverride);
     const bonusRaw = numOrNull(courierBonus);
+    const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+    const grossForCourier = round2(
+      order.deliveryPriceOverride ?? order.deliveryPrice ?? 0,
+    );
+
+    const commission =
+      order.orderType === "parcel" ? round2(order.courierCommission ?? 0) : 0;
 
     if (ovr !== null && !Number.isFinite(ovr)) {
       return res
@@ -1340,6 +1347,8 @@ const adminUpdateOrderPayout = async (req, res) => {
 
     order.deliveryPriceOverride = ovr;
     order.courierBonus = bonus;
+    order.courierFeeGross = grossForCourier;
+    order.courierFee = round2(grossForCourier - commission);
 
     if (typeof deliveryOverrideReason === "string") {
       order.deliveryOverrideReason = deliveryOverrideReason.trim() || null;
@@ -1349,6 +1358,7 @@ const adminUpdateOrderPayout = async (req, res) => {
       order.deliveryOverriddenAt = new Date();
     if (Order.rawAttributes?.deliveryOverriddenBy)
       order.deliveryOverriddenBy = req.user?.id ?? null;
+    if (order.courierFee < 0) order.courierFee = 0;
 
     await order.save();
 
