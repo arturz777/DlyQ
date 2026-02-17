@@ -1005,9 +1005,7 @@ class CourierController {
           const kind =
             o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
 
-          const sum = Number(
-            o.courierFee ?? o.deliveryPriceOverride ?? o.deliveryPrice ?? 0,
-          );
+          const sum = Number(o.courierFee ?? 0);
 
           return {
             id: o.id,
