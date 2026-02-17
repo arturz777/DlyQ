@@ -1,4 +1,4 @@
-const { Op, fn, col } = require("sequelize");
+const { Op, fn, col, literal } = require("sequelize");
 const fetch = require("node-fetch");
 const {
   Order,
@@ -1070,6 +1070,11 @@ class CourierController {
         col("deliveryPrice"),
       );
 
+      // ✅ удержание считаем ТОЛЬКО по parcel
+      const withheldParcel = literal(`
+      COALESCE(SUM(CASE WHEN "orderType" = 'parcel' THEN "courierCommission" ELSE 0 END), 0)
+    `);
+
       const row = await Order.findOne({
         where,
         attributes: [
@@ -1087,7 +1092,8 @@ class CourierController {
 
           [fn("COALESCE", fn("SUM", effectiveDelivery), 0), "gross"],
 
-          [fn("COALESCE", fn("SUM", col("courierCommission")), 0), "withheld"],
+          // ✅ только parcel
+          [withheldParcel, "withheld"],
 
           [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
         ],
