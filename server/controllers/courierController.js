@@ -946,10 +946,20 @@ class CourierController {
         ? "deliveredAt"
         : "updatedAt";
 
+      const normalizeToExclusive = (v) => {
+        if (!v) return null;
+        const s = String(v).trim();
+        const d = new Date(s);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+          d.setDate(d.getDate() + 1);
+        }
+        return d;
+      };
+
       if (from || to) {
         where[timeField] = {};
         if (from) where[timeField][Op.gte] = new Date(from);
-        if (to) where[timeField][Op.lt] = new Date(to);
+        if (to) where[timeField][Op.lt] = normalizeToExclusive(to);
       }
 
       const orders = await Order.findAll({
@@ -960,9 +970,16 @@ class CourierController {
           "orderType",
           "sellerId",
           "userId",
+
+          "customerName",
+          "customerPhone",
+
           "pickupAddress",
           "deliveryAddress",
-          "totalPrice",
+
+          "deliveryPrice",
+          "deliveryPriceOverride",
+
           timeField,
           "createdAt",
         ],
@@ -1003,6 +1020,11 @@ class CourierController {
           const kind =
             o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
 
+          const deliveryEffective =
+            o.deliveryPriceOverride != null
+              ? o.deliveryPriceOverride
+              : o.deliveryPrice;
+
           return {
             id: o.id,
             kind,
@@ -1010,9 +1032,22 @@ class CourierController {
             deliveredAt: o[timeField] || o.createdAt,
             pickupAddress: o.pickupAddress || null,
             deliveryAddress: o.deliveryAddress || null,
-            sum: Number(o.totalPrice || 0),
-            customerName: o.customerName || buildCustomerName(u) || null,
-            customerPhone: o.customerPhone || u?.phone || null,
+
+            sum: Number(deliveryEffective || 0),
+
+            customerName:
+              String(o.customerName || "").trim() ||
+              buildCustomerName(u) ||
+              null,
+            customerPhone:
+              String(o.customerPhone || "").trim() || u?.phone || null,
+
+            deliveryPrice: Number(o.deliveryPrice || 0),
+            deliveryPriceOverride:
+              o.deliveryPriceOverride != null
+                ? Number(o.deliveryPriceOverride)
+                : null,
+            deliveryPriceEffective: Number(deliveryEffective || 0),
           };
         }),
       );
