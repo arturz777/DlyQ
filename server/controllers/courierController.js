@@ -963,6 +963,7 @@ class CourierController {
           "pickupAddress",
           "deliveryAddress",
           "totalPrice",
+          "courierFee",
           timeField,
           "createdAt",
         ],
@@ -1010,7 +1011,7 @@ class CourierController {
             deliveredAt: o[timeField] || o.createdAt,
             pickupAddress: o.pickupAddress || null,
             deliveryAddress: o.deliveryAddress || null,
-            sum: Number(o.totalPrice || 0),
+            sum: Number(o.courierFee || 0),
             customerName: o.customerName || buildCustomerName(u) || null,
             customerPhone: o.customerPhone || u?.phone || null,
           };
