@@ -27,21 +27,6 @@ const RADAR_STATUSES = ["Waiting for courier", "Ready for pickup"];
 
 const MAX_VISIBLE_SEC = 60 * 60;
 
-function normalizeDateFrom(v) {
-  if (!v) return null;
-  return new Date(v);
-}
-
-function normalizeDateToExclusive(v) {
-  if (!v) return null;
-  const d = new Date(v);
-
-  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.trim())) {
-    d.setDate(d.getDate() + 1);
-  }
-  return d;
-}
-
 function parseHHMMtoMinutes(v) {
   if (!v) return null;
   const m = String(v)
@@ -963,8 +948,8 @@ class CourierController {
 
       if (from || to) {
         where[timeField] = {};
-        if (from) where[timeField][Op.gte] = normalizeDateFrom(from);
-        if (to) where[timeField][Op.lt] = normalizeDateToExclusive(to);
+        if (from) where[timeField][Op.gte] = new Date(from);
+        if (to) where[timeField][Op.lt] = new Date(to);
       }
 
       const orders = await Order.findAll({
@@ -975,13 +960,9 @@ class CourierController {
           "orderType",
           "sellerId",
           "userId",
-          "customerName",
-          "customerPhone",
           "pickupAddress",
           "deliveryAddress",
           "totalPrice",
-          "deliveryPrice",
-          "deliveryPriceOverride",
           timeField,
           "createdAt",
         ],
@@ -1018,10 +999,6 @@ class CourierController {
         orders.map((o) => {
           const seller = o.sellerId ? sellerMap.get(Number(o.sellerId)) : null;
           const u = o.userId ? userMap.get(Number(o.userId)) : null;
-          const deliveryClient =
-            o.deliveryPriceOverride != null
-              ? o.deliveryPriceOverride
-              : o.deliveryPrice;
 
           const kind =
             o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
@@ -1033,20 +1010,9 @@ class CourierController {
             deliveredAt: o[timeField] || o.createdAt,
             pickupAddress: o.pickupAddress || null,
             deliveryAddress: o.deliveryAddress || null,
-            sum: Number(deliveryClient || 0),
-            customerName:
-              String(o.customerName || "").trim() ||
-              buildCustomerName(u) ||
-              null,
-            customerPhone:
-              String(o.customerPhone || "").trim() || u?.phone || null,
-
-            deliveryPrice: Number(o.deliveryPrice || 0),
-            deliveryPriceOverride:
-              o.deliveryPriceOverride != null
-                ? Number(o.deliveryPriceOverride)
-                : null,
-            deliveryPriceEffective: Number(deliveryClient || 0),
+            sum: Number(o.totalPrice || 0),
+            customerName: o.customerName || buildCustomerName(u) || null,
+            customerPhone: o.customerPhone || u?.phone || null,
           };
         }),
       );
