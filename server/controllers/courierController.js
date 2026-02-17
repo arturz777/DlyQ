@@ -946,20 +946,19 @@ class CourierController {
         ? "deliveredAt"
         : "updatedAt";
 
-      const normalizeToExclusive = (v) => {
-        if (!v) return null;
-        const s = String(v).trim();
-        const d = new Date(s);
-        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-          d.setDate(d.getDate() + 1);
-        }
-        return d;
-      };
-
       if (from || to) {
         where[timeField] = {};
         if (from) where[timeField][Op.gte] = new Date(from);
-        if (to) where[timeField][Op.lt] = normalizeToExclusive(to);
+
+        if (to) {
+          const toDate = new Date(to);
+
+          if (/^\d{4}-\d{2}-\d{2}$/.test(String(to).trim())) {
+            toDate.setDate(toDate.getDate() + 1);
+          }
+
+          where[timeField][Op.lt] = toDate;
+        }
       }
 
       const orders = await Order.findAll({
@@ -970,87 +969,14 @@ class CourierController {
           "orderType",
           "sellerId",
           "userId",
-
-          "customerName",
-          "customerPhone",
-
           "pickupAddress",
           "deliveryAddress",
-
-          "deliveryPrice",
-          "deliveryPriceOverride",
-
+          "totalPrice",
           timeField,
           "createdAt",
         ],
         raw: true,
       });
-
-      const sellerIds = [
-        ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
-      ];
-
-      const sellers = sellerIds.length
-        ? await Seller.findAll({
-            where: { id: { [Op.in]: sellerIds } },
-            attributes: ["id", "name", "kind"],
-            raw: true,
-          })
-        : [];
-
-      const sellerMap = new Map(sellers.map((s) => [Number(s.id), s]));
-
-      const userIds = [...new Set(orders.map((o) => o.userId).filter(Boolean))];
-
-      const users = userIds.length
-        ? await User.findAll({
-            where: { id: { [Op.in]: userIds } },
-            attributes: ["id", "firstName", "lastName", "phone", "email"],
-            raw: true,
-          })
-        : [];
-
-      const userMap = new Map(users.map((u) => [Number(u.id), u]));
-
-      return res.json(
-        orders.map((o) => {
-          const seller = o.sellerId ? sellerMap.get(Number(o.sellerId)) : null;
-          const u = o.userId ? userMap.get(Number(o.userId)) : null;
-
-          const kind =
-            o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
-
-          const deliveryEffective =
-            o.deliveryPriceOverride != null
-              ? o.deliveryPriceOverride
-              : o.deliveryPrice;
-
-          return {
-            id: o.id,
-            kind,
-            sellerName: seller?.name || null,
-            deliveredAt: o[timeField] || o.createdAt,
-            pickupAddress: o.pickupAddress || null,
-            deliveryAddress: o.deliveryAddress || null,
-
-            sum: Number(deliveryEffective || 0),
-
-            customerName:
-              String(o.customerName || "").trim() ||
-              buildCustomerName(u) ||
-              null,
-            customerPhone:
-              String(o.customerPhone || "").trim() || u?.phone || null,
-
-            deliveryPrice: Number(o.deliveryPrice || 0),
-            deliveryPriceOverride:
-              o.deliveryPriceOverride != null
-                ? Number(o.deliveryPriceOverride)
-                : null,
-            deliveryPriceEffective: Number(deliveryEffective || 0),
-          };
-        }),
-      );
     } catch (e) {
       console.error("getHistory error:", e);
       return res.status(500).json({ message: "Ошибка сервера" });
