@@ -962,6 +962,7 @@ class CourierController {
           "userId",
           "pickupAddress",
           "deliveryAddress",
+          "courierFee",
           "deliveryPrice",
           "deliveryPriceOverride",
           timeField,
@@ -1004,7 +1005,9 @@ class CourierController {
           const kind =
             o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
 
-          const sum = Number(o.deliveryPriceOverride ?? o.deliveryPrice ?? 0);
+          const sum = Number(
+            o.courierFee ?? o.deliveryPriceOverride ?? o.deliveryPrice ?? 0,
+          );
 
           return {
             id: o.id,
@@ -1014,7 +1017,6 @@ class CourierController {
             pickupAddress: o.pickupAddress || null,
             deliveryAddress: o.deliveryAddress || null,
             sum,
-
             customerName: o.customerName || buildCustomerName(u) || null,
             customerPhone: o.customerPhone || u?.phone || null,
           };
