@@ -952,6 +952,8 @@ class CourierController {
         if (to) where[timeField][Op.lt] = new Date(to);
       }
 
+      const hasCourierFeeOverride = !!Order.rawAttributes?.courierFeeOverride;
+
       const orders = await Order.findAll({
         where,
         order: [[timeField, "DESC"]],
@@ -962,8 +964,8 @@ class CourierController {
           "userId",
           "pickupAddress",
           "deliveryAddress",
-          "totalPrice",
           "courierFee",
+          ...(hasCourierFeeOverride ? ["courierFeeOverride"] : []),
           timeField,
           "createdAt",
         ],
@@ -1004,6 +1006,11 @@ class CourierController {
           const kind =
             o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
 
+          const effectiveCourierFee =
+            (hasCourierFeeOverride ? o.courierFeeOverride : null) ??
+            o.courierFee ??
+            0;
+
           return {
             id: o.id,
             kind,
@@ -1011,7 +1018,7 @@ class CourierController {
             deliveredAt: o[timeField] || o.createdAt,
             pickupAddress: o.pickupAddress || null,
             deliveryAddress: o.deliveryAddress || null,
-            sum: Number(o.courierFee || 0),
+            sum: Number(effectiveCourierFee || 0),
             customerName: o.customerName || buildCustomerName(u) || null,
             customerPhone: o.customerPhone || u?.phone || null,
           };
