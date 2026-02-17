@@ -27,6 +27,21 @@ const RADAR_STATUSES = ["Waiting for courier", "Ready for pickup"];
 
 const MAX_VISIBLE_SEC = 60 * 60;
 
+function normalizeDateFrom(v) {
+  if (!v) return null;
+  return new Date(v);
+}
+
+function normalizeDateToExclusive(v) {
+  if (!v) return null;
+  const d = new Date(v);
+
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.trim())) {
+    d.setDate(d.getDate() + 1);
+  }
+  return d;
+}
+
 function parseHHMMtoMinutes(v) {
   if (!v) return null;
   const m = String(v)
