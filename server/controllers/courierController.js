@@ -1,4 +1,4 @@
-const { Op, fn, col } = require("sequelize");
+const { Op, fn, col, literal } = require("sequelize");
 const fetch = require("node-fetch");
 const {
   Order,
@@ -942,26 +942,34 @@ class CourierController {
         status: { [Op.in]: ["Delivered", "Completed"] },
       };
 
-     const filterField = "updatedAt";
+      const timeField = Order.rawAttributes?.deliveredAt
+        ? "deliveredAt"
+        : "updatedAt";
 
-if (from || to) {
-  where[filterField] = {};
-  if (from) where[filterField][Op.gte] = new Date(from);
-  if (to) where[filterField][Op.lt] = new Date(to);
-}
+      if (from || to) {
+        where[timeField] = {};
+        if (from) where[timeField][Op.gte] = new Date(from);
+        if (to) where[timeField][Op.lt] = new Date(to);
+      }
 
-const orders = await Order.findAll({
-  where,
-  order: [[filterField, "DESC"]],
-  attributes: [
-    "id","orderType","sellerId","userId",
-    "customerName","customerPhone",
-    "pickupAddress","deliveryAddress",
-    "totalPrice","deliveryPrice","deliveryPriceOverride",
-    "deliveredAt","updatedAt","createdAt",
-  ],
-  raw: true,
-});
+      const orders = await Order.findAll({
+        where,
+        order: [[timeField, "DESC"]],
+        attributes: [
+          "id",
+          "orderType",
+          "sellerId",
+          "userId",
+          "pickupAddress",
+          "deliveryAddress",
+          "courierFee",
+          "deliveryPrice",
+          "deliveryPriceOverride",
+          timeField,
+          "createdAt",
+        ],
+        raw: true,
+      });
 
       const sellerIds = [
         ...new Set(orders.map((o) => o.sellerId).filter(Boolean)),
@@ -993,13 +1001,11 @@ const orders = await Order.findAll({
         orders.map((o) => {
           const seller = o.sellerId ? sellerMap.get(Number(o.sellerId)) : null;
           const u = o.userId ? userMap.get(Number(o.userId)) : null;
-          const deliveryClient =
-            o.deliveryPriceOverride != null
-              ? o.deliveryPriceOverride
-              : o.deliveryPrice;
 
           const kind =
             o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
+
+          const sum = Number(o.courierFee ?? 0);
 
           return {
             id: o.id,
@@ -1008,21 +1014,9 @@ const orders = await Order.findAll({
             deliveredAt: o[timeField] || o.createdAt,
             pickupAddress: o.pickupAddress || null,
             deliveryAddress: o.deliveryAddress || null,
-            sum: Number(deliveryClient || 0),
-            customerName:
-              String(o.customerName || "").trim() ||
-              buildCustomerName(u) ||
-              null,
-            customerPhone:
-              String(o.customerPhone || "").trim() || u?.phone || null,
-
-            deliveryPrice: Number(o.deliveryPrice || 0),
-            deliveryPriceOverride:
-              o.deliveryPriceOverride != null
-                ? Number(o.deliveryPriceOverride)
-                : null,
-            deliveryPriceEffective: Number(deliveryClient || 0),
-            deliveredAt: o.deliveredAt || o.updatedAt || o.createdAt,
+            sum,
+            customerName: o.customerName || buildCustomerName(u) || null,
+            customerPhone: o.customerPhone || u?.phone || null,
           };
         }),
       );
@@ -1045,26 +1039,60 @@ const orders = await Order.findAll({
         status: { [Op.in]: ["Delivered", "Completed"] },
       };
 
-      const filterField = "updatedAt";
+      const timeField = Order.rawAttributes?.deliveredAt
+        ? "deliveredAt"
+        : "updatedAt";
 
-if (from || to) {
-  where[filterField] = {};
-  if (from) where[filterField][Op.gte] = new Date(from);
-  if (to) where[filterField][Op.lt] = new Date(to);
-}
+      if (from || to) {
+        where[timeField] = {};
+        if (from) where[timeField][Op.gte] = new Date(from);
+        if (to) where[timeField][Op.lt] = new Date(to);
+      }
 
-const orders = await Order.findAll({
-  where,
-  order: [[filterField, "DESC"]],
-  attributes: [
-    "id","orderType","sellerId","userId",
-    "customerName","customerPhone",
-    "pickupAddress","deliveryAddress",
-    "totalPrice","deliveryPrice","deliveryPriceOverride",
-    "deliveredAt","updatedAt","createdAt",
-  ],
-  raw: true,
-});      
+      const effectiveDelivery = fn(
+        "COALESCE",
+        col("deliveryPriceOverride"),
+        col("deliveryPrice"),
+      );
+
+      const withheldParcel = literal(`
+  COALESCE(SUM(CASE WHEN "orderType" = 'parcel' THEN "courierCommission" ELSE 0 END), 0)
+`);
+
+      const row = await Order.findOne({
+        where,
+        attributes: [
+          [fn("COUNT", col("id")), "trips"],
+
+          [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "gross"],
+
+          [withheldParcel, "withheld"],
+
+          [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
+          [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
+
+          [
+            fn(
+              "COALESCE",
+              fn(
+                "SUM",
+                fn(
+                  "COALESCE",
+                  col("deliveryPriceOverride"),
+                  col("deliveryPrice"),
+                ),
+              ),
+              0,
+            ),
+            "deliveryClientTotal",
+          ],
+          [
+            fn("COALESCE", fn("SUM", col("deliveryPrice")), 0),
+            "deliveryBaseTotal",
+          ],
+        ],
+        raw: true,
+      });
 
       const courier = await Courier.findByPk(courierId, {
         attributes: ["offersSent", "offersAccepted"],
@@ -1090,7 +1118,6 @@ const orders = await Order.findAll({
         deliveryBaseTotal: Number(
           Number(row?.deliveryBaseTotal || 0).toFixed(2),
         ),
-        deliveredAt: o.deliveredAt || o.updatedAt || o.createdAt,
       });
     } catch (e) {
       console.error("getFinance error:", e);
@@ -1646,6 +1673,28 @@ const orders = await Order.findAll({
 
       if (Order.rawAttributes?.deliveredAt) {
         order.deliveredAt = new Date();
+      }
+
+      if (order.courierFeeGross == null || order.courierCommission == null) {
+        const courierCfg = await getCourierCfg();
+        const ratePercent =
+          order.orderType === "parcel"
+            ? Number(courierCfg.parcelCommissionPercent ?? 0)
+            : Number(courierCfg.shopCommissionPercent ?? 0);
+
+        const baseGross = Number(order.deliveryPrice ?? 0);
+        const gross =
+          order.deliveryPriceOverride != null
+            ? Number(order.deliveryPriceOverride)
+            : baseGross;
+
+        const commission = round2(gross * (ratePercent / 100));
+        const net = round2(gross - commission);
+
+        order.courierFeeGross = gross;
+        order.courierCommissionRate = ratePercent / 100;
+        order.courierCommission = commission;
+        order.courierFee = net;
       }
 
       await order.save();
