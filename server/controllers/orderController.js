@@ -1368,6 +1368,14 @@ const net = round2(gross - commission);
 
     await order.save();
 
+    console.log("PAYOUT SAVED", {
+  id: order.id,
+  deliveryPrice: order.deliveryPrice,
+  deliveryPriceOverride: order.deliveryPriceOverride,
+  courierFee: order.courierFee,
+  courierCommission: order.courierCommission,
+});
+
     return res.json({ message: "Payout updated", order });
   } catch (e) {
     console.error("adminUpdateOrderPayout error:", e);
