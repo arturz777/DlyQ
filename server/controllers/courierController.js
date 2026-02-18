@@ -1005,7 +1005,7 @@ class CourierController {
           const kind =
             o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
 
-          const sum = Number(o.courierFee ?? 0);
+          const net = o.courierFee != null ? Number(o.courierFee) : null;
 
           return {
             id: o.id,
@@ -1014,7 +1014,8 @@ class CourierController {
             deliveredAt: o[timeField] || o.createdAt,
             pickupAddress: o.pickupAddress || null,
             deliveryAddress: o.deliveryAddress || null,
-            sum,
+            net,
+            gross: Number(o.deliveryPriceOverride ?? o.deliveryPrice ?? 0),
             customerName: o.customerName || buildCustomerName(u) || null,
             customerPhone: o.customerPhone || u?.phone || null,
           };
