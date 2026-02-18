@@ -1074,13 +1074,13 @@ class CourierController {
             "deliveryBaseTotal",
           ],
 
-          [fn("COALESCE", fn("SUM", effectiveDelivery), 0), "gross"],
+          [fn("COALESCE", fn("SUM", effectiveDelivery), 0), "clientGross"],
 
           [withheldParcel, "withheld"],
 
           [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
 
-          [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "gross"],
+          [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "courierGross"],
         ],
         raw: true,
       });
@@ -1099,15 +1099,13 @@ class CourierController {
 
       return res.json({
         trips: Number(row?.trips || 0),
-        gross: Number(Number(row?.gross || 0).toFixed(2)),
+        gross: Number(row?.courierGross || 0),
         withheld: Number(Number(row?.withheld || 0).toFixed(2)),
         net: Number(Number(row?.net || 0).toFixed(2)),
         bonuses: Number(Number(row?.bonuses || 0).toFixed(2)),
         tips: 0,
         acceptRate,
-        deliveryClientTotal: Number(
-          Number(row?.deliveryClientTotal || 0).toFixed(2),
-        ),
+       deliveryClientTotal: Number(row?.clientGross || 0),
         deliveryBaseTotal: Number(
           Number(row?.deliveryBaseTotal || 0).toFixed(2),
         ),
