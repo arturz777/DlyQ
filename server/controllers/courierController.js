@@ -997,6 +997,8 @@ class CourierController {
 
       const userMap = new Map(users.map((u) => [Number(u.id), u]));
 
+      console.log("HISTORY SAMPLE", orders[0]);
+
       return res.json(
         orders.map((o) => {
           const seller = o.sellerId ? sellerMap.get(Number(o.sellerId)) : null;
@@ -1086,6 +1088,8 @@ class CourierController {
       });
 
       row.net = Number(row.net || 0) + Number(row.bonuses || 0);
+
+      console.log("FINANCE ROW", row);
 
       const courier = await Courier.findByPk(courierId, {
         attributes: ["offersSent", "offersAccepted"],
