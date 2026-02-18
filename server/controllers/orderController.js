@@ -1301,7 +1301,8 @@ const assignCourier = async (req, res) => {
 const adminUpdateOrderPayout = async (req, res) => {
   try {
     const { id } = req.params;
-    const { deliveryPriceOverride, courierBonus, deliveryOverrideReason } = req.body;
+    const { deliveryPriceOverride, courierBonus, deliveryOverrideReason } =
+      req.body;
 
     const order = await Order.findByPk(id);
     if (!order) return res.status(404).json({ message: "Заказ не найден" });
@@ -1312,25 +1313,31 @@ const adminUpdateOrderPayout = async (req, res) => {
       return Number.isFinite(n) ? n : NaN;
     };
 
-    const round2 = (n) => Number((Math.round((Number(n) || 0) * 100) / 100).toFixed(2));
+    const round2 = (n) =>
+      Number((Math.round((Number(n) || 0) * 100) / 100).toFixed(2));
 
     const ovr = numOrNull(deliveryPriceOverride);
     const bonusRaw = numOrNull(courierBonus);
 
     if (ovr !== null && !Number.isFinite(ovr))
-      return res.status(400).json({ message: "deliveryPriceOverride must be a number or null" });
+      return res
+        .status(400)
+        .json({ message: "deliveryPriceOverride must be a number or null" });
 
     if (bonusRaw !== null && !Number.isFinite(bonusRaw))
-      return res.status(400).json({ message: "courierBonus must be a number or null" });
+      return res
+        .status(400)
+        .json({ message: "courierBonus must be a number or null" });
 
     if (ovr !== null && ovr < 0)
-      return res.status(400).json({ message: "deliveryPriceOverride must be >= 0" });
+      return res
+        .status(400)
+        .json({ message: "deliveryPriceOverride must be >= 0" });
 
     const bonus = bonusRaw == null ? 0 : bonusRaw;
     if (bonus < 0)
       return res.status(400).json({ message: "courierBonus must be >= 0" });
 
-    // ✅ 1) сохраняем override/bonus
     order.deliveryPriceOverride = ovr;
     order.courierBonus = bonus;
 
@@ -1338,11 +1345,12 @@ const adminUpdateOrderPayout = async (req, res) => {
       order.deliveryOverrideReason = deliveryOverrideReason.trim() || null;
     }
 
-    if (Order.rawAttributes?.deliveryOverriddenAt) order.deliveryOverriddenAt = new Date();
-    if (Order.rawAttributes?.deliveryOverriddenBy) order.deliveryOverriddenBy = req.user?.id ?? null;
+    if (Order.rawAttributes?.deliveryOverriddenAt)
+      order.deliveryOverriddenAt = new Date();
+    if (Order.rawAttributes?.deliveryOverriddenBy)
+      order.deliveryOverriddenBy = req.user?.id ?? null;
 
-    // ✅ 2) пересчёт payout
-    const courierCfg = await getCourierCfg(); // у тебя уже есть выше в файле
+    const courierCfg = await getCourierCfg();
     const ratePercent =
       order.orderType === "parcel"
         ? Number(courierCfg.parcelCommissionPercent ?? 0)
@@ -1361,7 +1369,6 @@ const adminUpdateOrderPayout = async (req, res) => {
 
     await order.save();
 
-    // ✅ 3) уведомляем сокетом (если надо)
     const io = req.app.get("io");
     if (io) {
       io.emit("orderUpdated", {
