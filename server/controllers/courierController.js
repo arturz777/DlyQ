@@ -929,7 +929,7 @@ class CourierController {
     }
   }
 
-  async getHistory(req, res) {
+ async getHistory(req, res) {
     try {
       const courierId = req.user?.id;
       if (!courierId)
@@ -1005,11 +1005,7 @@ class CourierController {
           const kind =
             o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
 
-          const sum =
-  o.courierFee != null
-    ? Number(o.courierFee)
-    : Number(o.deliveryPriceOverride ?? o.deliveryPrice ?? 0) -
-      (o.orderType === "parcel" ? Number(o.courierCommission ?? 0) : 0);
+          const sum = Number(o.courierFee ?? 0);
 
           return {
             id: o.id,
