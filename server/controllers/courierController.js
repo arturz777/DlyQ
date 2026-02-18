@@ -1005,7 +1005,7 @@ class CourierController {
           const kind =
             o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
 
-         const sum = Number(o.courierFee ?? 0);
+          const sum = Number(o.courierFee ?? 0);
 
           return {
             id: o.id,
@@ -1080,7 +1080,7 @@ class CourierController {
 
           [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
 
-          [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
+          [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "gross"],
         ],
         raw: true,
       });
