@@ -1348,7 +1348,9 @@ const adminUpdateOrderPayout = async (req, res) => {
         ? Number(courierCfg.parcelCommissionPercent ?? 0)
         : Number(courierCfg.shopCommissionPercent ?? 0);
 
-    const commission = round2(gross * (ratePercent / 100));
+    const baseGross = Number(order.deliveryPrice ?? 0);
+    const commission = round2(baseGross * (ratePercent / 100));
+
     const net = round2(gross - commission);
 
     order.deliveryPriceOverride = ovr;
