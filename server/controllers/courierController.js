@@ -1056,28 +1056,43 @@ class CourierController {
       );
 
       const withheldParcel = literal(`
-      COALESCE(SUM(CASE WHEN "orderType" = 'parcel' THEN "courierCommission" ELSE 0 END), 0)
-    `);
+  COALESCE(SUM(CASE WHEN "orderType" = 'parcel' THEN "courierCommission" ELSE 0 END), 0)
+`);
 
-     const row = await Order.findOne({
-  where,
-  attributes: [
-    [fn("COUNT", col("id")), "trips"],
+      const row = await Order.findOne({
+        where,
+        attributes: [
+          [fn("COUNT", col("id")), "trips"],
 
-    [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "gross"],
-    [fn("COALESCE", fn("SUM", col("courierCommission")), 0), "withheld"],
-    [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
-    [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
+          [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "gross"],
 
-    // если хочешь отдельно "сколько платил клиент за доставку"
-    [
-      fn("COALESCE", fn("SUM", fn("COALESCE", col("deliveryPriceOverride"), col("deliveryPrice"))), 0),
-      "deliveryClientTotal",
-    ],
-    [fn("COALESCE", fn("SUM", col("deliveryPrice")), 0), "deliveryBaseTotal"],
-  ],
-  raw: true,
-});
+          [withheldParcel, "withheld"],
+
+          [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
+          [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
+
+          [
+            fn(
+              "COALESCE",
+              fn(
+                "SUM",
+                fn(
+                  "COALESCE",
+                  col("deliveryPriceOverride"),
+                  col("deliveryPrice"),
+                ),
+              ),
+              0,
+            ),
+            "deliveryClientTotal",
+          ],
+          [
+            fn("COALESCE", fn("SUM", col("deliveryPrice")), 0),
+            "deliveryBaseTotal",
+          ],
+        ],
+        raw: true,
+      });
 
       const courier = await Courier.findByPk(courierId, {
         attributes: ["offersSent", "offersAccepted"],
@@ -1661,23 +1676,26 @@ class CourierController {
       }
 
       if (order.courierFeeGross == null || order.courierCommission == null) {
-  const courierCfg = await getCourierCfg();
-  const ratePercent =
-    order.orderType === "parcel"
-      ? Number(courierCfg.parcelCommissionPercent ?? 0)
-      : Number(courierCfg.shopCommissionPercent ?? 0);
+        const courierCfg = await getCourierCfg();
+        const ratePercent =
+          order.orderType === "parcel"
+            ? Number(courierCfg.parcelCommissionPercent ?? 0)
+            : Number(courierCfg.shopCommissionPercent ?? 0);
 
-  const baseGross = Number(order.deliveryPrice ?? 0);
-  const gross = order.deliveryPriceOverride != null ? Number(order.deliveryPriceOverride) : baseGross;
+        const baseGross = Number(order.deliveryPrice ?? 0);
+        const gross =
+          order.deliveryPriceOverride != null
+            ? Number(order.deliveryPriceOverride)
+            : baseGross;
 
-  const commission = round2(gross * (ratePercent / 100));
-  const net = round2(gross - commission);
+        const commission = round2(gross * (ratePercent / 100));
+        const net = round2(gross - commission);
 
-  order.courierFeeGross = gross;
-  order.courierCommissionRate = ratePercent / 100;
-  order.courierCommission = commission;
-  order.courierFee = net;
-}    
+        order.courierFeeGross = gross;
+        order.courierCommissionRate = ratePercent / 100;
+        order.courierCommission = commission;
+        order.courierFee = net;
+      }
 
       await order.save();
 
