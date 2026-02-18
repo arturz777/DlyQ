@@ -997,8 +997,6 @@ class CourierController {
 
       const userMap = new Map(users.map((u) => [Number(u.id), u]));
 
-      console.log("HISTORY SAMPLE", orders[0]);
-
       return res.json(
         orders.map((o) => {
           const seller = o.sellerId ? sellerMap.get(Number(o.sellerId)) : null;
@@ -1061,35 +1059,25 @@ class CourierController {
       COALESCE(SUM(CASE WHEN "orderType" = 'parcel' THEN "courierCommission" ELSE 0 END), 0)
     `);
 
-      const row = await Order.findOne({
-        where,
-        attributes: [
-          [fn("COUNT", col("id")), "trips"],
+     const row = await Order.findOne({
+  where,
+  attributes: [
+    [fn("COUNT", col("id")), "trips"],
 
-          [
-            fn("COALESCE", fn("SUM", effectiveDelivery), 0),
-            "deliveryClientTotal",
-          ],
+    [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "gross"],
+    [fn("COALESCE", fn("SUM", col("courierCommission")), 0), "withheld"],
+    [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
+    [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
 
-          [
-            fn("COALESCE", fn("SUM", col("deliveryPrice")), 0),
-            "deliveryBaseTotal",
-          ],
-
-          [fn("COALESCE", fn("SUM", effectiveDelivery), 0), "clientGross"],
-
-          [withheldParcel, "withheld"],
-
-          [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
-
-          [fn("COALESCE", fn("SUM", col("courierFeeGross")), 0), "courierGross"],
-        ],
-        raw: true,
-      });
-
-      row.net = Number(row.net || 0) + Number(row.bonuses || 0);
-
-      console.log("FINANCE ROW", row);
+    // если хочешь отдельно "сколько платил клиент за доставку"
+    [
+      fn("COALESCE", fn("SUM", fn("COALESCE", col("deliveryPriceOverride"), col("deliveryPrice"))), 0),
+      "deliveryClientTotal",
+    ],
+    [fn("COALESCE", fn("SUM", col("deliveryPrice")), 0), "deliveryBaseTotal"],
+  ],
+  raw: true,
+});
 
       const courier = await Courier.findByPk(courierId, {
         attributes: ["offersSent", "offersAccepted"],
@@ -1103,13 +1091,15 @@ class CourierController {
 
       return res.json({
         trips: Number(row?.trips || 0),
-        gross: Number(row?.courierGross || 0),
+        gross: Number(Number(row?.gross || 0).toFixed(2)),
         withheld: Number(Number(row?.withheld || 0).toFixed(2)),
         net: Number(Number(row?.net || 0).toFixed(2)),
         bonuses: Number(Number(row?.bonuses || 0).toFixed(2)),
         tips: 0,
         acceptRate,
-       deliveryClientTotal: Number(row?.clientGross || 0),
+        deliveryClientTotal: Number(
+          Number(row?.deliveryClientTotal || 0).toFixed(2),
+        ),
         deliveryBaseTotal: Number(
           Number(row?.deliveryBaseTotal || 0).toFixed(2),
         ),
@@ -1669,6 +1659,25 @@ class CourierController {
       if (Order.rawAttributes?.deliveredAt) {
         order.deliveredAt = new Date();
       }
+
+      if (order.courierFeeGross == null || order.courierCommission == null) {
+  const courierCfg = await getCourierCfg();
+  const ratePercent =
+    order.orderType === "parcel"
+      ? Number(courierCfg.parcelCommissionPercent ?? 0)
+      : Number(courierCfg.shopCommissionPercent ?? 0);
+
+  const baseGross = Number(order.deliveryPrice ?? 0);
+  const gross = order.deliveryPriceOverride != null ? Number(order.deliveryPriceOverride) : baseGross;
+
+  const commission = round2(gross * (ratePercent / 100));
+  const net = round2(gross - commission);
+
+  order.courierFeeGross = gross;
+  order.courierCommissionRate = ratePercent / 100;
+  order.courierCommission = commission;
+  order.courierFee = net;
+}    
 
       await order.save();
 
