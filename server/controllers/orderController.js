@@ -1315,6 +1315,7 @@ const adminUpdateOrderPayout = async (req, res) => {
 
     const ovr = numOrNull(deliveryPriceOverride);
     const bonusRaw = numOrNull(courierBonus);
+    const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
     if (ovr !== null && !Number.isFinite(ovr)) {
       return res
@@ -1338,8 +1339,25 @@ const adminUpdateOrderPayout = async (req, res) => {
       return res.status(400).json({ message: "courierBonus must be >= 0" });
     }
 
+    const courierCfg = await getCourierCfg();
+
+    const gross = ovr != null ? ovr : (order.deliveryPrice ?? 0);
+
+    const ratePercent =
+      order.orderType === "parcel"
+        ? Number(courierCfg.parcelCommissionPercent ?? 0)
+        : Number(courierCfg.shopCommissionPercent ?? 0);
+
+    const commission = round2(gross * (ratePercent / 100));
+    const net = round2(gross - commission);
+
     order.deliveryPriceOverride = ovr;
     order.courierBonus = bonus;
+
+    order.courierFeeGross = gross;
+    order.courierCommission = commission;
+    order.courierCommissionRate = ratePercent / 100;
+    order.courierFee = net;
 
     if (typeof deliveryOverrideReason === "string") {
       order.deliveryOverrideReason = deliveryOverrideReason.trim() || null;
