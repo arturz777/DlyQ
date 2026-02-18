@@ -929,7 +929,7 @@ class CourierController {
     }
   }
 
- async getHistory(req, res) {
+  async getHistory(req, res) {
     try {
       const courierId = req.user?.id;
       if (!courierId)
@@ -1005,7 +1005,7 @@ class CourierController {
           const kind =
             o.orderType === "parcel" ? "parcel" : seller ? "seller" : "market";
 
-          const net = o.courierFee != null ? Number(o.courierFee) : null;
+         const sum = Number(o.courierFee ?? 0);
 
           return {
             id: o.id,
@@ -1014,8 +1014,7 @@ class CourierController {
             deliveredAt: o[timeField] || o.createdAt,
             pickupAddress: o.pickupAddress || null,
             deliveryAddress: o.deliveryAddress || null,
-            net,
-            gross: Number(o.deliveryPriceOverride ?? o.deliveryPrice ?? 0),
+            sum,
             customerName: o.customerName || buildCustomerName(u) || null,
             customerPhone: o.customerPhone || u?.phone || null,
           };
@@ -1077,15 +1076,16 @@ class CourierController {
 
           [fn("COALESCE", fn("SUM", effectiveDelivery), 0), "gross"],
 
-          // ✅ только parcel
           [withheldParcel, "withheld"],
 
           [fn("COALESCE", fn("SUM", col("courierBonus")), 0), "bonuses"],
+
+          [fn("COALESCE", fn("SUM", col("courierFee")), 0), "net"],
         ],
         raw: true,
       });
 
-      row.net = Number(row.gross || 0) - Number(row.withheld || 0);
+      row.net = Number(row.net || 0) + Number(row.bonuses || 0);
 
       const courier = await Courier.findByPk(courierId, {
         attributes: ["offersSent", "offersAccepted"],
