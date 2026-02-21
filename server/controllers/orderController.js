@@ -1032,14 +1032,6 @@ const safeParse = (v, fallback) => {
   }
 };
 
-const normLang = (l) => {
-  const short = String(l || "ru")
-    .toLowerCase()
-    .split("-")[0];
-  if (short === "et") return "est";
-  return short;
-};
-
 const getUserOrders = async (req, res) => {
   try {
     const userId = req.user.id;
