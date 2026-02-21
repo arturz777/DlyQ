@@ -33,9 +33,6 @@ const uuid = require("uuid");
 const Stripe = require("stripe");
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const OFFER_TTL_SECONDS = 15;
-const COURIER_VISIBLE = new Set(["Waiting for courier", "Ready for pickup"]);
-
 function mustEnv(name) {
   const v = (process.env[name] ?? "").trim();
   if (!v) throw new Error(`${name} is not set`);
@@ -1268,40 +1265,14 @@ const assignCourier = async (req, res) => {
     const courier = await Courier.findByPk(courierId);
     if (!courier) return res.status(404).json({ message: "Курьер не найден" });
 
-    if (order.courierId && String(order.courierId) !== String(courierId)) {
-      return res
-        .status(409)
-        .json({ message: "Заказ уже занят другим курьером" });
-    }
-
-    if (!COURIER_VISIBLE.has(order.status)) {
-      order.status = "Waiting for courier";
-    }
-
-    order.courierId = null;
-    order.offerCourierId = courierId;
-    order.offerExpiresAt = new Date(Date.now() + OFFER_TTL_SECONDS * 1000);
-
+    order.courierId = courierId;
     await order.save();
 
-    console.log("ASSIGN OFFER:", {
-  id: order.id,
-  status: order.status,
-  courierId: order.courierId,
-  offerCourierId: order.offerCourierId,
-  offerExpiresAt: order.offerExpiresAt,
-});
-
     const io = req.app.get("io");
-
-    io.to(`courier:${courierId}`).emit("warehouseOrder", { id: order.id });
-
     io.emit("orderStatusUpdate", {
       id: order.id,
       status: order.status,
       courierId: order.courierId,
-      offerCourierId: order.offerCourierId,
-      offerExpiresAt: order.offerExpiresAt,
       deliveryLat: order.deliveryLat,
       deliveryLng: order.deliveryLng,
       deliveryAddress: order.deliveryAddress,
@@ -1312,10 +1283,10 @@ const assignCourier = async (req, res) => {
       console.error("push error:", err),
     );
 
-    return res.json({ message: "Оффер отправлен курьеру", order });
+    res.json({ message: "Курьер назначен", order });
   } catch (error) {
     console.error("❌ Ошибка назначения курьера:", error);
-    return res.status(500).json({ message: "Ошибка сервера" });
+    res.status(500).json({ message: "Ошибка сервера" });
   }
 };
 
