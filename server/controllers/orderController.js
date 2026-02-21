@@ -1273,28 +1273,38 @@ const assignCourier = async (req, res) => {
     const courier = await Courier.findByPk(courierId);
     if (!courier) return res.status(404).json({ message: "Курьер не найден" });
 
-    order.courierId = courierId;
+    if (order.courierId && String(order.courierId) !== String(courierId)) {
+      return res.status(409).json({ message: "Заказ уже занят другим курьером" });
+    }
+
+    order.courierId = null;
+    order.offerCourierId = courierId;
+    order.offerExpiresAt = new Date(Date.now() + OFFER_TTL_SECONDS * 1000);
+
     await order.save();
 
     const io = req.app.get("io");
+
+    io.to(`courier:${courierId}`).emit("warehouseOrder", { id: order.id });
+
     io.emit("orderStatusUpdate", {
       id: order.id,
       status: order.status,
       courierId: order.courierId,
+      offerCourierId: order.offerCourierId,
+      offerExpiresAt: order.offerExpiresAt,
       deliveryLat: order.deliveryLat,
       deliveryLng: order.deliveryLng,
       deliveryAddress: order.deliveryAddress,
       orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
     });
 
-    sendOrderAssignedPush(order).catch((err) =>
-      console.error("push error:", err),
-    );
+    sendOrderAssignedPush(order).catch((err) => console.error("push error:", err));
 
-    res.json({ message: "Курьер назначен", order });
+    return res.json({ message: "Оффер отправлен курьеру", order });
   } catch (error) {
     console.error("❌ Ошибка назначения курьера:", error);
-    res.status(500).json({ message: "Ошибка сервера" });
+    return res.status(500).json({ message: "Ошибка сервера" });
   }
 };
 
