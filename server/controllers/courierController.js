@@ -1332,6 +1332,14 @@ class CourierController {
         };
       });
 
+      console.log("COURIER ORDERS OUT:", formattedOrders.map(o => ({
+  id: o.id,
+  status: o.status,
+  courierId: o.courierId,
+  offerCourierId: o.offerCourierId,
+  offerExpiresAt: o.offerExpiresAt,
+})));
+
       return res.json(formattedOrders);
     } catch (error) {
       console.error("❌ Ошибка получения активных заказов:", error);
