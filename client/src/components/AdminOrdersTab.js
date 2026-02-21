@@ -155,7 +155,7 @@ const AdminOrdersTab = () => {
 
     setAllOrders((prev) =>
       prev.map((o) =>
-        o.id === orderId ? { ...o, offerCourierId: courierId || null } : o,
+        o.id === orderId ? { ...o, courierId: courierId || null } : o,
       ),
     );
 
@@ -269,7 +269,7 @@ const AdminOrdersTab = () => {
                   <td>
                     <select
                       className={styles.tableSelect}
-                      value={order.offerCourierId || order.courierId || ""}
+                      value={order.courierId || ""}
                       onChange={(e) =>
                         handleAssignCourier(order.id, e.target.value)
                       }
