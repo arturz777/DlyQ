@@ -1284,6 +1284,14 @@ const assignCourier = async (req, res) => {
 
     await order.save();
 
+    console.log("ASSIGN OFFER:", {
+  id: order.id,
+  status: order.status,
+  courierId: order.courierId,
+  offerCourierId: order.offerCourierId,
+  offerExpiresAt: order.offerExpiresAt,
+});
+
     const io = req.app.get("io");
 
     io.to(`courier:${courierId}`).emit("warehouseOrder", { id: order.id });
