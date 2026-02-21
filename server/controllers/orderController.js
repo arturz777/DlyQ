@@ -33,6 +33,9 @@ const uuid = require("uuid");
 const Stripe = require("stripe");
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+const OFFER_TTL_SECONDS = 15;
+const COURIER_VISIBLE = new Set(["Waiting for courier", "Ready for pickup"]);
+
 function mustEnv(name) {
   const v = (process.env[name] ?? "").trim();
   if (!v) throw new Error(`${name} is not set`);
@@ -1274,7 +1277,13 @@ const assignCourier = async (req, res) => {
     if (!courier) return res.status(404).json({ message: "Курьер не найден" });
 
     if (order.courierId && String(order.courierId) !== String(courierId)) {
-      return res.status(409).json({ message: "Заказ уже занят другим курьером" });
+      return res
+        .status(409)
+        .json({ message: "Заказ уже занят другим курьером" });
+    }
+
+    if (!COURIER_VISIBLE.has(order.status)) {
+      order.status = "Waiting for courier";
     }
 
     order.courierId = null;
@@ -1299,7 +1308,9 @@ const assignCourier = async (req, res) => {
       orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
     });
 
-    sendOrderAssignedPush(order).catch((err) => console.error("push error:", err));
+    sendOrderAssignedPush(order).catch((err) =>
+      console.error("push error:", err),
+    );
 
     return res.json({ message: "Оффер отправлен курьеру", order });
   } catch (error) {
