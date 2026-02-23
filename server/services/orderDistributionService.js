@@ -89,10 +89,9 @@ async function sendOrderToNextCourier(order, { io } = {}) {
   });
 
   if (!couriers.length) {
-  if (io) io.emit("highDemandUpdate", { highDemand: true });
-  console.warn("sendOrderToNextCourier: нет онлайн-курьеров");
-  return;
-}
+    console.warn("sendOrderToNextCourier: нет онлайн-курьеров");
+    return;
+  }
 
   const busyOrders = await Order.findAll({
     where: {
@@ -126,7 +125,7 @@ async function sendOrderToNextCourier(order, { io } = {}) {
   const declinedSet = new Set(declines.map((d) => String(d.courierId)));
 
   let candidates = couriers.filter(
-    (c) => !declinedSet.has(String(c.id)) && !busyCouriers.has(String(c.id))
+    (c) => !declinedSet.has(String(c.id)) && !busyCouriers.has(String(c.id)),
   );
 
   if (!candidates.length) {
@@ -135,10 +134,9 @@ async function sendOrderToNextCourier(order, { io } = {}) {
   }
 
   if (!candidates.length) {
-  if (io) io.emit("highDemandUpdate", { highDemand: true });
-  console.warn("sendOrderToNextCourier: все курьеры заняты");
-  return;
-}
+    console.warn("sendOrderToNextCourier: все курьеры заняты");
+    return;
+  }
 
   const pickup = await getPickupPoint(fresh);
 
@@ -156,7 +154,7 @@ async function sendOrderToNextCourier(order, { io } = {}) {
         pickup.lat,
         pickup.lng,
         Number(c.currentLat),
-        Number(c.currentLng)
+        Number(c.currentLng),
       );
     }
 
@@ -187,7 +185,7 @@ async function sendOrderToNextCourier(order, { io } = {}) {
     const bonusLimit = Math.min(MAX_POOL_METERS, bonusWindow);
 
     const perfectWithinBonus = finite.some(
-      (c) => c.acceptRate === 100 && c.dist <= bonusLimit
+      (c) => c.acceptRate === 100 && c.dist <= bonusLimit,
     );
 
     const limit = perfectWithinBonus ? bonusLimit : baseLimit;
@@ -229,36 +227,40 @@ async function sendOrderToNextCourier(order, { io } = {}) {
   await sendWarehouseOrderPushToCourier(fresh, nextCourier);
 
   if (io) {
-    io.to(`courier:${nextCourier.id}`).emit("warehouseOrder", { id: fresh.id });
+    io.to(`courier:${nextCourier.id}`).emit("warehouseOrder", {
+      id: fresh.id,
+      isSupport: true,
+    });
   }
 
-  if (io) io.emit("highDemandUpdate", { highDemand: false });
+  setTimeout(
+    async () => {
+      try {
+        const o = await Order.findByPk(fresh.id);
+        if (!o) return;
+        if (o.courierId) return;
 
-  setTimeout(async () => {
-    try {
-      const o = await Order.findByPk(fresh.id);
-      if (!o) return;
-      if (o.courierId) return;
+        if (String(o.offerCourierId) !== String(nextCourier.id)) return;
 
-      if (String(o.offerCourierId) !== String(nextCourier.id)) return;
+        const now2 = new Date();
+        if (o.offerExpiresAt && o.offerExpiresAt > now2) return;
 
-      const now2 = new Date();
-      if (o.offerExpiresAt && o.offerExpiresAt > now2) return;
+        o.offerCourierId = null;
+        o.offerExpiresAt = null;
+        await o.save();
 
-      o.offerCourierId = null;
-      o.offerExpiresAt = null;
-      await o.save();
+        await OrderDecline.findOrCreate({
+          where: { orderId: o.id, courierId: nextCourier.id },
+          defaults: { orderId: o.id, courierId: nextCourier.id },
+        });
 
-      await OrderDecline.findOrCreate({
-        where: { orderId: o.id, courierId: nextCourier.id },
-        defaults: { orderId: o.id, courierId: nextCourier.id },
-      });
-
-      await sendOrderToNextCourier(o, { io });
-    } catch (e) {
-      console.error("offer expire -> next courier error:", e);
-    }
-  }, (OFFER_TTL_SECONDS + 1) * 1000);
+        await sendOrderToNextCourier(o, { io });
+      } catch (e) {
+        console.error("offer expire -> next courier error:", e);
+      }
+    },
+    (OFFER_TTL_SECONDS + 1) * 1000,
+  );
 }
 
 module.exports = {
