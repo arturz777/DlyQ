@@ -59,6 +59,32 @@ function getVatRateByDate(dateLike) {
   return d >= border ? VAT_RATE_FROM_2025_07_01 : VAT_RATE_BEFORE_2025_07_01;
 }
 
+const OFFER_TTL_SECONDS = 15;
+
+async function startAssignedOfferTimer(order, io) {
+  if (!order?.courierId) return;
+
+  if (!["Waiting for courier", "Ready for pickup"].includes(order.status)) return;
+
+  order.offerExpiresAt = new Date(Date.now() + OFFER_TTL_SECONDS * 1000);
+
+  order.offerCourierId = order.courierId;
+
+  await order.save();
+
+  if (io) {
+    io.to(`courier:${order.courierId}`).emit("warehouseOrder", { id: order.id });
+
+    io.emit("orderStatusUpdate", {
+      id: order.id,
+      status: order.status,
+      courierId: order.courierId,
+      offerCourierId: order.offerCourierId,
+      offerExpiresAt: order.offerExpiresAt,
+    });
+  }
+}
+
 function toNumberPrice(v) {
   if (v == null) return null;
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
@@ -1269,6 +1295,9 @@ const assignCourier = async (req, res) => {
     await order.save();
 
     const io = req.app.get("io");
+
+await startAssignedOfferTimer(order, io);
+
     io.emit("orderStatusUpdate", {
       id: order.id,
       status: order.status,
@@ -1277,6 +1306,8 @@ const assignCourier = async (req, res) => {
       deliveryLng: order.deliveryLng,
       deliveryAddress: order.deliveryAddress,
       orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
+       offerExpiresAt: order.offerExpiresAt ?? null,
+  offerCourierId: order.offerCourierId ?? null,
     });
 
     sendOrderAssignedPush(order).catch((err) =>
