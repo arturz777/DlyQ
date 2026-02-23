@@ -2,11 +2,13 @@ const chatSocket = require("./chatSocket");
 const orderSocket = require("./orderSocket");
 const warehouseSocket = require("./warehouseSocket");
 const userSocket = require("./userSocket");
+const { startOfferWatchdog } = require("../services/offerWatchdog");
 
 module.exports = function registerSockets(io) {
-  io.on("connection", (socket) => {
+  startOfferWatchdog(io);
 
-     socket.on("joinCourierRoom", ({ courierId }) => {
+  io.on("connection", (socket) => {
+    socket.on("joinCourierRoom", ({ courierId }) => {
       if (courierId) socket.join(`courier:${courierId}`);
     });
 
@@ -14,8 +16,5 @@ module.exports = function registerSockets(io) {
     chatSocket(io, socket);
     orderSocket(io, socket);
     warehouseSocket(io, socket);
-
-    socket.on("disconnect", () => {
-    });
   });
 };
