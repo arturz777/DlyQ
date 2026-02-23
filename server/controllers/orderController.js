@@ -1240,6 +1240,7 @@ const adminUpdateOrderStatus = async (req, res) => {
       deliveryPrice: order.deliveryPrice,
       courierFee: order.courierFee,
       courierId: order.courierId,
+      isSupport: true,
     };
 
     io.emit("warehouseOrder", courierPayload);
