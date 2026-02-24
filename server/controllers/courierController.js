@@ -1700,12 +1700,17 @@ class CourierController {
       await order.save();
 
       const io = req.app.get("io");
-      io.to(`order:${order.id}`).emit("orderStatusUpdate", {
+
+      const payload = {
         id: order.id,
         status: order.status,
         estimatedTime: order.estimatedTime ?? null,
         pickupStartTime: order.pickupStartTime ?? null,
-      });
+        courierId: order.courierId,
+      };
+
+      io.to(`order:${order.id}`).emit("orderStatusUpdate", payload);
+      io.to(`courier:${order.courierId}`).emit("orderStatusUpdate", payload);
 
       try {
         const ACTIVE_STATUSES = ["Waiting for courier", "Ready for pickup"];
