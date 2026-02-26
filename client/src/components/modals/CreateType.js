@@ -4,6 +4,7 @@ import { Form, Button } from "react-bootstrap";
 import { createType, updateType } from "../../http/deviceAPI";
 
 const CreateType = ({ show, onHide, editableType, onTypeSaved, types }) => {
+  const [code, setCode] = useState("");
   const [displayOrder, setDisplayOrder] = useState(0);
   const [value, setValue] = useState("");
   const [file, setFile] = useState(null);
@@ -20,11 +21,12 @@ const CreateType = ({ show, onHide, editableType, onTypeSaved, types }) => {
 
   useEffect(() => {
     if (editableType) {
+      setCode(editableType.code || "");
       setValue(editableType.name);
       setExistingImage(editableType.img);
       setFile(null);
       setTranslations(
-        editableType.translations?.name || { en: "", ru: "", est: "" }
+        editableType.translations?.name || { en: "", ru: "", est: "" },
       );
       setDisplayOrder(editableType.displayOrder?.toString() || "");
     } else {
@@ -38,6 +40,7 @@ const CreateType = ({ show, onHide, editableType, onTypeSaved, types }) => {
   }, [editableType, types]);
 
   const resetFields = () => {
+    setCode("");
     setValue("");
     setFile(null);
     setExistingImage(null);
@@ -59,6 +62,7 @@ const CreateType = ({ show, onHide, editableType, onTypeSaved, types }) => {
     }
 
     const formData = new FormData();
+    formData.append("code", code);
     formData.append("displayOrder", displayOrder);
 
     formData.append("name", value);
@@ -99,9 +103,16 @@ const CreateType = ({ show, onHide, editableType, onTypeSaved, types }) => {
       <Modal.Body>
         <Form>
           <Form.Control
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="CODE (например AUTO, FOOD...)"
+            className="mt-2"
+          />
+          <Form.Control
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Введите название типа"
+            className="mt-2"
           />
           {isSubmitted && !value && (
             <span style={{ color: "red", display: "block", marginTop: "5px" }}>
