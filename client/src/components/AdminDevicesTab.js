@@ -9,7 +9,6 @@ import {
   updateDeviceVisibility,
   deleteDevice,
 } from "../http/deviceAPI";
-
 import StockQuickAdjustModal from "./modals/StockQuickAdjustModal";
 import SlideModal from "./modals/SlideModal";
 import CreateDevice from "./modals/CreateDevice";
@@ -40,6 +39,34 @@ const AdminDevicesTab = () => {
 
   const [quickAdjustVisible, setQuickAdjustVisible] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+
+  const getSkus = (d) => {
+    const vars = Array.isArray(d.variants)
+      ? d.variants
+      : parseMaybeJSON(d.variants) || [];
+
+    const skus = vars.map((v) => (v?.sku || "").trim()).filter(Boolean);
+
+    if (skus.length === 0 && d?.sku) skus.push(String(d.sku).trim());
+
+    return [...new Set(skus.filter(Boolean))];
+  };
+
+  const getLocations = (d) => {
+    const vars = Array.isArray(d.variants)
+      ? d.variants
+      : parseMaybeJSON(d.variants) || [];
+
+    const locs = vars
+      .map((v) => (v?.warehouseLocation || "").trim())
+      .filter(Boolean);
+
+    if (locs.length === 0 && (d?.warehouseLocation || "").trim()) {
+      locs.push(String(d.warehouseLocation).trim());
+    }
+
+    return [...new Set(locs)];
+  };
 
   const loadDevices = async () => {
     const data = await fetchDevices(undefined, undefined, undefined, 1, 1000);
@@ -370,86 +397,117 @@ const AdminDevicesTab = () => {
     );
   };
 
-  const DeviceRow = ({ d, onOpen }) => (
-    <div
-      key={d.id}
-      className={styles.item}
-      onClick={() => onOpen?.(d.id)}
-      style={{ cursor: "pointer" }}
-    >
-      <div>
-        id-{d.id}
-        <Image
-          className={styles.adminDeviceImg}
-          width={50}
-          height={50}
-          src={d.img}
-        />
-      </div>
+  const DeviceRow = ({ d, onOpen }) => {
+    const skus = getSkus(d);
+    const locs = getLocations(d);
 
-      <span className={styles.adminDeviceName}>{d.name}</span>
-      {renderCompat(d)}
-
-      <div className={styles.buttons}>
-        <div className={styles.adminDevicePrice}>
-          {d.discount ? (
-            <>
-              <span className={styles.discountedPrice}>{d.price} €</span>
-              <span className={styles.oldPrice}>{d.oldPrice} €</span>
-            </>
-          ) : (
-            <span>{d.price} €</span>
-          )}
+    return (
+      <div
+        key={d.id}
+        className={styles.item}
+        onClick={() => onOpen?.(d.id)}
+        style={{ cursor: "pointer" }}
+      >
+        <div>
+          {d.id}
+          <Image
+            className={styles.adminDeviceImg}
+            width={50}
+            height={50}
+            src={d.img}
+          />
         </div>
 
-        <span className={styles.deviceQuantity}>
-          {d.quantity === 0 ? (
-            <span style={{ color: "red" }}>Нет в наличии</span>
-          ) : (
-            <span style={{ color: "green" }}>В наличии: {d.quantity}</span>
-          )}
-        </span>
+        {skus.length > 0 && (
+          <div style={{ marginTop: 6, color: "#444", fontSize: 13 }}>
+            <b>SKU:</b> {skus.slice(0, 3).join(", ")}
+            {skus.length > 3 ? ` …(+${skus.length - 3})` : ""}
+          </div>
+        )}
 
-        <button
-          className={styles.editButton}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleEditDevice(d);
-          }}
-        >
-          Редактировать
-        </button>
+        {skus.length === 0 && (
+          <div style={{ marginTop: 6, color: "#b91c1c", fontSize: 13 }}>
+            SKU не назначен
+          </div>
+        )}
 
-        <button
-          className={styles.deleteButton}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (window.confirm("Удалить этот товар?")) handleDeleteDevice(d.id);
-          }}
-        >
-          Удалить
-        </button>
+        {locs.length > 0 && (
+          <div className={styles.metaLine}>
+            <b>Локация:</b> {locs.slice(0, 3).join(", ")}
+            {locs.length > 3 ? ` …(+${locs.length - 3})` : ""}
+          </div>
+        )}
 
-        <label
-          className={styles.toggleWrap}
-          title="Показывать на витрине"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <input
-            type="checkbox"
-            className={styles.toggleInput}
-            checked={!!d.isVisible}
-            onChange={(e) => handleToggleVisibility(d.id, e.target.checked)}
-          />
-          <span className={styles.toggleSlider} />
-          <span className={styles.toggleLabel}>
-            {d.isVisible ? "Витрина: вкл" : "Витрина: выкл"}
+        {locs.length === 0 && (
+          <div className={`${styles.metaLine} ${styles.metaLineDanger}`}>
+            Локация не назначена
+          </div>
+        )}
+
+        <span className={styles.adminDeviceName}>{d.name}</span>
+        {renderCompat(d)}
+
+        <div className={styles.buttons}>
+          <div className={styles.adminDevicePrice}>
+            {d.discount ? (
+              <>
+                <span className={styles.discountedPrice}>{d.price} €</span>
+                <span className={styles.oldPrice}>{d.oldPrice} €</span>
+              </>
+            ) : (
+              <span>{d.price} €</span>
+            )}
+          </div>
+
+          <span className={styles.deviceQuantity}>
+            {d.quantity === 0 ? (
+              <span style={{ color: "red" }}>Нет в наличии</span>
+            ) : (
+              <span style={{ color: "green" }}>В наличии: {d.quantity}</span>
+            )}
           </span>
-        </label>
-      </div>
-    </div>
-  );
 
+          <button
+            className={styles.editButton}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditDevice(d);
+            }}
+          >
+            Редактировать
+          </button>
+
+          <button
+            className={styles.deleteButton}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm("Удалить этот товар?"))
+                handleDeleteDevice(d.id);
+            }}
+          >
+            Удалить
+          </button>
+
+          <label
+            className={styles.toggleWrap}
+            title="Показывать на витрине"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <input
+              type="checkbox"
+              className={styles.toggleInput}
+              checked={!!d.isVisible}
+              onChange={(e) => handleToggleVisibility(d.id, e.target.checked)}
+            />
+            <span className={styles.toggleSlider} />
+            <span className={styles.toggleLabel}>
+              {d.isVisible ? "Витрина: вкл" : "Витрина: выкл"}
+            </span>
+          </label>
+        </div>
+      </div>
+    );
+  };
   return (
     <>
       <div className={styles.actionButtons}>
