@@ -272,3 +272,18 @@
   font-size: 12px;
   color: #6b7280;
 }
+
+.metaLine {
+  margin-top: 6px;
+  color: #444;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.metaLineDanger {
+  color: #b91c1c;
+}
+
+.metaLine b {
+  font-weight: 600;
+}
