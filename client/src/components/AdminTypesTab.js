@@ -48,18 +48,35 @@ const AdminTypesTab = () => {
                 alt={type.name}
                 className={styles.typeImage}
               />
-              <span>{type.name}</span>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  lineHeight: 1.2,
+                }}
+              >
+                <span>{type.name}</span>
+                <small style={{ color: "#666" }}>
+                  code: <b>{type.code || "—"}</b>
+                </small>
+              </div>
             </div>
 
             <div className={styles.buttons}>
-              <button className={styles.editButton} onClick={() => handleEdit(type)}>
+              <button
+                className={styles.editButton}
+                onClick={() => handleEdit(type)}
+              >
                 Редактировать
               </button>
 
               <button
                 className={styles.deleteButton}
                 onClick={() => {
-                  const confirmed = window.confirm("Вы уверены, что хотите удалить этот тип?");
+                  const confirmed = window.confirm(
+                    "Вы уверены, что хотите удалить этот тип?",
+                  );
                   if (confirmed) handleDelete(type.id);
                 }}
               >
