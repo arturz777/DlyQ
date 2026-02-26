@@ -160,6 +160,12 @@ const Device = sequelize.define("device", {
   expiryDate: { type: DataTypes.DATEONLY, allowNull: true },
   snoozeUntil: { type: DataTypes.DATEONLY, allowNull: true },
   isVisible: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+  sku: { type: DataTypes.STRING, allowNull: true },
+  warehouseLocation: {
+    type: DataTypes.STRING(64),
+    allowNull: true,
+    field: "warehouseLocation",
+  },
 });
 
 const DeviceVariant = sequelize.define(
@@ -181,6 +187,23 @@ const DeviceVariant = sequelize.define(
     quantity: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     image: { type: DataTypes.STRING, allowNull: true },
     isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+    barcode: { type: DataTypes.STRING(64), allowNull: true },
+    warehouseLocation: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      field: "warehouseLocation",
+    },
+    minStock: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: "minStock",
+    },
+    warehouseId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: "warehouseId",
+    },
   },
   {
     indexes: [
@@ -231,8 +254,36 @@ const Type = sequelize.define("type", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   name: { type: DataTypes.STRING, unique: true, allowNull: false },
   img: { type: DataTypes.STRING, allowNull: true },
-  displayOrder: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+  code: { type: DataTypes.STRING(16), allowNull: true },
+  displayOrder: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    field: "display_order",
+  },
 });
+
+const WarehouseCounter = sequelize.define(
+  "warehouse_counter",
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    typeId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: "typeId",
+      unique: true,
+    },
+    lastNumber: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: "lastNumber",
+    },
+  },
+  {
+    tableName: "warehouse_counters",
+  },
+);
 
 const VehicleMake = sequelize.define(
   "vehicle_make",
@@ -798,6 +849,9 @@ Brand.belongsToMany(Type, { through: TypeBrand });
 Type.hasMany(SubType, { foreignKey: "typeId", as: "subtypes" });
 SubType.belongsTo(Type, { foreignKey: "typeId", as: "type" });
 
+Type.hasOne(WarehouseCounter, { foreignKey: "typeId" });
+WarehouseCounter.belongsTo(Type, { foreignKey: "typeId" });
+
 Device.belongsToMany(SubType, {
   through: DeviceSubType,
   as: "subtypes",
@@ -901,4 +955,5 @@ module.exports = {
   MenuOptionGroup,
   MenuOption,
   AccountingPayout,
+  WarehouseCounter,
 };
