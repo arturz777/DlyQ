@@ -20,6 +20,8 @@ const { Op, fn, col, literal, QueryTypes } = require("sequelize");
 const fs = require("fs");
 const sequelize = require("../db");
 const { supabase } = require("../config/supabaseClient");
+const { nextSkuForType } = require("../services/skuService");
+
 const base64url = {
   enc: (obj) => Buffer.from(JSON.stringify(obj)).toString("base64url"),
   dec: (s) => JSON.parse(Buffer.from(String(s), "base64url").toString("utf8")),
@@ -77,7 +79,7 @@ const SUPABASE_IMAGE_BUCKET =
 
 const PUBLIC_BUCKET_BASE = `${SUPABASE_URL.replace(
   /\/+$/,
-  ""
+  "",
 )}/storage/v1/object/public/${SUPABASE_IMAGE_BUCKET}`;
 
 const getVal = (x) =>
@@ -137,6 +139,7 @@ class DeviceController {
         expiryKind,
         expiryDate,
         snoozeUntil,
+        warehouseLocation,
       } = req.body;
 
       const toBool = (v) => v === true || v === "true";
@@ -156,7 +159,7 @@ class DeviceController {
       const { img } = req.files;
       const fileName = `${uuid.v4()}${path.extname(img.name)}`;
       const { error: upErr } = await supabase.storage
-        .from("images")
+        .from(SUPABASE_IMAGE_BUCKET)
         .upload(fileName, img.data, { contentType: img.mimetype });
 
       if (upErr)
@@ -174,14 +177,14 @@ class DeviceController {
           images.map(async (image) => {
             const thumbFileName = `${uuid.v4()}${path.extname(image.name)}`;
             const { error } = await supabase.storage
-              .from("images")
+              .from(SUPABASE_IMAGE_BUCKET)
               .upload(thumbFileName, image.data, {
                 contentType: image.mimetype,
               });
 
             if (error) return null;
             return `${PUBLIC_BUCKET_BASE}/${thumbFileName}`;
-          })
+          }),
         );
 
         thumbnails = thumbnails.filter(Boolean);
@@ -190,14 +193,20 @@ class DeviceController {
       let parsedOptions = Array.isArray(options)
         ? options
         : options
-        ? JSON.parse(options)
-        : [];
+          ? JSON.parse(options)
+          : [];
 
       let parsedVariants = Array.isArray(req.body.variants)
         ? req.body.variants
         : req.body.variants
-        ? JSON.parse(req.body.variants)
-        : [];
+          ? JSON.parse(req.body.variants)
+          : [];
+
+      const hasVariants =
+        Array.isArray(parsedVariants) && parsedVariants.length > 0;
+      const deviceSku = !hasVariants
+        ? await nextSkuForType(Number(typeId), t)
+        : null;
 
       if (
         toBool(discount) &&
@@ -254,7 +263,7 @@ class DeviceController {
               Object.entries(v.selected || {}).map(([k, val]) => [
                 k,
                 getVal(val),
-              ])
+              ]),
             );
             receiptLines.push({
               mode: "variant",
@@ -321,8 +330,10 @@ class DeviceController {
           purchasePrice: purchasePriceNum,
           purchaseHasVAT,
           isVisible,
+          sku: deviceSku,
+          warehouseLocation: warehouseLocation || null,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       const primaryId = subtypeId || null;
@@ -355,7 +366,7 @@ class DeviceController {
         const extraTypeIds = new Set(
           (Array.isArray(parsedTypeIds) ? parsedTypeIds : [])
             .map(Number)
-            .filter(Number.isInteger)
+            .filter(Number.isInteger),
         );
 
         const allSubtypeIdsArr = Array.from(allSubtypes);
@@ -385,7 +396,7 @@ class DeviceController {
                 deviceId: device.id,
                 typeId: tid,
               })),
-              { ignoreDuplicates: true, transaction: t }
+              { ignoreDuplicates: true, transaction: t },
             );
           }
         }
@@ -403,9 +414,9 @@ class DeviceController {
                 description: i.description,
                 deviceId: device.id,
               },
-              { transaction: t }
-            )
-          )
+              { transaction: t },
+            ),
+          ),
         );
       }
 
@@ -497,7 +508,7 @@ class DeviceController {
               yearFrom: null,
               yearTo: null,
             },
-            { transaction: t }
+            { transaction: t },
           );
         } else if (compat) {
           let arr = [];
@@ -516,7 +527,7 @@ class DeviceController {
                 yearTo: c.yearTo ?? null,
                 isUniversal: false,
               })),
-              { transaction: t }
+              { transaction: t },
             );
           }
         }
@@ -525,24 +536,35 @@ class DeviceController {
       }
 
       if (Array.isArray(parsedVariants) && parsedVariants.length) {
-        const rows = parsedVariants.map((v) => {
+        const rows = [];
+        for (const v of parsedVariants) {
           const normalizedSelected = Object.fromEntries(
-            Object.entries(v.selected || {}).map(([k, val]) => [k, getVal(val)])
+            Object.entries(v.selected || {}).map(([k, val]) => [
+              k,
+              getVal(val),
+            ]),
           );
-          return {
+
+          rows.push({
             deviceId: device.id,
             key: makeVariantKey(normalizedSelected),
             selected: JSON.stringify(normalizedSelected),
-            sku: v.sku || null,
-            price: v.price === "" ? null : v.price ?? null,
-            oldPrice: v.oldPrice === "" ? null : v.oldPrice ?? null,
+            sku: await nextSkuForType(Number(typeId), t),
+            barcode: v.barcode || null,
+            warehouseLocation: v.warehouseLocation || null,
+            minStock: Number(v.minStock) || 0,
+            warehouseId: v.warehouseId ? Number(v.warehouseId) : null,
+
+            price: v.price === "" ? null : (v.price ?? null),
+            oldPrice: v.oldPrice === "" ? null : (v.oldPrice ?? null),
             purchasePrice:
-              v.purchasePrice === "" ? null : v.purchasePrice ?? null,
+              v.purchasePrice === "" ? null : (v.purchasePrice ?? null),
             quantity: 0,
             image: resolveVariantImage(v.image, publicURL, thumbnails),
             isActive: v.isActive !== false,
-          };
-        });
+          });
+        }
+
         await DeviceVariant.bulkCreate(rows, { transaction: t });
       }
 
@@ -554,11 +576,11 @@ class DeviceController {
           const bad = receiptLines.some(
             (x) =>
               !Number.isFinite(Number(x.purchasePrice)) ||
-              Number(x.purchasePrice) <= 0
+              Number(x.purchasePrice) <= 0,
           );
           if (bad)
             throw new Error(
-              "Авто-приход: не указана закупочная цена для стартовых остатков."
+              "Авто-приход: не указана закупочная цена для стартовых остатков.",
             );
         }
 
@@ -638,7 +660,7 @@ class DeviceController {
           });
           await device.update(
             { quantity: Number(total) || 0 },
-            { transaction: t }
+            { transaction: t },
           );
         } else if (receiptLines.some((x) => x.mode === "option")) {
           const opts = Array.isArray(optionsForSave) ? optionsForSave : [];
@@ -646,7 +668,7 @@ class DeviceController {
             const opt = opts.find((o) => o.name === line.optionName);
             if (!opt) continue;
             const val = (opt.values || []).find(
-              (v) => v.value === line.optionValue
+              (v) => v.value === line.optionValue,
             );
             if (!val) continue;
             val.quantity =
@@ -657,13 +679,13 @@ class DeviceController {
               sum +
               (o.values || []).reduce(
                 (s, v) => s + (Number(v.quantity) || 0),
-                0
+                0,
               ),
-            0
+            0,
           );
           await device.update(
             { options: opts, quantity: total },
-            { transaction: t }
+            { transaction: t },
           );
         } else {
           const q = receiptLines[0]?.qty || 0;
@@ -674,7 +696,20 @@ class DeviceController {
       await t.commit();
 
       await device.reload();
-      return res.json(device);
+
+      let warning = null;
+      const loc = (device.warehouseLocation || "").trim();
+      if (loc) {
+        const conflict = await Device.findOne({
+          where: { warehouseLocation: loc, id: { [Op.ne]: device.id } },
+          attributes: ["id", "name"],
+        });
+        if (conflict) {
+          warning = `⚠ В ячейке ${loc} уже находится товар: ${conflict.name} (id-${conflict.id})`;
+        }
+      }
+
+      return res.json({ ...device.get({ plain: true }), warning });
     } catch (e) {
       try {
         await t.rollback();
@@ -795,7 +830,7 @@ class DeviceController {
         SELECT 1 FROM "device_compatibilities" dc2
         WHERE dc2."deviceId" = "device"."id"
       )
-    )`)
+    )`),
         );
       }
 
@@ -1064,6 +1099,7 @@ class DeviceController {
   }
 
   async update(req, res, next) {
+    const t = await sequelize.transaction();
     try {
       const { id } = req.params;
       let {
@@ -1085,7 +1121,11 @@ class DeviceController {
         expiryKind,
         expiryDate,
         snoozeUntil,
+        warehouseLocation,
       } = req.body;
+
+      const toBool = (v) => v === true || v === "true";
+      const purchaseHasVAT = toBool(req.body.purchaseHasVAT);
 
       expiryKind =
         expiryKind === "use_by" || expiryKind === "best_before"
@@ -1113,15 +1153,19 @@ class DeviceController {
 
       const hasVariantsPayload = Object.prototype.hasOwnProperty.call(
         req.body,
-        "variants"
+        "variants",
       );
       const hasOptionsPayload = Object.prototype.hasOwnProperty.call(
         req.body,
-        "options"
+        "options",
+      );
+      const hasLocationPayload = Object.prototype.hasOwnProperty.call(
+        req.body,
+        "warehouseLocation",
       );
       const hasQuantityPayload = Object.prototype.hasOwnProperty.call(
         req.body,
-        "quantity"
+        "quantity",
       );
       const hasSubtypePayload =
         typeof subtypeId !== "undefined" ||
@@ -1137,19 +1181,19 @@ class DeviceController {
         typeof rawIsVisible === "boolean"
           ? rawIsVisible
           : typeof rawIsVisible === "string"
-          ? rawIsVisible === "true"
-          : device.isVisible;
+            ? rawIsVisible === "true"
+            : device.isVisible;
 
       let parsedOptions = Array.isArray(options)
         ? options
         : options
-        ? JSON.parse(options)
-        : [];
+          ? JSON.parse(options)
+          : [];
       let parsedVariants = Array.isArray(req.body.variants)
         ? req.body.variants
         : req.body.variants
-        ? JSON.parse(req.body.variants)
-        : [];
+          ? JSON.parse(req.body.variants)
+          : [];
 
       if (discount === "true" && !oldPrice) {
         oldPrice = price;
@@ -1170,12 +1214,14 @@ class DeviceController {
       if (img) {
         if (device.img) {
           const oldFileName = device.img.split("/").pop();
-          await supabase.storage.from("images").remove([oldFileName]);
+          await supabase.storage
+            .from(SUPABASE_IMAGE_BUCKET)
+            .remove([oldFileName]);
         }
 
         const newFileName = `${uuid.v4()}${path.extname(img.name)}`;
         const { error } = await supabase.storage
-          .from("images")
+          .from(SUPABASE_IMAGE_BUCKET)
           .upload(newFileName, img.data, { contentType: img.mimetype });
 
         if (error) {
@@ -1191,7 +1237,9 @@ class DeviceController {
       if (existingImages.length === 0) {
         const imagesToDelete = thumbnails.map((img) => img.split("/").pop());
         if (imagesToDelete.length > 0) {
-          await supabase.storage.from("images").remove(imagesToDelete);
+          await supabase.storage
+            .from(SUPABASE_IMAGE_BUCKET)
+            .remove(imagesToDelete);
         }
         thumbnails = [];
       } else {
@@ -1199,7 +1247,9 @@ class DeviceController {
           .filter((img) => !existingImages.includes(img))
           .map((img) => img.split("/").pop());
         if (imagesToDelete.length > 0) {
-          await supabase.storage.from("images").remove(imagesToDelete);
+          await supabase.storage
+            .from(SUPABASE_IMAGE_BUCKET)
+            .remove(imagesToDelete);
         }
         thumbnails = existingImages.filter((img) => img !== fileName);
       }
@@ -1213,7 +1263,7 @@ class DeviceController {
           images.map(async (image) => {
             const thumbFileName = `${uuid.v4()}${path.extname(image.name)}`;
             const { error } = await supabase.storage
-              .from("images")
+              .from(SUPABASE_IMAGE_BUCKET)
               .upload(thumbFileName, image.data, {
                 contentType: image.mimetype,
               });
@@ -1224,7 +1274,7 @@ class DeviceController {
             }
 
             return `${PUBLIC_BUCKET_BASE}/${thumbFileName}`;
-          })
+          }),
         );
 
         thumbnails = [
@@ -1250,7 +1300,7 @@ class DeviceController {
                 text,
               });
             }
-          }
+          },
         );
 
         Object.entries(parsedTranslations.description || {}).forEach(
@@ -1262,7 +1312,7 @@ class DeviceController {
                 text,
               });
             }
-          }
+          },
         );
 
         if (
@@ -1350,10 +1400,13 @@ class DeviceController {
           discount: discount === "true",
           recommended: recommended === "true",
           purchasePrice: purchasePriceNum,
-          purchaseHasVAT: req.body.purchaseHasVAT === "true",
+          purchaseHasVAT,
           isVisible: nextIsVisible,
+          warehouseLocation: hasLocationPayload
+            ? warehouseLocation || null
+            : device.warehouseLocation,
         },
-        { where: { id } }
+        { where: { id } },
       );
 
       if (hasSubtypePayload) {
@@ -1387,7 +1440,7 @@ class DeviceController {
           const extraTypeIds = new Set(
             (Array.isArray(parsedTypeIds) ? parsedTypeIds : [])
               .map(Number)
-              .filter(Number.isInteger)
+              .filter(Number.isInteger),
           );
 
           if (hasSubtypePayload) {
@@ -1425,7 +1478,7 @@ class DeviceController {
                   deviceId: Number(id),
                   typeId: tid,
                 })),
-                { ignoreDuplicates: true }
+                { ignoreDuplicates: true },
               );
             }
           }
@@ -1438,7 +1491,7 @@ class DeviceController {
         const parsedInfo = JSON.parse(info);
         await DeviceInfo.destroy({ where: { deviceId: id } });
         await Promise.all(
-          parsedInfo.map((i) => DeviceInfo.create({ ...i, deviceId: id }))
+          parsedInfo.map((i) => DeviceInfo.create({ ...i, deviceId: id })),
         );
       }
 
@@ -1484,54 +1537,105 @@ class DeviceController {
       if (hasVariantsPayload) {
         const prev = await DeviceVariant.findAll({
           where: { deviceId: id },
-          attributes: ["key", "quantity"],
+          attributes: [
+            "key",
+            "quantity",
+            "sku",
+            "barcode",
+            "warehouseLocation",
+            "minStock",
+            "warehouseId",
+          ],
+          transaction: t,
         });
-        const qtyByKey = new Map(
-          prev.map((v) => [v.key, Number(v.quantity) || 0])
-        );
 
-        await DeviceVariant.destroy({ where: { deviceId: id } });
+        const qtyByKey = new Map(
+          prev.map((v) => [v.key, Number(v.quantity) || 0]),
+        );
+        const skuByKey = new Map(prev.map((v) => [v.key, v.sku || null]));
+
+        await DeviceVariant.destroy({
+          where: { deviceId: id },
+          transaction: t,
+        });
 
         if (Array.isArray(parsedVariants) && parsedVariants.length) {
-          const rows = parsedVariants.map((v) => {
+          const rows = [];
+          for (const v of parsedVariants) {
             const normalizedSelected = Object.fromEntries(
               Object.entries(v.selected || {}).map(([k, val]) => [
                 k,
                 getVal(val),
-              ])
+              ]),
             );
-
             const key = makeVariantKey(normalizedSelected);
 
-            return {
+            const sku =
+              (v.sku && String(v.sku).trim()) ||
+              skuByKey.get(key) ||
+              (await nextSkuForType(Number(typeId ?? device.typeId), t));
+
+            rows.push({
               deviceId: Number(id),
               key,
               selected: JSON.stringify(normalizedSelected),
-              sku: v.sku || null,
-              price: v.price === "" ? null : v.price ?? null,
-              oldPrice: v.oldPrice === "" ? null : v.oldPrice ?? null,
-              purchasePrice:
-                v.purchasePrice === "" ? null : v.purchasePrice ?? null,
-              quantity: qtyByKey.get(key) || 0,
 
+              sku,
+              barcode: v.barcode || null,
+              warehouseLocation: v.warehouseLocation || null,
+              minStock: Number(v.minStock) || 0,
+              warehouseId: v.warehouseId ? Number(v.warehouseId) : null,
+
+              price: v.price === "" ? null : (v.price ?? null),
+              oldPrice: v.oldPrice === "" ? null : (v.oldPrice ?? null),
+              purchasePrice:
+                v.purchasePrice === "" ? null : (v.purchasePrice ?? null),
+
+              quantity: qtyByKey.get(key) || 0,
               image: resolveVariantImage(v.image, fileName, thumbnails),
               isActive: v.isActive !== false,
-            };
-          });
+            });
+          }
 
-          await DeviceVariant.bulkCreate(rows, { ignoreDuplicates: true });
+          await DeviceVariant.bulkCreate(rows, { transaction: t });
 
           const total = rows.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
-          await Device.update({ quantity: total }, { where: { id } });
+          await Device.update(
+            { quantity: total },
+            { where: { id }, transaction: t },
+          );
+        }
+      }
+
+      const hasIncomingVariants =
+        Array.isArray(parsedVariants) && parsedVariants.length > 0;
+
+      if (!hasIncomingVariants) {
+        if (!device.sku) {
+          const sku = await nextSkuForType(Number(typeId ?? device.typeId), t);
+          await Device.update({ sku }, { where: { id }, transaction: t });
         }
       }
 
       const updatedDevice = await Device.findOne({ where: { id } });
+      await t.commit();
 
-      return res.json(updatedDevice);
-    } catch (error) {
-      console.error("❌ Ошибка в update:", error);
-      next(ApiError.badRequest(error.message));
+      let warning = null;
+      const loc = (updatedDevice?.warehouseLocation || "").trim();
+      if (loc) {
+        const conflict = await Device.findOne({
+          where: { warehouseLocation: loc, id: { [Op.ne]: id } },
+          attributes: ["id", "name"],
+        });
+        if (conflict) {
+          warning = `⚠ В ячейке ${loc} уже находится товар: ${conflict.name} (id-${conflict.id})`;
+        }
+      }
+
+      return res.json({ ...updatedDevice.get({ plain: true }), warning });
+    } catch (e) {
+      await t.rollback();
+      return next(ApiError.internal(e.message));
     }
   }
 
@@ -1682,21 +1786,21 @@ class DeviceController {
       if (device.img) {
         const fileName = device.img.split("/").pop();
         const { error } = await supabase.storage
-          .from("images")
+          .from(SUPABASE_IMAGE_BUCKET)
           .remove([fileName]);
         if (error)
           console.error(
             "Ошибка при удалении главного изображения из Supabase:",
-            error
+            error,
           );
       }
 
       if (device.thumbnails && device.thumbnails.length > 0) {
         const filesToDelete = device.thumbnails.map((url) =>
-          url.split("/").pop()
+          url.split("/").pop(),
         );
         const { error } = await supabase.storage
-          .from("images")
+          .from(SUPABASE_IMAGE_BUCKET)
           .remove(filesToDelete);
         if (error)
           console.error("Ошибка при удалении миниатюр из Supabase:", error);
@@ -1848,7 +1952,7 @@ class DeviceController {
         SELECT 1 FROM "device_compatibilities" dc2
         WHERE dc2."deviceId" = "device"."id"
       )
-    )`)
+    )`),
         );
       }
 
@@ -1868,7 +1972,7 @@ class DeviceController {
         FROM "device_compatibilities" dc
         WHERE dc."deviceId" = "device"."id" AND ${cond}
       )
-    `)
+    `),
         );
       }
 
@@ -2072,7 +2176,7 @@ class DeviceController {
           AND (dc."makeId" IS NOT NULL OR dc."modelId" IS NOT NULL)
       )
   `,
-          { replacements: { typeId, ...(sellerId ? { sellerId } : {}) } }
+          { replacements: { typeId, ...(sellerId ? { sellerId } : {}) } },
         );
 
         mmSubtypeIdsAll = rows.map((r) => Number(r.subtypeId)).filter(Boolean);
@@ -2098,7 +2202,7 @@ class DeviceController {
              AND s."typeId" = ${Number(typeId)}
         )
     `,
-          { replacements: { ...(sellerId ? { sellerId } : {}) } }
+          { replacements: { ...(sellerId ? { sellerId } : {}) } },
         );
 
         universalSubtypeIds = rowsUni
@@ -2108,7 +2212,7 @@ class DeviceController {
 
       const uniSet = new Set(universalSubtypeIds);
       const mmOnlySubtypeIds = Array.from(new Set(mmSubtypeIdsAll)).filter(
-        (id) => !uniSet.has(id)
+        (id) => !uniSet.has(id),
       );
 
       return res.json({
@@ -2155,7 +2259,7 @@ class DeviceController {
       const cmp = dir === "ASC" ? ">" : "<";
       const limit = Math.min(
         Math.max(parseInt(req.query.limit, 10) || 24, 1),
-        100
+        100,
       );
       const cursorObj = parseCursor(req.query.cursor);
 
@@ -2298,7 +2402,7 @@ class DeviceController {
           {
             replacements: { ids },
             type: QueryTypes.SELECT,
-          }
+          },
         );
       }
 
@@ -2329,7 +2433,7 @@ class DeviceController {
           {
             replacements: { ids },
             type: QueryTypes.SELECT,
-          }
+          },
         );
       }
 
@@ -2364,7 +2468,7 @@ class DeviceController {
     WHERE dc."deviceId" IN (:ids)
     ORDER BY dc."deviceId" ASC
     `,
-          { replacements: { ids }, type: QueryTypes.SELECT }
+          { replacements: { ids }, type: QueryTypes.SELECT },
         );
       }
 
@@ -2463,8 +2567,8 @@ class DeviceController {
         typeof isVisible === "boolean"
           ? isVisible
           : typeof isVisible === "string"
-          ? isVisible === "true"
-          : Boolean(isVisible);
+            ? isVisible === "true"
+            : Boolean(isVisible);
 
       device.isVisible = next;
       await device.save();
@@ -2497,7 +2601,7 @@ class DeviceController {
         }
 
         const clean = Object.fromEntries(
-          Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
+          Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)]),
         );
         const key = makeVariantKey(clean);
 
@@ -2517,7 +2621,7 @@ class DeviceController {
         const totalQty = variants.reduce(
           (s, v) =>
             s + (Number(v.id === variant.id ? newQty : v.quantity) || 0),
-          0
+          0,
         );
         device.quantity = totalQty;
         await device.save();
@@ -2656,7 +2760,7 @@ class DeviceController {
 
       const allDevices = [...devices, ...translatedDevices].filter(
         (value, index, self) =>
-          index === self.findIndex((d) => d.id === value.id)
+          index === self.findIndex((d) => d.id === value.id),
       );
 
       return res.json(allDevices);
@@ -2704,12 +2808,12 @@ class DeviceController {
 
       if (parsedOptions.length > 0 && selectedOptions) {
         for (const [optionName, selectedValue] of Object.entries(
-          selectedOptions
+          selectedOptions,
         )) {
           const option = parsedOptions.find((opt) => opt.name === optionName);
           if (!option) continue;
           const value = option.values.find(
-            (val) => val.value === selectedValue.value
+            (val) => val.value === selectedValue.value,
           );
           if (!value)
             return res.json({
