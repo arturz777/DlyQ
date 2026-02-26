@@ -45,6 +45,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [quantity, setQuantity] = useState(0);
+  const [warehouseLocation, setWarehouseLocation] = useState("");
   const [optionErrors, setOptionErrors] = useState({});
   const [purchasePrice, setPurchasePrice] = useState("");
   const [purchaseHasVAT, setPurchaseHasVAT] = useState(false);
@@ -210,6 +211,10 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       return {
         selected,
         sku: "",
+        warehouseLocation: "",
+        barcode: "",
+        minStock: 0,
+        warehouseId: null,
         price: "",
         oldPrice: "",
         purchasePrice: "",
@@ -316,12 +321,14 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       setRecommended(editableDevice.recommended || false);
       setInfo(editableDevice.info || []);
       setOptions(editableDevice.options || []);
+      setWarehouseLocation(editableDevice.warehouseLocation || "");
 
       setVariants(
         Array.isArray(editableDevice.variants)
           ? editableDevice.variants.map((v) => ({
               selected: v.selected || {},
               sku: v.sku || "",
+              warehouseLocation: v.warehouseLocation || "",
               price: (v.price ?? "") === null ? "" : (v.price ?? ""),
               oldPrice: (v.oldPrice ?? "") === null ? "" : (v.oldPrice ?? ""),
               purchasePrice:
@@ -1198,6 +1205,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     );
     formData.append("purchaseHasVAT", String(purchaseHasVAT));
     formData.append("quantity", quantity);
+    formData.append("warehouseLocation", warehouseLocation || "");
     formData.append("description", description || "");
     formData.append("isUniversal", isUniversal ? "true" : "false");
 
@@ -1272,6 +1280,10 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       return {
         selected,
         sku: v.sku || null,
+        warehouseLocation: v.warehouseLocation || null,
+        barcode: v.barcode || null,
+        minStock: v.minStock ?? 0,
+        warehouseId: v.warehouseId ?? null,
         price: toNumOrNull(v.price),
         oldPrice: toNumOrNull(v.oldPrice),
         purchasePrice: toNumOrNull(v.purchasePrice),
@@ -1293,18 +1305,22 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       : createDevice(formData);
 
     saveAction
-      .then(() => {
-        handleClose();
-      })
-      .catch((error) => {
-        console.error(
-          "Ошибка при отправке запроса:",
-          error.response?.data || error.message,
-        );
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+  .then((data) => {
+    if (data?.warning) {
+      alert(data.warning);
+
+    }
+    handleClose();
+  })
+  .catch((error) => {
+    console.error(
+      "Ошибка при отправке запроса:",
+      error.response?.data || error.message,
+    );
+  })
+  .finally(() => {
+    setLoading(false);
+  });
   };
 
   const updateOptionTranslation = (optionIndex, lang, value) => {
@@ -1611,7 +1627,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                     </Dropdown.Menu>
                   </Dropdown>
 
-                  {/* Доп. типы */}
                   {device.types.length > 0 && (
                     <div className="mt-2">
                       <div className="mb-1">Доп. типы (кроме выбранного):</div>
@@ -1642,7 +1657,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                     </div>
                   )}
 
-                  {/* Подтип */}
                   <Dropdown className="mt-3">
                     <Dropdown.Toggle>
                       {device.selectedSubType?.name ||
@@ -2262,6 +2276,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                               </th>
                             ))}
                             <th>Код</th>
+                            <th>Локация</th>
                             <th>Себестоимость</th>
                             <th>Цена варианта</th>
                             <th>Старая цена</th>
@@ -2282,12 +2297,20 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                               <td style={{ minWidth: 120 }}>
                                 <Form.Control
                                   value={v.sku || ""}
+                                  readOnly
+                                  placeholder="Авто"
+                                />
+                              </td>
+                              <td style={{ minWidth: 140 }}>
+                                <Form.Control
+                                  value={v.warehouseLocation || ""}
                                   onChange={(e) => {
                                     const next = [...variants];
-                                    next[idx].sku = e.target.value;
+                                    next[idx].warehouseLocation =
+                                      e.target.value;
                                     setVariants(next);
                                   }}
-                                  placeholder="SKU"
+                                  placeholder="A-01-03"
                                 />
                               </td>
                               <td style={{ minWidth: 140 }}>
@@ -2675,6 +2698,21 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                 )}
                 {errors.quantity && variants.length === 0 && (
                   <p className="text-danger">{errors.quantity}</p>
+                )}
+              </Form.Group>
+              <Form.Group className="mt-3">
+                <Form.Label>Локация на складе</Form.Label>
+                <Form.Control
+                  value={warehouseLocation}
+                  onChange={(e) => setWarehouseLocation(e.target.value)}
+                  placeholder="A-01-03"
+                  disabled={variants.length > 0}
+                />
+                {variants.length > 0 && (
+                  <div className="form-text">
+                    Для товаров с вариантами локация задаётся в таблице
+                    вариантов.
+                  </div>
                 )}
               </Form.Group>
             </Tab>
