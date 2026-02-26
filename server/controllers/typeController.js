@@ -7,7 +7,8 @@ const uuid = require("uuid");
 class TypeController {
   async create(req, res, next) {
     try {
-      const { name, img, translations, displayOrder } = req.body;
+      const { name, code, translations, displayOrder } = req.body;
+      const codeNorm = code ? String(code).trim().toUpperCase() : null;
 
       if (!name) {
         return res.status(400).json({ message: "Поле 'name' обязательно" });
@@ -17,7 +18,7 @@ class TypeController {
       if (req.files && req.files.img) {
         const { img } = req.files;
         const fileName = `${uuid.v4()}${img.name.substring(
-          img.name.lastIndexOf(".")
+          img.name.lastIndexOf("."),
         )}`;
 
         const { error } = await supabase.storage
@@ -28,11 +29,12 @@ class TypeController {
           throw new Error("Ошибка загрузки изображения в Supabase");
         }
 
-        imgUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${fileName}`;
+        imgUrl = `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${fileName}`;
       }
 
       const type = await Type.create({
         name,
+        code: codeNorm,
         img: imgUrl,
         displayOrder: parseInt(displayOrder) || 0,
       });
@@ -50,7 +52,7 @@ class TypeController {
                 text,
               });
             }
-          }
+          },
         );
 
         if (translationEntries.length > 0) {
@@ -61,6 +63,13 @@ class TypeController {
       return res.status(201).json(type);
     } catch (error) {
       console.error("Ошибка при создании типа:", error.message);
+      if (error?.name === "SequelizeUniqueConstraintError") {
+        return next(
+          ApiError.badRequest(
+            "Такой code уже существует (должен быть уникальным).",
+          ),
+        );
+      }
       next(ApiError.badRequest(error.message));
     }
   }
@@ -68,7 +77,13 @@ class TypeController {
   async update(req, res, next) {
     try {
       const { id } = req.params;
-      let { name, translations, displayOrder } = req.body;
+      let { name, code, translations, displayOrder } = req.body;
+      const codeNorm =
+        typeof code === "undefined"
+          ? undefined
+          : code
+            ? String(code).trim().toUpperCase()
+            : null;
 
       const type = await Type.findOne({ where: { id } });
       if (!type) {
@@ -89,7 +104,7 @@ class TypeController {
 
         const { img } = req.files;
         const newFileName = `${uuid.v4()}${img.name.substring(
-          img.name.lastIndexOf(".")
+          img.name.lastIndexOf("."),
         )}`;
 
         const { error } = await supabase.storage
@@ -100,11 +115,12 @@ class TypeController {
           throw new Error("Ошибка загрузки нового изображения в Supabase");
         }
 
-        imgUrl = `https://ujsitjkochexlcqrwxan.supabase.co/storage/v1/object/public/images/${newFileName}`;
+        imgUrl = `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${newFileName}`;
       }
 
       await type.update({
         name,
+        ...(codeNorm !== undefined ? { code: codeNorm } : {}),
         img: imgUrl,
         displayOrder: parseInt(displayOrder) || 0,
       });
@@ -135,7 +151,7 @@ class TypeController {
           await Translation.bulkCreate(translationEntries);
         } else {
           console.log(
-            "⚠️ Переводы пустые или некорректные, ничего не обновляем."
+            "⚠️ Переводы пустые или некорректные, ничего не обновляем.",
           );
         }
       }
@@ -143,13 +159,18 @@ class TypeController {
       return res.status(200).json(type);
     } catch (error) {
       console.error("❌ Ошибка при редактировании типа:", error.message);
-      return res
-        .status(500)
-        .json({ message: "Ошибка сервера при редактировании типа." });
+      if (error?.name === "SequelizeUniqueConstraintError") {
+        return next(
+          ApiError.badRequest(
+            "Такой code уже существует (должен быть уникальным).",
+          ),
+        );
+      }
+      next(ApiError.badRequest(error.message));
     }
   }
 
-   async getAll(req, res) {
+  async getAll(req, res) {
     try {
       const types = await Type.findAll({
         order: [
