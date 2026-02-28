@@ -166,6 +166,29 @@ const Device = sequelize.define("device", {
     allowNull: true,
     field: "warehouseLocation",
   },
+  weightGrams: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    field: "weightgrams",
+  },
+
+  lengthMm: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: "lengthmm",
+  },
+
+  widthMm: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: "widthmm",
+  },
+
+  heightMm: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: "heightmm",
+  },
 });
 
 const DeviceVariant = sequelize.define(
@@ -203,6 +226,29 @@ const DeviceVariant = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       field: "warehouseId",
+    },
+    weightGrams: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: "weightgrams",
+    },
+
+    lengthMm: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: "lengthmm",
+    },
+
+    widthMm: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: "widthmm",
+    },
+
+    heightMm: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: "heightmm",
     },
   },
   {
