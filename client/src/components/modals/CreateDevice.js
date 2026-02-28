@@ -73,6 +73,10 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [brandQuery, setBrandQuery] = useState("");
   const brandSearchRef = useRef(null);
   const [showBrandModal, setShowBrandModal] = useState(false);
+  const [weightGrams, setWeightGrams] = useState("");
+  const [lengthMm, setLengthMm] = useState("");
+  const [widthMm, setWidthMm] = useState("");
+  const [heightMm, setHeightMm] = useState("");
 
   const TAB_ORDER = [
     "basic",
@@ -141,12 +145,14 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       });
       return next;
     });
+
     setTranslations((prev) => {
       const t = { ...prev };
       ensureOptionValueTrans(t, optionIndex, nextIndex);
       t.options[optionIndex].values[nextIndex][activeOptionsLang] = text;
       return t;
     });
+
     setNewValueText((p) => ({ ...p, [optionIndex]: "" }));
   };
 
@@ -222,6 +228,10 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         image: "",
         isActive: true,
         key: makeVariantKey(selected),
+        weightGrams: "",
+        lengthMm: "",
+        widthMm: "",
+        heightMm: "",
       };
     });
   };
@@ -322,6 +332,32 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       setInfo(editableDevice.info || []);
       setOptions(editableDevice.options || []);
       setWarehouseLocation(editableDevice.warehouseLocation || "");
+      setWeightGrams(
+        editableDevice.weightGrams !== undefined &&
+          editableDevice.weightGrams !== null
+          ? String(editableDevice.weightGrams)
+          : "",
+      );
+
+      setLengthMm(
+        editableDevice.lengthMm !== undefined &&
+          editableDevice.lengthMm !== null
+          ? String(editableDevice.lengthMm)
+          : "",
+      );
+
+      setWidthMm(
+        editableDevice.widthMm !== undefined && editableDevice.widthMm !== null
+          ? String(editableDevice.widthMm)
+          : "",
+      );
+
+      setHeightMm(
+        editableDevice.heightMm !== undefined &&
+          editableDevice.heightMm !== null
+          ? String(editableDevice.heightMm)
+          : "",
+      );
 
       setVariants(
         Array.isArray(editableDevice.variants)
@@ -329,6 +365,25 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
               selected: v.selected || {},
               sku: v.sku || "",
               warehouseLocation: v.warehouseLocation || "",
+              weightGrams:
+                v.weightGrams !== undefined && v.weightGrams !== null
+                  ? String(v.weightGrams)
+                  : "",
+
+              lengthMm:
+                v.lengthMm !== undefined && v.lengthMm !== null
+                  ? String(v.lengthMm)
+                  : "",
+
+              widthMm:
+                v.widthMm !== undefined && v.widthMm !== null
+                  ? String(v.widthMm)
+                  : "",
+
+              heightMm:
+                v.heightMm !== undefined && v.heightMm !== null
+                  ? String(v.heightMm)
+                  : "",
               price: (v.price ?? "") === null ? "" : (v.price ?? ""),
               oldPrice: (v.oldPrice ?? "") === null ? "" : (v.oldPrice ?? ""),
               purchasePrice:
@@ -1106,7 +1161,18 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       errors.variants = "Сгенерируйте варианты для комбинаций опций";
     }
 
-    // ===== Закупочная цена обязательна при стартовых остатках =====
+    if (variants.length > 0) {
+      for (const v of variants) {
+        if (!v.weightGrams || Number(v.weightGrams) <= 0) {
+          return "У каждого варианта должен быть вес > 0";
+        }
+      }
+    } else {
+      if (!weightGrams || Number(weightGrams) <= 0) {
+        return "Вес товара обязателен и должен быть > 0";
+      }
+    }
+
     const num = (x) => {
       if (x === "" || x === null || x === undefined) return NaN;
       const n = Number(String(x).replace(",", "."));
@@ -1116,7 +1182,6 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     const basePurchase = num(purchasePrice);
 
     if (variants.length > 0) {
-      // есть варианты: каждый вариант с qty > 0 должен иметь себестоимость
       const missing = variants.some((v) => {
         const q = Number(v.quantity) || 0;
         const active = v.isActive !== false;
@@ -1208,6 +1273,10 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     formData.append("warehouseLocation", warehouseLocation || "");
     formData.append("description", description || "");
     formData.append("isUniversal", isUniversal ? "true" : "false");
+    formData.append("weightGrams", weightGrams);
+    formData.append("lengthMm", lengthMm || "");
+    formData.append("widthMm", widthMm || "");
+    formData.append("heightMm", heightMm || "");
 
     if (!isUniversal) {
       const payload = compatRows
@@ -1291,6 +1360,10 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
         image: v.image || null,
         isActive: v.isActive !== false,
         key: v.key || makeVariantKey(selected),
+        weightGrams: v.weightGrams,
+        lengthMm: v.lengthMm || null,
+        widthMm: v.widthMm || null,
+        heightMm: v.heightMm || null,
       };
     });
 
@@ -1305,22 +1378,21 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       : createDevice(formData);
 
     saveAction
-  .then((data) => {
-    if (data?.warning) {
-      alert(data.warning);
-
-    }
-    handleClose();
-  })
-  .catch((error) => {
-    console.error(
-      "Ошибка при отправке запроса:",
-      error.response?.data || error.message,
-    );
-  })
-  .finally(() => {
-    setLoading(false);
-  });
+      .then((data) => {
+        if (data?.warning) {
+          alert(data.warning);
+        }
+        handleClose();
+      })
+      .catch((error) => {
+        console.error(
+          "Ошибка при отправке запроса:",
+          error.response?.data || error.message,
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   const updateOptionTranslation = (optionIndex, lang, value) => {
@@ -2277,6 +2349,10 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                             ))}
                             <th>Код</th>
                             <th>Локация</th>
+                            <th>Вес (г)</th>
+                            <th>Д (мм)</th>
+                            <th>Ш (мм)</th>
+                            <th>В (мм)</th>
                             <th>Себестоимость</th>
                             <th>Цена варианта</th>
                             <th>Старая цена</th>
@@ -2311,6 +2387,61 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                                     setVariants(next);
                                   }}
                                   placeholder="A-01-03"
+                                />
+                              </td>
+                              <td style={{ minWidth: 110 }}>
+                                <Form.Control
+                                  type="number"
+                                  min={1}
+                                  value={v.weightGrams ?? ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const next = [...variants];
+                                    next[idx].weightGrams = val;
+                                    setVariants(next);
+                                  }}
+                                />
+                              </td>
+
+                              <td style={{ minWidth: 90 }}>
+                                <Form.Control
+                                  type="number"
+                                  min={1}
+                                  value={v.lengthMm ?? ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const next = [...variants];
+                                    next[idx].lengthMm = val;
+                                    setVariants(next);
+                                  }}
+                                />
+                              </td>
+
+                              <td style={{ minWidth: 90 }}>
+                                <Form.Control
+                                  type="number"
+                                  min={1}
+                                  value={v.widthMm ?? ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const next = [...variants];
+                                    next[idx].widthMm = val;
+                                    setVariants(next);
+                                  }}
+                                />
+                              </td>
+
+                              <td style={{ minWidth: 90 }}>
+                                <Form.Control
+                                  type="number"
+                                  min={1}
+                                  value={v.heightMm ?? ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const next = [...variants];
+                                    next[idx].heightMm = val;
+                                    setVariants(next);
+                                  }}
                                 />
                               </td>
                               <td style={{ minWidth: 140 }}>
@@ -2715,6 +2846,55 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                   </div>
                 )}
               </Form.Group>
+              <Form.Group className="mt-3">
+                <Form.Label>Вес (г)</Form.Label>
+                <Form.Control
+                  type="number"
+                  value={weightGrams}
+                  onChange={(e) => setWeightGrams(e.target.value)}
+                  min={1}
+                  disabled={variants.length > 0}
+                />
+              </Form.Group>
+
+              <Row className="mt-3">
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label>Длина (мм)</Form.Label>
+                    <Form.Control
+                      type="number"
+                      value={lengthMm}
+                      onChange={(e) => setLengthMm(e.target.value)}
+                      min={1}
+                      disabled={variants.length > 0}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label>Ширина (мм)</Form.Label>
+                    <Form.Control
+                      type="number"
+                      value={widthMm}
+                      onChange={(e) => setWidthMm(e.target.value)}
+                      min={1}
+                      disabled={variants.length > 0}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label>Высота (мм)</Form.Label>
+                    <Form.Control
+                      type="number"
+                      value={heightMm}
+                      onChange={(e) => setHeightMm(e.target.value)}
+                      min={1}
+                      disabled={variants.length > 0}
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
             </Tab>
           </Tabs>
         </Form>
