@@ -65,6 +65,12 @@
   margin-left: 0;
 }
 
+.idCell {
+  width: 34px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .adminDeviceName {
   grid-column: 2 / 3;
   min-width: 0;
@@ -75,17 +81,24 @@
 }
 
 .adminDevicePrice {
-  font-weight: 500;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 120px;
+  justify-content: flex-end;
 }
+
 .discountedPrice {
   color: #f44336;
   font-weight: 700;
 }
+
 .oldPrice {
   color: #9ca3af;
   text-decoration: line-through;
   margin-left: 8px;
   font-size: 0.9em;
+  white-space: nowrap;
 }
 
 .zerosBlock {
@@ -273,17 +286,37 @@
   color: #6b7280;
 }
 
-.metaLine {
-  margin-top: 6px;
-  color: #444;
-  font-size: 13px;
-  line-height: 18px;
-}
-
 .metaLineDanger {
   color: #b91c1c;
 }
 
-.metaLine b {
+.metaGrid {
+  margin-top: 4px;
+  display: grid;
+  grid-template-columns: 1fr max-content;
+  column-gap: 18px;
+  row-gap: 2px;
+  max-width: 480px;
+}
+
+.metaCell {
+  color: #444;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metaCell b {
   font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .metaGrid {
+    grid-template-columns: 1fr;
+  }
+  .metaCell {
+    white-space: normal;
+  }
 }
