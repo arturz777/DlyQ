@@ -68,6 +68,36 @@ const AdminDevicesTab = () => {
     return [...new Set(locs)];
   };
 
+  const getWeights = (d) => {
+    const vars = Array.isArray(d.variants)
+      ? d.variants
+      : parseMaybeJSON(d.variants) || [];
+
+    const ws = vars.map((v) => Number(v?.weightGrams)).filter((x) => x > 0);
+
+    if (ws.length === 0 && Number(d?.weightGrams) > 0)
+      ws.push(Number(d.weightGrams));
+
+    return [...new Set(ws)];
+  };
+
+  const getDims = (d) => {
+    const vars = Array.isArray(d.variants)
+      ? d.variants
+      : parseMaybeJSON(d.variants) || [];
+
+    const fmt = (L, W, H) => (L && W && H ? `${L}×${W}×${H} мм` : "");
+
+    const dims = vars
+      .map((v) => fmt(v?.lengthMm, v?.widthMm, v?.heightMm))
+      .filter(Boolean);
+
+    const deviceDims = fmt(d?.lengthMm, d?.widthMm, d?.heightMm);
+    if (dims.length === 0 && deviceDims) dims.push(deviceDims);
+
+    return [...new Set(dims)];
+  };
+
   const loadDevices = async () => {
     const data = await fetchDevices(undefined, undefined, undefined, 1, 1000);
     setDevices(data?.rows || data || []);
@@ -400,6 +430,8 @@ const AdminDevicesTab = () => {
   const DeviceRow = ({ d, onOpen }) => {
     const skus = getSkus(d);
     const locs = getLocations(d);
+    const weights = getWeights(d);
+    const dims = getDims(d);
 
     return (
       <div
@@ -409,7 +441,7 @@ const AdminDevicesTab = () => {
         style={{ cursor: "pointer" }}
       >
         <div>
-          {d.id}
+          <span className={styles.idCell}>{d.id}</span>
           <Image
             className={styles.adminDeviceImg}
             width={50}
@@ -417,32 +449,50 @@ const AdminDevicesTab = () => {
             src={d.img}
           />
         </div>
+        <div className={styles.metaGrid}>
+          {skus.length > 0 ? (
+            <div className={styles.metaCell}>
+              <b>SKU:</b> {skus.slice(0, 3).join(", ")}
+              {skus.length > 3 ? ` …(+${skus.length - 3})` : ""}
+            </div>
+          ) : (
+            <div className={`${styles.metaCell} ${styles.metaLineDanger}`}>
+              SKU не назначен
+            </div>
+          )}
 
-        {skus.length > 0 && (
-          <div style={{ marginTop: 6, color: "#444", fontSize: 13 }}>
-            <b>SKU:</b> {skus.slice(0, 3).join(", ")}
-            {skus.length > 3 ? ` …(+${skus.length - 3})` : ""}
-          </div>
-        )}
+          {weights.length > 0 ? (
+            <div className={styles.metaCell}>
+              <b>Вес:</b>{" "}
+              {weights.length === 1
+                ? `${weights[0]} г`
+                : `${Math.min(...weights)}–${Math.max(...weights)} г`}
+            </div>
+          ) : (
+            <div className={`${styles.metaCell} ${styles.metaLineDanger}`}>
+              <span className={styles.metaLineDanger}>Вес не назначен</span>
+            </div>
+          )}
 
-        {skus.length === 0 && (
-          <div style={{ marginTop: 6, color: "#b91c1c", fontSize: 13 }}>
-            SKU не назначен
+          <div className={styles.metaCell}>
+            <b>Локация:</b>{" "}
+            {locs.length > 0 ? (
+              <>
+                {locs.slice(0, 3).join(", ")}
+                {locs.length > 3 ? ` …(+${locs.length - 3})` : ""}
+              </>
+            ) : (
+              <span className={styles.metaLineDanger}>не задана</span>
+            )}
           </div>
-        )}
 
-        {locs.length > 0 && (
-          <div className={styles.metaLine}>
-            <b>Локация:</b> {locs.slice(0, 3).join(", ")}
-            {locs.length > 3 ? ` …(+${locs.length - 3})` : ""}
-          </div>
-        )}
-
-        {locs.length === 0 && (
-          <div className={`${styles.metaLine} ${styles.metaLineDanger}`}>
-            Локация не назначена
-          </div>
-        )}
+          {dims.length > 0 && (
+            <div className={styles.metaCell}>
+              <b>Габариты:</b> {dims[0]}
+              {dims.length > 1 ? ` …(+${dims.length - 1})` : ""}
+            </div>
+          )}
+        </div>
 
         <span className={styles.adminDeviceName}>{d.name}</span>
         {renderCompat(d)}
@@ -500,9 +550,6 @@ const AdminDevicesTab = () => {
               onChange={(e) => handleToggleVisibility(d.id, e.target.checked)}
             />
             <span className={styles.toggleSlider} />
-            <span className={styles.toggleLabel}>
-              {d.isVisible ? "Витрина: вкл" : "Витрина: выкл"}
-            </span>
           </label>
         </div>
       </div>
