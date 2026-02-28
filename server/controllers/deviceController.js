@@ -103,6 +103,62 @@ const parseMaybeJSON = (x) => {
   return x;
 };
 
+const parseIntOrNull = (v) => {
+  if (v === "" || v === null || typeof v === "undefined") return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Math.trunc(n);
+};
+
+const parseRequiredWeight = (v, label = "weightGrams") => {
+  const n = Number(v);
+
+  if (!Number.isFinite(n)) {
+    throw new Error(`${label} должно быть числом`);
+  }
+
+  if (!Number.isInteger(n)) {
+    throw new Error(`${label} должно быть целым числом`);
+  }
+
+  if (n <= 0) {
+    throw new Error(`${label} должно быть больше 0`);
+  }
+
+  return n;
+};
+
+const validateShipping = (
+  { weightGrams, lengthMm, widthMm, heightMm },
+  label,
+) => {
+  const weight = parseRequiredWeight(weightGrams, `${label}.weightGrams`);
+
+  const L = parseIntOrNull(lengthMm);
+  const W = parseIntOrNull(widthMm);
+  const H = parseIntOrNull(heightMm);
+
+  const anyDim = [L, W, H].some((x) => x !== null);
+  const allDim = [L, W, H].every((x) => x !== null);
+
+  if (anyDim && !allDim) {
+    throw new Error(
+      `${label}: если указываешь габариты — нужно указать все три`,
+    );
+  }
+
+  if (allDim && (L <= 0 || W <= 0 || H <= 0)) {
+    throw new Error(`${label}: габариты должны быть больше 0`);
+  }
+
+  return {
+    weightGrams: weight,
+    lengthMm: L,
+    widthMm: W,
+    heightMm: H,
+  };
+};
+
 const resolveVariantImage = (imgToken, mainUrl, thumbs = []) => {
   if (!imgToken) return null;
   const s = String(imgToken);
@@ -140,6 +196,10 @@ class DeviceController {
         expiryDate,
         snoozeUntil,
         warehouseLocation,
+        weightGrams,
+        lengthMm,
+        widthMm,
+        heightMm,
       } = req.body;
 
       const toBool = (v) => v === true || v === "true";
@@ -207,6 +267,27 @@ class DeviceController {
       const deviceSku = !hasVariants
         ? await nextSkuForType(Number(typeId), t)
         : null;
+
+      let deviceShipping = null;
+
+      if (!hasVariants) {
+        deviceShipping = validateShipping(
+          { weightGrams, lengthMm, widthMm, heightMm },
+          "device",
+        );
+      } else {
+        parsedVariants.forEach((v, idx) => {
+          validateShipping(
+            {
+              weightGrams: v.weightGrams,
+              lengthMm: v.lengthMm,
+              widthMm: v.widthMm,
+              heightMm: v.heightMm,
+            },
+            `variant[${idx}]`,
+          );
+        });
+      }
 
       if (
         toBool(discount) &&
@@ -332,6 +413,7 @@ class DeviceController {
           isVisible,
           sku: deviceSku,
           warehouseLocation: warehouseLocation || null,
+          ...(deviceShipping || {}),
         },
         { transaction: t },
       );
@@ -562,6 +644,15 @@ class DeviceController {
             quantity: 0,
             image: resolveVariantImage(v.image, publicURL, thumbnails),
             isActive: v.isActive !== false,
+            ...validateShipping(
+              {
+                weightGrams: v.weightGrams,
+                lengthMm: v.lengthMm,
+                widthMm: v.widthMm,
+                heightMm: v.heightMm,
+              },
+              "variant",
+            ),
           });
         }
 
@@ -1122,6 +1213,10 @@ class DeviceController {
         expiryDate,
         snoozeUntil,
         warehouseLocation,
+        weightGrams,
+        lengthMm,
+        widthMm,
+        heightMm,
       } = req.body;
 
       const toBool = (v) => v === true || v === "true";
@@ -1189,11 +1284,46 @@ class DeviceController {
         : options
           ? JSON.parse(options)
           : [];
+
       let parsedVariants = Array.isArray(req.body.variants)
         ? req.body.variants
         : req.body.variants
           ? JSON.parse(req.body.variants)
           : [];
+
+      const hasIncomingVariants =
+        Array.isArray(parsedVariants) && parsedVariants.length > 0;
+
+      let deviceShipping = null;
+
+      // Важно: валидируем/перезаписываем shipping только если payload реально прислали
+      if (hasVariantsPayload) {
+        if (hasIncomingVariants) {
+          parsedVariants.forEach((v, idx) => {
+            validateShipping(
+              {
+                weightGrams: v.weightGrams,
+                lengthMm: v.lengthMm,
+                widthMm: v.widthMm,
+                heightMm: v.heightMm,
+              },
+              `variant[${idx}]`,
+            );
+          });
+        } else {
+          deviceShipping = validateShipping(
+            {
+              weightGrams: weightGrams ?? device.weightGrams,
+              lengthMm,
+              widthMm,
+              heightMm,
+            },
+            "device",
+          );
+        }
+      } else {
+        deviceShipping = null;
+      }
 
       if (discount === "true" && !oldPrice) {
         oldPrice = price;
@@ -1405,6 +1535,7 @@ class DeviceController {
           warehouseLocation: hasLocationPayload
             ? warehouseLocation || null
             : device.warehouseLocation,
+          ...(deviceShipping || {}),
         },
         { where: { id } },
       );
@@ -1579,21 +1710,27 @@ class DeviceController {
               deviceId: Number(id),
               key,
               selected: JSON.stringify(normalizedSelected),
-
               sku,
               barcode: v.barcode || null,
               warehouseLocation: v.warehouseLocation || null,
               minStock: Number(v.minStock) || 0,
               warehouseId: v.warehouseId ? Number(v.warehouseId) : null,
-
               price: v.price === "" ? null : (v.price ?? null),
               oldPrice: v.oldPrice === "" ? null : (v.oldPrice ?? null),
               purchasePrice:
                 v.purchasePrice === "" ? null : (v.purchasePrice ?? null),
-
               quantity: qtyByKey.get(key) || 0,
               image: resolveVariantImage(v.image, fileName, thumbnails),
               isActive: v.isActive !== false,
+              ...validateShipping(
+                {
+                  weightGrams: v.weightGrams,
+                  lengthMm: v.lengthMm,
+                  widthMm: v.widthMm,
+                  heightMm: v.heightMm,
+                },
+                "variant",
+              ),
             });
           }
 
@@ -1606,9 +1743,6 @@ class DeviceController {
           );
         }
       }
-
-      const hasIncomingVariants =
-        Array.isArray(parsedVariants) && parsedVariants.length > 0;
 
       if (!hasIncomingVariants) {
         if (!device.sku) {
