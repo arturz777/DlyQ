@@ -30,6 +30,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
   const [discount, setDiscount] = useState(false);
   const [oldPrice, setOldPrice] = useState("");
   const [recommended, setRecommended] = useState(false);
+  const [isAgeRestricted, setIsAgeRestricted] = useState(false);
   const { device } = useContext(Context);
   const [name, setName] = useState("");
   const [price, setPrice] = useState(null);
@@ -329,6 +330,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
       setSnoozeUntil(editableDevice.snoozeUntil || "");
       setDiscount(editableDevice.discount || false);
       setRecommended(editableDevice.recommended || false);
+      setIsAgeRestricted(!!editableDevice?.isAgeRestricted);
       setInfo(editableDevice.info || []);
       setOptions(editableDevice.options || []);
       setWarehouseLocation(editableDevice.warehouseLocation || "");
@@ -1262,6 +1264,7 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
     formData.append("isNew", String(isNew));
     formData.append("discount", String(discount));
     formData.append("recommended", String(recommended));
+    formData.append("isAgeRestricted", isAgeRestricted ? "true" : "false");
     formData.append("name", name);
     formData.append("price", price);
     formData.append(
@@ -1616,6 +1619,15 @@ const CreateDevice = observer(({ index, show, onHide, editableDevice }) => {
                       onChange={(e) => setRecommended(e.target.checked)}
                     />
                   </Form.Group>
+
+                  <label className={styles.recommendProduct}>
+                    <Form.Check
+                      type="checkbox"
+                      checked={isAgeRestricted}
+                      onChange={(e) => setIsAgeRestricted(e.target.checked)}
+                    />
+                    18+ (возрастное ограничение)
+                  </label>
                 </div>
 
                 <div className={styles.basicCard}>
