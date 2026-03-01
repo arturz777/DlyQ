@@ -831,9 +831,9 @@ return (
 
       {hasAgeRestricted && (
         <div className={styles.ageNotice}>
-          <span className={styles.ageBadgeInline}>18+</span> В корзине есть
-          товары с возрастным ограничением. При получении может потребоваться
-          документ.
+          <span className={styles.ageBadgeInline}>18+</span> {t("there are age-restricted
+          items in your cart. Please present a valid ID upon delivery", { ns:
+          "paymentForm" })}
         </div>
       )}
 
@@ -847,7 +847,8 @@ return (
             onChange={(e) => setAgeConfirmed(e.target.checked)}
           />
           <label className="form-check-label" htmlFor="ageConfirm">
-            Мне есть 18 лет (подтвержу документом при получении)
+            {t("i am 18 years old (I will confirm my age with an ID upon delivery)", { ns: 
+            "paymentForm" })}
           </label>
         </div>
       )}
