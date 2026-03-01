@@ -119,6 +119,7 @@ const PaymentForm = ({
   onDeliveryCostChange,
   onDeliveryMetaChange,
   preorder,
+  hasAgeRestricted,
 }) => {
   const { user } = useContext(Context);
   const [loading, setLoading] = useState(false);
@@ -135,7 +136,7 @@ const PaymentForm = ({
     setPreferredTime,
     isStoreClosed,
   } = preorder || {};
-  const stripe = useStripe();
+ const stripe = useStripe();
   const elements = useElements();
   const confirm = useConfirm();
   const [deliveryCost, setDeliveryCost] = useState(0);
@@ -151,6 +152,7 @@ const PaymentForm = ({
   const [deletingId, setDeletingId] = useState(null);
   const [addressLoading, setAddressLoading] = useState(false);
   const [pmSaving, setPmSaving] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [deliveryMeta, setDeliveryMeta] = useState({
     deliveryCost: 0,
     baseDelivery: 0,
@@ -447,7 +449,7 @@ const PaymentForm = ({
     [user?.user?.phone],
   );
 
-  const handleSubmit = async (event) => {
+ const handleSubmit = async (event) => {
     event.preventDefault();
 
     const phoneNormalized = normalizePhone(user?.user?.phone || "");
@@ -479,6 +481,11 @@ const PaymentForm = ({
         );
         return;
       }
+    }
+
+    if (hasAgeRestricted && !ageConfirmed) {
+      toast.error("Подтвердите, что вам есть 18+");
+      return;
     }
 
     if (!stripe || !elements) {
@@ -545,7 +552,7 @@ const PaymentForm = ({
       }
 
       await onPaymentSuccess(
-        { paymentIntentId: paymentIntent.id },
+        { paymentIntentId: paymentIntent.id, ageConfirmed },
         {
           ...formData,
           phone: phoneNormalized,
@@ -562,7 +569,7 @@ const PaymentForm = ({
     }
   };
 
-  return (
+return (
     <Form
       onSubmit={handleSubmit}
       className={styles.form}
@@ -822,12 +829,35 @@ const PaymentForm = ({
         </button>
       )}
 
+      {hasAgeRestricted && (
+        <div className={styles.ageNotice}>
+          <span className={styles.ageBadgeInline}>18+</span> В корзине есть
+          товары с возрастным ограничением. При получении может потребоваться
+          документ.
+        </div>
+      )}
+
+      {hasAgeRestricted && (
+        <div className="form-check mb-2">
+          <input
+            className="form-check-input"
+            type="checkbox"
+            id="ageConfirm"
+            checked={ageConfirmed}
+            onChange={(e) => setAgeConfirmed(e.target.checked)}
+          />
+          <label className="form-check-label" htmlFor="ageConfirm">
+            Мне есть 18 лет (подтвержу документом при получении)
+          </label>
+        </div>
+      )}
+
       <div className="text-center">
         <LoadingButton
           type="submit"
           loading={loading}
           loadingText={t("processing", { ns: "paymentForm" })}
-          disabled={!stripe}
+          disabled={!stripe || (hasAgeRestricted && !ageConfirmed)}
           className={styles.buttonTPrice}
           minWidth={0}
           style={{ width: "100%" }}
@@ -1071,3 +1101,4 @@ const PaymentForm = ({
 };
 
 export default PaymentForm;
+
