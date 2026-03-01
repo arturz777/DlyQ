@@ -40,6 +40,13 @@ router.get(
 );
 
 router.post(
+  "/orders/:id/verify-age",
+  authMiddleware,
+  roleMiddleware("COURIER"),
+  courierController.verifyAge,
+);
+
+router.post(
   "/status",
   authMiddleware,
   roleMiddleware("COURIER"),
