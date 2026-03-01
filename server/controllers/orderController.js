@@ -283,6 +283,7 @@ const createOrder = async (req, res) => {
       paymentIntentId,
       language,
       deliveryCost = 0,
+      ageConfirmed,
     } = req.body;
     const {
       firstName,
@@ -375,6 +376,7 @@ const createOrder = async (req, res) => {
     const courierFeeNet = round2(courierFeeGross - courierCommission);
 
     let isPreorder = false;
+    let hasAgeRestricted = false;
     const devicesToUpdate = [];
     const sellerIds = new Set();
     const deviceCache = new Map();
@@ -399,6 +401,9 @@ const createOrder = async (req, res) => {
           .status(400)
           .json({ message: `Товар "${item.name}" не найден.` });
       }
+
+      if (device.isAgeRestricted) hasAgeRestricted = true;
+
       deviceCache.set(Number(device.id), device);
 
       if (device.sellerId) sellerIds.add(device.sellerId);
@@ -666,8 +671,15 @@ const createOrder = async (req, res) => {
       preorderReason,
       courierCommission,
       courierCommissionRate: shopPercent / 100,
+      hasAgeRestricted,
     };
 
+    if (hasAgeRestricted && !ageConfirmed) {
+      return res.status(400).json({
+        message: "Age confirmation required (18+ items in order)",
+        code: "AGE_CONFIRM_REQUIRED",
+      });
+    }
     if (Order.rawAttributes?.paymentIntentId) orderData.paymentIntentId = pi.id;
     if (Order.rawAttributes?.paymentStatus) orderData.paymentStatus = pi.status;
     if (Order.rawAttributes?.currency)
