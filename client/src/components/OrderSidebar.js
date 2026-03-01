@@ -854,8 +854,10 @@ const OrderSidebar = ({
             {order?.hasAgeRestricted && (
               <div className={styles.ageNotice}>
                 <span className={styles.ageBadgeInline}>18+</span>
-                При получении заказа подготовьте документ. Курьер обязан
-                проверить возраст.
+                {t(
+                  "please have your ID ready upon delivery. The courier is required to verify your age",
+                  { ns: "orderSidebar" },
+                )}
               </div>
             )}
           </div>
