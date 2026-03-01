@@ -232,6 +232,7 @@ const DeviceItem = ({ device, onClick, isStoreClosed = false }) => {
           {discountPercentage !== null && (
             <div className={styles.discountBadge}>-{discountPercentage}%</div>
           )}
+          {device.isAgeRestricted && <div className={styles.ageBadge}>18+</div>}
 
           <Image
             className={`${styles.image} ${outOfStock ? styles.dimmed : ""}`}
