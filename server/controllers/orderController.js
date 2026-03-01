@@ -1003,6 +1003,17 @@ const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ message: "Заказ не найден." });
     }
 
+    if (
+      order.hasAgeRestricted &&
+      ["Delivered", "Completed"].includes(newStatus) &&
+      !order.ageVerifiedByCourier
+    ) {
+      return res.status(400).json({
+        message: "Age verification required before completion",
+        code: "AGE_VERIFY_REQUIRED",
+      });
+    }
+
     order.status = newStatus;
     await order.save();
 
