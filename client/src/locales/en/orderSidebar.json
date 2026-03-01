@@ -32,6 +32,8 @@
 	"parcel delivered": "Order delivered",
 	"courier picked up the order": "Courier picked up the order",
 	"courier": "Courier",
+	"warehouse": "Warehouse",
 	"chat with the courier": "Chat with the courier",
-	"chat with the restaurant": "Chat with the restaurant"
+	"chat with the restaurant": "Chat with the restaurant",
+	"please have your ID ready upon delivery. The courier is required to verify your age": "Please have your ID ready upon delivery. The courier is required to verify your age."
 }
