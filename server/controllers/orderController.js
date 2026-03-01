@@ -1003,6 +1003,20 @@ const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ message: "Заказ не найден." });
     }
 
+    const fromFinal = ["Delivered", "Completed"].includes(order.status);
+    const toFinal = ["Delivered", "Completed"].includes(newStatus);
+
+    const resetsAgeVerify =
+      order.hasAgeRestricted &&
+      order.ageVerifiedByCourier &&
+      fromFinal &&
+      !toFinal;
+
+    if (resetsAgeVerify) {
+      order.ageVerifiedByCourier = false;
+      order.ageVerifiedAt = null;
+    }
+
     if (
       order.hasAgeRestricted &&
       ["Delivered", "Completed"].includes(newStatus) &&
@@ -1290,6 +1304,12 @@ const assignCourier = async (req, res) => {
     if (!courier) return res.status(404).json({ message: "Курьер не найден" });
 
     order.courierId = courierId;
+
+    if (order.hasAgeRestricted) {
+      order.ageVerifiedByCourier = false;
+      order.ageVerifiedAt = null;
+    }
+
     await order.save();
 
     const io = req.app.get("io");
@@ -1301,6 +1321,9 @@ const assignCourier = async (req, res) => {
       deliveryLng: order.deliveryLng,
       deliveryAddress: order.deliveryAddress,
       orderDetails: order.orderDetails ? JSON.parse(order.orderDetails) : [],
+      ageVerifiedByCourier: order.ageVerifiedByCourier,
+      ageVerifiedAt: order.ageVerifiedAt,
+      hasAgeRestricted: order.hasAgeRestricted,
     });
 
     sendOrderAssignedPush(order).catch((err) =>
