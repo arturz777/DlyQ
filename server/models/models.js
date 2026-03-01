@@ -155,6 +155,7 @@ const Device = sequelize.define("device", {
   isNew: { type: DataTypes.BOOLEAN, defaultValue: false },
   discount: { type: DataTypes.BOOLEAN, defaultValue: false },
   recommended: { type: DataTypes.BOOLEAN, defaultValue: false },
+  isAgeRestricted: { type: DataTypes.BOOLEAN, defaultValue: false },
   description: { type: DataTypes.TEXT, allowNull: true },
   expiryKind: { type: DataTypes.STRING, allowNull: true, defaultValue: null },
   expiryDate: { type: DataTypes.DATEONLY, allowNull: true },
@@ -522,6 +523,20 @@ const Order = sequelize.define(
     },
     preorderReason: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    hasAgeRestricted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    ageVerifiedByCourier: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+
+    ageVerifiedAt: {
+      type: DataTypes.DATE,
       allowNull: true,
     },
   },
