@@ -281,7 +281,7 @@ const OrderSidebar = ({
           activeOrder.processingTime
         ) {
           const totalSeconds = parseDurationToSeconds(
-            activeOrder.processingTime
+            activeOrder.processingTime,
           );
 
           const startedAt =
@@ -379,7 +379,7 @@ const OrderSidebar = ({
         updatedOrder.processingTime
       ) {
         const totalSeconds = parseDurationToSeconds(
-          updatedOrder.processingTime
+          updatedOrder.processingTime,
         );
 
         const startedAt =
@@ -549,7 +549,7 @@ const OrderSidebar = ({
       const data = await response.json();
       if (data.features && data.features.length > 0) {
         const coordinates = data.features[0].geometry.coordinates.map(
-          (coord) => [coord[1], coord[0]]
+          (coord) => [coord[1], coord[0]],
         );
         setRoute(coordinates);
 
@@ -613,7 +613,7 @@ const OrderSidebar = ({
                 </span>
                 <span>
                   {t("chat with the courier", {
-                    ns: "orderSidebar"
+                    ns: "orderSidebar",
                   })}
                 </span>
               </button>
@@ -628,7 +628,9 @@ const OrderSidebar = ({
                 <span className={styles.chatIcon} aria-hidden>
                   💬
                 </span>
-                <span>{t("chat with the restaurant", { ns: "orderSidebar" })}</span>
+                <span>
+                  {t("chat with the restaurant", { ns: "orderSidebar" })}
+                </span>
               </button>
             )}
 
@@ -849,6 +851,13 @@ const OrderSidebar = ({
             >
               {t("my orders", { ns: "orderSidebar" })}
             </button>
+            {order?.hasAgeRestricted && (
+              <div className={styles.ageNotice}>
+                <span className={styles.ageBadgeInline}>18+</span>
+                При получении заказа подготовьте документ. Курьер обязан
+                проверить возраст.
+              </div>
+            )}
           </div>
         ) : (
           <p className={styles.noActiveOrders}>
