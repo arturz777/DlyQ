@@ -55,9 +55,10 @@
 }
 
 .image {
-  width: 60px;
-  height: 60px;
-  object-fit: cover;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  display: block;
   border-radius: 8px;
   flex-shrink: 0;
   cursor: pointer;
@@ -406,4 +407,36 @@
 .authGateBtnSecondary {
   background: #f1f3f5;
   color: #111;
+}
+
+.imageWrap {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
+}
+
+.ageBadgeOnImg {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  padding: 1px 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(239, 68, 68, 0.55);
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(239, 68, 68, 0.95);
+  font-weight: 800;
+  font-size: 9px;
+  line-height: 12px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.ageRow {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #7f1d1d;
+  display: flex;
+  gap: 6px;
+  align-items: center;
 }
