@@ -352,6 +352,50 @@ function safeParse(v, fallback) {
 }
 
 class CourierController {
+  async verifyAge(req, res) {
+    try {
+      const { id } = req.params;
+      const courierId = req.user.id;
+
+      if (!courierId) {
+        return res.status(401).json({ message: "Вы не авторизованы." });
+      }
+
+      const order = await Order.findByPk(id);
+      if (!order) return res.status(404).json({ message: "Заказ не найден." });
+
+      if (order.courierId !== courierId) {
+        return res
+          .status(403)
+          .json({ message: "Этот заказ вам не принадлежит." });
+      }
+
+      // если заказ не 18+ — просто ок (чтобы не падало)
+      if (!order.hasAgeRestricted) {
+        return res.json({ ok: true, order });
+      }
+
+      order.ageVerifiedByCourier = true;
+      order.ageVerifiedAt = new Date();
+      await order.save();
+
+      const io = req.app.get("io");
+      const payload = {
+        id: order.id,
+        ageVerifiedByCourier: true,
+        ageVerifiedAt: order.ageVerifiedAt,
+      };
+
+      io.to(`order:${order.id}`).emit("orderStatusUpdate", payload);
+      io.to(`courier:${order.courierId}`).emit("orderStatusUpdate", payload);
+
+      return res.json({ ok: true, order });
+    } catch (e) {
+      console.error("verifyAge error:", e);
+      return res.status(500).json({ message: "Ошибка сервера" });
+    }
+  }
+
   async getHighDemand(req, res) {
     try {
       const v = (await readDeliveryPricingValue()) || {};
@@ -1274,6 +1318,9 @@ class CourierController {
           "userId",
           "processingTime",
           "processingStartTime",
+          "hasAgeRestricted",
+          "ageVerifiedByCourier",
+          "ageVerifiedAt",
         ],
       });
 
@@ -1666,6 +1713,13 @@ class CourierController {
         return res
           .status(403)
           .json({ message: "Этот заказ вам не принадлежит." });
+      }
+
+      if (order.hasAgeRestricted && !order.ageVerifiedByCourier) {
+        return res.status(400).json({
+          message: "Age verification required before completion",
+          code: "AGE_VERIFY_REQUIRED",
+        });
       }
 
       order.status = "Delivered";
