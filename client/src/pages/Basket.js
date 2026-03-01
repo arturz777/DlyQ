@@ -158,6 +158,9 @@ const Basket = observer(() => {
   const uiLang = normUiLang(i18n.language);
 
   const selectedItems = basket.selectedItems || [];
+  const hasAgeRestrictedSelected = selectedItems.some(
+    (it) => it?.isAgeRestricted === true,
+  );
   const selectedTotal = basket.getSelectedTotalPrice
     ? basket.getSelectedTotalPrice()
     : 0;
@@ -384,6 +387,8 @@ const Basket = observer(() => {
   const handlePaymentSuccess = async (payment, formData) => {
     const paymentIntentId =
       payment?.paymentIntentId || payment?.id || payment?.paymentIntent?.id;
+    const ageConfirmed = !!payment?.ageConfirmed;
+
     if (!paymentIntentId) {
       toast.error(t("failed to get paymentIntentId", { ns: "basket" }));
       return;
@@ -416,6 +421,7 @@ const Basket = observer(() => {
     const dataToSend = {
       formData,
       paymentIntentId,
+      ageConfirmed,
       totalPrice: selectedTotalSafe,
       language: uiLang,
       orderDetails: (basket.selectedItems || []).map((item, index) => {
@@ -708,24 +714,29 @@ const Basket = observer(() => {
             />
 
             {!!displayImg && (
-              <Image
-                className={styles.image}
-                src={displayImg}
-                alt={title}
-                onClick={() => {
-                  if (!isRestaurantItem(item)) setSelectedDeviceId(item.id);
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
+              <div className={styles.imageWrap}>
+                <Image
+                  className={styles.image}
+                  src={displayImg}
+                  alt={title}
+                  onClick={() => {
                     if (!isRestaurantItem(item)) setSelectedDeviceId(item.id);
-                  }
-                }}
-                style={{
-                  cursor: isRestaurantItem(item) ? "default" : "pointer",
-                }}
-              />
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      if (!isRestaurantItem(item)) setSelectedDeviceId(item.id);
+                    }
+                  }}
+                  style={{
+                    cursor: isRestaurantItem(item) ? "default" : "pointer",
+                  }}
+                />
+                {item?.isAgeRestricted && (
+                  <div className={styles.ageBadgeOnImg}>18+</div>
+                )}
+              </div>
             )}
 
             <div className={styles.topInfo}>
@@ -923,6 +934,7 @@ const Basket = observer(() => {
               onPaymentSuccess={handlePaymentSuccess}
               onDeliveryCostChange={setDeliveryCost}
               onDeliveryMetaChange={setDeliveryMeta}
+              hasAgeRestricted={hasAgeRestrictedSelected}
               preorder={{
                 isPreorder,
                 setIsPreorder,
