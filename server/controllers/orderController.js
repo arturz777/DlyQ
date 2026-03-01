@@ -1228,6 +1228,20 @@ const adminUpdateOrderStatus = async (req, res) => {
   if (!order) return res.status(404).json({ message: "Заказ не найден" });
 
   if (status) order.status = status;
+  if (
+    status &&
+    order.hasAgeRestricted &&
+    [
+      "Waiting for courier",
+      "Ready for pickup",
+      "Accepted",
+      "Picked up",
+      "Arrived at destination",
+    ].includes(status)
+  ) {
+    order.ageVerifiedByCourier = false;
+    order.ageVerifiedAt = null;
+  }
   if (processingTime !== undefined) order.processingTime = processingTime;
   if (estimatedTime !== undefined) order.estimatedTime = estimatedTime;
 
