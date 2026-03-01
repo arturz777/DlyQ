@@ -89,5 +89,7 @@
 	"specify the desired delivery date and time": "Specify the desired delivery date and time",
 	"failed to load or parse userFormData": "Failed to load/parse userFormData",
   "failed to save form": "Failed to save the form",
-  "payment status": "Payment status: {{status}}"
+  "payment status": "Payment status: {{status}}",
+  "there are age-restricted items in your cart. Please present a valid ID upon delivery": "There are age-restricted items in your cart. Please present a valid ID upon delivery.",
+  "i am 18 years old (I will confirm my age with an ID upon delivery)": "I am 18 years old (I will confirm my age with an ID upon delivery)."
 }
