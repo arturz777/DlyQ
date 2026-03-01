@@ -68,7 +68,7 @@ const DevicePage = ({ id }) => {
           : null;
 
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/device/check-stock`,
+        `${process.env.REACT_APP_API_URL}api/device/check-stock`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -78,7 +78,7 @@ const DevicePage = ({ id }) => {
             selectedOptions: cleanSelected,
             variantKey,
           }),
-        }
+        },
       );
 
       const data = await response.json();
@@ -95,19 +95,19 @@ const DevicePage = ({ id }) => {
   useEffect(() => {
     let cancelled = false;
 
-    fetch(`${process.env.REACT_APP_API_URL}/shop/status`)
+    fetch(`${process.env.REACT_APP_API_URL}api/shop/status`)
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled) {
           setIsStoreClosed(
             typeof data.isStoreClosed === "boolean"
               ? data.isStoreClosed
-              : !data.isOpen
+              : !data.isOpen,
           );
         }
       })
       .catch((err) =>
-        console.error("Error fetching store status (DevicePage):", err)
+        console.error("Error fetching store status (DevicePage):", err),
       );
 
     return () => {
@@ -163,11 +163,11 @@ const DevicePage = ({ id }) => {
         setActiveIndex(0);
 
         const itemInBasket = basket.items.find(
-          (item) => item.id === normalized.id
+          (item) => item.id === normalized.id,
         );
         const quantityInBasket = itemInBasket ? itemInBasket.count : 0;
         setAvailableQuantity(
-          (Number(normalized.quantity) || 0) - quantityInBasket
+          (Number(normalized.quantity) || 0) - quantityInBasket,
         );
 
         setSelectedOptions({});
@@ -202,17 +202,17 @@ const DevicePage = ({ id }) => {
       (device.options?.length || 0) > 0
     ) {
       const haveAll = device.options.every(
-        (o) => selectedOptions[o.name]?.value
+        (o) => selectedOptions[o.name]?.value,
       );
       if (haveAll) {
         const sel = {};
         device.options.forEach(
-          (o) => (sel[o.name] = getVal(selectedOptions[o.name]))
+          (o) => (sel[o.name] = getVal(selectedOptions[o.name])),
         );
         const key = makeVariantKey(sel);
         const v =
           device.variants.find(
-            (x) => (x.key || makeVariantKey(x.selected || {})) === key
+            (x) => (x.key || makeVariantKey(x.selected || {})) === key,
           ) || null;
 
         setSelectedVariant(v);
@@ -220,7 +220,7 @@ const DevicePage = ({ id }) => {
         const base = Number(device.price) || 0;
         const add = Object.values(selectedOptions).reduce(
           (s, o) => s + (Number(o?.price) || 0),
-          0
+          0,
         );
         const price = v && v.price != null ? Number(v.price) : base + add;
         setFinalPrice(price);
@@ -230,7 +230,7 @@ const DevicePage = ({ id }) => {
 
     const add = Object.values(selectedOptions).reduce(
       (s, o) => s + (Number(o?.price) || 0),
-      0
+      0,
     );
     setSelectedVariant(null);
     setFinalPrice((Number(device.price) || 0) + add);
@@ -244,15 +244,15 @@ const DevicePage = ({ id }) => {
       (device.options?.length || 0) > 0
     ) {
       const haveAll = device.options.every(
-        (o) => selectedOptions[o.name]?.value
+        (o) => selectedOptions[o.name]?.value,
       );
       if (haveAll && selectedVariant) {
         const cleanSelected = Object.fromEntries(
-          Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
+          Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)]),
         );
         const key = makeVariantKey(cleanSelected);
         const existingItem = basket.items.find(
-          (item) => item.id === device.id && item.variantKey === key
+          (item) => item.id === device.id && item.variantKey === key,
         );
 
         const inCart = existingItem ? existingItem.count : 0;
@@ -269,7 +269,7 @@ const DevicePage = ({ id }) => {
 
   const baseImages = useMemo(
     () => [device.img, ...(device.thumbnails || [])].filter(Boolean),
-    [device.img, device.thumbnails]
+    [device.img, device.thumbnails],
   );
 
   const images = useMemo(() => {
@@ -362,12 +362,12 @@ const DevicePage = ({ id }) => {
         toast.error(
           `❌ ${t("options must be configured for products with variants", {
             ns: "devicePage",
-          })}`
+          })}`,
         );
         return;
       }
       const allChosen = device.options.every(
-        (o) => selectedOptions[o.name]?.value
+        (o) => selectedOptions[o.name]?.value,
       );
       if (!allChosen) {
         toast.error(`❌ ${t("select product options", { ns: "devicePage" })}`);
@@ -377,7 +377,7 @@ const DevicePage = ({ id }) => {
         toast.error(
           `❌ ${t("this variant combination does not exist", {
             ns: "devicePage",
-          })}`
+          })}`,
         );
         return;
       }
@@ -386,7 +386,7 @@ const DevicePage = ({ id }) => {
     setAdding(true);
     try {
       const cleanSelected = Object.fromEntries(
-        Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
+        Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)]),
       );
       const variantKey = device.variants?.length
         ? makeVariantKey(cleanSelected)
@@ -398,7 +398,7 @@ const DevicePage = ({ id }) => {
           ((variantKey && item.variantKey === variantKey) ||
             (!variantKey &&
               JSON.stringify(item.selectedOptions) ===
-                JSON.stringify(selectedOptions)))
+                JSON.stringify(selectedOptions))),
       );
 
       const newCount = (existingItem?.count || 0) + 1;
@@ -406,7 +406,7 @@ const DevicePage = ({ id }) => {
       const isAvailable = await checkStock(
         device.id,
         newCount,
-        selectedOptions
+        selectedOptions,
       );
       const isThisPreorder = !isAvailable;
 
@@ -433,7 +433,7 @@ const DevicePage = ({ id }) => {
             {t("Added to cart!", { ns: "devicePage" })}
           </span>
         </>,
-        { style: { maxWidth: "400px" } }
+        { style: { maxWidth: "400px" } },
       );
 
       setAvailableQuantity((prev) => prev - 1);
@@ -448,8 +448,8 @@ const DevicePage = ({ id }) => {
     selectedVariant && selectedVariant.oldPrice != null
       ? Number(selectedVariant.oldPrice)
       : device.oldPrice != null
-      ? Number(device.oldPrice)
-      : null;
+        ? Number(device.oldPrice)
+        : null;
 
   const showOld =
     showOldPriceValue != null ? showOldPriceValue > (finalPrice || 0) : false;
@@ -460,19 +460,21 @@ const DevicePage = ({ id }) => {
     !device.options.every((o) => selectedOptions[o.name]?.value);
 
   const variantsActive = (device.variants || []).filter(
-    (v) => v?.isActive !== false
+    (v) => v?.isActive !== false,
   );
 
   const isValueAvailable = (optName, valueObj) => {
     if (!device.variants?.length) return true;
 
     const partial = Object.fromEntries(
-      Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
+      Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)]),
     );
     partial[optName] = getVal(valueObj);
 
     return variantsActive.some((v) =>
-      Object.entries(partial).every(([k, val]) => (v.selected || {})[k] === val)
+      Object.entries(partial).every(
+        ([k, val]) => (v.selected || {})[k] === val,
+      ),
     );
   };
 
@@ -482,20 +484,22 @@ const DevicePage = ({ id }) => {
     }
 
     const partial = Object.fromEntries(
-      Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)])
+      Object.entries(selectedOptions).map(([k, v]) => [k, getVal(v)]),
     );
     partial[optName] = getVal(valueObj);
 
     const exists = variantsActive.some((v) =>
-      Object.entries(partial).every(([k, val]) => (v.selected || {})[k] === val)
+      Object.entries(partial).every(
+        ([k, val]) => (v.selected || {})[k] === val,
+      ),
     );
     if (!exists) return false;
 
     const anyInStock = variantsActive.some(
       (v) =>
         Object.entries(partial).every(
-          ([k, val]) => (v.selected || {})[k] === val
-        ) && (Number(v.quantity) || 0) > 0
+          ([k, val]) => (v.selected || {})[k] === val,
+        ) && (Number(v.quantity) || 0) > 0,
     );
     return !anyInStock;
   };
@@ -533,8 +537,8 @@ const DevicePage = ({ id }) => {
                     !available
                       ? styles.OptionThumbDisabled
                       : oos
-                      ? styles.OptionThumbOut
-                      : "",
+                        ? styles.OptionThumbOut
+                        : "",
                   ].join(" ")}
                   onClick={() => {
                     if (!available) return;
@@ -598,8 +602,8 @@ const DevicePage = ({ id }) => {
                   !available
                     ? styles.OptionBtnDisabled
                     : oos
-                    ? styles.OptionBtnOut
-                    : "",
+                      ? styles.OptionBtnOut
+                      : "",
                 ].join(" ")}
                 onClick={() =>
                   available && handleOptionChange(option.name, valueObj)
@@ -626,10 +630,14 @@ const DevicePage = ({ id }) => {
               <div className={styles.DevicePageDiscountBadge}>
                 -
                 {Math.round(
-                  ((showOldPriceValue - finalPrice) / showOldPriceValue) * 100
+                  ((showOldPriceValue - finalPrice) / showOldPriceValue) * 100,
                 )}
                 %
               </div>
+            )}
+
+            {device.isAgeRestricted && (
+              <div className={styles.DevicePageAgeBadge}>18+</div>
             )}
 
             <div className={styles.ImageContainer}>
@@ -668,7 +676,7 @@ const DevicePage = ({ id }) => {
                             opacity: { duration: 0.18 },
                           }}
                         />
-                      )
+                      ),
                   )}
                 </AnimatePresence>
               </motion.div>
@@ -727,6 +735,13 @@ const DevicePage = ({ id }) => {
                 />
               ))}
 
+              {device.isAgeRestricted && (
+                <div className={styles.AgeNotice}>
+                  18+ Товар с возрастным ограничением. При получении может
+                  потребоваться документ.
+                </div>
+              )}
+
               <div className={styles.DevicePagePriceBlock}>
                 {showOld ? (
                   <>
@@ -753,8 +768,8 @@ const DevicePage = ({ id }) => {
                 {needToSelectAllOptions
                   ? t("select product options", { ns: "devicePage" })
                   : availableQuantity <= 0
-                  ? t("out_of_stock", { ns: "devicePage" })
-                  : t("add_to_cart", { ns: "devicePage" })}
+                    ? t("out_of_stock", { ns: "devicePage" })
+                    : t("add_to_cart", { ns: "devicePage" })}
               </LoadingButton>
             </div>
 
@@ -801,12 +816,12 @@ const DevicePage = ({ id }) => {
                         {device.expiryKind === "use_by"
                           ? t("use_by", { ns: "devicePage" })
                           : device.expiryKind === "best_before"
-                          ? t("best_before", { ns: "devicePage" })
-                          : t("expiry_date", { ns: "devicePage" })}
+                            ? t("best_before", { ns: "devicePage" })
+                            : t("expiry_date", { ns: "devicePage" })}
                       </strong>
                       <span>
                         {new Date(device.expiryDate).toLocaleDateString(
-                          dateLocale
+                          dateLocale,
                         )}
                       </span>
                     </span>
@@ -859,8 +874,8 @@ const DevicePage = ({ id }) => {
                   {device.expiryKind === "use_by"
                     ? t("use_by", { ns: "devicePage" })
                     : device.expiryKind === "best_before"
-                    ? t("best_before", { ns: "devicePage" })
-                    : t("expiry_date", { ns: "devicePage" })}
+                      ? t("best_before", { ns: "devicePage" })
+                      : t("expiry_date", { ns: "devicePage" })}
                 </strong>
                 <span>
                   {new Date(device.expiryDate).toLocaleDateString(dateLocale)}
@@ -881,8 +896,8 @@ const DevicePage = ({ id }) => {
             {needToSelectAllOptions
               ? t("select a variant", { ns: "devicePage" })
               : availableQuantity <= 0
-              ? t("out_of_stock", { ns: "devicePage" })
-              : t("add_to_cart", { ns: "devicePage" })}
+                ? t("out_of_stock", { ns: "devicePage" })
+                : t("add_to_cart", { ns: "devicePage" })}
           </span>
 
           <span className={styles.AddPrice}>
