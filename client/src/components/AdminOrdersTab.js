@@ -74,7 +74,6 @@ const AdminOrdersTab = () => {
   const couriersForSelect = useMemo(() => {
     let list = Array.isArray(couriers) ? [...couriers] : [];
 
-    // online выше
     list.sort((a, b) => {
       const ao = a?.status === "online" ? 0 : 1;
       const bo = b?.status === "online" ? 0 : 1;
@@ -82,12 +81,10 @@ const AdminOrdersTab = () => {
       return String(a?.name || "").localeCompare(String(b?.name || ""));
     });
 
-    // фильтруем
     list = showOfflineCouriers
       ? list
       : list.filter((c) => c?.status === "online");
 
-    // добавляем назначенных (даже если они оффлайн)
     return ensureAssigned(list);
   }, [couriers, showOfflineCouriers, allOrders, couriersById]);
 
@@ -204,6 +201,12 @@ const AdminOrdersTab = () => {
 
   return (
     <div className={styles.tabWrap}>
+
+      <div className={styles.mapBlock}>
+        <div className={styles.blockTitle}>Курьеры на карте</div>
+        <CourierMap couriers={couriers} />
+      </div>
+
       <div className={styles.headerRow}>
         <div>
           <h2 className={styles.title}>Заказы</h2>
@@ -230,11 +233,6 @@ const AdminOrdersTab = () => {
           />
           <span>Показать оффлайн</span>
         </label>
-      </div>
-
-      <div className={styles.mapBlock}>
-        <div className={styles.blockTitle}>Курьеры на карте</div>
-        <CourierMap couriers={couriers} />
       </div>
 
       <div className={styles.ordersTable}>
