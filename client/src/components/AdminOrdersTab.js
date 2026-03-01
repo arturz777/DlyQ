@@ -30,12 +30,63 @@ const AdminOrdersTab = () => {
   const [loadingCouriers, setLoadingCouriers] = useState(false);
   const [payoutDraft, setPayoutDraft] = useState({});
   const [payoutSaving, setPayoutSaving] = useState({});
+  const [showOfflineCouriers, setShowOfflineCouriers] = useState(false);
+
+  const orderSourceLabel = (o) => {
+    if (o?.orderType === "parcel") return "📦 Parcel";
+    if (
+      o?.sellerId === 0 ||
+      String(o?.sellerName || "")
+        .toLowerCase()
+        .includes("dlyq")
+    ) {
+      return "🛒 DlyQ Store";
+    }
+    return `🍔 ${o?.sellerName || "Restaurant"}`;
+  };
 
   const couriersById = useMemo(() => {
     const m = new Map();
     (couriers || []).forEach((c) => m.set(String(c.id), c));
     return m;
   }, [couriers]);
+
+  const ensureAssigned = (list) => {
+    const ids = new Set(list.map((c) => String(c.id)));
+
+    const assignedIds = new Set(
+      allOrders
+        .map((o) => o.courierId)
+        .filter(Boolean)
+        .map(String),
+    );
+
+    assignedIds.forEach((id) => {
+      if (!ids.has(id)) {
+        const c = couriersById.get(id);
+        if (c) list.unshift(c);
+      }
+    });
+
+    return list;
+  };
+
+  const couriersForSelect = useMemo(() => {
+    let list = Array.isArray(couriers) ? [...couriers] : [];
+
+    list.sort((a, b) => {
+      const ao = a?.status === "online" ? 0 : 1;
+      const bo = b?.status === "online" ? 0 : 1;
+      if (ao !== bo) return ao - bo;
+      return String(a?.name || "").localeCompare(String(b?.name || ""));
+    });
+
+    list = showOfflineCouriers
+      ? list
+      : list.filter((c) => c?.status === "online");
+
+    return ensureAssigned(list);
+  }, [couriers, showOfflineCouriers, allOrders, couriersById]);
 
   const reloadOrders = async () => {
     try {
@@ -150,6 +201,12 @@ const AdminOrdersTab = () => {
 
   return (
     <div className={styles.tabWrap}>
+
+      <div className={styles.mapBlock}>
+        <div className={styles.blockTitle}>Курьеры на карте</div>
+        <CourierMap couriers={couriers} />
+      </div>
+
       <div className={styles.headerRow}>
         <div>
           <h2 className={styles.title}>Заказы</h2>
@@ -167,11 +224,15 @@ const AdminOrdersTab = () => {
             Обновить
           </button>
         </div>
-      </div>
 
-      <div className={styles.mapBlock}>
-        <div className={styles.blockTitle}>Курьеры на карте</div>
-        <CourierMap couriers={couriers} />
+        <label className={styles.toggle}>
+          <input
+            type="checkbox"
+            checked={showOfflineCouriers}
+            onChange={(e) => setShowOfflineCouriers(e.target.checked)}
+          />
+          <span>Показать оффлайн</span>
+        </label>
       </div>
 
       <div className={styles.ordersTable}>
@@ -182,6 +243,7 @@ const AdminOrdersTab = () => {
             <thead>
               <tr>
                 <th>ID</th>
+                <th>Источник</th>
                 <th>Курьер</th>
                 <th>Доставка (ручн.)</th>
                 <th>Бонус</th>
@@ -200,6 +262,7 @@ const AdminOrdersTab = () => {
               {allOrders.map((order) => (
                 <tr key={order.id}>
                   <td className={styles.cellId}>#{order.id}</td>
+                  <td>{orderSourceLabel(order)}</td>
 
                   <td>
                     <select
@@ -210,9 +273,10 @@ const AdminOrdersTab = () => {
                       }
                     >
                       <option value="">Не назначен</option>
-                      {couriers.map((courier) => (
+                      {couriersForSelect.map((courier) => (
                         <option key={courier.id} value={courier.id}>
-                          {courier.name}
+                          {courier.name}{" "}
+                          {courier.status === "online" ? "🟢" : "⚪️"}
                         </option>
                       ))}
                     </select>
