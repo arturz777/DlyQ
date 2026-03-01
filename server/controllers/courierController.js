@@ -1533,6 +1533,10 @@ class CourierController {
         orderType: order.orderType,
         status: order.status,
 
+        hasAgeRestricted: !!order.hasAgeRestricted,
+        ageVerifiedByCourier: !!order.ageVerifiedByCourier,
+        ageVerifiedAt: order.ageVerifiedAt ?? null,
+
         deliveryLat: order.deliveryLat,
         deliveryLng: order.deliveryLng,
         deliveryAddress: order.deliveryAddress,
