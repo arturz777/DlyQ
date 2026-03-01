@@ -89,5 +89,7 @@
 	"specify the desired delivery date and time": "Vali soovitud tarnekuupäev ja aeg",
 	 "failed to load or parse userFormData": "userFormData laadimine/parsimine ebaõnnestus",
   "failed to save form": "Vormi salvestamine ebaõnnestus",
-  "payment status": "Makse staatus: {{status}}"
+  "payment status": "Makse staatus: {{status}}",
+  "there are age-restricted items in your cart. Please present a valid ID upon delivery": "Teie ostukorvis on vanusepiiranguga tooteid. Kauba kättesaamisel palun esitage isikut tõendav dokument.",
+  "i am 18 years old (I will confirm my age with an ID upon delivery)": "Olen 18-aastane (kinnitan oma vanuse dokumendiga kauba kättesaamisel)."
 }
