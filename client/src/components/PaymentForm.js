@@ -831,9 +831,7 @@ const PaymentForm = ({
 
       {hasAgeRestricted && (
         <div className={styles.ageNotice}>
-          <span className={styles.ageBadgeInline}>18+</span> {t("there are age-restricted 
-          items in your cart. Please present a valid ID upon delivery", { ns:
-          "paymentForm" })}
+          <span className={styles.ageBadgeInline}>18+</span> {t("there are age-restricted items in your cart. Please present a valid ID upon delivery", { ns: "paymentForm" })}
         </div>
       )}
 
@@ -847,8 +845,7 @@ const PaymentForm = ({
             onChange={(e) => setAgeConfirmed(e.target.checked)}
           />
           <label className="form-check-label" htmlFor="ageConfirm">
-            {t("i am 18 years old (I will confirm my age with an ID upon delivery)", { ns:
-            "paymentForm" })}
+            {t("i am 18 years old (I will confirm my age with an ID upon delivery)", { ns: "paymentForm" })}
           </label>
         </div>
       )}
