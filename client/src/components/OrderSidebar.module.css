@@ -30,14 +30,16 @@
   gap: 10px;
   padding: 12px 14px;
   border-radius: 999px;
-  background: #0072CE;
+  background: #0072ce;
   color: #ffffff;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 160ms ease, box-shadow 160ms ease,
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
     border-color 160ms ease;
 }
 
@@ -147,7 +149,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: transform 160ms ease, box-shadow 160ms ease;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .closeButton:hover {
@@ -192,7 +196,10 @@
   font-size: 15px;
   font-weight: 800;
   cursor: pointer;
-  transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease;
+  transition:
+    transform 160ms ease,
+    filter 160ms ease,
+    box-shadow 160ms ease;
   box-shadow: var(--shadow-sm);
 }
 
@@ -250,7 +257,9 @@
   border: none;
   box-shadow: var(--shadow-sm);
   cursor: pointer;
-  transition: transform 160ms ease, filter 160ms ease;
+  transition:
+    transform 160ms ease,
+    filter 160ms ease;
 }
 
 .chatButton:hover {
@@ -267,4 +276,32 @@
   border-radius: 999px;
   background: #fff;
   opacity: 0.9;
+}
+
+.ageNotice {
+  max-width: 600px;
+  margin: 8px auto 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.06);
+  color: #7f1d1d;
+  font-size: 13px;
+  line-height: 18px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.ageBadgeInline {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(239, 68, 68, 0.95);
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
 }
