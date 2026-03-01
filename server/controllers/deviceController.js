@@ -191,6 +191,7 @@ class DeviceController {
         isNew,
         discount,
         recommended,
+        isAgeRestricted,
         purchasePrice,
         expiryKind,
         expiryDate,
@@ -408,6 +409,7 @@ class DeviceController {
           isNew: toBool(isNew),
           discount: toBool(discount),
           recommended: toBool(recommended),
+          isAgeRestricted: toBool(isAgeRestricted),
           purchasePrice: purchasePriceNum,
           purchaseHasVAT,
           isVisible,
@@ -1296,7 +1298,6 @@ class DeviceController {
 
       let deviceShipping = null;
 
-      // Важно: валидируем/перезаписываем shipping только если payload реально прислали
       if (hasVariantsPayload) {
         if (hasIncomingVariants) {
           parsedVariants.forEach((v, idx) => {
@@ -1536,6 +1537,11 @@ class DeviceController {
             ? warehouseLocation || null
             : device.warehouseLocation,
           ...(deviceShipping || {}),
+          isAgeRestricted:
+            typeof req.body.isAgeRestricted !== "undefined"
+              ? req.body.isAgeRestricted === true ||
+                req.body.isAgeRestricted === "true"
+              : device.isAgeRestricted,
         },
         { where: { id } },
       );
@@ -2498,7 +2504,7 @@ class DeviceController {
       )
       SELECT d.id, d.name, d.price, d."oldPrice", d.img, d.thumbnails, d.quantity, d."typeId",
       d."subtypeId", d."brandId", d.rating,
-             d.discount, d."isNew", d."expiryDate", d."snoozeUntil",
+             d.discount, d."isNew", d."isAgeRestricted", d."expiryDate", d."snoozeUntil",
              f.sk AS _sk
       FROM "devices" d
       JOIN filtered f ON f.id = d.id
