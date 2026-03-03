@@ -498,7 +498,7 @@ const SellerPage = () => {
       isRestaurantItem: true,
       isPreorder: false,
       defaultSelected: true,
-
+      isAgeRestricted: !!item.isAgeRestricted,
       selectedOptions: selectedOptions || {},
       selectedOptionsMeta: selectedOptionsMeta || [],
       variantKey: buildVariantKey(selectedOptions),
@@ -751,6 +751,11 @@ const SellerPage = () => {
                                 <div>
                                   <div className={styles.itemName}>
                                     {itemName}
+                                    {item.isAgeRestricted && (
+                                      <span className={styles.ageBadge}>
+                                        18+
+                                      </span>
+                                    )}
                                   </div>
                                   {itemDesc && (
                                     <div className={styles.itemDesc}>
