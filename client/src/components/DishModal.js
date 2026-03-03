@@ -201,7 +201,12 @@ const DishModal = ({ item, seller, getImgSrc, onAdd }) => {
 
         <div className={deviceStyles.DevicePageDetails}>
           <div className={deviceStyles.DevicePageCard}>
-            <p className={deviceStyles.DevicePageTitle}>{item?.name}</p>
+            <p className={deviceStyles.DevicePageTitle}>
+              {item?.name}
+              {item?.isAgeRestricted && (
+                <span className={styles.ageBadge}>18+</span>
+              )}
+            </p>
 
             {seller?.name && (
               <div className={styles.sellerName}>{seller.name}</div>
@@ -239,8 +244,7 @@ const DishModal = ({ item, seller, getImgSrc, onAdd }) => {
             </div>
 
             <div className={styles.extrasSection}>
-              <div className={styles.extrasHeader}>
-              </div>
+              <div className={styles.extrasHeader}></div>
 
               {optLoading ? (
                 <div className={styles.loading}>
