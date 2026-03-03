@@ -84,6 +84,11 @@ const MenuItem = sequelize.define("menu_item", {
   isAvailable: { type: DataTypes.BOOLEAN, defaultValue: true },
   displayOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+  isAgeRestricted: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
 });
 
 const MenuOptionGroup = sequelize.define("menu_option_group", {
