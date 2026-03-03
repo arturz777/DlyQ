@@ -104,6 +104,7 @@ class MenuItemController {
         isActive,
         displayOrder,
         translations,
+        isAgeRestricted,
       } = req.body;
 
       if (!sellerId) return next(ApiError.badRequest("sellerId обязателен"));
@@ -127,6 +128,10 @@ class MenuItemController {
           isAvailable !== undefined ? String(isAvailable) === "true" : true,
         isActive: isActive !== undefined ? String(isActive) === "true" : true,
         displayOrder: displayOrder ? Number(displayOrder) : 0,
+        isAgeRestricted:
+          isAgeRestricted !== undefined
+            ? String(isAgeRestricted) === "true"
+            : false,
       });
 
       const parsed = parseTranslations(translations) || {};
@@ -173,6 +178,7 @@ class MenuItemController {
         isActive,
         displayOrder,
         translations,
+        isAgeRestricted,
       } = req.body;
 
       const item = await MenuItem.findByPk(id);
@@ -215,6 +221,10 @@ class MenuItemController {
           isActive !== undefined ? String(isActive) === "true" : item.isActive,
         displayOrder:
           displayOrder !== undefined ? Number(displayOrder) : item.displayOrder,
+        isAgeRestricted:
+          isAgeRestricted !== undefined
+            ? String(isAgeRestricted) === "true"
+            : item.isAgeRestricted,
       });
 
       const parsed = parseTranslations(translations) || {};
