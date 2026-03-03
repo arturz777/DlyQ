@@ -1,339 +1,324 @@
-const { MenuItem, Translation } = require("../models/models");
-const { Op } = require("sequelize");
-const ApiError = require("../error/ApiError");
-const { supabase } = require("../config/supabaseClient");
-const uuid = require("uuid");
+import React, { useEffect, useMemo, useState } from "react";
+import { Modal, Button, Form, Tabs, Tab } from "react-bootstrap";
+import { createMenuItem, updateMenuItem } from "../../http/menuAPI";
 
-function parseTranslations(v) {
-  if (!v) return null;
+const TRANS_LANGS = [
+  { code: "est", label: "EST" },
+  { code: "en", label: "EN" },
+];
 
-  if (typeof v === "string") {
-    const s = v.trim();
-    if (!s || s === "null" || s === "undefined") return null;
-    try {
-      return JSON.parse(s);
-    } catch {
-      return null;
+const emptyLangMap = () =>
+  TRANS_LANGS.reduce((acc, l) => {
+    acc[l.code] = "";
+    return acc;
+  }, {});
+
+const CreateMenuItem = ({
+  show,
+  onHide,
+  editableItem = null,
+  sellerId = null,
+  categories = [],
+  initialCategoryId = null,
+  onSaved,
+}) => {
+  const isEdit = !!editableItem?.id;
+
+  const activeCategories = useMemo(
+    () => (categories || []).filter((c) => c?.isActive !== false),
+    [categories],
+  );
+
+  const [activeTab, setActiveTab] = useState("ru");
+  const [transTab, setTransTab] = useState("name");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [img, setImg] = useState(null);
+  const [isAvailable, setIsAvailable] = useState(true);
+  const [isActive, setIsActive] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [tName, setTName] = useState(emptyLangMap());
+  const [tDescription, setTDescription] = useState(emptyLangMap());
+  const [isAgeRestricted, setIsAgeRestricted] = useState(false);
+
+  useEffect(() => {
+    if (!show) return;
+
+    setActiveTab("ru");
+    setTransTab("name");
+
+    if (isEdit) {
+      setName(editableItem?.name || "");
+      setDescription(editableItem?.description || "");
+      setPrice(editableItem?.price != null ? String(editableItem.price) : "");
+      setCategoryId(
+        editableItem?.categoryId != null ? String(editableItem.categoryId) : "",
+      );
+      setImg(null);
+      setIsAvailable(editableItem?.isAvailable ?? true);
+      setIsActive(editableItem?.isActive ?? true);
+      setIsAgeRestricted(!!editableItem?.isAgeRestricted);
+
+      const t = editableItem?.translations || {};
+      const nFromApi = t?.name || {};
+      const dFromApi = t?.description || {};
+
+      const nextN = emptyLangMap();
+      const nextD = emptyLangMap();
+      for (const { code } of TRANS_LANGS) {
+        nextN[code] = nFromApi[code] || "";
+        nextD[code] = dFromApi[code] || "";
+      }
+      setTName(nextN);
+      setTDescription(nextD);
+    } else {
+      setName("");
+      setDescription("");
+      setPrice("");
+      setCategoryId(
+        initialCategoryId
+          ? String(initialCategoryId)
+          : activeCategories?.[0]?.id
+            ? String(activeCategories[0].id)
+            : "",
+      );
+      setImg(null);
+      setIsAvailable(true);
+      setIsActive(true);
+      setTName(emptyLangMap());
+      setTDescription(emptyLangMap());
+      setIsAgeRestricted(false);
     }
-  }
+  }, [show, isEdit, editableItem, activeCategories]);
 
-  if (typeof v === "object") return v;
-  return null;
-}
+  const handleClose = () => {
+    if (loading) return;
+    onHide?.();
+  };
 
-const normLang = (lang) =>
-  String(lang || "")
-    .trim()
-    .toLowerCase();
+  const handleSubmit = async () => {
+    const sid = sellerId ?? editableItem?.sellerId;
+    if (!sid) return alert("sellerId не выбран");
 
-async function syncTranslationsForKey(key, map, transaction = undefined) {
-  if (!map || typeof map !== "object") return;
+    if (!name.trim()) {
+      setActiveTab("ru");
+      return alert("Введите название блюда (RU)");
+    }
 
-  const ops = [];
+    const p = Number(price);
+    if (!Number.isFinite(p) || p <= 0) {
+      setActiveTab("settings");
+      return alert("Цена должна быть числом больше 0");
+    }
 
-  for (const [langRaw, textRaw] of Object.entries(map)) {
-    const lang = normLang(langRaw);
-    if (!lang) continue;
+    if (!categoryId) {
+      setActiveTab("settings");
+      return alert("Выберите категорию");
+    }
 
-    if (textRaw === null || textRaw === undefined) continue;
+    setLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append("sellerId", String(sid));
 
-    const text =
-      typeof textRaw === "string" ? textRaw.trim() : String(textRaw).trim();
+      fd.append("name", name.trim());
+      fd.append("description", description.trim());
 
-    if (!text) {
-      ops.push(
-        Translation.destroy({
-          where: { key, lang },
-          transaction,
+      fd.append("price", String(p));
+      fd.append("categoryId", String(categoryId));
+      fd.append("isAvailable", String(!!isAvailable));
+      fd.append("isActive", String(!!isActive));
+      fd.append("isAgeRestricted", String(!!isAgeRestricted));
+      if (img) fd.append("img", img);
+      fd.append(
+        "translations",
+        JSON.stringify({
+          name: tName,
+          description: tDescription,
         }),
       );
-    } else {
-      ops.push(Translation.upsert({ key, lang, text }, { transaction }));
-    }
-  }
 
-  await Promise.all(ops);
-}
+      const saved = isEdit
+        ? await updateMenuItem(editableItem.id, fd)
+        : await createMenuItem(fd);
 
-async function readTranslationsMap(keys) {
-  const rows = await Translation.findAll({
-    where: { key: { [Op.in]: keys } },
-  });
-
-  const out = {};
-  rows.forEach((r) => {
-    if (!out[r.key]) out[r.key] = {};
-    out[r.key][r.lang] = r.text;
-  });
-
-  return out;
-}
-
-async function uploadImageIfAny(req, prevUrl = null) {
-  if (!req.files || !req.files.img) return prevUrl;
-
-  if (prevUrl) {
-    const oldFileName = prevUrl.split("/").pop();
-    await supabase.storage.from("images").remove([oldFileName]);
-  }
-
-  const { img } = req.files;
-  const fileName = `${uuid.v4()}${img.name.substring(
-    img.name.lastIndexOf("."),
-  )}`;
-
-  const { error } = await supabase.storage
-    .from("images")
-    .upload(fileName, img.data, { contentType: img.mimetype });
-
-  if (error) throw new Error("Ошибка загрузки изображения в Supabase");
-
-  return `https://esjsdctbiuzornxbktjb.supabase.co/storage/v1/object/public/images/${fileName}`;
-}
-
-class MenuItemController {
-  async create(req, res, next) {
-    try {
-      const {
-        sellerId,
-        categoryId,
-        name,
-        description,
-        price,
-        isAvailable,
-        isActive,
-        displayOrder,
-        translations,
-      } = req.body;
-
-      if (!sellerId) return next(ApiError.badRequest("sellerId обязателен"));
-      if (!name || !name.trim())
-        return next(ApiError.badRequest("Введите название блюда"));
-
-      const p = Number(price);
-      if (!Number.isFinite(p) || p <= 0)
-        return next(ApiError.badRequest("Цена некорректна"));
-
-      const imgUrl = await uploadImageIfAny(req, null);
-
-      const item = await MenuItem.create({
-        sellerId: Number(sellerId),
-        categoryId: categoryId ? Number(categoryId) : null,
-        name: name.trim(),
-        description: description ? description.trim() : null,
-        price: p,
-        img: imgUrl,
-        isAvailable:
-          isAvailable !== undefined ? String(isAvailable) === "true" : true,
-        isActive: isActive !== undefined ? String(isActive) === "true" : true,
-        displayOrder: displayOrder ? Number(displayOrder) : 0,
-      });
-
-      const parsed = parseTranslations(translations) || {};
-
-      await syncTranslationsForKey(`menu_item_${item.id}.name`, {
-        ...(parsed.name || {}),
-        ru: name.trim(),
-      });
-
-      await syncTranslationsForKey(`menu_item_${item.id}.description`, {
-        ...(parsed.description || {}),
-        ...(description && description.trim()
-          ? { ru: description.trim() }
-          : {}),
-      });
-
-      const tmap = await readTranslationsMap([
-        `menu_item_${item.id}.name`,
-        `menu_item_${item.id}.description`,
-      ]);
-
-      return res.status(201).json({
-        ...item.toJSON(),
-        translations: {
-          name: tmap[`menu_item_${item.id}.name`] || {},
-          description: tmap[`menu_item_${item.id}.description`] || {},
-        },
-      });
+      onSaved?.(saved);
+      onHide?.();
     } catch (e) {
-      console.error("❌ MenuItem.create:", e.message);
-      return next(ApiError.badRequest(e.message));
+      console.error(e);
+      alert("Ошибка сохранения блюда");
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  async update(req, res) {
-    try {
-      const { id } = req.params;
-      let {
-        name,
-        description,
-        price,
-        categoryId,
-        isAvailable,
-        isActive,
-        displayOrder,
-        translations,
-      } = req.body;
+  return (
+    <Modal show={show} onHide={handleClose} centered size="lg">
+      <Modal.Header closeButton>
+        <Modal.Title>
+          {isEdit ? "Редактировать блюдо" : "Добавить блюдо"}
+        </Modal.Title>
+      </Modal.Header>
 
-      const item = await MenuItem.findByPk(id);
-      if (!item) return res.status(404).json({ message: "Блюдо не найдено" });
+      <Modal.Body>
+        <Tabs
+          activeKey={activeTab}
+          onSelect={(k) => k && setActiveTab(k)}
+          className="mb-3"
+          justify
+          mountOnEnter
+          unmountOnExit
+        >
+          <Tab eventKey="ru" title="RU">
+            <Form.Group className="mb-3">
+              <Form.Label>Название (RU) *</Form.Label>
+              <Form.Control
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Например: Борщ"
+              />
+            </Form.Group>
 
-      if (!name || !name.trim()) name = item.name;
+            <Form.Group>
+              <Form.Label>Описание (RU)</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={4}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Короткое описание"
+              />
+            </Form.Group>
+          </Tab>
 
-      let p = item.price;
-      if (price !== undefined) {
-        const np = Number(price);
-        if (!Number.isFinite(np) || np <= 0) {
-          return res.status(400).json({ message: "Цена некорректна" });
-        }
-        p = np;
-      }
+          <Tab eventKey="translations" title="Переводы">
+            <div className="small text-muted mb-2">
+              Переводы не обязательны. RU берётся из основных полей.
+            </div>
 
-      const imgUrl = await uploadImageIfAny(req, item.img);
+            <Tabs
+              activeKey={transTab}
+              onSelect={(k) => k && setTransTab(k)}
+              className="mb-3"
+              mountOnEnter
+              unmountOnExit
+            >
+              <Tab eventKey="name" title="Название">
+                {TRANS_LANGS.map((l) => (
+                  <Form.Group className="mb-2" key={`tname-${l.code}`}>
+                    <Form.Label>Название ({l.label})</Form.Label>
+                    <Form.Control
+                      value={tName[l.code]}
+                      onChange={(e) =>
+                        setTName((prev) => ({
+                          ...prev,
+                          [l.code]: e.target.value,
+                        }))
+                      }
+                      placeholder={`Название (${l.label})`}
+                    />
+                  </Form.Group>
+                ))}
+              </Tab>
 
-      await item.update({
-        name: name.trim(),
-        description:
-          description !== undefined
-            ? description
-              ? description.trim()
-              : null
-            : item.description,
-        price: p,
-        categoryId:
-          categoryId !== undefined
-            ? categoryId
-              ? Number(categoryId)
-              : null
-            : item.categoryId,
-        img: imgUrl,
-        isAvailable:
-          isAvailable !== undefined
-            ? String(isAvailable) === "true"
-            : item.isAvailable,
-        isActive:
-          isActive !== undefined ? String(isActive) === "true" : item.isActive,
-        displayOrder:
-          displayOrder !== undefined ? Number(displayOrder) : item.displayOrder,
-      });
+              <Tab eventKey="description" title="Описание">
+                {TRANS_LANGS.map((l) => (
+                  <Form.Group className="mb-2" key={`tdesc-${l.code}`}>
+                    <Form.Label>Описание ({l.label})</Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      rows={3}
+                      value={tDescription[l.code]}
+                      onChange={(e) =>
+                        setTDescription((prev) => ({
+                          ...prev,
+                          [l.code]: e.target.value,
+                        }))
+                      }
+                      placeholder={`Описание (${l.label})`}
+                    />
+                  </Form.Group>
+                ))}
+              </Tab>
+            </Tabs>
+          </Tab>
 
-      const parsed = parseTranslations(translations) || {};
+          <Tab eventKey="settings" title="Настройки">
+            <Form.Group className="mb-2">
+              <Form.Check
+                type="checkbox"
+                label="18+ (нужна проверка документа)"
+                checked={!!isAgeRestricted}
+                onChange={(e) => setIsAgeRestricted(e.target.checked)}
+              />
+            </Form.Group>
 
-      await syncTranslationsForKey(`menu_item_${id}.name`, {
-        ...(parsed.name || {}),
-        ru: item.name.trim(),
-      });
+            <Form.Group className="mb-3">
+              <Form.Label>Категория</Form.Label>
+              <Form.Select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+              >
+                <option value="">-- выберите --</option>
+                {activeCategories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
 
-      await syncTranslationsForKey(`menu_item_${id}.description`, {
-        ...(parsed.description || {}),
-        ...(item.description && item.description.trim()
-          ? { ru: item.description.trim() }
-          : {}),
-      });
+            <Form.Group className="mb-3">
+              <Form.Label>Цена (€)</Form.Label>
+              <Form.Control
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="Например: 6.90"
+              />
+            </Form.Group>
 
-      const tmap = await readTranslationsMap([
-        `menu_item_${id}.name`,
-        `menu_item_${id}.description`,
-      ]);
+            <Form.Group className="mb-3">
+              <Form.Label>Фото (одно)</Form.Label>
+              <Form.Control
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImg(e.target.files?.[0] || null)}
+              />
+            </Form.Group>
 
-      return res.json({
-        ...item.toJSON(),
-        translations: {
-          name: tmap[`menu_item_${id}.name`] || {},
-          description: tmap[`menu_item_${id}.description`] || {},
-        },
-      });
-    } catch (e) {
-      console.error("❌ MenuItem.update:", e.message);
-      return res
-        .status(500)
-        .json({ message: "Ошибка сервера при редактировании блюда." });
-    }
-  }
+            <Form.Group className="mb-2">
+              <Form.Check
+                type="checkbox"
+                label="Доступно для заказа"
+                checked={!!isAvailable}
+                onChange={(e) => setIsAvailable(e.target.checked)}
+              />
+            </Form.Group>
 
-  async getAll(req, res) {
-    try {
-      const { sellerId } = req.query;
-      if (!sellerId)
-        return res.status(400).json({ message: "sellerId обязателен" });
+            <Form.Group>
+              <Form.Check
+                type="checkbox"
+                label="Активно (не удалено)"
+                checked={!!isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+              />
+            </Form.Group>
+          </Tab>
+        </Tabs>
+      </Modal.Body>
 
-      const items = await MenuItem.findAll({
-        where: { sellerId: Number(sellerId) },
-        order: [
-          ["displayOrder", "ASC"],
-          ["id", "ASC"],
-        ],
-      });
+      <Modal.Footer>
+        <Button variant="secondary" onClick={handleClose}>
+          Отмена
+        </Button>
+        <Button variant="primary" disabled={loading} onClick={handleSubmit}>
+          {loading ? "Сохранение..." : "Сохранить"}
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  );
+};
 
-      const ids = items.map((i) => i.id);
-      const keys = ids.flatMap((id) => [
-        `menu_item_${id}.name`,
-        `menu_item_${id}.description`,
-      ]);
-
-      const translations = await Translation.findAll({
-        where: { key: { [Op.in]: keys } },
-      });
-
-      const map = {};
-      translations.forEach((t) => {
-        const m = t.key.match(/^menu_item_(\d+)\.(name|description)$/);
-        if (!m) return;
-
-        const itemId = m[1];
-        const field = m[2];
-
-        if (!map[itemId]) map[itemId] = { name: {}, description: {} };
-        map[itemId][field][t.lang] = t.text;
-      });
-
-      const out = items.map((i) => ({
-        ...i.toJSON(),
-        translations: map[i.id] || { name: {}, description: {} },
-      }));
-
-      return res.json(out);
-    } catch (e) {
-      console.error("❌ MenuItem.getAll:", e.message);
-      return res.status(500).json({ message: "Ошибка при получении блюд." });
-    }
-  }
-
-  async toggleAvailability(req, res) {
-    try {
-      const { id } = req.params;
-      const { isAvailable } = req.body;
-
-      const item = await MenuItem.findByPk(id);
-      if (!item) return res.status(404).json({ message: "Блюдо не найдено" });
-
-      await item.update({ isAvailable: String(isAvailable) === "true" });
-      return res.json({
-        message: "Доступность обновлена",
-        id: item.id,
-        isAvailable: item.isAvailable,
-      });
-    } catch (e) {
-      console.error("❌ MenuItem.toggleAvailability:", e.message);
-      return res
-        .status(500)
-        .json({ message: "Ошибка при обновлении доступности" });
-    }
-  }
-
-  async deactivate(req, res) {
-    try {
-      const { id } = req.params;
-      const item = await MenuItem.findByPk(id);
-      if (!item) return res.status(404).json({ message: "Блюдо не найдено" });
-
-      await item.update({ isActive: false });
-      return res.json({ message: "Блюдо деактивировано", id: item.id });
-    } catch (e) {
-      console.error("❌ MenuItem.deactivate:", e.message);
-      return res.status(500).json({ message: "Ошибка при деактивации блюда" });
-    }
-  }
-}
-
-module.exports = new MenuItemController();
+export default CreateMenuItem;
