@@ -26,27 +26,22 @@ const CreateMenuItem = ({
 
   const activeCategories = useMemo(
     () => (categories || []).filter((c) => c?.isActive !== false),
-    [categories]
+    [categories],
   );
 
   const [activeTab, setActiveTab] = useState("ru");
   const [transTab, setTransTab] = useState("name");
-
-  // ✅ RU
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-
-  // прочее
   const [price, setPrice] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [img, setImg] = useState(null);
-
   const [isAvailable, setIsAvailable] = useState(true);
   const [isActive, setIsActive] = useState(true);
   const [loading, setLoading] = useState(false);
-
   const [tName, setTName] = useState(emptyLangMap());
   const [tDescription, setTDescription] = useState(emptyLangMap());
+  const [isAgeRestricted, setIsAgeRestricted] = useState(false);
 
   useEffect(() => {
     if (!show) return;
@@ -59,12 +54,12 @@ const CreateMenuItem = ({
       setDescription(editableItem?.description || "");
       setPrice(editableItem?.price != null ? String(editableItem.price) : "");
       setCategoryId(
-        editableItem?.categoryId != null ? String(editableItem.categoryId) : ""
+        editableItem?.categoryId != null ? String(editableItem.categoryId) : "",
       );
       setImg(null);
-
       setIsAvailable(editableItem?.isAvailable ?? true);
       setIsActive(editableItem?.isActive ?? true);
+      setIsAgeRestricted(!!editableItem?.isAgeRestricted);
 
       const t = editableItem?.translations || {};
       const nFromApi = t?.name || {};
@@ -86,16 +81,15 @@ const CreateMenuItem = ({
         initialCategoryId
           ? String(initialCategoryId)
           : activeCategories?.[0]?.id
-          ? String(activeCategories[0].id)
-          : ""
+            ? String(activeCategories[0].id)
+            : "",
       );
       setImg(null);
-
       setIsAvailable(true);
       setIsActive(true);
-
       setTName(emptyLangMap());
       setTDescription(emptyLangMap());
+      setIsAgeRestricted(false);
     }
   }, [show, isEdit, editableItem, activeCategories]);
 
@@ -136,14 +130,14 @@ const CreateMenuItem = ({
       fd.append("categoryId", String(categoryId));
       fd.append("isAvailable", String(!!isAvailable));
       fd.append("isActive", String(!!isActive));
+      fd.append("isAgeRestricted", String(!!isAgeRestricted));
       if (img) fd.append("img", img);
-
       fd.append(
         "translations",
         JSON.stringify({
           name: tName,
           description: tDescription,
-        })
+        }),
       );
 
       const saved = isEdit
@@ -252,6 +246,15 @@ const CreateMenuItem = ({
           </Tab>
 
           <Tab eventKey="settings" title="Настройки">
+            <Form.Group className="mb-2">
+              <Form.Check
+                type="checkbox"
+                label="18+ (нужна проверка документа)"
+                checked={!!isAgeRestricted}
+                onChange={(e) => setIsAgeRestricted(e.target.checked)}
+              />
+            </Form.Group>
+
             <Form.Group className="mb-3">
               <Form.Label>Категория</Form.Label>
               <Form.Select
